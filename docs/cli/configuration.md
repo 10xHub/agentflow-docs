@@ -788,13 +788,3 @@ ValueError: Unsupported auth method: invalid_method
    if not settings.GEMINI_API_KEY:
        raise ValueError("GEMINI_API_KEY is required")
    ```
-
----
-
-## Additional Resources
-
-- [Authentication Guide](./authentication.md)
-- [CLI Guide](./cli-guide.md)
-- [Deployment Guide](./deployment.md)
-- [ID Generation Guide](./id-generation.md)
-- [Thread Name Generator Guide](./thread-name-generator.md)

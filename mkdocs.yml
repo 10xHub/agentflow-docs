@@ -58,13 +58,13 @@ plugins:
   - mermaid2
   - search:
       separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
-  - minify:
-      minify_html: true
-      minify_js: true
-      minify_css: true
-      htmlmin_opts:
-          remove_comments: true
-      cache_safe: true
+#   - minify:
+#       minify_html: true
+#       minify_js: true
+#       minify_css: true
+#       htmlmin_opts:
+#           remove_comments: true
+#       cache_safe: true
 
 markdown_extensions:
   - abbr
@@ -105,7 +105,6 @@ nav:
   - Home: index.md
   - CLI:
       - Overview: cli/index.md
-      - Command Reference: cli/cli.md
       - Configuration: cli/configuration.md
       - Authentication: cli/authentication.md
       - Deployment: cli/deployment.md
@@ -124,8 +123,3 @@ nav:
       - State Schema (Concepts): client/state-schema.md
       - State Schema (Implementation): client/state-schema-implementation.md
       - Error Handling: client/error-handling.md
-
-
-
-watch:
-  - docs/
