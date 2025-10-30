@@ -1,6 +1,6 @@
 site_name: AgentFlow Docs
-site_description: Agentflow is a Python framework for building, orchestrating, and managing multi-agent systems. Designed for flexibility and scalability, PyAgenity enables developers to create intelligent agents that collaborate, communicate, and solve complex tasks together.
-site_author: InjectQ Contributors
+site_description: AgentFlow is a Python framework for building, orchestrating, and managing multi-agent systems. Designed for flexibility and scalability, AgentFlow enables developers to create intelligent agents that collaborate, communicate, and solve complex tasks together.
+site_author: AgentFlow Contributors
 
 
 copyright: Copyright &copy; 2025 AgentFlow Contributors
@@ -34,6 +34,8 @@ theme:
     - content.tabs.link
     - content.tooltips
     - header.autohide
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.expand
     - navigation.footer
     - navigation.indexes
@@ -48,13 +50,21 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
-    - toc.integrate
     - navigation.pagination
     - navigation.goto_top
     - navigation.path
 
 plugins:
-  - search
+  - mermaid2
+  - search:
+      separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+          remove_comments: true
+      cache_safe: true
 
 markdown_extensions:
   - abbr
@@ -93,3 +103,29 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - CLI:
+      - Overview: cli/index.md
+      - Command Reference: cli/cli.md
+      - Configuration: cli/configuration.md
+      - Authentication: cli/authentication.md
+      - Deployment: cli/deployment.md
+      - ID Generation: cli/id-generation.md
+      - Thread Name Generator: cli/thread-name-generator.md
+  - Typescript Client:
+      - Quick Start: client/QUICK_START.md
+      - API Reference: client/api-reference.md
+      - Invoke (Synchronous) Usage: client/invoke-usage.md
+      - Streaming Usage: client/stream-usage.md
+      - Streaming Quick Reference: client/stream-quick-ref.md
+      - Thread API: client/thread-api.md
+      - Memory API: client/memory-api.md
+      - State Schema Guide: client/state-schema-guide.md
+      - State Schema Quick Reference: client/state-schema-quick-ref.md
+      - State Schema (Concepts): client/state-schema.md
+      - State Schema (Implementation): client/state-schema-implementation.md
+      - Error Handling: client/error-handling.md
+
+
+
+watch:
+  - docs/
