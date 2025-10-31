@@ -6,6 +6,7 @@ Welcome! This site is built with MkDocs and Material, managed via uv.
 - Mermaid diagrams for agent/system graphs
 - Ready for API docs with mkdocstrings (Python)
 
+
 ## Quick start
 
 - Edit Markdown under `docs/`

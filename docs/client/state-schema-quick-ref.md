@@ -267,7 +267,6 @@ async function setupForm() {
 ## Links
 
 - 📖 [Full Guide](./state-schema-guide.md)
-- 💡 [Examples](../examples/state-schema-examples.ts)
 - 🔍 [Implementation Details](./state-schema-implementation.md)
 - 🔄 [Direction Change](./DIRECTION_CHANGE.md)
 

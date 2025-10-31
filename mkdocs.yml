@@ -1,6 +1,7 @@
 site_name: AgentFlow Docs
 site_description: AgentFlow is a Python framework for building, orchestrating, and managing multi-agent systems. Designed for flexibility and scalability, AgentFlow enables developers to create intelligent agents that collaborate, communicate, and solve complex tasks together.
 site_author: AgentFlow Contributors
+site_url: https://docs.agentflow.ai
 
 
 copyright: Copyright &copy; 2025 AgentFlow Contributors
@@ -111,7 +112,8 @@ nav:
       - ID Generation: cli/id-generation.md
       - Thread Name Generator: cli/thread-name-generator.md
   - Typescript Client:
-      - Quick Start: client/QUICK_START.md
+      - Overview: client/index.md
+      - Quick Start: client/quick_start.md
       - API Reference: client/api-reference.md
       - Invoke (Synchronous) Usage: client/invoke-usage.md
       - Streaming Usage: client/stream-usage.md
