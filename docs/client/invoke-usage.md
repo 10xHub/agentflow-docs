@@ -86,10 +86,10 @@ const weatherTool: ToolRegistration = {
 client.registerTool(weatherTool);
 ```
 
-### 2. Setup Tools (Optional)
+### 2. Setup Tools
 
 ```typescript
-// Setup tools on server (dummy implementation for now)
+// Setup tools on server
 await client.setup();
 ```
 
@@ -221,9 +221,6 @@ The handler receives the arguments from the `remote_tool_call` and should return
 4. **Track intermediate results**: Use `result.all_messages` to see the full conversation
 5. **Validate tool parameters**: Use the `parameters` schema to define expected inputs
 
-## Example
-
-See `examples/invoke-example.ts` for a complete working example.
 
 ## API Reference
 

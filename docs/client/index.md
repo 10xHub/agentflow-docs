@@ -95,24 +95,6 @@ Complete documentation for the @10xscale/agentflow-client library.
 - Best practices
 - React examples
 
-### Implementation Details
-
-👉 **[Invoke Implementation Summary](../IMPLEMENTATION_SUMMARY.md)**
-- Technical implementation details
-- Architecture and flow
-- Type definitions
-- Test results
-
-👉 **[Error Handling Summary](../ERROR_HANDLING_SUMMARY.md)**
-- Error system implementation
-- All error codes
-- Migration notes
-
-👉 **[Stream Implementation](./STREAM_API_IMPLEMENTATION.md)**
-- Streaming architecture
-- Event processing
-- Implementation details
-
 ---
 
 ## � Quick Navigation
@@ -127,7 +109,6 @@ Complete documentation for the @10xscale/agentflow-client library.
 | **Stream responses** | [Stream Usage Guide](./stream-usage.md) |
 | **Handle errors** | [Error Handling Guide](./error-handling.md) |
 | **Work with state** | [State Schema Guide](./state-schema-guide.md) |
-| **See code examples** | [Examples Directory](../examples/) |
 
 ---
 

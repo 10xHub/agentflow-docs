@@ -125,3 +125,4 @@ nav:
       - State Schema (Concepts): client/state-schema.md
       - State Schema (Implementation): client/state-schema-implementation.md
       - Error Handling: client/error-handling.md
+      - Typescript Types: client/typescript-types.md
