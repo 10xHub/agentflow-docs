@@ -1,462 +1,247 @@
-# AgentFlow React - Documentation Index
+# AgentFlow React - Documentation
 
-Complete documentation for the @10xscale/agentflow-client library.
+Welcome to the **AgentFlow React** documentation! This guide will help you integrate the AgentFlow multi-agent API into your React applications.
 
-## 🚀 Getting Started
+## 🚀 Quick Links
 
-### New to AgentFlow?
-**Start here for a quick introduction**
+| Document | Description |
+|----------|-------------|
+| **[Getting Started](./getting-started.md)** | Complete setup guide (15 min) |
+| **[API Reference](./api-reference.md)** | All methods and types |
+| **[React Integration](./react-integration.md)** ⭐ | Hooks, patterns, best practices |
+| **[React Examples](./react-examples.md)** ⭐ | Complete component examples |
+| **[Tools Guide](./tools-guide.md)** | Tool registration and execution |
+| **[Troubleshooting](./troubleshooting.md)** | Common issues and solutions |
 
-👉 **[Quick Start Guide](./QUICK_START_NEW.md)**
-- Installation and setup
-- Basic client configuration
-- 8 common use cases with examples
-- Error handling basics
-- Complete working example
+## 📖 What is AgentFlow React?
 
-### Need API Reference?
-**Complete reference for all endpoints**
+**AgentFlow React** is a TypeScript client library that connects your React applications to the AgentFlow multi-agent system. It provides:
 
-👉 **[API Reference](./api-reference.md)**
-- All 23 endpoints documented
-- Request/response types
-- Parameters and examples
-- Error codes and handling
-- Response metadata
+- ✅ **Simple API Client** - Clean interface to AgentFlow backend
+- ✅ **Streaming Support** - Real-time responses for chat interfaces
+- ✅ **Tool Execution** - Automatic local tool handling
+- ✅ **State Management** - Dynamic schema-based state handling
+- ✅ **React-Ready** - Built specifically for React applications
+- ✅ **TypeScript** - Full type safety and IntelliSense support
 
----
+## 🎓 Learning Path
 
-## 📚 Core Guides
+### 👶 Beginner (Start Here)
+1. **[Getting Started](./getting-started.md)** - Install and make your first API call
+2. **[API Reference](./api-reference.md)** - Learn core methods: `ping()`, `invoke()`, `stream()`
+3. **[React Examples](./react-examples.md)** - See simple chat component example
 
-### Thread Management
-**Managing conversation threads and messages**
+### 🧑‍💻 Intermediate
+4. **[Invoke API Guide](./invoke-usage.md)** - Deep dive into request/response pattern
+5. **[Stream API Guide](./stream-usage.md)** - Learn real-time streaming
+6. **[Tools Guide](./tools-guide.md)** - Register and execute custom tools
+7. **[React Integration](./react-integration.md)** - Custom hooks and patterns
 
-👉 **[Thread API Guide](./thread-api.md)**
-- Thread lifecycle and operations
-- State management (get, update, clear)
-- Message operations (list, add, delete)
-- Use cases and best practices
+### 🚀 Advanced
+8. **[State Schema Guide](./state-schema-guide.md)** - Dynamic forms and validation
+9. **[TypeScript Types](./typescript-types.md)** - Advanced type usage
+10. **[React Examples](./react-examples.md)** - Complex workflows and multi-step UIs
+
+## 📚 Core Documentation
+
+### Essential Guides
+
+#### [Getting Started](./getting-started.md)
+Complete setup guide to get you up and running in 15 minutes. Covers:
+- Installation
+- Basic configuration
+- First API call
+- Simple examples
+
+#### [API Reference](./api-reference.md)
+Comprehensive reference for all client methods:
+- `AgentFlowClient` configuration
+- `invoke()` - Batch processing with tools
+- `stream()` - Real-time streaming
+- `graphStateSchema()` - Get state schema
+- `threadState()`, `updateThreadState()`, `clearThreadState()`
+- Tool registration API
+- Message helpers
+
+#### [React Integration](./react-integration.md) ⭐
+**Essential for React developers!** Learn how to:
+- Set up AgentFlowClient in React
+- Use context providers
+- Create custom hooks (`useInvoke`, `useStream`, `useStateSchema`)
+- Manage loading and error states
+- Best practices for React apps
+
+#### [React Examples](./react-examples.md) ⭐
+**Complete working examples** including:
+- Simple chat component
+- Streaming chat with real-time updates
+- Dynamic form builder from schema
+- Agent with custom tools
+- Multi-step workflows
+- Thread management UI
+
+### API Deep Dives
+
+#### [Invoke API - Comprehensive Guide](./invoke-usage.md)
+Detailed documentation for the `invoke()` method:
+- Request/response patterns
+- Tool execution loop
+- Recursion handling
+- Response granularity
+- Error handling
 - Complete examples
 
-### Memory System
-**Storing and retrieving agent memories**
+**Quick Reference:** [Invoke Quick Start](./QUICK_START.md)
 
-👉 **[Memory API Guide](./memory-api.md)**
-- Memory types (episodic, semantic, procedural, etc.)
-- Core operations (store, search, update, delete)
-- Retrieval strategies and distance metrics
-- Use cases and best practices
-- Complete examples
-
-### Execution APIs
-
-👉 **[Invoke Usage Guide](./invoke-usage.md)**
-- Synchronous execution with tool support
-- Automatic tool execution loop
-- Tool registration and handlers
-- Recursion limits and callbacks
-- Complete examples
-
-👉 **[Stream Usage Guide](./stream-usage.md)**
-- Real-time streaming responses
+#### [Stream API - Comprehensive Guide](./stream-usage.md)
+Everything about real-time streaming:
+- Streaming architecture
 - Event types and handling
-- Progressive content updates
-- Complete examples
+- React integration patterns
+- Memory efficiency
+- Error handling
+- Performance tips
 
-👉 **[Stream Quick Reference](./stream-quick-ref.md)**
-- Quick overview of streaming
-- Event types at a glance
-- Code snippets
+**Quick Reference:** [Stream Quick Reference](./stream-quick-ref.md)
 
-### State Schema
-
-👉 **[State Schema Guide](./state-schema-guide.md)**
-- Dynamic state field discovery
-- Building forms from schema
+#### [State Schema API - Guide](./state-schema-guide.md)
+Working with dynamic agent state:
+- Schema structure
+- Building dynamic forms
 - Data validation
-- Complete examples
+- Type generation
+- Dynamic fields
 
-👉 **[State Schema Quick Reference](./state-schema-quick-ref.md)**
-- 30-second overview
-- Quick examples
-- Common use cases
+**Quick Reference:** [State Schema Quick Reference](./state-schema-quick-ref.md)
 
----
+### Advanced Topics
 
-## 🛠️ Advanced Topics
+#### [Tools Guide](./tools-guide.md)
+Master tool registration and execution:
+- What are tools?
+- Tool registration patterns
+- Handler implementation
+- OpenAI-style parameters
+- Error handling
+- Testing tools
+- Common patterns (weather, calculator, API calls)
 
-### Error Handling
-**Comprehensive error handling guide**
+#### [TypeScript Types](./typescript-types.md)
+Advanced TypeScript usage:
+- Type imports
+- Core interfaces
+- Type guards
+- Custom extensions
+- Type-safe tool handlers
+- Schema-based type inference
 
-👉 **[Error Handling Guide](./error-handling.md)**
-- All error classes (400, 401, 403, 404, 422, 500+)
-- Catching specific errors
-- Validation error details
-- Best practices
-- React examples
-
----
-
-## � Quick Navigation
-
-| What I Want To Do | Document |
-|-------------------|----------|
-| **Get started quickly** | [Quick Start Guide](./QUICK_START_NEW.md) |
-| **Look up an endpoint** | [API Reference](./api-reference.md) |
-| **Manage conversations** | [Thread API Guide](./thread-api.md) |
-| **Store/search memories** | [Memory API Guide](./memory-api.md) |
-| **Execute with tools** | [Invoke Usage Guide](./invoke-usage.md) |
-| **Stream responses** | [Stream Usage Guide](./stream-usage.md) |
-| **Handle errors** | [Error Handling Guide](./error-handling.md) |
-| **Work with state** | [State Schema Guide](./state-schema-guide.md) |
-
----
-
-## 📖 By API Category
-
-### Health & Metadata
-- `ping()` - Health check
-- `graph()` - Graph structure
-- `stateSchema()` - State schema
-
-[See API Reference →](./api-reference.md#health--metadata)
-
-### Thread Management (10 endpoints)
-- `threads()` - List threads
-- `threadDetails()` - Get thread details
-- `threadState()` - Get state
-- `updateThreadState()` - Update state
-- `clearThreadState()` - Clear state
-- `deleteThread()` - Delete thread
-
-[See Thread API Guide →](./thread-api.md)
-
-### Message Management (4 endpoints)
-- `threadMessages()` - List messages
-- `threadMessage()` - Get message
-- `addThreadMessages()` - Add messages
-- `deleteThreadMessage()` - Delete message
-
-[See Thread API Guide →](./thread-api.md#message-operations)
-
-### Execution (2 endpoints)
-- `invoke()` - Synchronous execution
-- `stream()` - Streaming execution
-
-[See Invoke Guide →](./invoke-usage.md) | [See Stream Guide →](./stream-usage.md)
-
-### Memory Management (7 endpoints)
-- `storeMemory()` - Store memory
-- `searchMemory()` - Search memories
-- `getMemory()` - Get memory
-- `updateMemory()` - Update memory
-- `deleteMemory()` - Delete memory
-- `listMemories()` - List memories
-- `forgetMemories()` - Bulk delete
-
-[See Memory API Guide →](./memory-api.md)
-
----
-
-## 🎓 Learning Paths
-
-### Path 1: Complete Beginner
-```
-1. Quick Start Guide
-   ↓
-2. API Reference (browse)
-   ↓
-3. Thread API Guide
-   ↓
-4. Error Handling Guide
-```
-
-### Path 2: Building Chat Application
-```
-1. Quick Start Guide
-   ↓
-2. Thread API Guide
-   ↓
-3. Invoke Usage Guide
-   ↓
-4. Memory API Guide
-   ↓
-5. Error Handling Guide
-```
-
-### Path 3: Advanced Agent System
-```
-1. Invoke Usage Guide (tools)
-   ↓
-2. Stream Usage Guide
-   ↓
-3. Memory API Guide
-   ↓
-4. State Schema Guide
-   ↓
-5. Thread API Guide
-```
-
----
-
-## � Code Examples
-
-### Examples Directory
-👉 **[../examples/](../examples/)**
-
-Available examples:
-- `invoke-example.ts` - Tool execution example
-- `stream-example.ts` - Streaming example
-- `state-schema-examples.ts` - State schema usage (6 examples)
-
-### Quick Code Snippets
-
-#### Basic Setup
-```typescript
-import { AgentFlowClient } from '@10xscale/agentflow-client';
-
-const client = new AgentFlowClient({
-  baseUrl: 'https://api.example.com',
-  authToken: 'your-token'
-});
-```
-
-#### Simple Invoke
-```typescript
-import { Message } from '@10xscale/agentflow-client';
-
-const result = await client.invoke({
-  messages: [Message.user('Hello!')]
-});
-```
-
-#### Streaming
-```typescript
-for await (const chunk of client.stream({
-  messages: [Message.user('Tell me a story')]
-})) {
-  if (chunk.event === 'messages_chunk') {
-    process.stdout.write(chunk.data);
-  }
-}
-```
-
-#### Store Memory
-```typescript
-import { MemoryType } from '@10xscale/agentflow-client';
-
-await client.storeMemory({
-  content: 'User prefers dark mode',
-  memory_type: MemoryType.SEMANTIC,
-  category: 'user_preferences'
-});
-```
-
-#### Error Handling
-```typescript
-import { NotFoundError, ValidationError } from '@10xscale/agentflow-client';
-
-try {
-  await client.threadDetails('thread_123');
-} catch (error) {
-  if (error instanceof NotFoundError) {
-    console.log('Thread not found');
-  } else if (error instanceof ValidationError) {
-    console.log('Validation failed:', error.details);
-  }
-}
-```
-
----
-
-## 🔍 Find What You Need
-
-### By Task
-
-| Task | Guide |
-|------|-------|
-| List all threads | [Thread API](./thread-api.md#list-threads) |
-| Update thread state | [Thread API](./thread-api.md#update-thread-state) |
-| Add messages | [Thread API](./thread-api.md#add-messages) |
-| Execute with tools | [Invoke Guide](./invoke-usage.md#tool-registration) |
-| Stream responses | [Stream Guide](./stream-usage.md) |
-| Store a memory | [Memory API](./memory-api.md#store-memory) |
-| Search memories | [Memory API](./memory-api.md#search-memory) |
-| Handle 422 errors | [Error Guide](./error-handling.md#validation-errors) |
-| Get state schema | [State Schema](./state-schema-guide.md) |
-
-### By Use Case
-
-| Use Case | Guides |
-|----------|--------|
-| Chat application | [Thread API](./thread-api.md), [Error Handling](./error-handling.md) |
-| Tool-using agent | [Invoke Guide](./invoke-usage.md), [API Reference](./api-reference.md) |
-| Memory-enhanced bot | [Memory API](./memory-api.md), [Thread API](./thread-api.md) |
-| Real-time responses | [Stream Guide](./stream-usage.md) |
-| Dynamic forms | [State Schema](./state-schema-guide.md) |
-
----
-
-## 📦 Library Information
-
-### Features
-- ✅ Full TypeScript support
-- ✅ 23 endpoints fully documented
-- ✅ Comprehensive error handling
-- ✅ Streaming support
-- ✅ Tool execution framework
-- ✅ Memory management
-- ✅ State management
-- ✅ 80%+ test coverage
-
-### Installation
-```bash
-npm install @10xscale/agentflow-client
-```
-
-### Version
-See [package.json](../package.json) for current version
-
----
-
-## 🤝 Need Help?
-
-1. **Check the guides** - Most questions are answered in the guides above
-2. **Review examples** - See working code in [examples/](../examples/)
-3. **API Reference** - Look up specific endpoint details
-4. **Error Handling** - Check error handling guide for common issues
-
----
-
-## 📝 Documentation Status
-
-| Topic | Status | Coverage |
-|-------|--------|----------|
-| Quick Start | ✅ Complete | 100% |
-| API Reference | ✅ Complete | 23/23 endpoints |
-| Thread API | ✅ Complete | 10 endpoints |
-| Memory API | ✅ Complete | 7 endpoints |
-| Invoke API | ✅ Complete | Full |
-| Stream API | ✅ Complete | Full |
-| State Schema | ✅ Complete | Full |
-| Error Handling | ✅ Complete | All error types |
-| Examples | ✅ Complete | 8+ examples |
-
-**Last Updated:** October 26, 2025
-
----
-
-## 🎓 Legacy Documentation
-
-### State Schema (Original Docs)
-1. Read: [Quick Reference](./state-schema-quick-ref.md) (5 minutes)
-2. Check: Example 1 in [Examples](../examples/state-schema-examples.ts)
-3. Try: `await client.graphStateSchema()`
-
-### Level 2: Intermediate
-1. Read: [Complete Guide](./state-schema-guide.md) (15 minutes)
-2. Try: Examples 2-3 (forms and validation)
-3. Implement: Simple form generation
-
-### Level 3: Advanced
-1. Read: [Direction Change](./DIRECTION_CHANGE.md) (10 minutes)
-2. Read: [Implementation Details](./state-schema-implementation.md) (10 minutes)
-3. Try: Examples 5-6 (type generation, docs generation)
-4. Extend: Build custom use cases
+#### [Troubleshooting](./troubleshooting.md)
+Solutions to common issues:
+- Installation problems
+- Connection errors
+- Timeout issues
+- Authentication failures
+- Stream disconnections
+- TypeScript errors
+- React integration issues
 
 ## 🔍 Find What You Need
 
 ### I want to...
 
-**...understand what the API does**
-→ [Quick Reference](./state-schema-quick-ref.md) - "What is it?" section
+**...get started quickly**
+→ [Getting Started Guide](./getting-started.md)
 
-**...build a form**
-→ [Complete Guide](./state-schema-guide.md) - "Use Cases" > "Build a Dynamic Form"
-→ [Examples](../examples/state-schema-examples.ts) - Example 2
+**...build a chat interface**
+→ [React Examples - Chat Component](./react-examples.md#simple-chat-component)
 
-**...validate data**
-→ [Complete Guide](./state-schema-guide.md) - "Use Cases" > "Validate Data Before Sending"
-→ [Examples](../examples/state-schema-examples.ts) - Example 3
+**...use streaming responses**
+→ [Stream API Guide](./stream-usage.md) or [Stream Quick Reference](./stream-quick-ref.md)
 
-**...generate TypeScript types**
-→ [Examples](../examples/state-schema-examples.ts) - Example 5
+**...register custom tools**
+→ [Tools Guide](./tools-guide.md)
 
-**...understand the design decisions**
-→ [Direction Change](./DIRECTION_CHANGE.md)
+**...build dynamic forms**
+→ [State Schema Guide](./state-schema-guide.md) or [React Examples - Form Builder](./react-examples.md#dynamic-form-builder)
 
-**...see the implementation**
-→ [Implementation Summary](./state-schema-implementation.md)
+**...integrate with React**
+→ [React Integration Guide](./react-integration.md)
 
-**...check error handling**
-→ [Complete Guide](./state-schema-guide.md) - "Error Handling"
-→ [Quick Reference](./state-schema-quick-ref.md) - "Error Handling"
+**...understand all available methods**
+→ [API Reference](./api-reference.md)
 
-**...understand core vs dynamic fields**
-→ [Complete Guide](./state-schema-guide.md) - "Dynamic Fields"
-→ [Examples](../examples/state-schema-examples.ts) - Example 4
+**...solve an issue**
+→ [Troubleshooting Guide](./troubleshooting.md)
 
-## 📊 What You'll Learn
+**...see complete examples**
+→ [React Examples](./react-examples.md) or [/examples folder](../examples/)
 
-After reading these docs, you'll understand:
+## � Code Examples
 
-✅ What the State Schema API returns
-✅ How to iterate through field definitions
-✅ How to build forms automatically
-✅ How to validate data using the schema
-✅ How to generate TypeScript types
-✅ How to handle errors
-✅ The design decisions behind the API
-✅ How to use dynamic/custom fields
+Browse working code examples in the [`examples/`](../examples/) directory:
 
-## 🚀 Quick Start Code
+- `invoke-example.ts` - Basic invoke with tool execution
+- `stream-example.ts` - Streaming responses
+- `state-schema-examples.ts` - Form generation and validation
+- `react-chat-component.tsx` - React chat UI
+- `react-form-builder.tsx` - Dynamic form builder
 
-```typescript
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+## � Installation
 
-const client = new AgentFlowClient({
-  baseUrl: 'https://api.example.com',
-  authToken: 'your-token'
-});
-
-// Get the schema
-const response = await client.graphStateSchema();
-const schema = response.data;
-
-// Explore fields
-Object.entries(schema.properties).forEach(([name, field]) => {
-  console.log(`${name}: ${field.type}`);
-  if (field.description) console.log(`  ${field.description}`);
-  if (field.default !== undefined) console.log(`  Default: ${field.default}`);
-});
+```bash
+npm install agentflow-react
 ```
 
-## 📞 Support
+## 🚀 30-Second Example
 
-Having issues? Check:
-1. [Error Handling](./state-schema-quick-ref.md#error-handling) section
-2. [Quick Reference](./state-schema-quick-ref.md)
-3. [Examples](../examples/state-schema-examples.ts)
-4. [Implementation Details](./state-schema-implementation.md)
+```typescript
+import { AgentFlowClient, Message } from 'agentflow-react';
 
-## 📈 Documentation Stats
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000'
+});
 
-- 📄 4 markdown guides (50+ KB of documentation)
-- 💻 1 example file with 6 complete examples (500+ lines of code)
-- ✅ 26/26 tests passing
-- 🎯 Self-documenting API with full type definitions
+const result = await client.invoke([
+  Message.text_message('Hello!', 'user')
+]);
 
-## 🎯 Key Takeaways
+console.log(result.messages);
+```
 
-1. **Schema First**: API returns schema definitions, not data
-2. **Self-Documenting**: Fields include descriptions, types, defaults
-3. **Extensible**: Supports dynamic fields from server configuration
-4. **Type-Safe**: Full TypeScript support with generated types
-5. **Developer-Friendly**: Build forms, validation, docs automatically
+## 🆘 Getting Help
+
+- 📚 Browse this documentation
+- 💡 Check [React Examples](./react-examples.md)
+- � Review [Troubleshooting Guide](./troubleshooting.md)
+- 📖 Read [API Reference](./api-reference.md)
+- 🔍 Search [GitHub Issues](https://github.com/Iamsdt/agentflow-react/issues)
+
+## 📊 Documentation Overview
+
+```
+docs/
+├── README.md (you are here)       # Documentation index & navigation
+├── getting-started.md             # Quick start guide
+├── api-reference.md              # Complete API reference
+├── react-integration.md          # React usage guide
+├── react-examples.md             # React component examples
+├── tools-guide.md                # Tool registration & usage
+├── typescript-types.md           # TypeScript guide
+├── troubleshooting.md            # Common issues
+├── invoke-usage.md               # Invoke API deep dive
+├── stream-usage.md               # Stream API deep dive
+├── stream-quick-ref.md           # Stream quick reference
+├── state-schema-guide.md         # State schema deep dive
+└── state-schema-quick-ref.md     # State schema quick reference
+```
+
+## 🎯 Next Steps
+
+1. Start with **[Getting Started](./getting-started.md)** if you're new
+2. Check **[React Integration](./react-integration.md)** for React-specific patterns
+3. Explore **[React Examples](./react-examples.md)** for complete component code
+4. Deep dive into specific APIs as needed
 
 ---
 
-**Last Updated**: October 19, 2025
-**Status**: ✅ Production Ready
-**Tests**: 26/26 Passing
-**TypeScript**: ✅ All types defined
+**Happy coding! 🚀**

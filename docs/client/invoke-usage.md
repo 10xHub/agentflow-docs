@@ -86,10 +86,10 @@ const weatherTool: ToolRegistration = {
 client.registerTool(weatherTool);
 ```
 
-### 2. Setup Tools
+### 2. Setup Tools (Optional)
 
 ```typescript
-// Setup tools on server
+// Setup tools on server (dummy implementation for now)
 await client.setup();
 ```
 
@@ -221,6 +221,9 @@ The handler receives the arguments from the `remote_tool_call` and should return
 4. **Track intermediate results**: Use `result.all_messages` to see the full conversation
 5. **Validate tool parameters**: Use the `parameters` schema to define expected inputs
 
+## Example
+
+See `examples/invoke-example.ts` for a complete working example.
 
 ## API Reference
 
@@ -249,3 +252,15 @@ async setup(): Promise<void>
 ```
 
 Note: `setup()` is currently a dummy implementation. Future versions will send tool definitions to the server.
+
+---
+
+## See Also
+
+- **[Tools Guide](./tools-guide.md)** - Comprehensive guide to tool registration and execution
+- **[React Integration](./react-integration.md)** - Using invoke in React applications
+- **[React Examples](./react-examples.md)** - Complete React component examples with invoke
+- **[API Reference](./api-reference.md)** - Complete invoke API documentation
+- **[Stream Usage Guide](./stream-usage.md)** - Alternative streaming API
+- **[TypeScript Types](./typescript-types.md)** - Type definitions for invoke
+- **[Troubleshooting](./troubleshooting.md)** - Common invoke issues and solutions
