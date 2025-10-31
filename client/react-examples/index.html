@@ -2179,6 +2179,10 @@
 <hr />
 <h2 id="4-agent-with-tools">4. Agent with Tools<a class="headerlink" href="#4-agent-with-tools" title="Anchor link to this section for reference">&para;</a></h2>
 <p>Chat interface with tool execution.</p>
+<p><strong>⚠️ Important Note:</strong> The tools shown in this example are for demonstration purposes. In production:
+- <strong>Use backend tools</strong> (defined in your Python agent graph) for most operations
+- <strong>Use remote tools</strong> (shown here) ONLY for browser-level APIs like <code>localStorage</code>, <code>navigator.geolocation</code>, etc.
+- See <a href="../tools-guide/#remote-tools-vs-backend-tools">Tools Guide - When to Use Remote Tools</a> for detailed guidance</p>
 <h3 id="features_3">Features<a class="headerlink" href="#features_3" title="Anchor link to this section for reference">&para;</a></h3>
 <ul>
 <li>✅ Tool registration</li>

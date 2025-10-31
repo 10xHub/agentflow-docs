@@ -600,6 +600,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-tools-vs-backend-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Remote Tools vs Backend Tools
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1156,6 +1171,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-tools-vs-backend-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      Remote Tools vs Backend Tools
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1430,6 +1460,14 @@
 <p>This document explains how to use the <code>invoke</code> method with automatic tool execution loop.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Anchor link to this section for reference">&para;</a></h2>
 <p>The <code>invoke</code> method allows you to interact with the AgentFlow API and automatically execute remote tools in a loop until completion or the recursion limit is reached.</p>
+<h3 id="remote-tools-vs-backend-tools">Remote Tools vs Backend Tools<a class="headerlink" href="#remote-tools-vs-backend-tools" title="Anchor link to this section for reference">&para;</a></h3>
+<p><strong>IMPORTANT:</strong> Before using remote tools, understand the difference:</p>
+<ul>
+<li><strong>Backend Tools</strong> (Python AgentFlow library): ✅ <strong>PREFERRED</strong> - Run on the server, more secure and efficient</li>
+<li><strong>Remote Tools</strong> (This client library): ⚠️ <strong>ONLY for browser-level APIs</strong> - Run on the client (e.g., <code>localStorage</code>, <code>navigator.geolocation</code>)</li>
+</ul>
+<p><strong>Use remote tools ONLY when you need access to browser-specific APIs.</strong> For database queries, external API calls, calculations, and most other operations, define your tools in the Python backend instead.</p>
+<p><strong>See:</strong> <a href="../tools-guide/#remote-tools-vs-backend-tools">Tools Guide - When to Use Remote Tools</a> for detailed guidance.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Anchor link to this section for reference">&para;</a></h2>
 <h3 id="flow-diagram">Flow Diagram<a class="headerlink" href="#flow-diagram" title="Anchor link to this section for reference">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Client.invoke()
@@ -1591,6 +1629,7 @@
 </span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>No more tool calls → Return result
 </span></code></pre></div>
 <h2 id="tool-registration">Tool Registration<a class="headerlink" href="#tool-registration" title="Anchor link to this section for reference">&para;</a></h2>
+<p><strong>⚠️ Important:</strong> Remote tool registration should only be used for browser-level APIs. For most use cases, define your tools in the Python backend instead. See <a href="../tools-guide/#remote-tools-vs-backend-tools">When to Use Remote Tools</a>.</p>
 <h3 id="toolregistration-interface">ToolRegistration Interface<a class="headerlink" href="#toolregistration-interface" title="Anchor link to this section for reference">&para;</a></h3>
 <div class="language-typescript highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kd">interface</span><span class="w"> </span><span class="nx">ToolRegistration</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="nx">node</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">              </span><span class="c1">// Node name where tool is used</span>

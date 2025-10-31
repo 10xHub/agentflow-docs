@@ -865,6 +865,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#critical-remote-tools-vs-backend-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚨 CRITICAL: Remote Tools vs Backend Tools
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚨 CRITICAL: Remote Tools vs Backend Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-tools-client-side-limited-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔴 Remote Tools (Client-Side - LIMITED USE)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backend-tools-server-side-preferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ Backend Tools (Server-Side - PREFERRED)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#learning-path" class="md-nav__link">
     <span class="md-ellipsis">
       🎓 Learning Path
@@ -1081,15 +1114,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#code-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      � Code Examples
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       � Installation
@@ -1102,33 +1126,6 @@
   <a href="#30-second-example" class="md-nav__link">
     <span class="md-ellipsis">
       🚀 30-Second Example
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#getting-help" class="md-nav__link">
-    <span class="md-ellipsis">
-      🆘 Getting Help
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      📊 Documentation Overview
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      🎯 Next Steps
     </span>
   </a>
   
@@ -1197,6 +1194,32 @@
 <li>✅ <strong>React-Ready</strong> - Built specifically for React applications</li>
 <li>✅ <strong>TypeScript</strong> - Full type safety and IntelliSense support</li>
 </ul>
+<hr />
+<h2 id="critical-remote-tools-vs-backend-tools">🚨 CRITICAL: Remote Tools vs Backend Tools<a class="headerlink" href="#critical-remote-tools-vs-backend-tools" title="Anchor link to this section for reference">&para;</a></h2>
+<p><strong>Before you start:</strong> Understanding tool types is essential for proper AgentFlow usage.</p>
+<h3 id="remote-tools-client-side-limited-use">🔴 Remote Tools (Client-Side - LIMITED USE)<a class="headerlink" href="#remote-tools-client-side-limited-use" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li><strong>WHEN TO USE:</strong> Only for browser-level APIs</li>
+<li><code>navigator.geolocation</code> (GPS/location)</li>
+<li><code>localStorage</code>/<code>sessionStorage</code> (client-side storage)</li>
+<li>DOM manipulation and access</li>
+<li>WebRTC, camera/microphone access</li>
+<li>File uploads from user's device</li>
+<li><strong>WHEN NOT TO USE:</strong> Database queries, external APIs, calculations, file operations</li>
+<li><strong>WHY LIMITED:</strong> Runs in browser, less secure, no server access</li>
+</ul>
+<h3 id="backend-tools-server-side-preferred">✅ Backend Tools (Server-Side - PREFERRED)<a class="headerlink" href="#backend-tools-server-side-preferred" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li><strong>WHEN TO USE:</strong> For most operations</li>
+<li>Database queries and operations</li>
+<li>External API calls (weather, payments, etc.)</li>
+<li>Mathematical calculations</li>
+<li>File system operations</li>
+<li>Business logic and data processing</li>
+<li><strong>WHY PREFERRED:</strong> More secure, efficient, scalable, full server access</li>
+</ul>
+<p><strong>💡 Rule of Thumb:</strong> If your tool needs server-side resources or external APIs, define it as a backend tool in your Python AgentFlow library instead of using remote tools.</p>
+<hr />
 <h2 id="learning-path">🎓 Learning Path<a class="headerlink" href="#learning-path" title="Anchor link to this section for reference">&para;</a></h2>
 <h3 id="beginner-start-here">👶 Beginner (Start Here)<a class="headerlink" href="#beginner-start-here" title="Anchor link to this section for reference">&para;</a></h3>
 <ol>
@@ -1280,12 +1303,21 @@
 <h4 id="tools-guide"><a href="tools-guide/">Tools Guide</a><a class="headerlink" href="#tools-guide" title="Anchor link to this section for reference">&para;</a></h4>
 <p>Master tool registration and execution:
 - What are tools?
+- <strong>🔴 REMOTE TOOLS vs BACKEND TOOLS</strong> ⚠️ <strong>CRITICAL DISTINCTION</strong>
 - Tool registration patterns
 - Handler implementation
 - OpenAI-style parameters
 - Error handling
 - Testing tools
 - Common patterns (weather, calculator, API calls)</p>
+<p><strong>🚨 REMOTE TOOLS (Client-Side):</strong>
+- ✅ <strong>USE ONLY FOR:</strong> Browser APIs (<code>localStorage</code>, <code>navigator.geolocation</code>, DOM manipulation, WebRTC)
+- ❌ <strong>DO NOT USE FOR:</strong> Database queries, external API calls, calculations, file operations
+- <strong>INSTEAD:</strong> Define these as backend tools in your Python AgentFlow library</p>
+<p><strong>✅ BACKEND TOOLS (Server-Side - PREFERRED):</strong>
+- Database operations, API calls, calculations, file system access
+- More secure, efficient, and scalable
+- Full access to your server infrastructure</p>
 <h4 id="typescript-types"><a href="typescript-types/">TypeScript Types</a><a class="headerlink" href="#typescript-types" title="Anchor link to this section for reference">&para;</a></h4>
 <p>Advanced TypeScript usage:
 - Type imports
@@ -1312,7 +1344,9 @@
 <p><strong>...use streaming responses</strong>
 → <a href="stream-usage/">Stream API Guide</a> or <a href="stream-quick-ref/">Stream Quick Reference</a></p>
 <p><strong>...register custom tools</strong>
-→ <a href="tools-guide/">Tools Guide</a></p>
+→ <a href="tools-guide/">Tools Guide</a>
+🚨 <strong>REMOTE TOOLS:</strong> Only for browser APIs (geolocation, localStorage, DOM)
+❌ <strong>BACKEND TOOLS:</strong> Preferred for everything else (APIs, databases, calculations)</p>
 <p><strong>...build dynamic forms</strong>
 → <a href="state-schema-guide/">State Schema Guide</a> or <a href="react-examples/#dynamic-form-builder">React Examples - Form Builder</a></p>
 <p><strong>...integrate with React</strong>
@@ -1323,15 +1357,6 @@
 → <a href="troubleshooting/">Troubleshooting Guide</a></p>
 <p><strong>...see complete examples</strong>
 → <a href="react-examples/">React Examples</a> or <a href="../examples/">/examples folder</a></p>
-<h2 id="code-examples">� Code Examples<a class="headerlink" href="#code-examples" title="Anchor link to this section for reference">&para;</a></h2>
-<p>Browse working code examples in the <a href="../examples/"><code>examples/</code></a> directory:</p>
-<ul>
-<li><code>invoke-example.ts</code> - Basic invoke with tool execution</li>
-<li><code>stream-example.ts</code> - Streaming responses</li>
-<li><code>state-schema-examples.ts</code> - Form generation and validation</li>
-<li><code>react-chat-component.tsx</code> - React chat UI</li>
-<li><code>react-form-builder.tsx</code> - Dynamic form builder</li>
-</ul>
 <h2 id="installation">� Installation<a class="headerlink" href="#installation" title="Anchor link to this section for reference">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>npm<span class="w"> </span>install<span class="w"> </span>agentflow-react
 </span></code></pre></div>
@@ -1348,39 +1373,6 @@
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">messages</span><span class="p">);</span>
 </span></code></pre></div>
-<h2 id="getting-help">🆘 Getting Help<a class="headerlink" href="#getting-help" title="Anchor link to this section for reference">&para;</a></h2>
-<ul>
-<li>📚 Browse this documentation</li>
-<li>💡 Check <a href="react-examples/">React Examples</a></li>
-<li>� Review <a href="troubleshooting/">Troubleshooting Guide</a></li>
-<li>📖 Read <a href="api-reference/">API Reference</a></li>
-<li>🔍 Search <a href="https://github.com/Iamsdt/agentflow-react/issues">GitHub Issues</a></li>
-</ul>
-<h2 id="documentation-overview">📊 Documentation Overview<a class="headerlink" href="#documentation-overview" title="Anchor link to this section for reference">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docs/
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── README.md (you are here)       # Documentation index &amp; navigation
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── getting-started.md             # Quick start guide
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── api-reference.md              # Complete API reference
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── react-integration.md          # React usage guide
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── react-examples.md             # React component examples
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── tools-guide.md                # Tool registration &amp; usage
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── typescript-types.md           # TypeScript guide
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>├── troubleshooting.md            # Common issues
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>├── invoke-usage.md               # Invoke API deep dive
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>├── stream-usage.md               # Stream API deep dive
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>├── stream-quick-ref.md           # Stream quick reference
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>├── state-schema-guide.md         # State schema deep dive
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>└── state-schema-quick-ref.md     # State schema quick reference
-</span></code></pre></div>
-<h2 id="next-steps">🎯 Next Steps<a class="headerlink" href="#next-steps" title="Anchor link to this section for reference">&para;</a></h2>
-<ol>
-<li>Start with <strong><a href="./getting-started.md">Getting Started</a></strong> if you're new</li>
-<li>Check <strong><a href="react-integration/">React Integration</a></strong> for React-specific patterns</li>
-<li>Explore <strong><a href="react-examples/">React Examples</a></strong> for complete component code</li>
-<li>Deep dive into specific APIs as needed</li>
-</ol>
-<hr />
-<p><strong>Happy coding! 🚀</strong></p>
 
 
 
