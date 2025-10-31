@@ -116,13 +116,14 @@ nav:
       - Quick Start: client/quick_start.md
       - API Reference: client/api-reference.md
       - Invoke (Synchronous) Usage: client/invoke-usage.md
-      - Streaming Usage: client/stream-usage.md
       - Streaming Quick Reference: client/stream-quick-ref.md
+      - Streaming Usage: client/stream-usage.md
       - Thread API: client/thread-api.md
       - Memory API: client/memory-api.md
-      - State Schema Guide: client/state-schema-guide.md
-      - State Schema Quick Reference: client/state-schema-quick-ref.md
-      - State Schema (Concepts): client/state-schema.md
-      - State Schema (Implementation): client/state-schema-implementation.md
+      - State Schema: client/state-schema-guide.md
+      - Tools Guide: client/tools-guide.md
       - Error Handling: client/error-handling.md
       - Typescript Types: client/typescript-types.md
+      - React Integration: client/react-integration.md
+      - React Example: client/react-examples.md
+      - Troubleshooting: client/troubleshooting.md
