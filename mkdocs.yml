@@ -104,6 +104,37 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  
+  - AgentFlow Library:
+      - Overview: Agentflow/index.md
+      - Graph (Workflow):
+          - Overview: Agentflow/graph/index.md
+          - Nodes: Agentflow/graph/nodes.md
+          - Control Flow: Agentflow/graph/control_flow.md
+          - Execution: Agentflow/graph/execution.md
+          - Configuration: Agentflow/graph/Config.md
+          - Tools: Agentflow/graph/tools.md
+          - Advanced Patterns: Agentflow/graph/advanced.md
+          - Human-in-the-Loop: Agentflow/graph/human-in-the-loop.md
+      - Context & State:
+          - Overview: Agentflow/context/index.md
+          - State Management: Agentflow/context/state.md
+          - Messages: Agentflow/context/message.md
+          - Context Manager: Agentflow/context/context-manager.md
+          - Checkpointer: Agentflow/context/checkpointer.md
+          - Store: Agentflow/context/store.md
+      - Core Components:
+          - Command Pattern: Agentflow/Command.md
+          - Callbacks: Agentflow/Callbacks.md
+          - Publisher: Agentflow/publisher.md
+          - Response Converter: Agentflow/response_converter.md
+          - ID Generator: Agentflow/id_generator.md
+      - Advanced Topics:
+          - Dependency Injection: Agentflow/dependency-injection.md
+          - Async Patterns: Agentflow/async-patterns.md
+          - Graceful Shutdown: Agentflow/graceful-shutdown.md
+          - Error Handling: Agentflow/ERROR_HANDLING_GUIDELINES.md
+  
   - CLI:
       - Overview: cli/index.md
       - Configuration: cli/configuration.md
@@ -111,7 +142,8 @@ nav:
       - Deployment: cli/deployment.md
       - ID Generation: cli/id-generation.md
       - Thread Name Generator: cli/thread-name-generator.md
-  - Typescript Client:
+  
+  - TypeScript Client:
       - Overview: client/index.md
       - Quick Start: client/quick_start.md
       - API Reference: client/api-reference.md
@@ -123,7 +155,24 @@ nav:
       - State Schema: client/state-schema-guide.md
       - Tools Guide: client/tools-guide.md
       - Error Handling: client/error-handling.md
-      - Typescript Types: client/typescript-types.md
+      - TypeScript Types: client/typescript-types.md
       - React Integration: client/react-integration.md
-      - React Example: client/react-examples.md
+      - React Examples: client/react-examples.md
       - Troubleshooting: client/troubleshooting.md
+
+  - Tutorials:
+      - Overview: Tutorial/index.md
+      - ReAct Pattern:
+          - Overview: Tutorial/react/README.md
+          - 1. Basic ReAct: Tutorial/react/01-basic-react.md
+          - 2. Dependency Injection: Tutorial/react/02-dependency-injection.md
+          - 3. MCP Integration: Tutorial/react/03-mcp-integration.md
+          - 4. Streaming: Tutorial/react/04-streaming.md
+      - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
+      - Long-Term Memory: Tutorial/long_term_memory.md
+      - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
+      - Advance:
+        - Input Validation: Tutorial/input_validation.md
+        - Qdrant Store Integration: Tutorial/qdrant_store.md
+
+      
