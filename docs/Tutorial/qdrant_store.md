@@ -2,7 +2,13 @@
 
 ## Overview
 
-`QdrantStore` is a modern, async-first vector store implementation for  Agentflow that uses [Qdrant](https://qdrant.tech/) as the backend vector database. It provides efficient vector similarity search, memory management, and supports both local and cloud Qdrant deployments.
+`QdrantStore` is a modern, async-first vector store implementation for Agentflow that uses [Qdrant](https://qdrant.tech/) as the backend vector database. It provides efficient vector similarity search, memory management, and supports both local and cloud Qdrant deployments.
+
+> **Related Documentation:**
+> - [Embedding Services Tutorial](embedding.md) - Learn about embedding configuration and custom implementations
+> - [Mem0Store Tutorial](mem0_store.md) - Alternative managed memory solution
+> - [Store Concept](../Concept/context/store.md) - High-level memory architecture
+> - [BaseStore Architecture](../Concept/context/basestore.md) - Understanding the store abstraction
 
 ## Features
 
@@ -106,19 +112,23 @@ store = create_cloud_qdrant_store(
 
 ## Embedding Services
 
+> **💡 For comprehensive embedding documentation, see the [Embedding Services Tutorial](embedding.md).**
+
+QdrantStore requires an embedding service to convert text into vector representations for semantic search.
+
 ### OpenAI Embeddings
 
 ```python
-from agentflow.store.qdrant_store import OpenAIEmbeddingService
+from agentflow.store.embedding import OpenAIEmbedding
 
 # Small model (1536 dimensions, faster)
-embedding_service = OpenAIEmbeddingService(
+embedding = OpenAIEmbedding(
     model="text-embedding-3-small",
     api_key="your-openai-key"
 )
 
 # Large model (3072 dimensions, more accurate)
-embedding_service = OpenAIEmbeddingService(
+embedding = OpenAIEmbedding(
     model="text-embedding-3-large",
     api_key="your-openai-key"
 )
@@ -126,30 +136,33 @@ embedding_service = OpenAIEmbeddingService(
 
 ### Custom Embedding Service
 
-Implement the `EmbeddingService` protocol:
+Implement the `BaseEmbedding` interface for custom embeddings:
 
 ```python
-from agentflow.store.qdrant_store import EmbeddingService
+from agentflow.store.embedding import BaseEmbedding
 
-
-class MyCustomEmbeddingService:
+class MyCustomEmbedding(BaseEmbedding):
     def __init__(self):
         self._dimension = 768
 
-    async def embed(self, text: str) -> list[float]:
+    async def aembed(self, text: str) -> list[float]:
         # Your embedding logic here
-        # Return a list of floats with length = self.dimension
+        pass
+    
+    async def aembed_batch(self, texts: list[str]) -> list[list[float]]:
+        # Batch embedding logic here
         pass
 
     @property
     def dimension(self) -> int:
         return self._dimension
 
-
 # Use your custom service
-embedding_service = MyCustomEmbeddingService()
-store = QdrantStore(embedding_service=embedding_service, path="./data")
+embedding = MyCustomEmbedding()
+store = QdrantStore(embedding=embedding, path="./data")
 ```
+
+For more advanced embedding patterns including caching, preprocessing, and cost tracking, see the [Embedding Services Tutorial](embedding.md).
 
 ## Memory Operations
 

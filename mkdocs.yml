@@ -123,14 +123,19 @@ nav:
           - Context Manager: Agentflow/context/context-manager.md
           - Checkpointer: Agentflow/context/checkpointer.md
           - Store: Agentflow/context/store.md
+          
       - Core Components:
           - Command Pattern: Agentflow/Command.md
+          - Handoff Mechanism: Agentflow/handoff.md
+          - Base Store: Agentflow/context/basestore.md
+          - Embedding Store: Agentflow/context/embedding.md
           - Callbacks: Agentflow/Callbacks.md
           - Publisher: Agentflow/publisher.md
           - Response Converter: Agentflow/response_converter.md
           - ID Generator: Agentflow/id_generator.md
       - Advanced Topics:
           - Dependency Injection: Agentflow/dependency-injection.md
+          - Background Tasks: Agentflow/background-task-manager.md
           - Async Patterns: Agentflow/async-patterns.md
           - Graceful Shutdown: Agentflow/graceful-shutdown.md
           - Error Handling: Agentflow/ERROR_HANDLING_GUIDELINES.md
