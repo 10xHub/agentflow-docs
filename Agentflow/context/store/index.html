@@ -1183,6 +1183,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1239,6 +1245,75 @@
   
   <span class="md-ellipsis">
     Command Pattern
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../handoff/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Handoff Mechanism
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../basestore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Base Store
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Embedding Store
     
   </span>
   
@@ -1366,6 +1441,8 @@
       
         
       
+        
+      
     
     
     
@@ -1422,6 +1499,29 @@
   
   <span class="md-ellipsis">
     Dependency Injection
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../background-task-manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Background Tasks
     
   </span>
   
@@ -1994,7 +2094,14 @@
 
 
 <h1 id="store-the-agents-knowledge-memory">Store: The Agent's Knowledge Memory<a class="headerlink" href="#store-the-agents-knowledge-memory" title="Anchor link to this section for reference">&para;</a></h1>
-<p>The Store system in  Agentflow represents the highest level of your agent's memory architecture—the <strong>knowledge memory</strong> that accumulates wisdom, learns patterns, and provides contextual intelligence across conversation boundaries. While working memory handles immediate thinking and session memory preserves interaction history, the Store enables agents to develop <strong>persistent understanding</strong> and <strong>evolving intelligence</strong>.</p>
+<p>The Store system in Agentflow represents the highest level of your agent's memory architecture—the <strong>knowledge memory</strong> that accumulates wisdom, learns patterns, and provides contextual intelligence across conversation boundaries. While working memory handles immediate thinking and session memory preserves interaction history, the Store enables agents to develop <strong>persistent understanding</strong> and <strong>evolving intelligence</strong>.</p>
+<blockquote>
+<p><strong>Related Documentation:</strong>
+- <a href="../basestore/">BaseStore Architecture</a> - Understanding the store abstraction layer
+- <a href="../embedding/">Embedding System</a> - How semantic search works under the hood
+- <a href="../../../Tutorial/qdrant_store/">QdrantStore Tutorial</a> - Self-hosted vector database implementation
+- <a href="../../../Tutorial/mem0_store/">Mem0Store Tutorial</a> - Managed memory service implementation</p>
+</blockquote>
 <h2 id="the-knowledge-memory-paradigm">The Knowledge Memory Paradigm<a class="headerlink" href="#the-knowledge-memory-paradigm" title="Anchor link to this section for reference">&para;</a></h2>
 <p>Think of the Store as your agent's <strong>accumulated wisdom</strong>—the repository where insights, user preferences, learned patterns, and contextual knowledge persist beyond individual conversations. This is where agents transition from being reactive responders to proactive, intelligent assistants that improve over time.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentflow.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">QdrantStore</span>
