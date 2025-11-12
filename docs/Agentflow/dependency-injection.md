@@ -35,9 +35,9 @@ When you compile a  Agentflow graph, several core services are automatically reg
 | `BaseIDGenerator` | Generates unique IDs used across invocations and resources. | Inject for deterministic IDs, integration with existing ID schemes, or testing. |
 | `generated_id` | The unique ID string generated for the current agent invocation. | Read-only value injected into nodes/tools for tracing and correlation. |
 | `generated_id_type` | The type of the generated ID (e.g., `"uuid"`, `"shortid"`). | Useful for downstream systems that need to parse or route based on ID shape. |
-| `generated_thread_name` | The name of the current execution thread (useful for multi-threaded or concurrent runs). | Injected for logging, partitioning work, or naming resources created during the run. |
-| `BackgroundTaskManager` | Manages background tasks for agents, allowing long-running work to be offloaded. | Use to schedule async work, retries, or background side-effects without blocking the main run. |
-| `StateGraph` | The current `StateGraph` instance representing the compiled graph. | Access the graph structure, read node metadata, or perform runtime introspection and dynamic wiring. |
+| `CompiledGraph` | The compiled and executable graph instance for runtime introspection and dynamic operations. | Access graph structure, execute operations, or perform runtime modifications. |
+| `get_node` | Factory function to retrieve nodes by name from the compiled graph. | `node = get_node("my_node")` - get specific nodes for inspection or dynamic execution. |
+| `get_entry_point_node` | Factory function to retrieve the entry point node of the compiled graph. | `entry_node = get_entry_point_node()` - access the starting node of the workflow. |
 
 Note: For `BaseStore`, `BaseContextManager`, and `BasePublisher`,  Agentflow provides default implementations, but you can bind your own implementations to the container if needed.
 
@@ -100,17 +100,19 @@ async def my_agent_node(
 
 ### Tool Parameter Injection
 
-Tool functions can receive special injectable parameters that  Agentflow provides automatically:
+Tool functions can receive special injectable parameters that Agentflow provides automatically. These parameters are automatically injected by the framework and don't need to be passed explicitly:
 
 ```python
 def get_weather(
     location: str,  # Regular parameter from tool call
-    tool_call_id: str | None = None,  # Auto-injected
-    state: AgentState | None = None,   # Auto-injected
-    checkpointer: InMemoryCheckpointer = Inject[InMemoryCheckpointer],
+    tool_call_id: str | None = None,  # Auto-injected: Unique ID for this tool execution
+    state: AgentState | None = None,  # Auto-injected: Current agent state
+    config: dict | None = None,       # Auto-injected: Execution configuration
+    generated_id: str | None = None,  # Auto-injected: Framework-generated ID
+    checkpointer: InMemoryCheckpointer = Inject[InMemoryCheckpointer],  # From container
 ) -> Message:
-    # tool_call_id and state are automatically provided
-    # checkpointer comes from the container
+    # tool_call_id, state, config, and generated_id are automatically provided
+    # checkpointer comes from the dependency injection container
 
     if tool_call_id:
         print(f"Handling tool call: {tool_call_id}")
@@ -118,6 +120,18 @@ def get_weather(
     weather_data = fetch_from_api(location)
     return Message.tool_message(content=weather_data, tool_call_id=tool_call_id)
 ```
+
+**Available Auto-Injected Parameters:**
+- `tool_call_id`: Unique identifier for the current tool execution
+- `state`: Current `AgentState` instance with full context
+- `config`: Configuration dictionary with execution settings
+- `generated_id`: Framework-generated identifier for tracing
+
+**Additional Injectable Services:**
+- `context_manager`: `BaseContextManager` for cross-node state operations
+- `publisher`: `BasePublisher` for event publishing
+- `checkpointer`: `BaseCheckpointer` for state persistence
+- `store`: `BaseStore` for data storage operations
 
 ### Container Access Patterns
 
@@ -200,6 +214,52 @@ async def my_node(
 ):
     # These are automatically available when you compile your graph
     pass
+```
+
+### Using Graph Instance Injection
+
+You can inject the compiled graph instance and factory functions for dynamic graph operations:
+
+```python
+async def dynamic_router(
+    state: AgentState,
+    config: dict,
+    compiled_graph: CompiledGraph = Inject[CompiledGraph],
+    get_node = Inject[Callable[[str], Node]],  # get_node factory
+    get_entry_point_node = Inject[Callable[[], Node]],  # entry point factory
+):
+    # Access the compiled graph for runtime introspection
+    graph_info = compiled_graph.generate_graph()
+    print(f"Graph has {len(graph_info['nodes'])} nodes")
+
+    # Get specific nodes dynamically
+    entry_node = get_entry_point_node()
+    specific_node = get_node("my_processor")
+
+    # Make routing decisions based on graph structure
+    if state.data.get("priority") == "high":
+        return "urgent_handler"
+    return "normal_handler"
+```
+
+### Node Factory Usage
+
+The `get_node` factory allows dynamic access to any node in the compiled graph:
+
+```python
+async def meta_agent(
+    state: AgentState,
+    config: dict,
+    get_node = Inject[Callable[[str], Node]],
+):
+    # Inspect node capabilities at runtime
+    tool_node = get_node("my_tools")
+    if hasattr(tool_node.func, 'all_tools'):
+        available_tools = await tool_node.func.all_tools()
+        # Choose tools based on availability
+        if "search" in available_tools:
+            return "use_search"
+    return "fallback_action"
 ```
 
 ### Custom Service Registration
