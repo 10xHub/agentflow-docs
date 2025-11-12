@@ -1,113 +1,235 @@
-# Agentflow (Python library)
+# 10xScale Agentflow
 
-![PyPI](https://img.shields.io/pypi/v/10xscale-agentflow?color=blue)
+![PyPI](https://img.shields.io/pypi/v/agentflow?color=blue)
 ![License](https://img.shields.io/github/license/10xhub/agentflow)
-![Python](https://img.shields.io/pypi/pyversions/10xscale-agentflow)
-[![Coverage](https://img.shields.io/badge/coverage-79%25-yellow.svg)](#)
+![Python](https://img.shields.io/pypi/pyversions/agentflow)
+[![Coverage](https://img.shields.io/badge/coverage-73%25-yellow.svg)](#)
 
-Agentflow is a lightweight yet powerful Python framework designed for building intelligent agents and orchestrating sophisticated multi-agent workflows. Unlike frameworks that lock you into a specific LLM provider, Agentflow is provider-agnostic: bring your favorite LLM SDK—whether it's LiteLLM, OpenAI, Google Gemini, Anthropic Claude, or any other provider—and Agentflow handles everything else. The framework manages orchestration, state persistence, tool integration, control flow, and streaming, letting you focus on building agent logic rather than plumbing.
-
----
-
-## ✨ What you get
-
-Agentflow delivers a comprehensive set of features that cover the entire agent lifecycle, from development to production deployment:
-
-### Core orchestration capabilities
-
-- **LLM-agnostic architecture** — Works seamlessly with any language model provider through a flexible adapter pattern. Use LiteLLM for unified access to 100+ models, or integrate directly with native SDKs. Your agent logic remains portable across providers.
-
-- **StateGraph-based orchestration** — Define your agent workflows as directed graphs with nodes (processing units) and edges (transitions). Support for conditional routing, dynamic branching, and cyclical flows enables sophisticated agent behaviors.
-
-- **Structured responses** — Parse and validate LLM outputs with built-in support for thinking steps, tool calls, and token usage tracking. Leverage Pydantic models for type-safe state management.
-
-### Tool integration and execution
-
-- **Multi-framework tool support** — Integrate tools from Model Context Protocol (MCP) servers, Composio, LangChain, or native Python functions. Each ecosystem is treated as a first-class citizen with dedicated adapters.
-
-- **Parallel execution** — Automatically execute independent tool calls in parallel to reduce latency. The framework handles orchestration, error handling, and result aggregation.
-
-- **Dependency injection** — Clean separation of concerns through DI patterns. Tools and nodes receive state, configuration, and dependencies automatically, making code testable and maintainable.
-
-### State management and persistence
-
-- **Flexible checkpointing** — Choose between InMemory checkpointer for development or production-grade PostgreSQL+Redis checkpointer for high-performance persistence. Redis handles hot path writes while PostgreSQL provides durable storage.
-
-- **Conversation threading** — Maintain multiple independent conversation threads with automatic state isolation. Each thread can be paused, resumed, or branched without affecting others.
-
-- **Incremental state updates** — Only modified state is persisted, reducing storage overhead and improving performance. You control what gets saved and when.
-
-### Real-time interaction and monitoring
-
-- **Streaming responses** — Stream delta updates to clients for real-time user experiences. Support for partial messages, thinking steps, and progressive tool results.
-
-- **Human-in-the-loop workflows** — Pause execution at any point for human review or approval. Resume with modifications, rollback to previous states, or branch into alternative paths.
-
-- **Production observability** — Built-in publishers route events to Console (development), Redis, Kafka, or RabbitMQ (production). Comprehensive metrics track token usage, latency, errors, and custom events.
-
-### Developer experience
-
-- **Type safety** — Full type hints throughout the codebase with mypy validation. Pydantic models ensure runtime type checking for state and configurations.
-
-- **Async-first design** — Native async/await support for efficient I/O operations. Sync wrappers provided for compatibility with synchronous codebases.
-
-- **Extensive documentation** — Comprehensive guides, API references, and runnable examples help you get started quickly and troubleshoot effectively.
+**Agentflow** is a lightweight Python framework for building intelligent agents and orchestrating multi-agent workflows. It's an **LLM-agnostic orchestration tool** that works with any LLM provider—use LiteLLM, native SDKs from OpenAI, Google Gemini, Anthropic Claude, or any other provider. You choose your LLM library; Agentflow provides the workflow orchestration.
 
 ---
 
-## 🚀 Quick start
+## ✨ Key Features
+
+- **🎯 LLM-Agnostic Orchestration** - Works with any LLM provider (LiteLLM, OpenAI, Gemini, Claude, native SDKs)
+- **🤖 Multi-Agent Workflows** - Build complex agent systems with your choice of orchestration patterns
+- **📊 Structured Responses** - Get `content`, optional `thinking`, and `usage` in a standardized format
+- **🌊 Streaming Support** - Real-time incremental responses with delta updates
+- **🔧 Tool Integration** - Native support for function calling, MCP, Composio, and LangChain tools with **parallel execution**
+- **🔀 LangGraph-Inspired Engine** - Flexible graph orchestration with nodes, conditional edges, and control flow
+- **💾 State Management** - Built-in persistence with in-memory and PostgreSQL+Redis checkpointers
+- **🔄 Human-in-the-Loop** - Pause/resume execution for approval workflows and debugging
+- **🚀 Production-Ready** - Event publishing (Console, Redis, Kafka, RabbitMQ), metrics, and observability
+- **🧩 Dependency Injection** - Clean parameter injection for tools and nodes
+- **📦 Prebuilt Patterns** - React, RAG, Swarm, Router, MapReduce, SupervisorTeam, and more
+
+---
+
+## 🌟 What Makes Agentflow Unique
+
+Agentflow stands out with powerful features designed for production-grade AI applications:
+
+### 🏗️ **Architecture & Scalability**
+
+1. **💾 Checkpointer with Caching Design**  
+   Intelligent state persistence with built-in caching layer to scale efficiently. PostgreSQL + Redis implementation ensures high performance in production environments.
+
+2. **🧠 3-Layer Memory System**  
+   - **Short-term memory**: Current conversation context
+   - **Conversational memory**: Session-based chat history
+   - **Long-term memory**: Persistent knowledge across sessions
+
+### 🔧 **Advanced Tooling Ecosystem**
+
+3. **🔌 Remote Tool Calls**  
+   Execute tools remotely using our TypeScript SDK for distributed agent architectures.
+
+4. **🛠️ Comprehensive Tool Integration**  
+   - Local tools (Python functions)
+   - Remote tools (via TypeScript SDK)
+   - Agent handoff tools (multi-agent collaboration)
+   - MCP (Model Context Protocol)
+   - LangChain tools
+   - Composio tools
+
+### 🎯 **Intelligent Context Management**
+
+5. **📏 Dedicated Context Manager**  
+   - Automatically controls context size to prevent token overflow
+   - Called at iteration end to avoid mid-execution context loss
+   - Fully extensible with custom implementations
+
+### ⚙️ **Dependency Injection & Control**
+
+6. **💉 First-Class Dependency Injection**  
+   Powered by InjectQ library for clean, testable, and maintainable code patterns.
+
+7. **🎛️ Custom ID Generation Control**  
+   Choose between string, int, or bigint IDs. Smaller IDs save significant space in databases and indexes compared to standard 128-bit UUIDs.
+
+### 📊 **Observability & Events**
+
+8. **📡 Internal Event Publishing**  
+   Emit execution events to any publisher:
+   - Kafka
+   - RabbitMQ
+   - Redis Pub/Sub
+   - OpenTelemetry (planned)
+   - Custom publishers
+
+### 🔄 **Advanced Execution Features**
+
+9. **⏰ Background Task Manager**  
+   Built-in manager for running tasks asynchronously:
+   - Prefetching data
+   - Memory persistence
+   - Cleanup operations
+   - Custom background jobs
+
+10. **🚦 Human-in-the-Loop with Interrupts**  
+    Pause execution at any point for human approval, then seamlessly resume with full state preservation.
+
+11. **🧭 Flexible Agent Navigation**  
+    - Condition-based routing between agents
+    - Command-based jumps to specific agents
+    - Agent handoff tools for smooth transitions
+
+### 🛡️ **Security & Validation**
+
+12. **🎣 Comprehensive Callback System**  
+    Hook into various execution stages for:
+    - Logging and monitoring
+    - Custom behavior injection
+    - **Prompt injection attack prevention**
+    - Input/output validation
+
+### 📦 **Ready-to-Use Components**
+
+13. **🤖 Prebuilt Agent Patterns**  
+    Production-ready implementations:
+    - React agents
+    - RAG (Retrieval-Augmented Generation)
+    - Swarm architectures
+    - Router agents
+    - MapReduce patterns
+    - Supervisor teams
+
+### 📐 **Developer Experience**
+
+14. **📋 Pydantic-First Design**  
+    All core classes (State, Message, ToolCalls) are Pydantic models:
+    - Automatic JSON serialization
+    - Type safety
+    - Easy debugging and logging
+    - Seamless database storage
+
+---
+
+## 🚀 Quick Start
 
 ### Installation
 
-Install Agentflow using uv (recommended for faster dependency resolution):
+**Basic installation with [uv](https://github.com/astral-sh/uv) (recommended):**
 
 ```bash
 uv pip install 10xscale-agentflow
 ```
 
-Or use traditional pip:
+Or with pip:
 
 ```bash
 pip install 10xscale-agentflow
 ```
 
-### Optional extras
+**Optional Dependencies:**
 
-Agentflow supports optional dependencies for specific functionality. Install only what you need to keep your environment lean:
+Agentflow supports optional dependencies for specific functionality:
 
 ```bash
-# Production-grade checkpointing with PostgreSQL and Redis
+# PostgreSQL + Redis checkpointing
 pip install 10xscale-agentflow[pg_checkpoint]
 
-# Tool integration frameworks
-pip install 10xscale-agentflow[mcp]        # Model Context Protocol servers
-pip install 10xscale-agentflow[composio]   # Composio tool ecosystem
-pip install 10xscale-agentflow[langchain]  # LangChain tools and chains
+# MCP (Model Context Protocol) support
+pip install 10xscale-agentflow[mcp]
 
-# Event publishers for production observability
-pip install 10xscale-agentflow[redis]      # Redis Streams publisher
-pip install 10xscale-agentflow[kafka]      # Apache Kafka publisher
-pip install 10xscale-agentflow[rabbitmq]   # RabbitMQ publisher
+# Composio tools (adapter)
+pip install 10xscale-agentflow[composio]
+
+# LangChain tools (registry-based adapter)
+pip install 10xscale-agentflow[langchain]
+
+# Individual publishers
+pip install 10xscale-agentflow[redis]     # Redis publisher
+pip install 10xscale-agentflow[kafka]     # Kafka publisher
+pip install 10xscale-agentflow[rabbitmq]  # RabbitMQ publisher
+
+# Multiple extras
+pip install 10xscale-agentflow[pg_checkpoint,mcp,composio,langchain]
 ```
 
-### Configure your LLM provider
+### Environment Setup
 
-Set the API key for your chosen LLM provider. Here's an example using OpenAI:
+Set your LLM provider API key:
 
 ```bash
-export OPENAI_API_KEY=sk-your-key-here
+export OPENAI_API_KEY=sk-...  # for OpenAI models
+# or
+export GEMINI_API_KEY=...     # for Google Gemini
+# or
+export ANTHROPIC_API_KEY=...  # for Anthropic Claude
 ```
 
-For other providers like Anthropic, Google, or Azure, consult their respective documentation for authentication methods.
+If you have a `.env` file, it will be auto-loaded (via `python-dotenv`).
 
 ---
 
-## 🧪 Minimal example: React agent with tool calling
+## 📚 Documentation Structure
 
-This example demonstrates a React (Reason + Act) agent that can use tools to answer questions. The agent decides when to use tools based on the user's query and iterates until it has enough information to provide a complete answer.
+### [🎓 Tutorials](Tutorial/index.md)
+Learn Agentflow step-by-step with practical examples:
+
+- **[Graph Fundamentals](Tutorial/index.md)** - Build your first agent with StateGraph, nodes, and edges
+- **[React Agent Patterns](Tutorial/react/)** - Complete guide: basic patterns, DI, MCP, streaming
+- **[State & Messages](Tutorial/index.md)** - Master conversation state and message handling
+- **[Tools & Dependency Injection](Tutorial/index.md)** - Create tool-calling agents with ToolNode
+- **[Persistence & Memory](Tutorial/long_term_memory.md)** - Save state with checkpointers and stores
+- **[RAG Implementation](Tutorial/rag.md)** - Build retrieval-augmented generation systems
+- **[Plan-Act-Reflect](Tutorial/plan_act_reflect.md)** - Advanced reasoning patterns
+
+### [📖 Concepts](Concept/index.md)
+Deep dives into Agentflow's architecture:
+
+- **[Graph Architecture](Concept/graph/)** - StateGraph, nodes, edges, compiled execution
+- **[State Management](Concept/context/)** - AgentState, checkpointers, stores
+- **[Tools & Integration](Concept/graph/tools.md)** - ToolNode, MCP, Composio, LangChain
+- **[Control Flow](Concept/graph/control_flow.md)** - Conditional routing, interrupts
+- **[Human-in-the-Loop](Concept/graph/human-in-the-loop.md)** - Approval workflows, pause/resume
+- **[Dependency Injection](Concept/dependency-injection.md)** - InjectQ container patterns
+- **[Publishers & Events](Concept/publisher.md)** - Observability and monitoring
+- **[Response Converters](Concept/response_converter.md)** - LLM output normalization
+
+### [📘 API Reference](reference/)
+Complete API documentation for all modules:
+
+- [Graph](reference/graph/) - StateGraph, CompiledGraph, Node, Edge, ToolNode
+- [State](reference/state/) - AgentState, ExecutionState, MessageContext
+- [Checkpointer](reference/checkpointer/) - InMemory, PostgreSQL+Redis
+- [Store](reference/store/) - BaseStore, Qdrant, Mem0
+- [Publisher](reference/publisher/) - Console, Redis, Kafka, RabbitMQ
+- [Adapters](reference/adapters/) - LiteLLM, MCP, Composio, LangChain
+- [Utils](reference/utils/) - Message, Command, Callbacks, Converters
+- [Prebuilt Agents](reference/prebuilt/agent/) - Ready-to-use patterns
+
+---
+
+## 💡 Simple Example
+
+Here's a minimal React agent with tool calling:
 
 ```python
+from dotenv import load_dotenv
 from litellm import acompletion
+
 from agentflow.checkpointer import InMemoryCheckpointer
 from agentflow.graph import StateGraph, ToolNode
 from agentflow.state.agent_state import AgentState
@@ -115,193 +237,232 @@ from agentflow.utils import Message
 from agentflow.utils.constants import END
 from agentflow.utils.converter import convert_messages
 
+load_dotenv()
 
-# Define a tool: a simple function that returns weather information
-def get_weather(location: str, tool_call_id: str | None = None, state: AgentState | None = None) -> Message:
-    """Get current weather for a location."""
-    # In production, this would call a real weather API
+
+# Define a tool with dependency injection
+def get_weather(
+        location: str,
+        tool_call_id: str | None = None,
+        state: AgentState | None = None,
+) -> Message:
+    """Get the current weather for a specific location."""
+    res = f"The weather in {location} is sunny"
     return Message.tool_message(
-        content=f"Weather in {location}: sunny, 72°F",
-        tool_call_id=tool_call_id
+        content=res,
+        tool_call_id=tool_call_id,
     )
 
 
-# Create a ToolNode that manages tool execution
+# Create tool node
 tool_node = ToolNode([get_weather])
 
 
-# Define the main agent node: this is where LLM reasoning happens
+# Define main agent node
 async def main_agent(state: AgentState):
-    """Main agent that reasons about the task and decides when to use tools."""
-    # System prompt defines agent behavior
-    sys = "You are a helpful assistant. Use the available tools when needed to provide accurate information."
-    
-    # Convert state to messages format expected by LLM
+    prompts = "You are a helpful assistant. Use tools when needed."
+
     messages = convert_messages(
-        system_prompts=[{"role": "system", "content": sys}],
-        state=state
+        system_prompts=[{"role": "system", "content": prompts}],
+        state=state,
     )
 
-    # Determine if we should offer tools to the LLM
-    # If the last message wasn't a tool response, include tools in the request
-    needs_tools = bool(state.context) and getattr(state.context[-1], "role", "") != "tool"
-    
-    if needs_tools:
-        # Get tool schemas and include them in the LLM call
-        tools = await tool_node.all_tools()
-        return await acompletion(
+    # Check if we need tools
+    if (
+            state.context
+            and len(state.context) > 0
+            and state.context[-1].role == "tool"
+    ):
+        response = await acompletion(
             model="gemini/gemini-2.5-flash",
             messages=messages,
-            tools=tools
         )
-    
-    # Final response without tools (when we have all needed information)
-    return await acompletion(
-        model="gemini/gemini-2.5-flash",
-        messages=messages
-    )
+    else:
+        tools = await tool_node.all_tools()
+        response = await acompletion(
+            model="gemini/gemini-2.5-flash",
+            messages=messages,
+            tools=tools,
+        )
+
+    return response
 
 
-# Define routing logic: decides the next step based on agent output
-def route(state: AgentState) -> str:
-    """Route to tool execution if agent made tool calls, otherwise end."""
-    last = (state.context or [])[-1] if state.context else None
-    has_calls = hasattr(last, "tools_calls") and last.tools_calls
-    return "TOOL" if (not state.context or has_calls) else END
+# Define routing logic
+def should_use_tools(state: AgentState) -> str:
+    """Determine if we should use tools or end."""
+    if not state.context or len(state.context) == 0:
+        return "TOOL"
+
+    last_message = state.context[-1]
+
+    if (
+            hasattr(last_message, "tools_calls")
+            and last_message.tools_calls
+            and len(last_message.tools_calls) > 0
+    ):
+        return "TOOL"
+
+    return END
 
 
-# Build the graph: define nodes and edges
+# Build the graph
 graph = StateGraph()
-graph.add_node("MAIN", main_agent)      # Agent reasoning node
-graph.add_node("TOOL", tool_node)        # Tool execution node
+graph.add_node("MAIN", main_agent)
+graph.add_node("TOOL", tool_node)
 
-# Conditional edge: route from MAIN to TOOL or END based on agent output
-graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
-
-# After tools execute, return to MAIN for the agent to process results
-graph.add_edge("TOOL", "MAIN")
-
-# Set the entry point for execution
-graph.set_entry_point("MAIN")
-
-# Compile the graph with checkpointing for state persistence
-app = graph.compile(checkpointer=InMemoryCheckpointer())
-
-# Execute the agent with a user query
-res = app.invoke(
-    {"messages": [Message.from_text("What's the weather in Tokyo?")]},
-    config={"thread_id": "demo"}
+graph.add_conditional_edges(
+    "MAIN",
+    should_use_tools,
+    {"TOOL": "TOOL", END: END},
 )
 
-# Print the conversation history
-for m in res["messages"]:
-    print(m)
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+# Compile and run
+app = graph.compile(checkpointer=InMemoryCheckpointer())
+
+inp = {"messages": [Message.from_text("What's the weather in New York?")]}
+config = {"thread_id": "12345", "recursion_limit": 10}
+
+res = app.invoke(inp, config=config)
+
+for msg in res["messages"]:
+    print(msg)
 ```
 
-### Understanding the flow
+---
 
-1. **User query enters the system** — The graph starts at the MAIN node with the user's message.
-2. **Agent reasoning** — The LLM receives the query and available tools, decides to call `get_weather("Tokyo")`.
-3. **Tool execution** — The graph routes to TOOL node, which executes the weather function.
-4. **Agent synthesis** — Results return to MAIN, where the LLM formulates a final answer using the weather data.
-5. **Completion** — The graph routes to END, returning the complete conversation to the caller.
+## 🎯 Use Cases & Patterns
 
-This pattern—reason, act, observe, synthesize—forms the foundation of React agents and can be extended to more complex multi-step workflows.
+Agentflow includes prebuilt agent patterns for common scenarios:
+
+### 🤖 Agent Types
+
+- **[React Agent](reference/prebuilt/agent/react.md)** - Reasoning and acting with tool calls
+- **[RAG Agent](reference/prebuilt/agent/rag.md)** - Retrieval-augmented generation
+- **[Guarded Agent](reference/prebuilt/agent/guarded.md)** - Input/output validation and safety
+- **[Plan-Act-Reflect](reference/prebuilt/agent/plan_act_reflect.md)** - Multi-step reasoning
+
+### 🔀 Orchestration Patterns
+
+- **[Router Agent](reference/prebuilt/agent/router.md)** - Route queries to specialized agents
+- **[Swarm](reference/prebuilt/agent/swarm.md)** - Dynamic multi-agent collaboration
+- **[SupervisorTeam](reference/prebuilt/agent/supervisor_team.md)** - Hierarchical agent coordination
+- **[MapReduce](reference/prebuilt/agent/map_reduce.md)** - Parallel processing and aggregation
+- **[Sequential](reference/prebuilt/agent/sequential.md)** - Linear workflow chains
+- **[Branch-Join](reference/prebuilt/agent/branch_join.md)** - Parallel branches with synchronization
+
+### 🔬 Advanced Patterns
+
+- **[Deep Research](reference/prebuilt/agent/deep_research.md)** - Multi-level research and synthesis
+- **[Network](reference/prebuilt/agent/network.md)** - Complex agent networks
+
+See the [Prebuilt Agents Reference](reference/prebuilt/agent/) for complete documentation.
 
 ---
 
-## 📚 Learn the concepts
+## 🔧 Development
 
-Agentflow is built on a few core concepts that work together to enable sophisticated agent behaviors:
+### For Library Users
 
-### Graph architecture
+Install Agentflow as shown above. The `pyproject.toml` contains all runtime dependencies.
 
-The heart of Agentflow is the StateGraph, which defines how data flows through your agent system. Learn about nodes (processing units), edges (transitions), conditional routing, and execution strategies:
+### For Contributors
 
-- [Graph fundamentals](./graph/index.md) — Core concepts and patterns
-- [Advanced graph patterns](./graph/advanced.md) — Cycles, branching, and complex flows
-- [Execution model](./graph/execution.md) — How graphs process state updates
+```bash
+# Clone the repository
+git clone https://github.com/10xhub/agentflow.git
+cd agentflow
 
-### State and context management
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-Understanding how Agentflow manages state is crucial for building reliable agents. Explore message handling, state schemas, checkpointing strategies, and persistence:
+# Install dev dependencies
+pip install -r requirements-dev.txt
+# or
+uv pip install -r requirements-dev.txt
 
-- [State architecture](./context/index.md) — State schemas and updates
-- [Message context](./context/message.md) — Conversation threading
-- [Checkpointers](./context/checkpointer.md) — Persistence strategies
-- [Store abstractions](./context/store.md) — Custom storage backends
+# Run tests
+make test
+# or
+pytest -q
 
-### Tools and integrations
+# Build docs
+make docs-serve  # Serves at http://127.0.0.1:8000
 
-Tools enable agents to interact with external systems. Learn how to integrate Python functions, MCP servers, Composio actions, and LangChain tools:
+# Run examples
+cd examples/react
+python react_sync.py
+```
 
-- [Tool system overview](./graph/tools.md) — Tool definition and execution
-- [Dependency injection](./dependency-injection.md) — Clean tool architecture
-- [Tool converters](./response_converter.md) — Adapting external tools
+### Development Tools
 
-### Control flow and orchestration
+The project uses:
+- **pytest** for testing (with async support)
+- **ruff** for linting and formatting
+- **mypy** for type checking
+- **mkdocs** with Material theme for documentation
+- **coverage** for test coverage reports
 
-Master advanced patterns like human-in-the-loop, interrupt handling, conditional branching, and error recovery:
-
-- [Control flow patterns](./graph/control_flow.md) — Routing and conditions
-- [Human-in-the-loop](./graph/human-in-the-loop.md) — Pause and resume
-- [Error handling](./ERROR_HANDLING_GUIDELINES.md) — Graceful degradation
-
-### Production deployment
-
-Prepare your agents for production with monitoring, graceful shutdown, callbacks, and event publishing:
-
-- [Background task manager](./background-task-manager.md) — Managing async background tasks
-- [Callbacks and observability](./Callbacks.md) — Event tracking
-- [Publishers](./publisher.md) — Event routing to external systems
-- [Graceful shutdown](./graceful-shutdown.md) — Clean termination
-- [Async patterns](./async-patterns.md) — Concurrency best practices
-
-### Hands-on tutorials
-
-Step-by-step guides walk you through building real-world agent systems:
-
-- [React agent tutorial](../Tutorial/react/01-basic-react.md) — Build a reasoning agent from scratch
-- [RAG implementation](../Tutorial/rag.md) — Retrieval-augmented generation
-- [Long-term memory](../Tutorial/long_term_memory.md) — Cross-conversation learning
-- [Input validation](../Tutorial/input_validation.md) — Secure agent inputs
-- [Plan-Act-Reflect](../Tutorial/plan_act_reflect.md) — Advanced reasoning patterns
+See `pyproject.dev.toml` for complete tool configurations.
 
 ---
 
-## 🌐 Ecosystem
+## 🗺️ Roadmap
 
-Agentflow is part of a complete stack for building, deploying, and consuming multi-agent systems:
-
-### Agentflow CLI
-
-A command-line tool for scaffolding projects, running local development servers, and deploying to production:
-
-- **Project initialization** — Generate boilerplate for new agent projects with best practices
-- **Local development** — Run agents locally with hot reload and debugging
-- **Deployment automation** — Generate Docker containers and Kubernetes manifests
-- **Configuration management** — Environment-specific settings and secrets handling
-
-[Learn more about the CLI →](../cli/index.md)
-
-### AgentFlow TypeScript Client
-
-A fully typed client library for consuming AgentFlow APIs from web and Node.js applications:
-
-- **Typed API methods** — IntelliSense and compile-time safety for all endpoints
-- **Streaming support** — Real-time updates with SSE and WebSocket fallbacks
-- **Thread management** — Create, list, update, and delete conversation threads
-- **Memory operations** — Search and manage agent memory across conversations
-- **Error handling** — Comprehensive error types with recovery strategies
-
-[Learn more about the TypeScript client →](../client/index.md)
+- ✅ Core graph engine with nodes and edges
+- ✅ State management and checkpointing
+- ✅ Tool integration (MCP, Composio, LangChain)
+- ✅ **Parallel tool execution** for improved performance
+- ✅ Streaming and event publishing
+- ✅ Human-in-the-loop support
+- ✅ Prebuilt agent patterns
+- 🚧 Agent-to-Agent (A2A) communication protocols
+- 🚧 Remote node execution for distributed processing
+- 🚧 Enhanced observability and tracing
+- 🚧 More persistence backends (Redis, DynamoDB)
+- 🚧 Parallel/branching strategies
+- 🚧 Visual graph editor
 
 ---
 
-## 🔗 Useful links
+## 📄 License
 
-- **GitHub repository**: https://github.com/10xhub/agentflow — Source code, issues, and contributions
-- **PyPI package**: https://pypi.org/project/10xscale-agentflow/ — Release notes and version history
-- **Runnable examples**: https://github.com/10xhub/agentflow/tree/main/examples — Copy-paste examples for common patterns
+MIT License - see [LICENSE](https://github.com/10xhub/agentflow/blob/main/LICENSE) for details.
 
-Ready to build your first agent? Start with the [Graph fundamentals](./graph/index.md) or dive into the [React agent tutorial](../Tutorial/react/01-basic-react.md).
+---
+
+## 🔗 Links & Resources
+
+- **[GitHub Repository](https://github.com/10xhub/agentflow)** - Source code and issues
+- **[PyPI Project](https://pypi.org/project/agentflow/)** - Package releases
+- **[Examples Directory](https://github.com/10xhub/agentflow/tree/main/examples)** - Runnable code samples
+- **[API Reference](reference/)** - Complete documentation
+- **[Tutorials](Tutorial/)** - Step-by-step guides
+
+---
+
+## 🙏 Contributing
+
+Contributions are welcome! Please see our [GitHub repository](https://github.com/10xhub/agentflow) for:
+
+- Issue reporting and feature requests
+- Pull request guidelines
+- Development setup instructions
+- Code style and testing requirements
+
+---
+
+## 💬 Support
+
+- **Documentation**: You're reading it! See [Tutorials](Tutorial/) and [Concepts](Concept/)
+- **Examples**: Check the [examples directory](https://github.com/10xhub/agentflow/tree/main/examples)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/10xhub/agentflow/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/10xhub/agentflow/discussions)
+
+---
+
+**Ready to build intelligent agents?** Start with the [Tutorials](Tutorial/index.md) or dive into a [Quick Example](#simple-example)!
