@@ -13,9 +13,9 @@ Welcome to the **AgentFlow Client** documentation! This guide will help you inte
 | **[Tools Guide](./tools-guide.md)** | Tool registration and execution |
 | **[Troubleshooting](./troubleshooting.md)** | Common issues and solutions |
 
-## 📖 What is AgentFlow React?
+## 📖 What is AgentFlow Client?
 
-**AgentFlow React** is a TypeScript client library that connects your React applications to the AgentFlow multi-agent system. It provides:
+**AgentFlow Client** is a TypeScript client library that connects your React applications to the AgentFlow multi-agent system. It provides:
 
 - ✅ **Simple API Client** - Clean interface to AgentFlow backend
 - ✅ **Streaming Support** - Real-time responses for chat interfaces
@@ -77,7 +77,6 @@ Welcome to the **AgentFlow Client** documentation! This guide will help you inte
 
 #### [Getting Started](./getting-started.md)
 Complete setup guide to get you up and running in 15 minutes. Covers:
-
 - Installation
 - Basic configuration
 - First API call
@@ -85,7 +84,6 @@ Complete setup guide to get you up and running in 15 minutes. Covers:
 
 #### [API Reference](./api-reference.md)
 Comprehensive reference for all client methods:
-
 - `AgentFlowClient` configuration
 - `invoke()` - Batch processing with tools
 - `stream()` - Real-time streaming
@@ -94,16 +92,8 @@ Comprehensive reference for all client methods:
 - Tool registration API
 - Message helpers
 
-#### [Tool Node Guide](./tool-node-guide.md)
-Understand how to define and use tool nodes in your agent workflows:
-
-- What are tool nodes?
-- Using tool nodes in client requests
-- Best practices
-
 #### [React Integration](./react-integration.md) ⭐
 **Essential for React developers!** Learn how to:
-
 - Set up AgentFlowClient in React
 - Use context providers
 - Create custom hooks (`useInvoke`, `useStream`, `useStateSchema`)
@@ -112,7 +102,6 @@ Understand how to define and use tool nodes in your agent workflows:
 
 #### [React Examples](./react-examples.md) ⭐
 **Complete working examples** including:
-
 - Simple chat component
 - Streaming chat with real-time updates
 - Dynamic form builder from schema
@@ -124,7 +113,6 @@ Understand how to define and use tool nodes in your agent workflows:
 
 #### [Invoke API - Comprehensive Guide](./invoke-usage.md)
 Detailed documentation for the `invoke()` method:
-
 - Request/response patterns
 - Tool execution loop
 - Recursion handling
@@ -136,7 +124,6 @@ Detailed documentation for the `invoke()` method:
 
 #### [Stream API - Comprehensive Guide](./stream-usage.md)
 Everything about real-time streaming:
-
 - Streaming architecture
 - Event types and handling
 - React integration patterns
@@ -148,7 +135,6 @@ Everything about real-time streaming:
 
 #### [State Schema API - Guide](./state-schema-guide.md)
 Working with dynamic agent state:
-
 - Schema structure
 - Building dynamic forms
 - Data validation
@@ -161,7 +147,6 @@ Working with dynamic agent state:
 
 #### [Tools Guide](./tools-guide.md)
 Master tool registration and execution:
-
 - What are tools?
 - **🔴 REMOTE TOOLS vs BACKEND TOOLS** ⚠️ **CRITICAL DISTINCTION**
 - Tool registration patterns
@@ -172,20 +157,17 @@ Master tool registration and execution:
 - Common patterns (weather, calculator, API calls)
 
 **🚨 REMOTE TOOLS (Client-Side):**
-
 - ✅ **USE ONLY FOR:** Browser APIs (`localStorage`, `navigator.geolocation`, DOM manipulation, WebRTC)
 - ❌ **DO NOT USE FOR:** Database queries, external API calls, calculations, file operations
 - **INSTEAD:** Define these as backend tools in your Python AgentFlow library
 
 **✅ BACKEND TOOLS (Server-Side - PREFERRED):**
-
 - Database operations, API calls, calculations, file system access
 - More secure, efficient, and scalable
 - Full access to your server infrastructure
 
 #### [TypeScript Types](./typescript-types.md)
 Advanced TypeScript usage:
-
 - Type imports
 - Core interfaces
 - Type guards
@@ -195,7 +177,6 @@ Advanced TypeScript usage:
 
 #### [Troubleshooting](./troubleshooting.md)
 Solutions to common issues:
-
 - Installation problems
 - Connection errors
 - Timeout issues
@@ -237,16 +218,16 @@ Solutions to common issues:
 **...see complete examples**
 → [React Examples](./react-examples.md) or [/examples folder](../examples/)
 
-## � Installation
+## 📦 Installation
 
 ```bash
-npm install agentflow-react
+npm install @10xscale/agentflow-client
 ```
 
 ## 🚀 30-Second Example
 
 ```typescript
-import { AgentFlowClient, Message } from 'agentflow-react';
+import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000'

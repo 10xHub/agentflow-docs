@@ -100,7 +100,7 @@ interface StoreMemoryResponse {
 
 **Example:**
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store a semantic memory
 const response = await client.storeMemory({
@@ -183,7 +183,7 @@ import {
   MemoryType, 
   RetrievalStrategy, 
   DistanceMetric 
-} from 'agentflow-react';
+} from '@10xscale/agentflow-client';
 
 // Basic search
 const results = await client.searchMemory({
@@ -221,7 +221,13 @@ Retrieve a specific memory by ID.
 
 **Signature:**
 ```typescript
-getMemory(memoryId: string): Promise<GetMemoryResponse>
+getMemory(
+  memoryId: string,
+  options?: {
+    config?: Record<string, any>;
+    options?: Record<string, any>;
+  }
+): Promise<GetMemoryResponse>
 ```
 
 **Parameters:**
@@ -229,6 +235,8 @@ getMemory(memoryId: string): Promise<GetMemoryResponse>
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | memoryId | string | Yes | Unique memory identifier |
+| options.config | Record<string, any> | No | Optional configuration |
+| options.options | Record<string, any> | No | Optional retrieval options |
 
 **Returns:**
 ```typescript
@@ -242,7 +250,9 @@ interface GetMemoryResponse {
 
 **Example:**
 ```typescript
-const response = await client.getMemory('mem_abc123');
+const response = await client.getMemory('mem_abc123', {
+  config: { include_vector: true }
+});
 const memory = response.data.memory;
 
 console.log('Content:', memory.content);
@@ -261,27 +271,30 @@ Update an existing memory's content or metadata.
 ```typescript
 updateMemory(
   memoryId: string,
-  request: UpdateMemoryRequest
+  content: string,
+  options?: {
+    config?: Record<string, any>;
+    options?: Record<string, any>;
+    metadata?: Record<string, any>;
+  }
 ): Promise<UpdateMemoryResponse>
 ```
 
 **Parameters:**
-```typescript
-interface UpdateMemoryRequest {
-  content?: string;                    // Updated content
-  memory_type?: MemoryType;            // Updated type
-  category?: string;                   // Updated category
-  metadata?: Record<string, any>;      // Updated metadata
-  config?: Record<string, any>;
-  options?: Record<string, any>;
-}
-```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| memoryId | string | Yes | Unique memory identifier |
+| content | string | Yes | Updated content for the memory |
+| options.config | Record<string, any> | No | Optional configuration |
+| options.options | Record<string, any> | No | Optional update options |
+| options.metadata | Record<string, any> | No | Updated metadata |
 
 **Returns:**
 ```typescript
 interface UpdateMemoryResponse {
   data: {
-    memory: MemoryResult;  // Updated memory
+    success: boolean;
   };
   metadata: ResponseMetadata;
 }
@@ -290,23 +303,23 @@ interface UpdateMemoryResponse {
 **Example:**
 ```typescript
 // Update content
-const response = await client.updateMemory('mem_abc123', {
-  content: 'User now prefers SMS notifications (changed from email)'
-});
+const response = await client.updateMemory(
+  'mem_abc123',
+  'User now prefers SMS notifications (changed from email)'
+);
 
-// Update metadata only
-await client.updateMemory('mem_abc123', {
-  metadata: {
-    confidence: 0.98,
-    updated_at: new Date().toISOString(),
-    updated_by: 'user_action'
+// Update with metadata
+await client.updateMemory(
+  'mem_abc123',
+  'User now prefers SMS notifications (changed from email)',
+  {
+    metadata: {
+      confidence: 0.98,
+      updated_at: new Date().toISOString(),
+      updated_by: 'user_action'
+    }
   }
-});
-
-// Change category
-await client.updateMemory('mem_abc123', {
-  category: 'user_preferences_v2'
-});
+);
 ```
 
 ---
@@ -317,7 +330,13 @@ Delete a specific memory by ID.
 
 **Signature:**
 ```typescript
-deleteMemory(memoryId: string): Promise<DeleteMemoryResponse>
+deleteMemory(
+  memoryId: string,
+  options?: {
+    config?: Record<string, any>;
+    options?: Record<string, any>;
+  }
+): Promise<DeleteMemoryResponse>
 ```
 
 **Parameters:**
@@ -325,6 +344,8 @@ deleteMemory(memoryId: string): Promise<DeleteMemoryResponse>
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | memoryId | string | Yes | Unique memory identifier |
+| options.config | Record<string, any> | No | Optional configuration |
+| options.options | Record<string, any> | No | Optional delete options |
 
 **Returns:**
 ```typescript
@@ -352,21 +373,22 @@ List all memories with optional filtering and pagination.
 
 **Signature:**
 ```typescript
-listMemories(request?: ListMemoriesRequest): Promise<ListMemoriesResponse>
+listMemories(
+  options?: {
+    config?: Record<string, any>;
+    options?: Record<string, any>;
+    limit?: number;
+  }
+): Promise<ListMemoriesResponse>
 ```
 
 **Parameters:**
-```typescript
-interface ListMemoriesRequest {
-  memory_type?: MemoryType;            // Filter by type
-  category?: string;                   // Filter by category
-  offset?: number;                     // Pagination offset (default: 0)
-  limit?: number;                      // Number of results (default: 20)
-  filters?: Record<string, any>;       // Additional filters
-  config?: Record<string, any>;
-  options?: Record<string, any>;
-}
-```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| options.config | Record<string, any> | No | Optional configuration |
+| options.options | Record<string, any> | No | Optional retrieval options |
+| options.limit | number | No | Number of results to return |
 
 **Returns:**
 ```typescript
@@ -381,30 +403,18 @@ interface ListMemoriesResponse {
 
 **Example:**
 ```typescript
-import { MemoryType } from 'agentflow-react';
-
-// List all memories
-const all = await client.listMemories();
+// List all memories with limit
+const all = await client.listMemories({ limit: 50 });
 console.log(`Total: ${all.data.memories.length} memories`);
 
-// Filter by type
-const semantic = await client.listMemories({
-  memory_type: MemoryType.SEMANTIC,
-  limit: 10
-});
-
-// Filter by category with pagination
-const preferences = await client.listMemories({
-  category: 'user_preferences',
-  offset: 0,
+// With configuration
+const configured = await client.listMemories({
   limit: 20,
-  filters: {
-    user_id: 'user_123'
-  }
+  config: { include_vectors: false }
 });
 
 // Display results
-for (const memory of preferences.data.memories) {
+for (const memory of configured.data.memories) {
   console.log(`- [${memory.memory_type}] ${memory.content}`);
 }
 ```
@@ -417,29 +427,32 @@ Delete multiple memories matching specified criteria.
 
 **Signature:**
 ```typescript
-forgetMemories(request: ForgetMemoriesRequest): Promise<ForgetMemoriesResponse>
+forgetMemories(
+  options?: {
+    config?: Record<string, any>;
+    options?: Record<string, any>;
+    memory_type?: any;
+    category?: string;
+    filters?: Record<string, any>;
+  }
+): Promise<ForgetMemoriesResponse>
 ```
 
 **Parameters:**
-```typescript
-interface ForgetMemoriesRequest {
-  memory_ids?: string[];               // Specific IDs to delete
-  memory_type?: MemoryType;            // Delete by type
-  category?: string;                   // Delete by category
-  filters?: Record<string, any>;       // Additional filters
-  before_date?: string;                // Delete before date
-  score_threshold?: number;            // Delete below score
-  config?: Record<string, any>;
-  options?: Record<string, any>;
-}
-```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| options.config | Record<string, any> | No | Optional configuration |
+| options.options | Record<string, any> | No | Optional forget options |
+| options.memory_type | any | No | Filter by memory type |
+| options.category | string | No | Filter by category |
+| options.filters | Record<string, any> | No | Additional filters |
 
 **Returns:**
 ```typescript
 interface ForgetMemoriesResponse {
   data: {
-    deleted_count: number;    // Number of memories deleted
-    memory_ids: string[];     // IDs of deleted memories
+    success: boolean;
   };
   metadata: ResponseMetadata;
 }
@@ -447,33 +460,20 @@ interface ForgetMemoriesResponse {
 
 **Example:**
 ```typescript
-import { MemoryType } from 'agentflow-react';
-
-// Delete specific memories
-const result1 = await client.forgetMemories({
-  memory_ids: ['mem_1', 'mem_2', 'mem_3']
-});
-console.log(`Deleted ${result1.data.deleted_count} memories`);
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Delete by category and type
-const result2 = await client.forgetMemories({
+const result = await client.forgetMemories({
   memory_type: MemoryType.EPISODIC,
   category: 'old_conversations'
 });
+console.log('Forget success:', result.data.success);
 
-// Delete old memories
-const result3 = await client.forgetMemories({
-  before_date: '2024-01-01T00:00:00Z',
-  filters: {
-    user_id: 'user_123'
-  }
-});
-console.log(`Deleted ${result3.data.deleted_count} old memories`);
-
-// Delete low-confidence memories
-const result4 = await client.forgetMemories({
+// Delete with filters
+const filtered = await client.forgetMemories({
   memory_type: MemoryType.SEMANTIC,
   filters: {
+    user_id: 'user_123',
     'metadata.confidence': { $lt: 0.5 }
   }
 });
@@ -573,7 +573,7 @@ const euclidean = await client.searchMemory({
 ### 1. User Preferences Management
 
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store preference
 await client.storeMemory({
@@ -600,7 +600,7 @@ const prefs = await client.searchMemory({
 ### 2. Conversation History
 
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store conversation turn
 await client.storeMemory({
@@ -628,7 +628,7 @@ const context = await client.searchMemory({
 ### 3. Knowledge Base
 
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store knowledge
 await client.storeMemory({
@@ -654,7 +654,7 @@ const policies = await client.searchMemory({
 ### 4. Entity Relationships
 
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store entity
 await client.storeMemory({
@@ -691,7 +691,7 @@ const related = await client.searchMemory({
 ### 5. Procedural Knowledge
 
 ```typescript
-import { MemoryType } from 'agentflow-react';
+import { MemoryType } from '@10xscale/agentflow-client';
 
 // Store procedure
 await client.storeMemory({
@@ -809,11 +809,12 @@ Periodically remove outdated or low-confidence memories:
 // Delete old conversation history
 await client.forgetMemories({
   memory_type: MemoryType.EPISODIC,
-  before_date: '2024-01-01T00:00:00Z'
+  category: 'old_conversations'
 });
 
 // Delete low-confidence memories
 await client.forgetMemories({
+  memory_type: MemoryType.SEMANTIC,
   filters: {
     'metadata.confidence': { $lt: 0.5 }
   }
@@ -822,12 +823,13 @@ await client.forgetMemories({
 
 ### 6. Batch Operations When Possible
 
-Use `forgetMemories` instead of multiple `deleteMemory` calls:
+Use `forgetMemories` for bulk operations:
 
 ```typescript
-// ✅ Good: Batch delete
+// ✅ Good: Batch delete with filter
 await client.forgetMemories({
-  memory_ids: ['mem_1', 'mem_2', 'mem_3', 'mem_4', 'mem_5']
+  category: 'temporary',
+  memory_type: MemoryType.EPISODIC
 });
 
 // ❌ Bad: Individual deletes
@@ -847,7 +849,7 @@ import {
   AgentFlowClient, 
   MemoryType, 
   RetrievalStrategy 
-} from 'agentflow-react';
+} from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'https://api.example.com',
@@ -885,29 +887,32 @@ async function manageUserMemories(userId: string) {
   
   // 3. List all user memories
   const all = await client.listMemories({
-    filters: { user_id: userId },
-    limit: 10
+    limit: 50
   });
-  console.log(`Total memories for user: ${all.data.memories.length}`);
+  console.log(`Total memories: ${all.data.memories.length}`);
   
   // 4. Update a memory
   if (relevant.data.results.length > 0) {
     const first = relevant.data.results[0];
-    await client.updateMemory(first.id, {
-      metadata: {
-        ...first.metadata,
-        last_accessed: new Date().toISOString()
+    await client.updateMemory(
+      first.id,
+      first.content,
+      {
+        metadata: {
+          ...first.metadata,
+          last_accessed: new Date().toISOString()
+        }
       }
-    });
+    );
   }
   
   // 5. Clean up old memories
   const deleted = await client.forgetMemories({
     memory_type: MemoryType.EPISODIC,
-    before_date: '2024-01-01T00:00:00Z',
+    category: 'old_conversations',
     filters: { user_id: userId }
   });
-  console.log(`Cleaned up ${deleted.data.deleted_count} old memories`);
+  console.log('Forget success:', deleted.data.success);
 }
 ```
 
@@ -918,7 +923,7 @@ async function manageUserMemories(userId: string) {
 All memory operations may throw errors. See [Error Handling Guide](./error-handling.md) for details.
 
 ```typescript
-import { AgentFlowError, NotFoundError } from 'agentflow-react';
+import { AgentFlowError, NotFoundError } from '@10xscale/agentflow-client';
 
 try {
   const memory = await client.getMemory('mem_123');
