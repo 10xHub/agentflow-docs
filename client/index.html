@@ -1026,9 +1026,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-agentflow-react" class="md-nav__link">
+  <a href="#what-is-agentflow-client" class="md-nav__link">
     <span class="md-ellipsis">
-      📖 What is AgentFlow React?
+      📖 What is AgentFlow Client?
     </span>
   </a>
   
@@ -1142,15 +1142,6 @@
   <a href="#api-reference" class="md-nav__link">
     <span class="md-ellipsis">
       API Reference
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tool-node-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      Tool Node Guide
     </span>
   </a>
   
@@ -1295,7 +1286,7 @@
         <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
-      � Installation
+      📦 Installation
     </span>
   </a>
   
@@ -1363,8 +1354,8 @@
 </tr>
 </tbody>
 </table>
-<h2 id="what-is-agentflow-react">📖 What is AgentFlow React?<a class="headerlink" href="#what-is-agentflow-react" title="Anchor link to this section for reference">&para;</a></h2>
-<p><strong>AgentFlow React</strong> is a TypeScript client library that connects your React applications to the AgentFlow multi-agent system. It provides:</p>
+<h2 id="what-is-agentflow-client">📖 What is AgentFlow Client?<a class="headerlink" href="#what-is-agentflow-client" title="Anchor link to this section for reference">&para;</a></h2>
+<p><strong>AgentFlow Client</strong> is a TypeScript client library that connects your React applications to the AgentFlow multi-agent system. It provides:</p>
 <ul>
 <li>✅ <strong>Simple API Client</strong> - Clean interface to AgentFlow backend</li>
 <li>✅ <strong>Streaming Support</strong> - Real-time responses for chat interfaces</li>
@@ -1422,129 +1413,98 @@
 <h2 id="core-documentation">📚 Core Documentation<a class="headerlink" href="#core-documentation" title="Anchor link to this section for reference">&para;</a></h2>
 <h3 id="essential-guides">Essential Guides<a class="headerlink" href="#essential-guides" title="Anchor link to this section for reference">&para;</a></h3>
 <h4 id="getting-started"><a href="./getting-started.md">Getting Started</a><a class="headerlink" href="#getting-started" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Complete setup guide to get you up and running in 15 minutes. Covers:</p>
-<ul>
-<li>Installation</li>
-<li>Basic configuration</li>
-<li>First API call</li>
-<li>Simple examples</li>
-</ul>
+<p>Complete setup guide to get you up and running in 15 minutes. Covers:
+- Installation
+- Basic configuration
+- First API call
+- Simple examples</p>
 <h4 id="api-reference"><a href="api-reference/">API Reference</a><a class="headerlink" href="#api-reference" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Comprehensive reference for all client methods:</p>
-<ul>
-<li><code>AgentFlowClient</code> configuration</li>
-<li><code>invoke()</code> - Batch processing with tools</li>
-<li><code>stream()</code> - Real-time streaming</li>
-<li><code>graphStateSchema()</code> - Get state schema</li>
-<li><code>threadState()</code>, <code>updateThreadState()</code>, <code>clearThreadState()</code></li>
-<li>Tool registration API</li>
-<li>Message helpers</li>
-</ul>
-<h4 id="tool-node-guide"><a href="./tool-node-guide.md">Tool Node Guide</a><a class="headerlink" href="#tool-node-guide" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Understand how to define and use tool nodes in your agent workflows:</p>
-<ul>
-<li>What are tool nodes?</li>
-<li>Using tool nodes in client requests</li>
-<li>Best practices</li>
-</ul>
+<p>Comprehensive reference for all client methods:
+- <code>AgentFlowClient</code> configuration
+- <code>invoke()</code> - Batch processing with tools
+- <code>stream()</code> - Real-time streaming
+- <code>graphStateSchema()</code> - Get state schema
+- <code>threadState()</code>, <code>updateThreadState()</code>, <code>clearThreadState()</code>
+- Tool registration API
+- Message helpers</p>
 <h4 id="react-integration"><a href="react-integration/">React Integration</a> ⭐<a class="headerlink" href="#react-integration" title="Anchor link to this section for reference">&para;</a></h4>
-<p><strong>Essential for React developers!</strong> Learn how to:</p>
-<ul>
-<li>Set up AgentFlowClient in React</li>
-<li>Use context providers</li>
-<li>Create custom hooks (<code>useInvoke</code>, <code>useStream</code>, <code>useStateSchema</code>)</li>
-<li>Manage loading and error states</li>
-<li>Best practices for React apps</li>
-</ul>
+<p><strong>Essential for React developers!</strong> Learn how to:
+- Set up AgentFlowClient in React
+- Use context providers
+- Create custom hooks (<code>useInvoke</code>, <code>useStream</code>, <code>useStateSchema</code>)
+- Manage loading and error states
+- Best practices for React apps</p>
 <h4 id="react-examples"><a href="react-examples/">React Examples</a> ⭐<a class="headerlink" href="#react-examples" title="Anchor link to this section for reference">&para;</a></h4>
-<p><strong>Complete working examples</strong> including:</p>
-<ul>
-<li>Simple chat component</li>
-<li>Streaming chat with real-time updates</li>
-<li>Dynamic form builder from schema</li>
-<li>Agent with custom tools</li>
-<li>Multi-step workflows</li>
-<li>Thread management UI</li>
-</ul>
+<p><strong>Complete working examples</strong> including:
+- Simple chat component
+- Streaming chat with real-time updates
+- Dynamic form builder from schema
+- Agent with custom tools
+- Multi-step workflows
+- Thread management UI</p>
 <h3 id="api-deep-dives">API Deep Dives<a class="headerlink" href="#api-deep-dives" title="Anchor link to this section for reference">&para;</a></h3>
 <h4 id="invoke-api-comprehensive-guide"><a href="invoke-usage/">Invoke API - Comprehensive Guide</a><a class="headerlink" href="#invoke-api-comprehensive-guide" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Detailed documentation for the <code>invoke()</code> method:</p>
-<ul>
-<li>Request/response patterns</li>
-<li>Tool execution loop</li>
-<li>Recursion handling</li>
-<li>Response granularity</li>
-<li>Error handling</li>
-<li>Complete examples</li>
-</ul>
+<p>Detailed documentation for the <code>invoke()</code> method:
+- Request/response patterns
+- Tool execution loop
+- Recursion handling
+- Response granularity
+- Error handling
+- Complete examples</p>
 <p><strong>Quick Reference:</strong> <a href="./QUICK_START.md">Invoke Quick Start</a></p>
 <h4 id="stream-api-comprehensive-guide"><a href="stream-usage/">Stream API - Comprehensive Guide</a><a class="headerlink" href="#stream-api-comprehensive-guide" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Everything about real-time streaming:</p>
-<ul>
-<li>Streaming architecture</li>
-<li>Event types and handling</li>
-<li>React integration patterns</li>
-<li>Memory efficiency</li>
-<li>Error handling</li>
-<li>Performance tips</li>
-</ul>
+<p>Everything about real-time streaming:
+- Streaming architecture
+- Event types and handling
+- React integration patterns
+- Memory efficiency
+- Error handling
+- Performance tips</p>
 <p><strong>Quick Reference:</strong> <a href="stream-quick-ref/">Stream Quick Reference</a></p>
 <h4 id="state-schema-api-guide"><a href="state-schema-guide/">State Schema API - Guide</a><a class="headerlink" href="#state-schema-api-guide" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Working with dynamic agent state:</p>
-<ul>
-<li>Schema structure</li>
-<li>Building dynamic forms</li>
-<li>Data validation</li>
-<li>Type generation</li>
-<li>Dynamic fields</li>
-</ul>
+<p>Working with dynamic agent state:
+- Schema structure
+- Building dynamic forms
+- Data validation
+- Type generation
+- Dynamic fields</p>
 <p><strong>Quick Reference:</strong> <a href="./state-schema-quick-ref.md">State Schema Quick Reference</a></p>
 <h3 id="advanced-topics">Advanced Topics<a class="headerlink" href="#advanced-topics" title="Anchor link to this section for reference">&para;</a></h3>
 <h4 id="tools-guide"><a href="tools-guide/">Tools Guide</a><a class="headerlink" href="#tools-guide" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Master tool registration and execution:</p>
-<ul>
-<li>What are tools?</li>
-<li><strong>🔴 REMOTE TOOLS vs BACKEND TOOLS</strong> ⚠️ <strong>CRITICAL DISTINCTION</strong></li>
-<li>Tool registration patterns</li>
-<li>Handler implementation</li>
-<li>OpenAI-style parameters</li>
-<li>Error handling</li>
-<li>Testing tools</li>
-<li>Common patterns (weather, calculator, API calls)</li>
-</ul>
-<p><strong>🚨 REMOTE TOOLS (Client-Side):</strong></p>
-<ul>
-<li>✅ <strong>USE ONLY FOR:</strong> Browser APIs (<code>localStorage</code>, <code>navigator.geolocation</code>, DOM manipulation, WebRTC)</li>
-<li>❌ <strong>DO NOT USE FOR:</strong> Database queries, external API calls, calculations, file operations</li>
-<li><strong>INSTEAD:</strong> Define these as backend tools in your Python AgentFlow library</li>
-</ul>
-<p><strong>✅ BACKEND TOOLS (Server-Side - PREFERRED):</strong></p>
-<ul>
-<li>Database operations, API calls, calculations, file system access</li>
-<li>More secure, efficient, and scalable</li>
-<li>Full access to your server infrastructure</li>
-</ul>
+<p>Master tool registration and execution:
+- What are tools?
+- <strong>🔴 REMOTE TOOLS vs BACKEND TOOLS</strong> ⚠️ <strong>CRITICAL DISTINCTION</strong>
+- Tool registration patterns
+- Handler implementation
+- OpenAI-style parameters
+- Error handling
+- Testing tools
+- Common patterns (weather, calculator, API calls)</p>
+<p><strong>🚨 REMOTE TOOLS (Client-Side):</strong>
+- ✅ <strong>USE ONLY FOR:</strong> Browser APIs (<code>localStorage</code>, <code>navigator.geolocation</code>, DOM manipulation, WebRTC)
+- ❌ <strong>DO NOT USE FOR:</strong> Database queries, external API calls, calculations, file operations
+- <strong>INSTEAD:</strong> Define these as backend tools in your Python AgentFlow library</p>
+<p><strong>✅ BACKEND TOOLS (Server-Side - PREFERRED):</strong>
+- Database operations, API calls, calculations, file system access
+- More secure, efficient, and scalable
+- Full access to your server infrastructure</p>
 <h4 id="typescript-types"><a href="typescript-types/">TypeScript Types</a><a class="headerlink" href="#typescript-types" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Advanced TypeScript usage:</p>
-<ul>
-<li>Type imports</li>
-<li>Core interfaces</li>
-<li>Type guards</li>
-<li>Custom extensions</li>
-<li>Type-safe tool handlers</li>
-<li>Schema-based type inference</li>
-</ul>
+<p>Advanced TypeScript usage:
+- Type imports
+- Core interfaces
+- Type guards
+- Custom extensions
+- Type-safe tool handlers
+- Schema-based type inference</p>
 <h4 id="troubleshooting"><a href="troubleshooting/">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Anchor link to this section for reference">&para;</a></h4>
-<p>Solutions to common issues:</p>
-<ul>
-<li>Installation problems</li>
-<li>Connection errors</li>
-<li>Timeout issues</li>
-<li>Authentication failures</li>
-<li>Stream disconnections</li>
-<li>TypeScript errors</li>
-<li>React integration issues</li>
-</ul>
+<p>Solutions to common issues:
+- Installation problems
+- Connection errors
+- Timeout issues
+- Authentication failures
+- Stream disconnections
+- TypeScript errors
+- React integration issues</p>
 <h2 id="find-what-you-need">🔍 Find What You Need<a class="headerlink" href="#find-what-you-need" title="Anchor link to this section for reference">&para;</a></h2>
 <h3 id="i-want-to">I want to...<a class="headerlink" href="#i-want-to" title="Anchor link to this section for reference">&para;</a></h3>
 <p><strong>...get started quickly</strong>
@@ -1567,11 +1527,11 @@
 → <a href="troubleshooting/">Troubleshooting Guide</a></p>
 <p><strong>...see complete examples</strong>
 → <a href="react-examples/">React Examples</a> or <a href="../examples/">/examples folder</a></p>
-<h2 id="installation">� Installation<a class="headerlink" href="#installation" title="Anchor link to this section for reference">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>npm<span class="w"> </span>install<span class="w"> </span>agentflow-react
+<h2 id="installation">📦 Installation<a class="headerlink" href="#installation" title="Anchor link to this section for reference">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>npm<span class="w"> </span>install<span class="w"> </span>@10xscale/agentflow-client
 </span></code></pre></div>
 <h2 id="30-second-example">🚀 30-Second Example<a class="headerlink" href="#30-second-example" title="Anchor link to this section for reference">&para;</a></h2>
-<div class="language-typescript highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+<div class="language-typescript highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">({</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">baseUrl</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;http://localhost:8000&#39;</span>

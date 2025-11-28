@@ -1723,16 +1723,16 @@
 
 
 <h1 id="stream-api-real-time-streaming-from-agentflow">Stream API - Real-time Streaming from AgentFlow<a class="headerlink" href="#stream-api-real-time-streaming-from-agentflow" title="Anchor link to this section for reference">&para;</a></h1>
-<p>This document explains how to use the <code>streamInvoke</code> method for real-time streaming responses from the AgentFlow API.</p>
+<p>This document explains how to use the <code>stream</code> method for real-time streaming responses from the AgentFlow API.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Anchor link to this section for reference">&para;</a></h2>
-<p>The <code>streamInvoke</code> method provides real-time streaming of responses from the agent graph using HTTP streaming (NDJSON format). Instead of waiting for the entire response like with <code>invoke</code>, the stream method yields chunks as they arrive from the server, enabling responsive, real-time user interfaces.</p>
+<p>The <code>stream</code> method provides real-time streaming of responses from the agent graph using HTTP streaming (NDJSON format). Instead of waiting for the entire response like with <code>invoke</code>, the stream method yields chunks as they arrive from the server, enabling responsive, real-time user interfaces.</p>
 <h2 id="key-differences-from-invoke">Key Differences from <code>invoke</code><a class="headerlink" href="#key-differences-from-invoke" title="Anchor link to this section for reference">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Aspect</th>
 <th><code>invoke</code></th>
-<th><code>streamInvoke</code></th>
+<th><code>stream</code></th>
 </tr>
 </thead>
 <tbody>
@@ -1820,7 +1820,7 @@
 </span></code></pre></div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Anchor link to this section for reference">&para;</a></h2>
 <h3 id="basic-streaming-example">Basic Streaming Example<a class="headerlink" href="#basic-streaming-example" title="Anchor link to this section for reference">&para;</a></h3>
-<div class="language-typescript highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+<div class="language-typescript highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">({</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nx">baseUrl</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;http://127.0.0.1:8000&#39;</span><span class="p">,</span>
@@ -1866,7 +1866,7 @@
 </span></code></pre></div>
 <h3 id="react-chat-component-example">React Chat Component Example<a class="headerlink" href="#react-chat-component-example" title="Anchor link to this section for reference">&para;</a></h3>
 <div class="language-typescript highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useEffect</span><span class="p">,</span><span class="w"> </span><span class="nx">useRef</span><span class="p">,</span><span class="w"> </span><span class="nx">useState</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;react&#39;</span><span class="p">;</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="kd">function</span><span class="w"> </span><span class="nx">ChatComponent</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">messages</span><span class="p">,</span><span class="w"> </span><span class="nx">setMessages</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="o">&lt;</span><span class="nx">Message</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">([]);</span>
@@ -1946,7 +1946,7 @@
 <h3 id="advanced-stream-with-tool-execution">Advanced: Stream with Tool Execution<a class="headerlink" href="#advanced-stream-with-tool-execution" title="Anchor link to this section for reference">&para;</a></h3>
 <p>For scenarios where the server sends remote tool calls during streaming, you can handle them manually.</p>
 <p><strong>⚠️ Note:</strong> Remote tool calls are only for browser-level APIs. Most tools should be defined in your Python backend. See <a href="../tools-guide/#remote-tools-vs-backend-tools">Tools Guide</a>.</p>
-<div class="language-typescript highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="p">,</span><span class="w"> </span><span class="nx">StreamEventType</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+<div class="language-typescript highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="p">,</span><span class="w"> </span><span class="nx">StreamEventType</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">streamWithToolExecution</span><span class="p">(</span><span class="nx">client</span><span class="o">:</span><span class="w"> </span><span class="kt">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">userMessage</span><span class="o">:</span><span class="w"> </span><span class="kt">Message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">stream</span><span class="p">([</span><span class="nx">userMessage</span><span class="p">],</span><span class="w"> </span><span class="p">{</span>
@@ -2042,7 +2042,7 @@
 </span><span id="__span-7-31"><a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="p">}</span>
 </span></code></pre></div>
 <h2 id="configuration-options">Configuration Options<a class="headerlink" href="#configuration-options" title="Anchor link to this section for reference">&para;</a></h2>
-<p>When calling <code>streamInvoke</code>, you can provide options:</p>
+<p>When calling <code>stream</code>, you can provide options:</p>
 <div class="language-typescript highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nx">stream</span><span class="p">(</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nx">messages</span><span class="o">:</span><span class="w"> </span><span class="kt">Message</span><span class="p">[],</span>
 </span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="nx">options</span><span class="o">?:</span><span class="w"> </span><span class="p">{</span>
@@ -2133,7 +2133,7 @@
 - You want automatic tool execution loop handling
 - You have callback-based patterns
 - The response is relatively small</p>
-<p><strong>Use <code>streamInvoke</code> when:</strong>
+<p><strong>Use <code>stream</code> when:</strong>
 - Building chat/conversational interfaces
 - You want real-time streaming responses
 - You need responsive UIs with incremental updates

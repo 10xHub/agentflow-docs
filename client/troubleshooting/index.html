@@ -1350,9 +1350,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#q-can-i-use-agentflow-react-in-nodejs-server-side" class="md-nav__link">
+  <a href="#q-can-i-use-10xscaleagentflow-client-in-nodejs-server-side" class="md-nav__link">
     <span class="md-ellipsis">
-      Q: Can I use agentflow-react in Node.js (server-side)?
+      Q: Can I use @10xscale/agentflow-client in Node.js (server-side)?
     </span>
   </a>
   
@@ -1948,9 +1948,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#q-can-i-use-agentflow-react-in-nodejs-server-side" class="md-nav__link">
+  <a href="#q-can-i-use-10xscaleagentflow-client-in-nodejs-server-side" class="md-nav__link">
     <span class="md-ellipsis">
-      Q: Can I use agentflow-react in Node.js (server-side)?
+      Q: Can I use @10xscale/agentflow-client in Node.js (server-side)?
     </span>
   </a>
   
@@ -2059,7 +2059,7 @@
 
 
 <h1 id="troubleshooting-guide">Troubleshooting Guide<a class="headerlink" href="#troubleshooting-guide" title="Anchor link to this section for reference">&para;</a></h1>
-<p>Common issues and solutions for agentflow-react.</p>
+<p>Common issues and solutions for @10xscale/agentflow-client.</p>
 <h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Anchor link to this section for reference">&para;</a></h2>
 <ul>
 <li><a href="#installation-issues">Installation Issues</a></li>
@@ -2084,11 +2084,11 @@
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>npm<span class="w"> </span>install<span class="w"> </span>react@latest<span class="w"> </span>react-dom@latest
 </span></code></pre></div>
 <p>Or if you must use React 17, use <code>--legacy-peer-deps</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>npm<span class="w"> </span>install<span class="w"> </span>agentflow-react<span class="w"> </span>--legacy-peer-deps
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>npm<span class="w"> </span>install<span class="w"> </span>@10xscale/agentflow-client<span class="w"> </span>--legacy-peer-deps
 </span></code></pre></div>
 <hr />
 <h3 id="problem-typescript-types-not-found">Problem: TypeScript types not found<a class="headerlink" href="#problem-typescript-types-not-found" title="Anchor link to this section for reference">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Could not find a declaration file for module &#39;agentflow-react&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Could not find a declaration file for module &#39;@10xscale/agentflow-client&#39;
 </span></code></pre></div>
 <p><strong>Solution:</strong></p>
 <p>The library includes TypeScript definitions. If they're not found:</p>
@@ -2112,13 +2112,13 @@
 </ol>
 <hr />
 <h3 id="problem-module-not-found-errors-in-nextjs">Problem: Module not found errors in Next.js<a class="headerlink" href="#problem-module-not-found-errors-in-nextjs" title="Anchor link to this section for reference">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Module not found: Can&#39;t resolve &#39;agentflow-react&#39;
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Module not found: Can&#39;t resolve &#39;@10xscale/agentflow-client&#39;
 </span></code></pre></div>
 <p><strong>Solution:</strong></p>
 <p>Next.js App Router requires client-side components:</p>
 <div class="language-typescript highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="s1">&#39;use client&#39;</span><span class="p">;</span><span class="w">  </span><span class="c1">// Add this at the top</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span></code></pre></div>
 <hr />
 <h2 id="connection-authentication">Connection &amp; Authentication<a class="headerlink" href="#connection-authentication" title="Anchor link to this section for reference">&para;</a></h2>
@@ -2519,7 +2519,7 @@ Agent is stuck in a tool loop, hitting the max iteration limit.</p>
 </span></code></pre></div>
 <p><strong>Solution:</strong></p>
 <p>Import and use proper types:</p>
-<div class="language-typescript highlight"><pre><span></span><code><span id="__span-43-1"><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">InvokeResult</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+<div class="language-typescript highlight"><pre><span></span><code><span id="__span-43-1"><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">,</span><span class="w"> </span><span class="nx">InvokeResult</span><span class="p">,</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-43-2"><a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>
 </span><span id="__span-43-3"><a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a><span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="o">:</span><span class="w"> </span><span class="kt">AgentFlowClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="p">({</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">});</span>
 </span><span id="__span-43-4"><a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>
@@ -2536,7 +2536,7 @@ Agent is stuck in a tool loop, hitting the max iteration limit.</p>
 </span></code></pre></div>
 <p><strong>Solution:</strong></p>
 <p>Use Message helper methods:</p>
-<div class="language-typescript highlight"><pre><span></span><code><span id="__span-45-1"><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+<div class="language-typescript highlight"><pre><span></span><code><span id="__span-45-1"><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Message</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-45-2"><a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a>
 </span><span id="__span-45-3"><a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a><span class="c1">// ✅ Correct</span>
 </span><span id="__span-45-4"><a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a><span class="kd">const</span><span class="w"> </span><span class="nx">messages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
@@ -2895,7 +2895,7 @@ Not using thread IDs to maintain conversation context.</p>
 </span></code></pre></div>
 <hr />
 <h2 id="faq">FAQ<a class="headerlink" href="#faq" title="Anchor link to this section for reference">&para;</a></h2>
-<h3 id="q-can-i-use-agentflow-react-in-nodejs-server-side">Q: Can I use agentflow-react in Node.js (server-side)?<a class="headerlink" href="#q-can-i-use-agentflow-react-in-nodejs-server-side" title="Anchor link to this section for reference">&para;</a></h3>
+<h3 id="q-can-i-use-10xscaleagentflow-client-in-nodejs-server-side">Q: Can I use @10xscale/agentflow-client in Node.js (server-side)?<a class="headerlink" href="#q-can-i-use-10xscaleagentflow-client-in-nodejs-server-side" title="Anchor link to this section for reference">&para;</a></h3>
 <p><strong>A:</strong> Yes! The library works in both browser and Node.js environments. Just ensure you have <code>fetch</code> available (Node 18+ has it built-in, or use <code>node-fetch</code> polyfill).</p>
 <hr />
 <h3 id="q-does-the-library-support-server-side-rendering-ssr">Q: Does the library support Server-Side Rendering (SSR)?<a class="headerlink" href="#q-does-the-library-support-server-side-rendering-ssr" title="Anchor link to this section for reference">&para;</a></h3>
@@ -3002,7 +3002,7 @@ Not using thread IDs to maintain conversation context.</p>
 <h3 id="q-how-do-i-test-my-integration">Q: How do I test my integration?<a class="headerlink" href="#q-how-do-i-test-my-integration" title="Anchor link to this section for reference">&para;</a></h3>
 <p><strong>A:</strong> Use testing frameworks with mocking:</p>
 <div class="language-typescript highlight"><pre><span></span><code><span id="__span-74-1"><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">describe</span><span class="p">,</span><span class="w"> </span><span class="nx">it</span><span class="p">,</span><span class="w"> </span><span class="nx">expect</span><span class="p">,</span><span class="w"> </span><span class="nx">vi</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;vitest&#39;</span><span class="p">;</span>
-</span><span id="__span-74-2"><a id="__codelineno-74-2" name="__codelineno-74-2" href="#__codelineno-74-2"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agentflow-react&#39;</span><span class="p">;</span>
+</span><span id="__span-74-2"><a id="__codelineno-74-2" name="__codelineno-74-2" href="#__codelineno-74-2"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AgentFlowClient</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@10xscale/agentflow-client&#39;</span><span class="p">;</span>
 </span><span id="__span-74-3"><a id="__codelineno-74-3" name="__codelineno-74-3" href="#__codelineno-74-3"></a>
 </span><span id="__span-74-4"><a id="__codelineno-74-4" name="__codelineno-74-4" href="#__codelineno-74-4"></a><span class="nx">describe</span><span class="p">(</span><span class="s1">&#39;Agent Integration&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-74-5"><a id="__codelineno-74-5" name="__codelineno-74-5" href="#__codelineno-74-5"></a><span class="w">  </span><span class="nx">it</span><span class="p">(</span><span class="s1">&#39;should handle invoke&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
