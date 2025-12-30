@@ -1,6 +1,16 @@
-# React Agent Patterns ( Agentflow)
+# React Agent Patterns (Agentflow)
 
-This directory provides comprehensive tutorials for building **ReAct (Reasoning and Acting)** agents in  Agentflow, from basic patterns to advanced integrations. These tutorials demonstrate the most common and powerful agent architecture: the think → act → observe → repeat loop.
+This directory provides comprehensive tutorials for building **ReAct (Reasoning and Acting)** agents in Agentflow, from the simple Agent class approach to advanced custom function integrations.
+
+## 🎯 Choose Your Path
+
+| Approach | Best For | Lines of Code | Tutorial |
+|----------|----------|---------------|----------|
+| **⭐ Agent Class** | Most use cases, rapid development | 10-30 lines | [00-agent-class-react.md](00-agent-class-react.md) |
+| **Custom Functions** | Complex custom logic, fine-grained control | 50-150 lines | [01-basic-react.md](01-basic-react.md) |
+
+!!! tip "Start Here"
+    **New to ReAct?** Start with the [Agent Class tutorial](00-agent-class-react.md)—it's the fastest way to build powerful agents.
 
 ## 🎯 What Are React Agents?
 
@@ -14,33 +24,39 @@ This pattern enables agents to access real-time data, perform actions, and handl
 
 ## 📚 Tutorial Progression
 
-Follow these tutorials in order for the best learning experience:
+### ⭐ Quick Path (Recommended)
+Start here for the fastest route to building agents:
 
-### 🏗️ Foundation
-1. **[Basic React Patterns](01-basic-react.md)** - Core ReAct architecture with weather agents
+1. **[Agent Class React](00-agent-class-react.md)** ⭐ - Build ReAct agents in 30 lines or less
+
+### 🔧 Advanced Path
+For when you need full control:
+
+1. **[Basic React Patterns](01-basic-react.md)** - Core ReAct architecture with custom functions
 2. **[Dependency Injection](02-dependency-injection.md)** - Advanced parameter injection and container management
 3. **[MCP Integration](03-mcp-integration.md)** - Model Context Protocol for external tool systems
 4. **[Streaming Responses](04-streaming.md)** - Real-time agent responses and event handling
 
 ## 🗂️ Files Overview
 
-| Tutorial | Focus | Example Files | Key Concepts |
-|----------|-------|---------------|--------------|
-| [Basic React](01-basic-react.md) | Core patterns, sync/async | `react_sync.py`, `react_weather_agent.py` | StateGraph, ToolNode, conditional routing |
-| [Dependency Injection](02-dependency-injection.md) | Advanced DI patterns | `react_di.py`, `react_di2.py` | InjectQ container, service injection |
-| [MCP Integration](03-mcp-integration.md) | External tool systems | `react-mcp.py`, `server.py` | FastMCP client, protocol integration |
-| [Streaming](04-streaming.md) | Real-time responses | `stream_react_agent.py`, `stream1.py` | Event streaming, delta updates |
+| Tutorial | Focus | Approach | Key Concepts |
+|----------|-------|----------|--------------|
+| [Agent Class React](00-agent-class-react.md) ⭐ | Simple ReAct | Agent Class | Agent, ToolNode, tool_node_name |
+| [Basic React](01-basic-react.md) | Core patterns | Custom Functions | StateGraph, convert_messages, acompletion |
+| [Dependency Injection](02-dependency-injection.md) | Advanced DI | Custom Functions | InjectQ container, service injection |
+| [MCP Integration](03-mcp-integration.md) | External tools | Both | FastMCP client, protocol integration |
+| [Streaming](04-streaming.md) | Real-time | Both | Event streaming, delta updates |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 ```bash
-# Install  Agentflow with dependencies
-pip install -agentflow[litellm]
+# Install Agentflow with LiteLLM (required for Agent class)
+pip install 10xscale-agentflow[litellm]
 
 # For MCP examples
-pip install -agentflow[mcp]
+pip install 10xscale-agentflow[mcp]
 
 # Set up environment
 export OPENAI_API_KEY=your_key
@@ -51,27 +67,66 @@ export GEMINI_API_KEY=your_key
 ### Run Your First React Agent
 
 ```bash
-# Basic synchronous React agent
+# Agent Class approach (recommended)
+cd examples/agent-class
+python graph.py
+
+# Custom function approach
 cd examples/react
 python react_sync.py
-
-# Streaming React agent
-cd examples/react_stream
-python stream1.py
 ```
 
-## 🎯 When to Use Each Pattern
+## 🎯 When to Use Each Approach
 
-| Pattern | Use Case | Benefits | Complexity |
-|---------|----------|----------|------------|
-| **Basic React** | Simple tool calling, weather/search agents | Easy to understand, quick setup | ⭐ |
-| **Dependency Injection** | Enterprise apps, complex services | Testable, modular, scalable | ⭐⭐⭐ |
-| **MCP Integration** | External APIs, microservices | Protocol standardization, flexibility | ⭐⭐⭐ |
-| **Streaming** | Real-time UIs, chat interfaces | Low latency, responsive UX | ⭐⭐ |
+| Approach | Use Case | Benefits | Complexity |
+|----------|----------|----------|------------|
+| **Agent Class** ⭐ | Most ReAct agents | Minimal code, automatic handling | ⭐ |
+| **Custom Functions** | Complex logic, custom LLM clients | Full control | ⭐⭐⭐ |
+| **Dependency Injection** | Enterprise apps | Testable, modular | ⭐⭐⭐ |
+| **MCP Integration** | External APIs | Protocol standardization | ⭐⭐⭐ |
+| **Streaming** | Real-time UIs | Low latency, responsive UX | ⭐⭐ |
 
 ## 🏗️ Core React Architecture
 
-All React agents in  Agentflow follow this pattern:
+### Agent Class Approach (Recommended)
+
+```python
+from agentflow.graph import Agent, StateGraph, ToolNode
+from agentflow.state import AgentState
+from agentflow.utils.constants import END
+
+
+# 1. Define tools
+def get_weather(location: str) -> str:
+    return f"Weather in {location}: sunny, 72°F"
+
+
+# 2. Build the graph with Agent class
+graph = StateGraph()
+graph.add_node("MAIN", Agent(
+    model="gpt-4",
+    system_prompt=[{"role": "system", "content": "You are helpful."}],
+    tool_node_name="TOOL"
+))
+graph.add_node("TOOL", ToolNode([get_weather]))
+
+
+# 3. Routing
+def route(state: AgentState) -> str:
+    if state.context and state.context[-1].tools_calls:
+        return "TOOL"
+    return END
+
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+# 4. Run
+app = graph.compile()
+```
+
+### Custom Function Approach
 
 ```python
 from agentflow.graph import StateGraph, ToolNode
@@ -86,16 +141,27 @@ def my_tool(param: str) -> str:
 tool_node = ToolNode([my_tool])
 
 
-# 2. Create reasoning agent
+# 2. Create reasoning agent (manual message handling)
 async def main_agent(state: AgentState):
-    # LLM reasoning with optional tool calls
-    return llm_response_with_tools
+    messages = convert_messages(
+        system_prompts=[{"role": "system", "content": "..."}],
+        state=state,
+    )
+    
+    if state.context and state.context[-1].role == "tool":
+        response = await acompletion(model="gpt-4", messages=messages)
+    else:
+        tools = await tool_node.all_tools()
+        response = await acompletion(model="gpt-4", messages=messages, tools=tools)
+    
+    return ModelResponseConverter(response, converter="litellm")
 
 
 # 3. Implement conditional routing
 def should_use_tools(state: AgentState) -> str:
-    # Logic to decide: tools, main agent, or end
-    return "TOOL" | "MAIN" | END
+    if state.context and state.context[-1].tools_calls:
+        return "TOOL"
+    return END
 
 
 # 4. Build the graph

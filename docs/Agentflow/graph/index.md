@@ -5,10 +5,31 @@ minimal, composable, and DI-friendly. This section is your conceptual map.
 
 ---
 
+## ⭐ Quick Start: Agent Class
+
+For most use cases, start with the **Agent class**—a high-level abstraction that eliminates boilerplate:
+
+```python
+from agentflow.graph import Agent, StateGraph, ToolNode
+
+graph = StateGraph()
+graph.add_node("MAIN", Agent(
+    model="gpt-4",
+    system_prompt=[{"role": "system", "content": "You are helpful."}],
+    tool_node_name="TOOL"
+))
+graph.add_node("TOOL", ToolNode([my_tool]))
+```
+
+📖 **[Learn more about Agent class →](agent-class.md)**
+
+---
+
 ## Core Building Blocks
 
 | Concept | File(s) | Role |
 |---------|---------|------|
+| `Agent` ⭐ | `agentflow/graph/agent.py` | High-level agent node with automatic message handling |
 | `StateGraph` | `agentflow/graph/state_graph.py` | Declarative builder: register nodes, edges, tools, conditions |
 | `Node` | `agentflow/graph/node.py` | Wrapper around user function (sync/async) with DI injection |
 | `ToolNode` | `agentflow/graph/tool_node/` | Tool registry + dispatcher (local + external providers) |
@@ -86,9 +107,10 @@ blocks are present.
 
 Dive deeper:
 
+- **Agent Class** (`agent-class.md`) ⭐ **← START HERE: Simple agent creation**
 - Nodes & Return Types (`nodes.md`)
 - Control Flow & Edges (`control_flow.md`)
-- Human-in-the-Loop & Interrupts (`human-in-the-loop.md`) **← NEW: Approval workflows, debugging, pause/resume patterns**
+- Human-in-the-Loop & Interrupts (`human-in-the-loop.md`) – Approval workflows, debugging, pause/resume patterns
 - Tools: Local, MCP, Composio, LangChain (`tools.md`)
 - Execution & Streaming Runtime (`execution.md`)
 - Advanced Patterns & Performance (`advanced.md`)
