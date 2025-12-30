@@ -19,6 +19,203 @@ Key responsibilities:
 
 ---
 
+## The @tool Decorator
+
+Agentflow provides a powerful `@tool` decorator to attach rich metadata to your tool functions, making them more discoverable and better organized. This decorator follows industry best practices from frameworks like CrewAI and LangChain.
+
+### Basic Usage
+
+The simplest way to use the decorator:
+
+```python
+from agentflow.utils import tool
+
+@tool
+def add_numbers(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+```
+
+### Full Metadata Support
+
+Attach comprehensive metadata to your tools:
+
+```python
+@tool(
+    name="web_search",
+    description="Search the web for information on any topic",
+    tags=["web", "search", "external"],
+    provider="google",
+    capabilities=["async", "rate_limited"],
+    metadata={"rate_limit": 100, "cost_per_call": 0.001}
+)
+def search_web(query: str) -> dict:
+    """Perform a web search."""
+    # Implementation here
+    return {"results": [...]}
+```
+
+### Supported Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `str \| None` | Custom name for the tool (defaults to function name) |
+| `description` | `str \| None` | Human-readable description of what the tool does (defaults to docstring) |
+| `tags` | `list[str] \| set[str] \| None` | Tags for filtering and categorization |
+| `provider` | `str \| None` | Tool provider identifier (e.g., "openai", "google", "internal", "mcp") |
+| `capabilities` | `list[str] \| None` | List of tool capabilities (e.g., "async", "streaming", "rate_limited") |
+| `metadata` | `dict[str, Any] \| None` | Any additional custom metadata (cost, timeouts, etc.) |
+
+### Tag-Based Filtering
+
+Use tags to organize and filter tools by category:
+
+```python
+from agentflow.graph import ToolNode
+
+# Define tools with tags
+@tool(tags=["database", "read"])
+def read_user(user_id: int):
+    """Read user from database."""
+    pass
+
+@tool(tags=["database", "write"])
+def create_user(name: str, email: str):
+    """Create a new user."""
+    pass
+
+@tool(tags=["web", "search"])
+def web_search(query: str):
+    """Search the web."""
+    pass
+
+# Create ToolNode with all tools
+all_tools = [read_user, create_user, web_search]
+tool_node = ToolNode(all_tools)
+
+# Get filtered tools by passing tags parameter
+db_tools = await tool_node.all_tools(tags={"database"})  # Gets read_user, create_user
+read_tools = await tool_node.all_tools(tags={"read"})    # Gets read_user
+web_tools = tool_node.all_tools_sync(tags={"web"})      # Sync version for web tools
+```
+
+### Async Tool Support
+
+The decorator works seamlessly with async functions:
+
+```python
+@tool(
+    name="fetch_data",
+    description="Fetch data from remote API",
+    tags=["async", "network"]
+)
+async def fetch_data(url: str) -> dict:
+    """Asynchronously fetch data from a URL."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
+```
+
+### Metadata Introspection
+
+Access tool metadata programmatically:
+
+```python
+from agentflow.utils import get_tool_metadata, has_tool_decorator
+
+# Check if a function is decorated
+if has_tool_decorator(my_function):
+    # Get all metadata
+    metadata = get_tool_metadata(my_function)
+    print(f"Name: {metadata['name']}")
+    print(f"Description: {metadata['description']}")
+    print(f"Tags: {metadata['tags']}")
+    print(f"Provider: {metadata['provider']}")
+```
+
+### Integration with ToolNode
+
+The `ToolNode` automatically uses decorator metadata when generating tool schemas:
+
+```python
+from agentflow.graph import ToolNode
+
+@tool(
+    name="calculate_total",
+    description="Calculate the total price with tax"
+)
+def calculate(price: float, tax_rate: float = 0.1) -> float:
+    """Calculate total with tax."""
+    return price * (1 + tax_rate)
+
+# ToolNode automatically uses the decorator metadata
+tools = ToolNode([calculate])
+schemas = await tools.all_tools()  # Uses "calculate_total" as the name
+```
+
+### Best Practices
+
+1. **Use descriptive names**: Choose clear, action-oriented names
+   ```python
+   @tool(name="search_documents")  # Good
+   @tool(name="search")            # Too generic
+   ```
+
+2. **Write clear descriptions**: Help the LLM understand when to use the tool
+   ```python
+   @tool(description="Search the internal knowledge base for technical documentation")
+   ```
+
+3. **Tag consistently**: Use a consistent tagging scheme across your tools
+   ```python
+   # Good tagging scheme
+   @tool(tags=["database", "read", "user"])
+   @tool(tags=["database", "write", "user"])
+   @tool(tags=["database", "read", "product"])
+   ```
+
+4. **Document capabilities**: Help users understand tool limitations
+   ```python
+   @tool(
+       name="api_tool",
+       capabilities=["async", "rate_limited"],
+       metadata={"max_requests_per_minute": 60}
+   )
+   ```
+
+5. **Include provider info**: Track where tools come from
+   ```python
+   @tool(name="db_query", provider="internal")    # Internal tools
+   @tool(name="gpt4_call", provider="openai")     # Third-party tools
+   @tool(name="mcp_tool", provider="mcp")         # MCP tools
+   @tool(name="composio_tool", provider="composio") # Composio tools
+   ```
+
+### Migration Guide
+
+If you have existing tools without the decorator, you can gradually migrate:
+
+```python
+# Old style (still works)
+def my_tool(x: int) -> int:
+    """Do something."""
+    return x * 2
+
+# New style (recommended)
+@tool(
+    name="my_tool",
+    description="Do something useful",
+    tags=["math"]
+)
+def my_tool(x: int) -> int:
+    """Do something."""
+    return x * 2
+```
+
+Both styles work together seamlessly—ToolNode maintains full backward compatibility.
+
+---
+
 ## Defining Local Tools
 
 ```python
