@@ -1047,6 +1047,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#choose-your-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎯 Choose Your Path
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-youll-learn" class="md-nav__link">
     <span class="md-ellipsis">
       🎯 What You'll Learn
@@ -1090,9 +1099,18 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#foundation" class="md-nav__link">
+  <a href="#quick-path-agent-class-recommended" class="md-nav__link">
     <span class="md-ellipsis">
-      🏗️ Foundation
+      ⭐ Quick Path: Agent Class (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-path-custom-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Advanced Path: Custom Functions
     </span>
   </a>
   
@@ -1165,11 +1183,39 @@
 
 
 <h1 id="agentflow-tutorials">Agentflow Tutorials<a class="headerlink" href="#agentflow-tutorials" title="Anchor link to this section for reference">&para;</a></h1>
-<p>Welcome to  Agentflow! This tutorial series will guide you through building intelligent agents and multi-agent workflows, from basic graph construction to advanced patterns like streaming, persistence, and tool integration.</p>
+<p>Welcome to Agentflow! This tutorial series will guide you through building intelligent agents and multi-agent workflows, from simple Agent class usage to advanced patterns like streaming, persistence, and tool integration.</p>
+<h2 id="choose-your-path">🎯 Choose Your Path<a class="headerlink" href="#choose-your-path" title="Anchor link to this section for reference">&para;</a></h2>
+<p>Agentflow offers two approaches to building agents:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Best For</th>
+<th>Time to First Agent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>⭐ Quick Path (Agent Class)</strong></td>
+<td>Most use cases, rapid prototyping, production apps</td>
+<td>5 minutes</td>
+</tr>
+<tr>
+<td><strong>🔧 Advanced Path (Custom Functions)</strong></td>
+<td>Complex custom logic, non-LiteLLM providers, fine-grained control</td>
+<td>30+ minutes</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Recommendation</p>
+<p><strong>Start with the Agent class!</strong> It handles 90% of use cases with minimal code. You can always switch to custom functions later when you need more control.</p>
+</div>
 <h2 id="what-youll-learn">🎯 What You'll Learn<a class="headerlink" href="#what-youll-learn" title="Anchor link to this section for reference">&para;</a></h2>
-<p>Agentflow is a lightweight Python framework for building agent graphs on top of LiteLLM. By the end of these tutorials, you'll understand how to:</p>
+<p>Agentflow is a lightweight Python framework for building agent graphs. By the end of these tutorials, you'll understand how to:</p>
 <ul>
-<li>Build and execute agent workflows using <code>StateGraph</code> and nodes</li>
+<li>Build agents quickly using the <strong>Agent class</strong> (recommended)</li>
+<li>Create custom agent workflows using <code>StateGraph</code> and nodes</li>
 <li>Manage conversation state and message flow with <code>AgentState</code></li>
 <li>Create tool-calling agents using <code>ToolNode</code> and dependency injection</li>
 <li>Add persistence with checkpointers and memory stores</li>
@@ -1187,10 +1233,10 @@
 <h3 id="quick-setup">Quick Setup<a class="headerlink" href="#quick-setup" title="Anchor link to this section for reference">&para;</a></h3>
 <ol>
 <li>
-<p><strong>Install  Agentflow</strong> with your preferred LLM provider:
-   <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-agentflow<span class="o">[</span>litellm<span class="o">]</span>
+<p><strong>Install Agentflow</strong> with LiteLLM support:
+   <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>litellm<span class="o">]</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Optional: add persistence and tools</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-agentflow<span class="o">[</span>pg_checkpoint,mcp<span class="o">]</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>pg_checkpoint,mcp<span class="o">]</span>
 </span></code></pre></div></p>
 </li>
 <li>
@@ -1198,40 +1244,47 @@
    <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># For LiteLLM examples</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">OPENAI_API_KEY</span><span class="o">=</span>your_openai_key
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Or use Gemini</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># GEMINI_API_KEY=your_gemini_key</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nv">GEMINI_API_KEY</span><span class="o">=</span>your_gemini_key
 </span></code></pre></div></p>
 </li>
 <li>
 <p><strong>Clone examples</strong> to experiment:
    <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/10xHub/agentflow.git
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>agentflow/examples/react
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>react_sync.py<span class="w">  </span><span class="c1"># Your first agent!</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>agentflow/examples/agent-class
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>graph.py<span class="w">  </span><span class="c1"># Your first agent!</span>
 </span></code></pre></div></p>
 </li>
 </ol>
 <h2 id="tutorial-path">📚 Tutorial Path<a class="headerlink" href="#tutorial-path" title="Anchor link to this section for reference">&para;</a></h2>
-<p>Follow these tutorials in order for the best learning experience:</p>
-<h3 id="foundation">🏗️ Foundation<a class="headerlink" href="#foundation" title="Anchor link to this section for reference">&para;</a></h3>
+<h3 id="quick-path-agent-class-recommended">⭐ Quick Path: Agent Class (Recommended)<a class="headerlink" href="#quick-path-agent-class-recommended" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Start here for the fastest path to building agents:</p>
 <ol>
-<li><strong><a href="graph.md">Graph Fundamentals</a></strong> - Build your first agent with <code>StateGraph</code>, nodes, and edges</li>
+<li><strong><a href="agent-class/">Agent Class</a></strong> ⭐ - Build complete agents in 10-30 lines of code</li>
+<li><strong><a href="react/00-agent-class-react/">React with Agent Class</a></strong> - ReAct pattern made simple</li>
+<li><strong><a href="tool-decorator/">Tool Decorator</a></strong> - Organize tools with metadata and tags</li>
+</ol>
+<h3 id="advanced-path-custom-functions">🔧 Advanced Path: Custom Functions<a class="headerlink" href="#advanced-path-custom-functions" title="Anchor link to this section for reference">&para;</a></h3>
+<p>For when you need full control:</p>
+<ol>
+<li><strong><a href="graph.md">Graph Fundamentals</a></strong> - Build agents with <code>StateGraph</code>, nodes, and edges</li>
 <li><strong><a href="state.md">State &amp; Messages</a></strong> - Master conversation state and message schemas</li>
 <li><strong><a href="adapter.md">Tools &amp; Dependency Injection</a></strong> - Create tool-calling agents with <code>ToolNode</code></li>
-<li><strong><a href="react/">React Agent Patterns</a></strong> - Complete guide to ReAct agents: basic patterns, DI, MCP, streaming</li>
+<li><strong><a href="react/01-basic-react/">React Agent Patterns</a></strong> - Complete guide to ReAct agents</li>
 </ol>
 <h3 id="control-flow">🔀 Control &amp; Flow<a class="headerlink" href="#control-flow" title="Anchor link to this section for reference">&para;</a></h3>
-<ol>
+<ul>
 <li><strong><a href="graph.md#control-flow">Control Flow &amp; Routing</a></strong> - Conditional edges, interrupts, and error handling</li>
 <li><strong><a href="checkpointer.md">Persistence &amp; Memory</a></strong> - Save state with checkpointers and stores</li>
 <li><strong><a href="publisher.md">Streaming &amp; Events</a></strong> - Real-time responses and observability</li>
-</ol>
+</ul>
 <h3 id="advanced-patterns">🎯 Advanced Patterns<a class="headerlink" href="#advanced-patterns" title="Anchor link to this section for reference">&para;</a></h3>
-<ol>
+<ul>
 <li><strong><a href="misc/advanced_patterns.md">Prebuilt Agents &amp; Orchestration</a></strong> - Ready-to-use patterns and multi-agent workflows</li>
-</ol>
+</ul>
 <h2 id="learning-tips">💡 Learning Tips<a class="headerlink" href="#learning-tips" title="Anchor link to this section for reference">&para;</a></h2>
 <ul>
 <li><strong>Run the examples</strong>: Every tutorial references working code in <code>examples/</code>. Clone, modify, and experiment!</li>
-<li><strong>Start simple</strong>: Build a basic graph first, then add complexity gradually</li>
+<li><strong>Start with Agent class</strong>: Build your first agent in 5 minutes, then learn the internals</li>
 <li><strong>Use the console</strong>: The <code>ConsolePublisher</code> shows you what's happening under the hood</li>
 <li><strong>Debug with state</strong>: Use <code>ResponseGranularity.FULL</code> to inspect complete execution state</li>
 </ul>
@@ -1252,6 +1305,16 @@
 </thead>
 <tbody>
 <tr>
+<td><a href="agent-class/">Agent Class</a> ⭐</td>
+<td>Simple agent creation</td>
+<td><code>examples/agent-class/graph.py</code></td>
+</tr>
+<tr>
+<td><a href="react/00-agent-class-react/">React with Agent Class</a></td>
+<td>ReAct made simple</td>
+<td><code>examples/agent-class/</code></td>
+</tr>
+<tr>
 <td><a href="graph.md">Graph Fundamentals</a></td>
 <td>StateGraph, nodes, compilation</td>
 <td><code>examples/react/react_sync.py</code></td>
@@ -1259,42 +1322,42 @@
 <tr>
 <td><a href="state.md">State &amp; Messages</a></td>
 <td>AgentState, message handling</td>
-<td><code>agentflow/state/</code>, <code>agentflow/utils/message.py</code></td>
+<td><code>agentflow/state/</code></td>
 </tr>
 <tr>
 <td><a href="adapter.md">Tools &amp; DI</a></td>
 <td>ToolNode, dependency injection</td>
-<td><code>examples/react-injection/</code>, <code>examples/react-mcp/</code></td>
+<td><code>examples/react-injection/</code></td>
+</tr>
+<tr>
+<td><a href="tool-decorator/">Tool Decorator</a></td>
+<td>Metadata, tags, filtering</td>
+<td><code>examples/tool-decorator/</code></td>
 </tr>
 <tr>
 <td><a href="react/">React Agents</a></td>
-<td>Complete ReAct guide: basic, DI, MCP, streaming</td>
+<td>Complete ReAct guide</td>
 <td><code>examples/react*/</code></td>
-</tr>
-<tr>
-<td><a href="graph.md#control-flow">Control Flow</a></td>
-<td>Conditional routing, interrupts</td>
-<td><code>examples/react/react_weather_agent.py</code></td>
 </tr>
 <tr>
 <td><a href="checkpointer.md">Persistence</a></td>
 <td>Checkpointers, stores</td>
-<td><code>agentflow/checkpointer/</code>, <code>agentflow/store/</code></td>
+<td><code>agentflow/checkpointer/</code></td>
 </tr>
 <tr>
 <td><a href="publisher.md">Streaming</a></td>
-<td>Real-time responses, events</td>
+<td>Real-time responses</td>
 <td><code>examples/react_stream/</code></td>
 </tr>
 <tr>
 <td><a href="misc/advanced_patterns.md">Advanced</a></td>
-<td>Prebuilt agents, orchestration</td>
+<td>Prebuilt agents</td>
 <td><code>agentflow/prebuilt/agent/</code></td>
 </tr>
 </tbody>
 </table>
 <hr />
-<p>Ready to build your first agent? Start with <strong><a href="graph.md">Graph Fundamentals</a></strong>!</p>
+<p>Ready to build your first agent? Start with <strong><a href="agent-class/">Agent Class</a></strong> for the quickest path, or <strong><a href="graph.md">Graph Fundamentals</a></strong> if you want to understand the internals!</p>
 
 
 

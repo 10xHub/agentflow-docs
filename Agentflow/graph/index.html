@@ -1586,6 +1586,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#quick-start-agent-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⭐ Quick Start: Agent Class
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#core-building-blocks" class="md-nav__link">
     <span class="md-ellipsis">
       Core Building Blocks
@@ -1659,6 +1668,20 @@
 <p>Agentflow's graph system orchestrates agent reasoning, tool execution, and stateful message flow. It is intentionally
 minimal, composable, and DI-friendly. This section is your conceptual map.</p>
 <hr />
+<h2 id="quick-start-agent-class">⭐ Quick Start: Agent Class<a class="headerlink" href="#quick-start-agent-class" title="Anchor link to this section for reference">&para;</a></h2>
+<p>For most use cases, start with the <strong>Agent class</strong>—a high-level abstraction that eliminates boilerplate:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentflow.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">ToolNode</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">graph</span> <span class="o">=</span> <span class="n">StateGraph</span><span class="p">()</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;MAIN&quot;</span><span class="p">,</span> <span class="n">Agent</span><span class="p">(</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">system_prompt</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;You are helpful.&quot;</span><span class="p">}],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">tool_node_name</span><span class="o">=</span><span class="s2">&quot;TOOL&quot;</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">))</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;TOOL&quot;</span><span class="p">,</span> <span class="n">ToolNode</span><span class="p">([</span><span class="n">my_tool</span><span class="p">]))</span>
+</span></code></pre></div>
+<p>📖 <strong><a href="agent-class/">Learn more about Agent class →</a></strong></p>
+<hr />
 <h2 id="core-building-blocks">Core Building Blocks<a class="headerlink" href="#core-building-blocks" title="Anchor link to this section for reference">&para;</a></h2>
 <table>
 <thead>
@@ -1669,6 +1692,11 @@ minimal, composable, and DI-friendly. This section is your conceptual map.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>Agent</code> ⭐</td>
+<td><code>agentflow/graph/agent.py</code></td>
+<td>High-level agent node with automatic message handling</td>
+</tr>
 <tr>
 <td><code>StateGraph</code></td>
 <td><code>agentflow/graph/state_graph.py</code></td>
@@ -1721,9 +1749,9 @@ callback + publisher subsystems.</p>
 <hr />
 <h2 id="node-function-contract">Node Function Contract<a class="headerlink" href="#node-function-contract" title="Anchor link to this section for reference">&para;</a></h2>
 <p>A node function usually:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">my_node</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">AgentState</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="o">...</span><span class="n">injected_deps</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="n">Command</span> <span class="o">|</span> <span class="n">ModelResponseConverter</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">...</span><span class="n">logic</span><span class="o">...</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">return</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">my_node</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">AgentState</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="o">...</span><span class="n">injected_deps</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">State</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="n">Command</span> <span class="o">|</span> <span class="n">ModelResponseConverter</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="o">...</span><span class="n">logic</span><span class="o">...</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="k">return</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
 </span></code></pre></div>
 <p>Return types supported:</p>
 <ul>
@@ -1746,11 +1774,11 @@ callback + publisher subsystems.</p>
 <hr />
 <h2 id="quick-mental-model">Quick Mental Model<a class="headerlink" href="#quick-mental-model" title="Anchor link to this section for reference">&para;</a></h2>
 <p>Think of the graph as an event loop over a mutable state object:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>while not done:
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  node = current_node()
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  output = run(node, state)
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  apply(output)
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  advance()
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>while not done:
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  node = current_node()
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  output = run(node, state)
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  apply(output)
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  advance()
 </span></code></pre></div>
 <p>Where <code>apply()</code> merges messages, updates metadata, handles <code>Command</code> jumps, and triggers tool execution when tool call
 blocks are present.</p>
@@ -1758,9 +1786,10 @@ blocks are present.</p>
 <h2 id="where-to-next">Where to Next?<a class="headerlink" href="#where-to-next" title="Anchor link to this section for reference">&para;</a></h2>
 <p>Dive deeper:</p>
 <ul>
+<li><strong>Agent Class</strong> (<code>agent-class.md</code>) ⭐ <strong>← START HERE: Simple agent creation</strong></li>
 <li>Nodes &amp; Return Types (<code>nodes.md</code>)</li>
 <li>Control Flow &amp; Edges (<code>control_flow.md</code>)</li>
-<li>Human-in-the-Loop &amp; Interrupts (<code>human-in-the-loop.md</code>) <strong>← NEW: Approval workflows, debugging, pause/resume patterns</strong></li>
+<li>Human-in-the-Loop &amp; Interrupts (<code>human-in-the-loop.md</code>) – Approval workflows, debugging, pause/resume patterns</li>
 <li>Tools: Local, MCP, Composio, LangChain (<code>tools.md</code>)</li>
 <li>Execution &amp; Streaming Runtime (<code>execution.md</code>)</li>
 <li>Advanced Patterns &amp; Performance (<code>advanced.md</code>)</li>
