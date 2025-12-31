@@ -4,7 +4,7 @@ site_author: AgentFlow Contributors
 site_url: https://docs.agentflow.ai
 
 
-copyright: Copyright &copy; 2025 AgentFlow Contributors
+copyright: Copyright &copy; 2026 AgentFlow Contributors
 
 theme:
   name: material
@@ -109,10 +109,12 @@ nav:
       - Overview: Agentflow/index.md
       - Graph (Workflow):
           - Overview: Agentflow/graph/index.md
+          - Agent Class: Agentflow/graph/agent-class.md
           - Nodes: Agentflow/graph/nodes.md
           - Control Flow: Agentflow/graph/control_flow.md
           - Execution: Agentflow/graph/execution.md
           - Configuration: Agentflow/graph/Config.md
+          - Tool Decorator API: Agentflow/graph/tool-decorator-api.md
           - Tools: Agentflow/graph/tools.md
           - Advanced Patterns: Agentflow/graph/advanced.md
           - Human-in-the-Loop: Agentflow/graph/human-in-the-loop.md
@@ -142,6 +144,7 @@ nav:
   
   - CLI:
       - Overview: cli/index.md
+      - Command Reference: cli/cli.md
       - Configuration: cli/configuration.md
       - Authentication: cli/authentication.md
       - Deployment: cli/deployment.md
@@ -167,17 +170,23 @@ nav:
 
   - Tutorials:
       - Overview: Tutorial/index.md
+      - Agent Class: Tutorial/agent-class.md
+      - Embedding: Tutorial/embedding.md
+      - Handoff: Tutorial/handoff.md
+      - Tool Decorator: Tutorial/tool-decorator.md
       - ReAct Pattern:
           - Overview: Tutorial/react/README.md
+          - 0. Agent Class (ReAct): Tutorial/react/00-agent-class-react.md
           - 1. Basic ReAct: Tutorial/react/01-basic-react.md
           - 2. Dependency Injection: Tutorial/react/02-dependency-injection.md
           - 3. MCP Integration: Tutorial/react/03-mcp-integration.md
           - 4. Streaming: Tutorial/react/04-streaming.md
       - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
       - Long-Term Memory: Tutorial/long_term_memory.md
+      - Mem0 Store: Tutorial/mem0_store.md
       - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
-      - Advance:
-        - Input Validation: Tutorial/input_validation.md
-        - Qdrant Store Integration: Tutorial/qdrant_store.md
+      - Advanced:
+          - Input Validation: Tutorial/input_validation.md
+          - Qdrant Store Integration: Tutorial/qdrant_store.md
 
       
