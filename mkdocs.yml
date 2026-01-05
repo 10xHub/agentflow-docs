@@ -141,6 +141,15 @@ nav:
           - Async Patterns: Agentflow/async-patterns.md
           - Graceful Shutdown: Agentflow/graceful-shutdown.md
           - Error Handling: Agentflow/ERROR_HANDLING_GUIDELINES.md
+      - Evaluation:
+          - Overview: Agentflow/evaluation/index.md
+          - Getting Started: Agentflow/evaluation/getting-started.md
+          - Criteria: Agentflow/evaluation/criteria.md
+          - Data Models: Agentflow/evaluation/data-models.md
+          - Pytest Integration: Agentflow/evaluation/pytest-integration.md
+          - Reporters: Agentflow/evaluation/reporters.md
+          - User Simulation: Agentflow/evaluation/user-simulation.md
+          - Advanced: Agentflow/evaluation/advanced.md
   
   - CLI:
       - Overview: cli/index.md
