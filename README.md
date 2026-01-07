@@ -12,7 +12,39 @@ Built with **MkDocs + Material theme**, managed with **uv** for fast, reproducib
 
 ---
 
-## 🚀 Quick Start
+## � Documentation Restructuring (NEW!)
+
+**We're restructuring the documentation to be beginner-friendly!** The current docs are too advanced and confusing for new users.
+
+### Key Planning Documents
+
+📖 **[DOCUMENTATION_PLAN.md](./DOCUMENTATION_PLAN.md)** - Complete restructuring plan with detailed content structure  
+📊 **[EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md)** - Quick overview of the new plan  
+🎨 **[VISUAL_STRUCTURE.md](./VISUAL_STRUCTURE.md)** - Visual diagrams showing new structure  
+✅ **[IMPLEMENTATION_CHECKLIST.md](./IMPLEMENTATION_CHECKLIST.md)** - Step-by-step implementation guide
+
+### What's Changing?
+
+**Current Problems:**
+- ❌ Too advanced for beginners
+- ❌ No clear learning path
+- ❌ Missing "Hello World" example
+- ❌ Documentation scattered across repos
+
+**New Structure:**
+- ✅ Getting Started (5-minute Hello World)
+- ✅ Progressive Tutorials (beginner → advanced)
+- ✅ Task-focused How-To Guides
+- ✅ Complete API Reference
+- ✅ Concept Explanations
+- ✅ Real-world Examples
+- ✅ Single source of truth
+
+**Goal:** Get beginners from "What is AgentFlow?" to "I built a working agent!" in under 1 hour.
+
+---
+
+## �🚀 Quick Start
 
 ### Requirements
 
