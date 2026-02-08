@@ -104,7 +104,14 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  
+
+  - Getting Started:
+      - Overview: getting-started/index.md
+      - What is AgentFlow?: getting-started/what-is-agentflow.md
+      - Installation: getting-started/installation.md
+      - Hello World: getting-started/hello-world.md
+      - Core Concepts: getting-started/core-concepts.md
+
   - AgentFlow Library:
       - Overview: Agentflow/index.md
       - Graph (Workflow):
@@ -179,23 +186,37 @@ nav:
 
   - Tutorials:
       - Overview: Tutorial/index.md
-      - Agent Class: Tutorial/agent-class.md
-      - Embedding: Tutorial/embedding.md
-      - Handoff: Tutorial/handoff.md
-      - Tool Decorator: Tutorial/tool-decorator.md
-      - ReAct Pattern:
-          - Overview: Tutorial/react/README.md
-          - 0. Agent Class (ReAct): Tutorial/react/00-agent-class-react.md
-          - 1. Basic ReAct: Tutorial/react/01-basic-react.md
-          - 2. Dependency Injection: Tutorial/react/02-dependency-injection.md
-          - 3. MCP Integration: Tutorial/react/03-mcp-integration.md
-          - 4. Streaming: Tutorial/react/04-streaming.md
-      - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
-      - Long-Term Memory: Tutorial/long_term_memory.md
-      - Mem0 Store: Tutorial/mem0_store.md
-      - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
-      - Advanced:
+      - Beginner:
+          - Overview: tutorials/beginner/index.md
+          - 1. Your First Agent: tutorials/beginner/01-your-first-agent.md
+          - 2. Adding Tools: tutorials/beginner/02-adding-tools.md
+          - 3. Chat with Memory: tutorials/beginner/03-chat-with-memory.md
+      - Advanced Topics:
+          - Agent Class: Tutorial/agent-class.md
+          - Embedding: Tutorial/embedding.md
+          - Handoff: Tutorial/handoff.md
+          - Tool Decorator: Tutorial/tool-decorator.md
+          - ReAct Pattern:
+              - Overview: Tutorial/react/README.md
+              - 0. Agent Class (ReAct): Tutorial/react/00-agent-class-react.md
+              - 1. Basic ReAct: Tutorial/react/01-basic-react.md
+              - 2. Dependency Injection: Tutorial/react/02-dependency-injection.md
+              - 3. MCP Integration: Tutorial/react/03-mcp-integration.md
+              - 4. Streaming: Tutorial/react/04-streaming.md
+          - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
+          - Long-Term Memory: Tutorial/long_term_memory.md
+          - Mem0 Store: Tutorial/mem0_store.md
+          - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
           - Input Validation: Tutorial/input_validation.md
           - Qdrant Store Integration: Tutorial/qdrant_store.md
+
+  - How-To Guides:
+      - Overview: how-to/index.md
+      - Agents:
+          - Create Simple Agent: how-to/agents/create-simple-agent.md
+      - Tools:
+          - Create Python Tool: how-to/tools/create-python-tool.md
+
+  - FAQ: faq.md
 
       
