@@ -336,11 +336,9 @@ customer_support_demo()
 ## Complete Code
 
 ```python
-import os
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, END
+from agentflow.graph import StateGraph, END, Agent
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
 from agentflow.checkpointer import InMemoryCheckpointer
 
 load_dotenv()
@@ -360,7 +358,7 @@ Keep responses concise and friendly.
 # Create agent and workflow
 agent = Agent(model="gemini/gemini-2.5-flash", system_prompt=system_prompt)
 
-workflow = StateGraph(state_schema=AgentState)
+workflow = StateGraph()
 workflow.add_node("agent", agent)
 workflow.set_entry_point("agent")
 workflow.add_edge("agent", END)

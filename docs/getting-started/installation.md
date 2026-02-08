@@ -1,105 +1,289 @@
 # Installation
 
-## Prerequisites (2 min)
+Get AgentFlow running in under 5 minutes.
 
-### Check your Python version
-Open your terminal/command prompt and run:
+---
+
+## Quick Install
+
+### Step 1: Check Python Version
 
 ```bash
-python --version
+python --version  # Need Python 3.10+
 ```
 
-It should be **Python 3.8 or higher**. If not, [install Python here](https://www.python.org/downloads/).
+Don't have Python? [Download here](https://www.python.org/downloads/)
 
-### Get an LLM API Key
+### Step 2: Install AgentFlow + LLM Library
 
-You'll need an API key from one of these providers (pick one):
+**Important:** AgentFlow uses official LLM libraries behind the scenes. Pick ONE option below:
 
-- **OpenAI** (ChatGPT): Get key at [platform.openai.com](https://platform.openai.com/account/api-keys)
-- **Google** (Gemini): Get key at [makersuite.google.com](https://makersuite.google.com/app/apikey)
-- **Anthropic** (Claude): Get key at [console.anthropic.com](https://console.anthropic.com/keys)
-- **Other providers**: LiteLLM supports 30+ providers
+=== "Google Gemini (Recommended)"
+
+    **Why?** Free tier, fast, great performance
+
+    ```bash
+    pip install 10xscale-agentflow google-genai
+    ```
+
+    Get your free API key: [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+    ```bash
+    export GOOGLE_API_KEY=your-key-here
+    # or
+    export GEMINI_API_KEY=your-key-here
+    ```
+
+=== "OpenAI (GPT-4)"
+
+    **Why?** Most popular, very capable
+
+    ```bash
+    pip install 10xscale-agentflow litellm
+    ```
+
+    Get your API key: [OpenAI Platform](https://platform.openai.com/account/api-keys)
+
+    ```bash
+    export OPENAI_API_KEY=sk-proj-your-key-here
+    ```
+
+=== "Multiple Providers (LiteLLM)"
+
+    **Why?** Switch between 100+ models easily
+
+    ```bash
+    pip install 10xscale-agentflow litellm
+    ```
+
+    Set API keys for providers you want:
+    ```bash
+    export OPENAI_API_KEY=sk-...
+    export GOOGLE_API_KEY=...
+    export ANTHROPIC_API_KEY=sk-ant-...
+    ```
 
 ---
 
-## Install AgentFlow (1 min)
+## Verify Installation
 
-Open your terminal and run:
+Test that everything works:
+
+```python
+# test_install.py
+from agentflow.graph import StateGraph, Agent
+from agentflow.state import Message
+
+print("✅ AgentFlow installed!")
+
+# Quick test (needs API key)
+graph = StateGraph()
+graph.add_node("test", Agent(
+    model="gemini/gemini-2.5-flash",  # or your provider
+    system_prompt="You are helpful"
+))
+print("✅ Agent created successfully!")
+```
+
+Run it:
+```bash
+python test_install.py
+```
+
+---
+
+## Setting Up API Keys
+
+### Option 1: .env File (Recommended)
+
+Create `.env` in your project:
 
 ```bash
-pip install 10xscale-agentflow
+# .env
+GOOGLE_API_KEY=your-key-here
+# or
+OPENAI_API_KEY=sk-proj-your-key-here
+# or
+ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-That's it! AgentFlow is installed.
+Then in your code:
+```python
+from dotenv import load_dotenv
+load_dotenv()  # Loads from .env file
+```
+
+Install python-dotenv:
+```bash
+pip install python-dotenv
+```
+
+### Option 2: Environment Variables
+
+**Linux/Mac:**
+```bash
+export GOOGLE_API_KEY=your-key-here
+```
+
+**Windows (CMD):**
+```cmd
+set GOOGLE_API_KEY=your-key-here
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:GOOGLE_API_KEY="your-key-here"
+```
+
+### Option 3: In Code (Testing Only)
+
+```python
+import os
+os.environ["GOOGLE_API_KEY"] = "your-key-here"
+```
+
+⚠️ **Never commit API keys to git!** Add `.env` to your `.gitignore`.
 
 ---
 
-## Verify Installation (1 min)
+## Complete Example
 
-Run this Python code to check everything works:
-
-```python
-from agentflow.graph import StateGraph
-print("✅ AgentFlow installed successfully!")
-```
-
-If you see `✅ AgentFlow installed successfully!` - you're good to go!
-
----
-
-## Set Up Your API Key (1 min)
-
-### Option 1: Environment Variable (Recommended)
-
-Create a file called `.env` in your project folder:
-
-```
-OPENAI_API_KEY=sk-proj-xxxxx
-# OR
-GOOGLE_API_KEY=AIzaSy-xxxxx
-# OR  
-ANTHROPIC_API_KEY=sk-ant-xxxxx
-```
-
-Then load it in Python:
+Let's verify everything works end-to-end:
 
 ```python
+# quick_test.py
 import os
 from dotenv import load_dotenv
+from agentflow.graph import StateGraph, Agent, END
+from agentflow.state import AgentState, Message
 
+# Load API key
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")  # or GOOGLE_API_KEY, ANTHROPIC_API_KEY
+
+# Create agent
+agent = Agent(
+    model="gemini/gemini-2.5-flash",  # Works with google-genai library
+    system_prompt="You are a helpful assistant"
+)
+
+# Build workflow
+graph = StateGraph()
+graph.add_node("agent", agent)
+graph.set_entry_point("agent")
+graph.add_edge("agent", END)
+
+# Compile and run
+app = graph.compile()
+result = app.invoke({
+    "messages": [Message.text_message("Say hello!", "user")]
+})
+
+print("Response:", result["messages"][-1].content)
 ```
 
-### Option 2: Inline (Quick testing only)
-
-```python
-import os
-os.environ["OPENAI_API_KEY"] = "sk-proj-xxxxx"
+Run it:
+```bash
+python quick_test.py
 ```
+
+Expected output:
+```
+Response: Hello! How can I help you today?
+```
+
+**🎉 If you see this, you're ready to build!**
 
 ---
 
 ## Troubleshooting
 
-### "pip: command not found"
-You need to install Python first. See [Python installation](https://www.python.org/downloads/).
+### "No module named 'google.genai'" or "No module named 'openai'"
 
-### "No module named agentflow"
-Try installing with more details:
+You forgot to install the LLM library:
 
 ```bash
-pip install --upgrade 10xscale-agentflow
+# For Google Gemini
+pip install google-genai
+
+# For OpenAI
+pip install litellm
+
+# For Anthropic
+pip install litellm
 ```
 
-### "API key not working"
-Make sure:
-1. Your API key is correct (copy-paste carefully)
-2. Your key has proper permissions (check provider's dashboard)
-3. You haven't exceeded usage limits
+### "No API key provided"
+
+Set your environment variable:
+```bash
+export GOOGLE_API_KEY=your-actual-key
+```
+
+Or create a `.env` file (see above).
+
+### "Invalid API key"
+
+- Double-check your key is correct
+- Make sure you're using the right environment variable name
+- Check your API key hasn't expired
+
+### "pip install fails"
+
+Try:
+```bash
+pip install --upgrade pip
+pip install 10xscale-agentflow google-genai
+```
 
 ---
 
-## Next Step
+## What Did We Install?
 
-Installed? Great! Let's create your [first agent in 5 minutes →](hello-world.md)
+- **`10xscale-agentflow`** - The AgentFlow framework (workflow orchestration)
+- **`google-genai`** or **`litellm`** - The actual LLM library that calls the AI
+- **`python-dotenv`** (optional) - For loading `.env` files
+
+**AgentFlow handles the workflow, your LLM library handles the AI calls.**
+
+---
+
+## Optional Packages
+
+Install these only if you need them:
+
+```bash
+# PostgreSQL + Redis checkpointing (production)
+pip install 10xscale-agentflow[pg_checkpoint]
+
+# MCP (Model Context Protocol) support
+pip install 10xscale-agentflow[mcp]
+
+# Composio tools
+pip install 10xscale-agentflow[composio]
+
+# LangChain tools
+pip install 10xscale-agentflow[langchain]
+```
+
+---
+
+## Next Steps
+
+✅ **Installed?** Let's build your [first agent →](hello-world.md)
+
+📚 **Want to understand more?** Read [What is AgentFlow?](what-is-agentflow.md)
+
+---
+
+## Quick Reference
+
+| Provider | Install Command | API Key Variable |
+|----------|----------------|------------------|
+| **Google Gemini** | `pip install 10xscale-agentflow google-genai` | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
+| **OpenAI** | `pip install 10xscale-agentflow litellm` | `OPENAI_API_KEY` |
+| **Anthropic** | `pip install 10xscale-agentflow litellm` | `ANTHROPIC_API_KEY` |
+| **Multiple** | `pip install 10xscale-agentflow litellm` | Set keys for providers you need |
+
+---
+
+**Got it working?** [Build your first agent now! →](hello-world.md)

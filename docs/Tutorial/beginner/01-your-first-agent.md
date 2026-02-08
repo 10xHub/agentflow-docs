@@ -29,11 +29,9 @@ By the end of this tutorial, you'll have built a weather assistant agent that:
 Create a new file called `weather_agent.py`:
 
 ```python
-import os
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, END
+from agentflow.graph import StateGraph, END, Agent
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
 
 # Load environment variables from .env file
 load_dotenv()
@@ -114,7 +112,7 @@ agent = Agent(
 
 ```python
 # Create the workflow
-workflow = StateGraph(state_schema=AgentState)
+workflow = StateGraph()
 
 # Add the agent as a node
 workflow.add_node("sunny_agent", agent)
@@ -253,11 +251,9 @@ Just change the system prompt and see what happens!
 Here's the full `weather_agent.py`:
 
 ```python
-import os
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, END
+from agentflow.graph import StateGraph, END, Agent
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
 
 # Load environment variables
 load_dotenv()
@@ -285,7 +281,7 @@ agent = Agent(
 )
 
 # Build workflow
-workflow = StateGraph(state_schema=AgentState)
+workflow = StateGraph()
 workflow.add_node("sunny_agent", agent)
 workflow.set_entry_point("sunny_agent")
 workflow.add_edge("sunny_agent", END)

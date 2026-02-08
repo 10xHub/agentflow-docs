@@ -112,85 +112,85 @@ nav:
       - Hello World: getting-started/hello-world.md
       - Core Concepts: getting-started/core-concepts.md
 
-  - AgentFlow Library:
-      - Overview: Agentflow/index.md
-      - Graph (Workflow):
-          - Overview: Agentflow/graph/index.md
-          - Agent Class: Agentflow/graph/agent-class.md
-          - Nodes: Agentflow/graph/nodes.md
-          - Control Flow: Agentflow/graph/control_flow.md
-          - Execution: Agentflow/graph/execution.md
-          - Configuration: Agentflow/graph/Config.md
-          - Tool Decorator API: Agentflow/graph/tool-decorator-api.md
-          - Tools: Agentflow/graph/tools.md
-          - Advanced Patterns: Agentflow/graph/advanced.md
-          - Human-in-the-Loop: Agentflow/graph/human-in-the-loop.md
-      - Context & State:
-          - Overview: Agentflow/context/index.md
-          - State Management: Agentflow/context/state.md
-          - Messages: Agentflow/context/message.md
-          - Context Manager: Agentflow/context/context-manager.md
-          - Checkpointer: Agentflow/context/checkpointer.md
-          - Store: Agentflow/context/store.md
-          
-      - Core Components:
-          - Command Pattern: Agentflow/Command.md
-          - Handoff Mechanism: Agentflow/handoff.md
-          - Base Store: Agentflow/context/basestore.md
-          - Embedding Store: Agentflow/context/embedding.md
-          - Callbacks: Agentflow/Callbacks.md
-          - Publisher: Agentflow/publisher.md
-          - Response Converter: Agentflow/response_converter.md
-          - ID Generator: Agentflow/id_generator.md
-      - Advanced Topics:
-          - Dependency Injection: Agentflow/dependency-injection.md
-          - Background Tasks: Agentflow/background-task-manager.md
-          - Async Patterns: Agentflow/async-patterns.md
-          - Graceful Shutdown: Agentflow/graceful-shutdown.md
-          - Error Handling: Agentflow/ERROR_HANDLING_GUIDELINES.md
-      - Evaluation:
-          - Overview: Agentflow/evaluation/index.md
-          - Getting Started: Agentflow/evaluation/getting-started.md
-          - Criteria: Agentflow/evaluation/criteria.md
-          - Data Models: Agentflow/evaluation/data-models.md
-          - Pytest Integration: Agentflow/evaluation/pytest-integration.md
-          - Reporters: Agentflow/evaluation/reporters.md
-          - User Simulation: Agentflow/evaluation/user-simulation.md
-          - Advanced: Agentflow/evaluation/advanced.md
-  
-  - CLI:
-      - Overview: cli/index.md
-      - Command Reference: cli/cli.md
-      - Configuration: cli/configuration.md
-      - Authentication: cli/authentication.md
-      - Deployment: cli/deployment.md
-      - ID Generation: cli/id-generation.md
-      - Thread Name Generator: cli/thread-name-generator.md
-  
-  - TypeScript Client:
-      - Overview: client/index.md
-      - Quick Start: client/quick_start.md
-      - API Reference: client/api-reference.md
-      - Invoke (Synchronous) Usage: client/invoke-usage.md
-      - Streaming Quick Reference: client/stream-quick-ref.md
-      - Streaming Usage: client/stream-usage.md
-      - Thread API: client/thread-api.md
-      - Memory API: client/memory-api.md
-      - State Schema: client/state-schema-guide.md
-      - Tools Guide: client/tools-guide.md
-      - Error Handling: client/error-handling.md
-      - TypeScript Types: client/typescript-types.md
-      - React Integration: client/react-integration.md
-      - React Examples: client/react-examples.md
-      - Troubleshooting: client/troubleshooting.md
+  - Reference:
+      - Python Library:
+          - Overview: reference/library/index.md
+          - Graph (Workflow):
+              - Overview: reference/library/graph/index.md
+              - Agent Class: reference/library/graph/agent-class.md
+              - Nodes: reference/library/graph/nodes.md
+              - Control Flow: reference/library/graph/control_flow.md
+              - Execution: reference/library/graph/execution.md
+              - Configuration: reference/library/graph/Config.md
+              - Tool Decorator API: reference/library/graph/tool-decorator-api.md
+              - Tools: reference/library/graph/tools.md
+              - Advanced Patterns: reference/library/graph/advanced.md
+              - Human-in-the-Loop: reference/library/graph/human-in-the-loop.md
+          - Context & State:
+              - Overview: reference/library/context/index.md
+              - State Management: reference/library/context/state.md
+              - Messages: reference/library/context/message.md
+              - Context Manager: reference/library/context/context-manager.md
+              - Checkpointer: reference/library/context/checkpointer.md
+              - Store: reference/library/context/store.md
+          - Core Components:
+              - Command Pattern: reference/library/Command.md
+              - Handoff Mechanism: reference/library/handoff.md
+              - Base Store: reference/library/context/basestore.md
+              - Embedding Store: reference/library/context/embedding.md
+              - Callbacks: reference/library/Callbacks.md
+              - Publisher: reference/library/publisher.md
+              - Response Converter: reference/library/response_converter.md
+              - ID Generator: reference/library/id_generator.md
+          - Advanced Topics:
+              - Dependency Injection: reference/library/dependency-injection.md
+              - Background Tasks: reference/library/background-task-manager.md
+              - Async Patterns: reference/library/async-patterns.md
+              - Graceful Shutdown: reference/library/graceful-shutdown.md
+              - Error Handling: reference/library/ERROR_HANDLING_GUIDELINES.md
+          - Evaluation:
+              - Overview: reference/library/evaluation/index.md
+              - Getting Started: reference/library/evaluation/getting-started.md
+              - Criteria: reference/library/evaluation/criteria.md
+              - Data Models: reference/library/evaluation/data-models.md
+              - Pytest Integration: reference/library/evaluation/pytest-integration.md
+              - Reporters: reference/library/evaluation/reporters.md
+              - User Simulation: reference/library/evaluation/user-simulation.md
+              - Advanced: reference/library/evaluation/advanced.md
+
+      - CLI Tool:
+          - Overview: reference/cli/index.md
+          - Command Reference: reference/cli/cli.md
+          - Configuration: reference/cli/configuration.md
+          - Authentication: reference/cli/authentication.md
+          - Deployment: reference/cli/deployment.md
+          - ID Generation: reference/cli/id-generation.md
+          - Thread Name Generator: reference/cli/thread-name-generator.md
+
+      - TypeScript Client:
+          - Overview: reference/client/index.md
+          - Quick Start: reference/client/quick_start.md
+          - API Reference: reference/client/api-reference.md
+          - Invoke Usage: reference/client/invoke-usage.md
+          - Streaming Quick Ref: reference/client/stream-quick-ref.md
+          - Streaming Usage: reference/client/stream-usage.md
+          - Thread API: reference/client/thread-api.md
+          - Memory API: reference/client/memory-api.md
+          - State Schema: reference/client/state-schema-guide.md
+          - Tools Guide: reference/client/tools-guide.md
+          - Error Handling: reference/client/error-handling.md
+          - TypeScript Types: reference/client/typescript-types.md
+          - React Integration: reference/client/react-integration.md
+          - React Examples: reference/client/react-examples.md
+          - Troubleshooting: reference/client/troubleshooting.md
 
   - Tutorials:
       - Overview: Tutorial/index.md
       - Beginner:
-          - Overview: tutorials/beginner/index.md
-          - 1. Your First Agent: tutorials/beginner/01-your-first-agent.md
-          - 2. Adding Tools: tutorials/beginner/02-adding-tools.md
-          - 3. Chat with Memory: tutorials/beginner/03-chat-with-memory.md
+          - Overview: Tutorial/beginner/index.md
+          - 1. Your First Agent: Tutorial/beginner/01-your-first-agent.md
+          - 2. Adding Tools: Tutorial/beginner/02-adding-tools.md
+          - 3. Chat with Memory: Tutorial/beginner/03-chat-with-memory.md
       - Advanced Topics:
           - Agent Class: Tutorial/agent-class.md
           - Embedding: Tutorial/embedding.md

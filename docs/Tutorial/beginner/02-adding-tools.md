@@ -47,16 +47,14 @@ Let's start with a simple calculator tool:
 Create `agent_with_tools.py`:
 
 ```python
-import os
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, END, ToolNode
+from agentflow.graph import StateGraph, END, ToolNode, Agent
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
 
 load_dotenv()
 
 
-# Define a tool - it's just a Python function!
+# Define tools - they're just Python functions!
 def calculate(expression: str) -> str:
     """
     Perform a mathematical calculation.
@@ -74,7 +72,6 @@ def calculate(expression: str) -> str:
         return f"Error calculating: {str(e)}"
 
 
-# Let's add another tool
 def get_current_time() -> str:
     """
     Get the current date and time.
@@ -136,7 +133,7 @@ This is where it gets interesting. We need to:
 
 ```python
 # Create workflow
-workflow = StateGraph(state_schema=AgentState)
+workflow = StateGraph()
 
 # Add nodes
 workflow.add_node("AGENT", agent)
@@ -145,17 +142,23 @@ workflow.add_node("TOOLS", tool_node)
 
 # Routing function - decides what to do next
 def should_use_tools(state: AgentState) -> str:
-    """
-    Check if the agent wants to use tools or if we're done.
-    """
+    """Check if the agent wants to use tools or if we're done."""
     if not state.context or len(state.context) == 0:
         return END
 
     last_message = state.context[-1]
 
     # If the agent called tools, run them
-    if hasattr(last_message, "tools_calls") and last_message.tools_calls:
+    if (
+        hasattr(last_message, "tools_calls")
+        and last_message.tools_calls
+        and last_message.role == "assistant"
+    ):
         return "TOOLS"
+
+    # If last message is a tool result, go back to agent
+    if last_message.role == "tool":
+        return "AGENT"
 
     # Otherwise, we're done
     return END
@@ -398,12 +401,10 @@ def get_data() -> dict:
 ## Complete Code
 
 ```python
-import os
 import requests
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, END, ToolNode
+from agentflow.graph import StateGraph, END, ToolNode, Agent
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
 
 load_dotenv()
 
@@ -456,7 +457,7 @@ agent = Agent(
 )
 
 # Build workflow
-workflow = StateGraph(state_schema=AgentState)
+workflow = StateGraph()
 workflow.add_node("AGENT", agent)
 workflow.add_node("TOOLS", tool_node)
 
@@ -465,8 +466,14 @@ def should_use_tools(state: AgentState) -> str:
     if not state.context or len(state.context) == 0:
         return END
     last_message = state.context[-1]
-    if hasattr(last_message, "tools_calls") and last_message.tools_calls:
+    if (
+        hasattr(last_message, "tools_calls")
+        and last_message.tools_calls
+        and last_message.role == "assistant"
+    ):
         return "TOOLS"
+    if last_message.role == "tool":
+        return "AGENT"
     return END
 
 
