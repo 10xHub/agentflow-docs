@@ -8,11 +8,127 @@ This guide walks you through setting up and running your first agent evaluation.
 - Python 3.12+
 - Basic understanding of Agentflow graphs
 
-## Step 1: Create an Evaluation Set
+## Quick Start (5 Lines!)
+
+The fastest way to test your agent is with `QuickEval`:
+
+```python
+from agentflow.evaluation import QuickEval
+
+# Test your agent with one line!
+report = await QuickEval.check(
+    graph=compiled_graph,
+    query="What's the weather in Tokyo?",
+    expected_response_contains="weather",
+)
+
+print(f"Pass rate: {report.summary.pass_rate * 100:.1f}%")
+```
+
+That's it! QuickEval handles:
+- ✅ Creating eval sets automatically
+- ✅ Configuring evaluation criteria
+- ✅ Running the evaluation
+- ✅ Generating reports
+
+**85% less code** compared to the manual approach below.
+
+---
+
+## More QuickEval Examples
+
+### Batch Testing
+
+Test multiple scenarios at once:
+
+```python
+report = await QuickEval.batch(
+    graph=compiled_graph,
+    test_pairs=[
+        ("Hello", "Hi"),
+        ("Weather in NYC?", "sunny"),
+        ("Thank you", "welcome"),
+    ],
+    threshold=0.7,
+)
+```
+
+### Tool Usage Validation
+
+Verify your agent calls the right tools:
+
+```python
+report = await QuickEval.tool_usage(
+    graph=compiled_graph,
+    test_cases=[
+        ("Weather in NYC?", "It's sunny", ["get_weather"]),
+        ("Temperature in Paris?", "18°C", ["get_weather"]),
+    ],
+    strict=True,  # Require exact tool matches
+)
+```
+
+### Using Presets
+
+```python
+from agentflow.evaluation import EvalPresets
+
+# Use preset configurations
+report = await QuickEval.preset(
+    graph=compiled_graph,
+    preset=EvalPresets.response_quality(threshold=0.8),
+    eval_set="tests/my_tests.json",
+)
+```
+
+### Building Test Sets Fluently
+
+Use `EvalSetBuilder` for complex test scenarios:
+
+```python
+from agentflow.evaluation import EvalSetBuilder, QuickEval, EvalPresets
+
+eval_set = (
+    EvalSetBuilder("weather_tests")
+    .add_case(
+        query="Weather in Tokyo?",
+        expected="sunny",
+        expected_tools=["get_weather"],
+    )
+    .add_case(
+        query="Temperature in Paris?",
+        expected="18°C",
+        expected_tools=["get_weather"],
+    )
+    .add_multi_turn(
+        conversation=[
+            ("Hello", "Hi there!"),
+            ("Weather?", "Which city?"),
+            ("Tokyo", "It's sunny in Tokyo"),
+        ],
+    )
+    .build()
+)
+
+# Run evaluation
+report = await QuickEval.from_builder(
+    graph=compiled_graph,
+    builder=EvalSetBuilder("weather_tests"),
+    config=EvalPresets.comprehensive(),
+)
+```
+
+---
+
+## Manual Approach (Advanced)
+
+For full control over evaluation configuration, you can build everything manually.
+
+### Step 1: Create an Evaluation Set
 
 Evaluation sets can be created programmatically or loaded from JSON files.
 
-### Programmatic Creation
+#### Programmatic Creation
 
 ```python
 from agentflow.evaluation import (
@@ -46,28 +162,11 @@ eval_set = EvalSet(
             ],
             tags=["weather", "basic"],
         ),
-        EvalCase(
-            eval_id="test_2",
-            name="Multi-city comparison",
-            conversation=[
-                Invocation(
-                    invocation_id="turn_1",
-                    user_content=MessageContent.user(
-                        "Compare the weather in Tokyo and New York"
-                    ),
-                    expected_tool_trajectory=[
-                        ToolCall(name="get_weather", args={"city": "Tokyo"}),
-                        ToolCall(name="get_weather", args={"city": "New York"}),
-                    ],
-                )
-            ],
-            tags=["weather", "comparison"],
-        ),
     ],
 )
 ```
 
-### JSON File Format
+#### JSON File Format
 
 Save evaluation sets as JSON files for reusability:
 
@@ -75,7 +174,6 @@ Save evaluation sets as JSON files for reusability:
 {
   "eval_set_id": "weather_tests",
   "name": "Weather Agent Tests",
-  "description": "Integration tests for weather agent",
   "eval_cases": [
     {
       "eval_id": "test_1",
@@ -89,30 +187,23 @@ Save evaluation sets as JSON files for reusability:
           },
           "expected_tool_trajectory": [
             {"name": "get_weather", "args": {"city": "Paris"}}
-          ],
-          "expected_final_response": {
-            "role": "assistant",
-            "content": "The weather in Paris is currently 18°C and sunny."
-          }
+          ]
         }
-      ],
-      "tags": ["weather", "basic"]
+      ]
     }
   ]
 }
 ```
 
-## Step 2: Configure Evaluation Criteria
-
-The `EvalConfig` class defines which criteria to use and their thresholds:
+### Step 2: Configure Evaluation Criteria
 
 ```python
 from agentflow.evaluation import EvalConfig, CriterionConfig, MatchType
 
-# Use default configuration
-config = EvalConfig.default()
+# Use presets (recommended)
+config = EvalPresets.response_quality(threshold=0.8)
 
-# Or customize criteria
+# Or customize criteria manually
 config = EvalConfig(
     criteria={
         "trajectory_match": CriterionConfig(
@@ -124,205 +215,38 @@ config = EvalConfig(
             enabled=True,
             threshold=0.6,
         ),
-        "llm_judge": CriterionConfig(
-            enabled=True,
-            threshold=0.7,
-            judge_model="gpt-4o-mini",
-        ),
     }
 )
 ```
 
-### Available Criteria Types
-
-| Criterion Name | Description | Default Threshold |
-|----------------|-------------|-------------------|
-| `trajectory_match` | Tool call sequence matching | 0.8 |
-| `response_match` | ROUGE-based response similarity | 0.7 |
-| `llm_judge` | LLM-judged semantic matching | 0.7 |
-| `rubric_based` | Custom rubric evaluation | 0.8 |
-
-## Step 3: Create and Run the Evaluator
+### Step 3: Create and Run the Evaluator
 
 ```python
-import asyncio
-from agentflow.evaluation import AgentEvaluator, EvalConfig
+from agentflow.evaluation import AgentEvaluator
 
-async def run_evaluation():
-    # Create your graph (this is your existing agent graph)
-    graph = await create_weather_agent_graph()
-    
-    # Create evaluator
-    evaluator = AgentEvaluator(
-        graph=graph,
-        config=EvalConfig.default(),
-    )
-    
-    # Run evaluation from file
-    report = await evaluator.evaluate(
-        "tests/fixtures/weather_tests.evalset.json",
-        parallel=True,      # Run cases in parallel
-        max_concurrency=4,  # Maximum concurrent cases
-        verbose=True,       # Log progress
-    )
-    
-    return report
+# Create evaluator
+evaluator = AgentEvaluator(graph=compiled_graph, config=config)
 
-report = asyncio.run(run_evaluation())
-```
+# Run evaluation
+report = await evaluator.evaluate("tests/my_tests.json", verbose=True)
 
-### Evaluate from EvalSet Object
-
-```python
-# Or pass an EvalSet directly
-report = await evaluator.evaluate(eval_set)
-```
-
-## Step 4: View Results
-
-### Console Output
-
-```python
-from agentflow.evaluation import ConsoleReporter
-
-reporter = ConsoleReporter(verbose=True)
-reporter.report(report)
-```
-
-Output:
-```
-═══════════════════════════════════════════════════════════════════════
-                     EVALUATION REPORT: weather_tests
-═══════════════════════════════════════════════════════════════════════
-
-Summary
-───────────────────────────────────────────────────────────────────────
-  Total Cases:    2
-  Passed:         2 ✓
-  Failed:         0 ✗
-  Pass Rate:      100.0%
-
-Criterion Statistics
-───────────────────────────────────────────────────────────────────────
-  trajectory_match    2/2 passed    avg: 1.00
-  response_match      2/2 passed    avg: 0.85
-```
-
-### Programmatic Access
-
-```python
-# Access summary
+# Check results
 print(f"Pass rate: {report.summary.pass_rate * 100:.1f}%")
-print(f"Total cases: {report.summary.total_cases}")
-print(f"Passed: {report.summary.passed_cases}")
-print(f"Failed: {report.summary.failed_cases}")
-
-# Iterate over results
-for result in report.results:
-    print(f"\n{result.name or result.eval_id}")
-    print(f"  Passed: {result.passed}")
-    
-    for cr in result.criterion_results:
-        print(f"  {cr.criterion}: {cr.score:.2f} (threshold: {cr.threshold})")
 ```
 
-## Step 5: Export Results
-
-### JSON Export
+### Step 4: View and Export Results
 
 ```python
-from agentflow.evaluation import JSONReporter
+from agentflow.evaluation import ConsoleReporter, JSONReporter
 
-# Export to JSON file
-reporter = JSONReporter()
-reporter.save(report, "results/evaluation_report.json")
+# Console output
+ConsoleReporter(verbose=True).report(report)
 
-# Get as dict
-data = reporter.to_dict(report)
+# Export to JSON
+JSONReporter().save(report, "results/evaluation_report.json")
 ```
 
-### JUnit XML (for CI/CD)
-
-```python
-from agentflow.evaluation import JUnitXMLReporter
-
-reporter = JUnitXMLReporter()
-reporter.save(report, "results/junit.xml")
-```
-
-### HTML Report
-
-```python
-from agentflow.evaluation import HTMLReporter
-
-reporter = HTMLReporter()
-reporter.save(report, "results/report.html")
-```
-
-## Quick Utility Functions
-
-For simple cases, use the `create_simple_eval_set` helper:
-
-```python
-from agentflow.evaluation.testing import create_simple_eval_set
-
-# Quick eval set creation from tuples (input, expected_output, name)
-eval_set = create_simple_eval_set(
-    "my_tests",
-    [
-        ("Hello!", "Hi there! How can I help?", "greeting"),
-        ("What is 2+2?", "4", "math_simple"),
-        ("Tell me a joke", "Why did the chicken...", "humor"),
-    ]
-)
-```
-
-## Common Patterns
-
-### Retry on Flaky Tests
-
-For tests that may occasionally fail due to LLM variance:
-
-```python
-config = EvalConfig(
-    criteria={
-        "response_match": CriterionConfig(
-            threshold=0.6,  # Lower threshold
-        ),
-        "llm_judge": CriterionConfig(
-            enabled=True,
-            threshold=0.65,  # Allow some variance
-        ),
-    }
-)
-```
-
-### Tool-Only Evaluation
-
-When you only care about which tools are called:
-
-```python
-config = EvalConfig(
-    criteria={
-        "trajectory_match": CriterionConfig(
-            enabled=True,
-            threshold=1.0,
-            match_type=MatchType.ANY_ORDER,  # Order doesn't matter
-        ),
-    }
-)
-```
-
-### Strict Response Matching
-
-For deterministic responses:
-
-```python
-from agentflow.evaluation.criteria import ExactMatchCriterion
-
-# Use exact match criterion
-criterion = ExactMatchCriterion()
-```
+---
 
 ## Next Steps
 

@@ -157,6 +157,9 @@ nav:
               - Reporters: reference/library/evaluation/reporters.md
               - User Simulation: reference/library/evaluation/user-simulation.md
               - Advanced: reference/library/evaluation/advanced.md
+          - Testing:
+              - Overview: reference/library/testing/index.md
+              - Quickstart: reference/library/testing/quickstart.md
 
       - CLI Tool:
           - Overview: reference/cli/index.md
