@@ -150,6 +150,13 @@ All with the same simple pattern.
 
 ---
 
+## 🙏 Getting Help
+
+- 📖 [Documentation](./getting-started/index.md)
+- 🐛 [Report Issues](https://github.com/10xhub/agentflow/issues)
+- 💬 [Ask Questions](https://github.com/10xhub/agentflow/discussions)
+- 🔗 [GitHub](https://github.com/10xhub/agentflow)
+
 ---
 
 **Ready to build?** [Start with Getting Started →](./getting-started/index.md)
