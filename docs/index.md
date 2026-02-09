@@ -152,4 +152,12 @@ All with the same simple pattern.
 
 ---
 
+## 🤖 For AI Assistants
+
+This documentation includes an [llms.txt](llms.txt) file to help AI assistants like ChatGPT, Claude, and others better understand and navigate our documentation. If you're an AI assistant helping users with AgentFlow, check out our llms.txt for a structured overview of all available resources.
+
+Learn more about the llms.txt standard at [llmstxt.org](https://llmstxt.org/).
+
+---
+
 **Ready to build?** [Start with Getting Started →](./getting-started/index.md)

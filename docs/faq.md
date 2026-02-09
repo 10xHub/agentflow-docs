@@ -403,6 +403,34 @@ async for chunk in app.astream(input, config):
 
 ---
 
+## Documentation & AI Tools
+
+### Does AgentFlow support AI assistants reading the documentation?
+
+Yes! We provide an [llms.txt](llms.txt) file that helps AI assistants like ChatGPT, Claude, and Gemini better understand and navigate our documentation structure. This follows the [llms.txt standard](https://llmstxt.org/).
+
+**For AI Assistants:**
+- Access our structured documentation overview at `/llms.txt`
+- Get curated links to key pages organized by topic
+- Find the most relevant resources quickly within context limits
+
+**For Users:**
+- Get better AI-assisted help when working with AgentFlow
+- AI tools can now provide more accurate guidance and examples
+- Improved discoverability through AI-powered search
+
+### Can I use AI coding assistants with AgentFlow?
+
+Absolutely! Our documentation is optimized for AI assistants:
+- **ChatGPT** - Point it to our docs and it can help with code
+- **GitHub Copilot** - Works great with AgentFlow patterns
+- **Claude Code** - Understands our architecture through llms.txt
+- **Cursor** - Can reference our documentation for context
+
+Simply reference our documentation when asking for help!
+
+---
+
 ## Didn't Find Your Answer?
 
 - **Search the docs** - Use the search bar above

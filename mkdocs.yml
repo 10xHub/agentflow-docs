@@ -67,6 +67,14 @@ plugins:
 #           remove_comments: true
 #       cache_safe: true
 
+# Extra files to include in the site
+# llms.txt: AI-friendly context file for LLM assistants (https://llmstxt.org/)
+extra:
+  generator: false  # Hide "Made with Material for MkDocs" footer
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/10xscale/agentflow
+
 markdown_extensions:
   - abbr
   - admonition

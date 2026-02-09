@@ -567,6 +567,17 @@ result.assert_contains("sunny").assert_not_contains("error")
 - [Best practices guide](https://www.rankability.com/guides/llms-txt-best-practices/)
 - [Mintlify llms.txt docs](https://www.mintlify.com/docs/ai/llmstxt)
 
+**Integration into Documentation:**
+- Added `extra` section in `mkdocs.yml` with comment about llms.txt
+- Added "For AI Assistants" section in `index.md` with link to llms.txt
+- Added "Documentation & AI Tools" section in `faq.md` explaining llms.txt usage
+- File automatically served at `/llms.txt` when docs site is built
+
+**How to Access:**
+- **Direct URL**: `https://docs.agentflow.ai/llms.txt`
+- **From Home**: Mentioned in "For AI Assistants" section
+- **From FAQ**: New section about AI tools and llms.txt
+
 ---
 
 **Last Updated:** 2026-02-09
