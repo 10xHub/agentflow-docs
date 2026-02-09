@@ -1,0 +1,2443 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AgentFlow is a Python framework for building, orchestrating, and managing multi-agent systems. Designed for flexibility and scalability, AgentFlow enables developers to create intelligent agents that collaborate, communicate, and solve complex tasks together.">
+      
+      
+        <meta name="author" content="AgentFlow Contributors">
+      
+      
+        <link rel="canonical" href="https://docs.agentflow.ai/reference/library/">
+      
+      
+        <link rel="prev" href="../../getting-started/core-concepts/">
+      
+      
+        <link rel="next" href="graph/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Overview - AgentFlow Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="deep-orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agentflow-python-library" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AgentFlow Docs" class="md-header__button md-logo" aria-label="AgentFlow Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentFlow Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../Tutorial/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../how-to/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  How-To Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AgentFlow Docs" class="md-nav__button md-logo" aria-label="AgentFlow Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentFlow Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../getting-started/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    Python Library
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_3_1" id="__nav_3_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            Python Library
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="graph/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Graph (Workflow)
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="context/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Context & State
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="Command/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Core Components
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="dependency-injection/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Advanced Topics
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="evaluation/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Evaluation
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="testing/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Testing
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../cli/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    CLI Tool
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Tool
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Command Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/id-generation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ID Generation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/thread-name-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Thread Name Generator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../client/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    TypeScript Client
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            TypeScript Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quick Start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/invoke-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Invoke Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/stream-quick-ref/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Streaming Quick Ref
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/stream-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Streaming Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/thread-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Thread API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/memory-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Memory API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/state-schema-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    State Schema
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/tools-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tools Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/error-handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error Handling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/typescript-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    TypeScript Types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/react-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    React Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/react-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    React Examples
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../client/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../Tutorial/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../../how-to/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    How-To Guides
+    
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-get" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✨ What you get
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="✨ What you get">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-orchestration-capabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core orchestration capabilities
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tool-integration-and-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool integration and execution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-management-and-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      State management and persistence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#real-time-interaction-and-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Real-time interaction and monitoring
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#developer-experience" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developer experience
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Quick start
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚀 Quick start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional extras
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-your-llm-provider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure your LLM provider
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-example-react-agent-with-tool-calling" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Minimal example: React agent with tool calling
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧪 Minimal example: React agent with tool calling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-use-the-agent-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why use the Agent class?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#understanding-the-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Understanding the flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learn-the-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      📚 Learn the concepts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📚 Learn the concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graph-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Graph architecture
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-and-context-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      State and context management
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-and-integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tools and integrations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#control-flow-and-orchestration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Control flow and orchestration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Production deployment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hands-on-tutorials" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hands-on tutorials
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      🌐 Ecosystem
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🌐 Ecosystem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agentflow-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agentflow CLI
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentflow-typescript-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      AgentFlow TypeScript Client
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔗 Useful links
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="agentflow-python-library">Agentflow (Python library)<a class="headerlink" href="#agentflow-python-library" title="Anchor link to this section for reference">&para;</a></h1>
+<p><img alt="PyPI" src="https://img.shields.io/pypi/v/10xscale-agentflow?color=blue" />
+<img alt="License" src="https://img.shields.io/github/license/10xhub/agentflow" />
+<img alt="Python" src="https://img.shields.io/pypi/pyversions/10xscale-agentflow" />
+<a href="#"><img alt="Coverage" src="https://img.shields.io/badge/coverage-75%25-yellow.svg" /></a></p>
+<p>Agentflow is a lightweight yet powerful Python framework designed for building intelligent agents and orchestrating sophisticated multi-agent workflows. Unlike frameworks that lock you into a specific LLM provider, Agentflow is provider-agnostic: bring your favorite LLM SDK—whether it's LiteLLM, OpenAI, Google Gemini, Anthropic Claude, or any other provider—and Agentflow handles everything else. The framework manages orchestration, state persistence, tool integration, control flow, and streaming, letting you focus on building agent logic rather than plumbing.</p>
+<hr />
+<h2 id="what-you-get">✨ What you get<a class="headerlink" href="#what-you-get" title="Anchor link to this section for reference">&para;</a></h2>
+<p>Agentflow delivers a comprehensive set of features that cover the entire agent lifecycle, from development to production deployment:</p>
+<h3 id="core-orchestration-capabilities">Core orchestration capabilities<a class="headerlink" href="#core-orchestration-capabilities" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li>
+<p><strong>LLM-agnostic architecture</strong> — Works seamlessly with any language model provider through a flexible adapter pattern. Use LiteLLM for unified access to 100+ models, or integrate directly with native SDKs. Your agent logic remains portable across providers.</p>
+</li>
+<li>
+<p><strong>StateGraph-based orchestration</strong> — Define your agent workflows as directed graphs with nodes (processing units) and edges (transitions). Support for conditional routing, dynamic branching, and cyclical flows enables sophisticated agent behaviors.</p>
+</li>
+<li>
+<p><strong>Structured responses</strong> — Parse and validate LLM outputs with built-in support for thinking steps, tool calls, and token usage tracking. Leverage Pydantic models for type-safe state management.</p>
+</li>
+</ul>
+<h3 id="tool-integration-and-execution">Tool integration and execution<a class="headerlink" href="#tool-integration-and-execution" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Multi-framework tool support</strong> — Integrate tools from Model Context Protocol (MCP) servers, Composio, LangChain, or native Python functions. Each ecosystem is treated as a first-class citizen with dedicated adapters.</p>
+</li>
+<li>
+<p><strong>Parallel execution</strong> — Automatically execute independent tool calls in parallel to reduce latency. The framework handles orchestration, error handling, and result aggregation.</p>
+</li>
+<li>
+<p><strong>Dependency injection</strong> — Clean separation of concerns through DI patterns. Tools and nodes receive state, configuration, and dependencies automatically, making code testable and maintainable.</p>
+</li>
+</ul>
+<h3 id="state-management-and-persistence">State management and persistence<a class="headerlink" href="#state-management-and-persistence" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Flexible checkpointing</strong> — Choose between InMemory checkpointer for development or production-grade PostgreSQL+Redis checkpointer for high-performance persistence. Redis handles hot path writes while PostgreSQL provides durable storage.</p>
+</li>
+<li>
+<p><strong>Conversation threading</strong> — Maintain multiple independent conversation threads with automatic state isolation. Each thread can be paused, resumed, or branched without affecting others.</p>
+</li>
+<li>
+<p><strong>Incremental state updates</strong> — Only modified state is persisted, reducing storage overhead and improving performance. You control what gets saved and when.</p>
+</li>
+</ul>
+<h3 id="real-time-interaction-and-monitoring">Real-time interaction and monitoring<a class="headerlink" href="#real-time-interaction-and-monitoring" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Streaming responses</strong> — Stream delta updates to clients for real-time user experiences. Support for partial messages, thinking steps, and progressive tool results.</p>
+</li>
+<li>
+<p><strong>Human-in-the-loop workflows</strong> — Pause execution at any point for human review or approval. Resume with modifications, rollback to previous states, or branch into alternative paths.</p>
+</li>
+<li>
+<p><strong>Production observability</strong> — Built-in publishers route events to Console (development), Redis, Kafka, or RabbitMQ (production). Comprehensive metrics track token usage, latency, errors, and custom events.</p>
+</li>
+</ul>
+<h3 id="developer-experience">Developer experience<a class="headerlink" href="#developer-experience" title="Anchor link to this section for reference">&para;</a></h3>
+<ul>
+<li>
+<p><strong>Type safety</strong> — Full type hints throughout the codebase with mypy validation. Pydantic models ensure runtime type checking for state and configurations.</p>
+</li>
+<li>
+<p><strong>Async-first design</strong> — Native async/await support for efficient I/O operations. Sync wrappers provided for compatibility with synchronous codebases.</p>
+</li>
+<li>
+<p><strong>Extensive documentation</strong> — Comprehensive guides, API references, and runnable examples help you get started quickly and troubleshoot effectively.</p>
+</li>
+</ul>
+<hr />
+<h2 id="quick-start">🚀 Quick start<a class="headerlink" href="#quick-start" title="Anchor link to this section for reference">&para;</a></h2>
+<h3 id="installation">Installation<a class="headerlink" href="#installation" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Install Agentflow using uv (recommended for faster dependency resolution):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow
+</span></code></pre></div>
+<p>Or use traditional pip:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow
+</span></code></pre></div>
+<h3 id="optional-extras">Optional extras<a class="headerlink" href="#optional-extras" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Agentflow supports optional dependencies for specific functionality. Install only what you need to keep your environment lean:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Production-grade checkpointing with PostgreSQL and Redis</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>pg_checkpoint<span class="o">]</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Tool integration frameworks</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>mcp<span class="o">]</span><span class="w">        </span><span class="c1"># Model Context Protocol servers</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>composio<span class="o">]</span><span class="w">   </span><span class="c1"># Composio tool ecosystem</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>langchain<span class="o">]</span><span class="w">  </span><span class="c1"># LangChain tools and chains</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Event publishers for production observability</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>redis<span class="o">]</span><span class="w">      </span><span class="c1"># Redis Streams publisher</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>kafka<span class="o">]</span><span class="w">      </span><span class="c1"># Apache Kafka publisher</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>pip<span class="w"> </span>install<span class="w"> </span>10xscale-agentflow<span class="o">[</span>rabbitmq<span class="o">]</span><span class="w">   </span><span class="c1"># RabbitMQ publisher</span>
+</span></code></pre></div>
+<h3 id="configure-your-llm-provider">Configure your LLM provider<a class="headerlink" href="#configure-your-llm-provider" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Set the API key for your chosen LLM provider. Here's an example using OpenAI:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span>sk-your-key-here
+</span></code></pre></div>
+<p>For other providers like Anthropic, Google, or Azure, consult their respective documentation for authentication methods.</p>
+<hr />
+<h2 id="minimal-example-react-agent-with-tool-calling">🧪 Minimal example: React agent with tool calling<a class="headerlink" href="#minimal-example-react-agent-with-tool-calling" title="Anchor link to this section for reference">&para;</a></h2>
+<p>This example demonstrates a React (Reason + Act) agent using the <strong>Agent class</strong>—a high-level abstraction that eliminates boilerplate while maintaining full flexibility. The agent decides when to use tools based on the user's query and iterates until it has enough information to provide a complete answer.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentflow.checkpointer</span><span class="w"> </span><span class="kn">import</span> <span class="n">InMemoryCheckpointer</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentflow.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">StateGraph</span><span class="p">,</span> <span class="n">ToolNode</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">agentflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Message</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Define a tool: a simple function that returns weather information</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_weather</span><span class="p">(</span><span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get current weather for a location.&quot;&quot;&quot;</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># In production, this would call a real weather API</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Weather in </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">: sunny, 72°F&quot;</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># Build the graph with Agent class</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">graph</span> <span class="o">=</span> <span class="n">StateGraph</span><span class="p">()</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="c1"># Add the Agent node - it handles message conversion, tool logic, and LLM calls automatically</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;MAIN&quot;</span><span class="p">,</span> <span class="n">Agent</span><span class="p">(</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gemini/gemini-2.5-flash&quot;</span><span class="p">,</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">system_prompt</span><span class="o">=</span><span class="p">[{</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>        <span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> 
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;You are a helpful assistant. Use the available tools when needed to provide accurate information.&quot;</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="p">}],</span>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="n">tool_node_name</span><span class="o">=</span><span class="s2">&quot;TOOL&quot;</span>  <span class="c1"># Reference the tool node by name</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="p">))</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="c1"># Add the ToolNode - manages tool execution</span>
+</span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="s2">&quot;TOOL&quot;</span><span class="p">,</span> <span class="n">ToolNode</span><span class="p">([</span><span class="n">get_weather</span><span class="p">]))</span>
+</span><span id="__span-4-28"><a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>
+</span><span id="__span-4-29"><a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="c1"># Set the entry point for execution</span>
+</span><span id="__span-4-30"><a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="n">graph</span><span class="o">.</span><span class="n">set_entry_point</span><span class="p">(</span><span class="s2">&quot;MAIN&quot;</span><span class="p">)</span>
+</span><span id="__span-4-31"><a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>
+</span><span id="__span-4-32"><a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="c1"># Compile the graph with checkpointing for state persistence</span>
+</span><span id="__span-4-33"><a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="n">app</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">checkpointer</span><span class="o">=</span><span class="n">InMemoryCheckpointer</span><span class="p">())</span>
+</span><span id="__span-4-34"><a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>
+</span><span id="__span-4-35"><a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="c1"># Execute the agent with a user query</span>
+</span><span id="__span-4-36"><a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="n">res</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+</span><span id="__span-4-37"><a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">Message</span><span class="o">.</span><span class="n">from_text</span><span class="p">(</span><span class="s2">&quot;What&#39;s the weather in Tokyo?&quot;</span><span class="p">)]},</span>
+</span><span id="__span-4-38"><a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>    <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;thread_id&quot;</span><span class="p">:</span> <span class="s2">&quot;demo&quot;</span><span class="p">}</span>
+</span><span id="__span-4-39"><a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="p">)</span>
+</span><span id="__span-4-40"><a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>
+</span><span id="__span-4-41"><a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="c1"># Print the conversation history</span>
+</span><span id="__span-4-42"><a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a><span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;messages&quot;</span><span class="p">]:</span>
+</span><span id="__span-4-43"><a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="why-use-the-agent-class">Why use the Agent class?<a class="headerlink" href="#why-use-the-agent-class" title="Anchor link to this section for reference">&para;</a></h3>
+<p>The <strong>Agent class</strong> simplifies agent development by handling common patterns automatically:</p>
+<ul>
+<li>✅ <strong>Automatic message conversion</strong> — Converts state context to LLM-compatible format</li>
+<li>✅ <strong>Intelligent tool handling</strong> — Includes tools when reasoning, excludes them for final responses</li>
+<li>✅ <strong>Built-in routing logic</strong> — Automatically routes between agent and tool nodes</li>
+<li>✅ <strong>Streaming support</strong> — Enable with <code>config={"is_stream": True}</code></li>
+<li>✅ <strong>Context trimming</strong> — Optional token limit management</li>
+<li>✅ <strong>Tool filtering</strong> — Filter tools by tags for fine-grained control</li>
+</ul>
+<p>Compare this 20-line example to the <a href="graph/agent-class/#comparison-agent-class-vs-custom-functions">manual approach</a> which requires 40+ lines of boilerplate for the same functionality.</p>
+<h3 id="understanding-the-flow">Understanding the flow<a class="headerlink" href="#understanding-the-flow" title="Anchor link to this section for reference">&para;</a></h3>
+<ol>
+<li><strong>User query enters the system</strong> — The graph starts at the MAIN node with the user's message.</li>
+<li><strong>Agent reasoning</strong> — The Agent class calls the LLM with the query and available tools, deciding to call <code>get_weather("Tokyo")</code>.</li>
+<li><strong>Tool execution</strong> — The Agent class automatically routes to TOOL node, which executes the weather function.</li>
+<li><strong>Agent synthesis</strong> — The Agent class routes back to MAIN, where the LLM formulates a final answer using the weather data.</li>
+<li><strong>Completion</strong> — The Agent class detects the final response and ends execution, returning the complete conversation.</li>
+</ol>
+<p>This pattern—reason, act, observe, synthesize—forms the foundation of React agents and can be extended to more complex multi-step workflows. The Agent class handles all the orchestration automatically, letting you focus on defining tools and system prompts.</p>
+<p><strong>Want more control?</strong> You can still use <a href="graph/nodes/">custom node functions</a> when you need non-standard LLM interactions or complex preprocessing logic.</p>
+<hr />
+<h2 id="learn-the-concepts">📚 Learn the concepts<a class="headerlink" href="#learn-the-concepts" title="Anchor link to this section for reference">&para;</a></h2>
+<p>Agentflow is built on a few core concepts that work together to enable sophisticated agent behaviors:</p>
+<h3 id="graph-architecture">Graph architecture<a class="headerlink" href="#graph-architecture" title="Anchor link to this section for reference">&para;</a></h3>
+<p>The heart of Agentflow is the StateGraph, which defines how data flows through your agent system. Learn about nodes (processing units), edges (transitions), conditional routing, and execution strategies:</p>
+<ul>
+<li><a href="graph/">Graph fundamentals</a> — Core concepts and patterns</li>
+<li><a href="graph/advanced/">Advanced graph patterns</a> — Cycles, branching, and complex flows</li>
+<li><a href="graph/execution/">Execution model</a> — How graphs process state updates</li>
+</ul>
+<h3 id="state-and-context-management">State and context management<a class="headerlink" href="#state-and-context-management" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Understanding how Agentflow manages state is crucial for building reliable agents. Explore message handling, state schemas, checkpointing strategies, and persistence:</p>
+<ul>
+<li><a href="context/">State architecture</a> — State schemas and updates</li>
+<li><a href="context/message/">Message context</a> — Conversation threading</li>
+<li><a href="context/checkpointer/">Checkpointers</a> — Persistence strategies</li>
+<li><a href="context/store/">Store abstractions</a> — Custom storage backends</li>
+</ul>
+<h3 id="tools-and-integrations">Tools and integrations<a class="headerlink" href="#tools-and-integrations" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Tools enable agents to interact with external systems. Learn how to integrate Python functions, MCP servers, Composio actions, and LangChain tools:</p>
+<ul>
+<li><a href="graph/tools/">Tool system overview</a> — Tool definition and execution</li>
+<li><a href="dependency-injection/">Dependency injection</a> — Clean tool architecture</li>
+<li><a href="response_converter/">Tool converters</a> — Adapting external tools</li>
+</ul>
+<h3 id="control-flow-and-orchestration">Control flow and orchestration<a class="headerlink" href="#control-flow-and-orchestration" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Master advanced patterns like human-in-the-loop, interrupt handling, conditional branching, and error recovery:</p>
+<ul>
+<li><a href="graph/control_flow/">Control flow patterns</a> — Routing and conditions</li>
+<li><a href="graph/human-in-the-loop/">Human-in-the-loop</a> — Pause and resume</li>
+<li><a href="ERROR_HANDLING_GUIDELINES/">Error handling</a> — Graceful degradation</li>
+</ul>
+<h3 id="production-deployment">Production deployment<a class="headerlink" href="#production-deployment" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Prepare your agents for production with monitoring, graceful shutdown, callbacks, and event publishing:</p>
+<ul>
+<li><a href="background-task-manager/">Background task manager</a> — Managing async background tasks</li>
+<li><a href="Callbacks/">Callbacks and observability</a> — Event tracking</li>
+<li><a href="publisher/">Publishers</a> — Event routing to external systems</li>
+<li><a href="graceful-shutdown/">Graceful shutdown</a> — Clean termination</li>
+<li><a href="async-patterns/">Async patterns</a> — Concurrency best practices</li>
+</ul>
+<h3 id="hands-on-tutorials">Hands-on tutorials<a class="headerlink" href="#hands-on-tutorials" title="Anchor link to this section for reference">&para;</a></h3>
+<p>Step-by-step guides walk you through building real-world agent systems:</p>
+<ul>
+<li><a href="../Tutorial/react/01-basic-react.md">React agent tutorial</a> — Build a reasoning agent from scratch</li>
+<li><a href="../Tutorial/rag.md">RAG implementation</a> — Retrieval-augmented generation</li>
+<li><a href="../Tutorial/long_term_memory.md">Long-term memory</a> — Cross-conversation learning</li>
+<li><a href="../Tutorial/input_validation.md">Input validation</a> — Secure agent inputs</li>
+<li><a href="../Tutorial/plan_act_reflect.md">Plan-Act-Reflect</a> — Advanced reasoning patterns</li>
+</ul>
+<hr />
+<h2 id="ecosystem">🌐 Ecosystem<a class="headerlink" href="#ecosystem" title="Anchor link to this section for reference">&para;</a></h2>
+<p>Agentflow is part of a complete stack for building, deploying, and consuming multi-agent systems:</p>
+<h3 id="agentflow-cli">Agentflow CLI<a class="headerlink" href="#agentflow-cli" title="Anchor link to this section for reference">&para;</a></h3>
+<p>A command-line tool for scaffolding projects, running local development servers, and deploying to production:</p>
+<ul>
+<li><strong>Project initialization</strong> — Generate boilerplate for new agent projects with best practices</li>
+<li><strong>Local development</strong> — Run agents locally with hot reload and debugging</li>
+<li><strong>Deployment automation</strong> — Generate Docker containers and Kubernetes manifests</li>
+<li><strong>Configuration management</strong> — Environment-specific settings and secrets handling</li>
+</ul>
+<p><a href="../cli/">Learn more about the CLI →</a></p>
+<h3 id="agentflow-typescript-client">AgentFlow TypeScript Client<a class="headerlink" href="#agentflow-typescript-client" title="Anchor link to this section for reference">&para;</a></h3>
+<p>A fully typed client library for consuming AgentFlow APIs from web and Node.js applications:</p>
+<ul>
+<li><strong>Typed API methods</strong> — IntelliSense and compile-time safety for all endpoints</li>
+<li><strong>Streaming support</strong> — Real-time updates with SSE and WebSocket fallbacks</li>
+<li><strong>Thread management</strong> — Create, list, update, and delete conversation threads</li>
+<li><strong>Memory operations</strong> — Search and manage agent memory across conversations</li>
+<li><strong>Error handling</strong> — Comprehensive error types with recovery strategies</li>
+</ul>
+<p><a href="../client/">Learn more about the TypeScript client →</a></p>
+<hr />
+<h2 id="useful-links">🔗 Useful links<a class="headerlink" href="#useful-links" title="Anchor link to this section for reference">&para;</a></h2>
+<ul>
+<li><strong>GitHub repository</strong>: https://github.com/10xhub/agentflow — Source code, issues, and contributions</li>
+<li><strong>PyPI package</strong>: https://pypi.org/project/10xscale-agentflow/ — Release notes and version history</li>
+<li><strong>Runnable examples</strong>: https://github.com/10xhub/agentflow/tree/main/examples — Copy-paste examples for common patterns</li>
+</ul>
+<p>Ready to build your first agent? Start with the <a href="graph/">Graph fundamentals</a> or dive into the <a href="../Tutorial/react/01-basic-react.md">React agent tutorial</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../getting-started/core-concepts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Core Concepts">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Core Concepts
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="graph/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Overview
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 AgentFlow Contributors
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["announce.dismiss", "content.code.annotate", "content.code.copy", "content.code.select", "content.footnote.tooltips", "content.tabs.link", "content.tooltips", "header.autohide", "navigation.tabs", "navigation.tabs.sticky", "navigation.expand", "navigation.footer", "navigation.indexes", "navigation.instant", "navigation.instant.prefetch", "navigation.instant.progress", "navigation.prune", "navigation.sections", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow", "navigation.pagination", "navigation.goto_top", "navigation.path"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
