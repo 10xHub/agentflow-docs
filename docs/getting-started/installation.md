@@ -154,7 +154,7 @@ Let's verify everything works end-to-end:
 # quick_test.py
 import os
 from dotenv import load_dotenv
-from agentflow.graph import StateGraph, Agent, END
+from agentflow.graph import StateGraph, Agent
 from agentflow.state import AgentState, Message
 
 # Load API key
@@ -162,7 +162,7 @@ load_dotenv()
 
 # Create agent
 agent = Agent(
-    model="gemini/gemini-2.5-flash",  # Works with google-genai library
+    model="google/gemini-2.5-flash",  # Works with google-genai library
     system_prompt="You are a helpful assistant"
 )
 
@@ -170,7 +170,6 @@ agent = Agent(
 graph = StateGraph()
 graph.add_node("agent", agent)
 graph.set_entry_point("agent")
-graph.add_edge("agent", END)
 
 # Compile and run
 app = graph.compile()
