@@ -18,7 +18,7 @@ from agentflow.state import AgentState, Message
 
 # Create agent
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are a helpful assistant."
 )
 
@@ -49,14 +49,14 @@ from agentflow.state import AgentState, Message
 
 ```python
 agent = Agent(
-    model="gemini/gemini-2.5-flash",  # Choose your LLM
+    model="google/gemini-2.5-flash",  # Choose your LLM
     system_prompt="You are a helpful assistant."  # Agent instructions
 )
 ```
 
 **Model options:**
 - `"openai/gpt-4o"` - OpenAI GPT-4
-- `"gemini/gemini-2.5-flash"` - Google Gemini
+- `"google/gemini-2.5-flash"` - Google Gemini
 - `"anthropic/claude-3-5-sonnet-20241022"` - Anthropic Claude
 
 ### 3. Build the Workflow
@@ -105,7 +105,7 @@ Hello! How can I help you today?
 
 ```python
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are an expert Python developer. Give concise code examples."
 )
 ```

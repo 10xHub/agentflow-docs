@@ -219,7 +219,7 @@ class Agent:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `model` | `str` | LiteLLM model identifier (e.g., "gpt-4", "gemini/gemini-2.5-flash") |
+| `model` | `str` | LiteLLM model identifier (e.g., "gpt-4", "google/gemini-2.5-flash") |
 | `system_prompt` | `list[dict]` | System messages with role and content |
 | `tools` | `list[Callable]` or `ToolNode` | Tools to make available (alternative to tool_node_name) |
 | `tool_node_name` | `str` | Name of ToolNode registered in the graph |

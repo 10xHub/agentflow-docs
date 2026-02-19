@@ -62,7 +62,7 @@ class MyNameGenerator(ThreadNameGenerator):
         
         # Call AI to generate a meaningful name
         response = await acompletion(
-            model="gemini/gemini-2.0-flash-exp",
+            model="google/gemini-2.0-flash-exp",
             messages=[{
                 "role": "user",
                 "content": f"""Please generate a short thread name (2-3 words, hyphen-separated) 
@@ -117,7 +117,7 @@ class MyNameGenerator(ThreadNameGenerator):
             return "new-conversation"
         
         response = await acompletion(
-            model="gemini/gemini-2.0-flash-exp",
+            model="google/gemini-2.0-flash-exp",
             messages=[{
                 "role": "user",
                 "content": f"""Generate a thread name for: {chr(10).join(messages[:2])}"""

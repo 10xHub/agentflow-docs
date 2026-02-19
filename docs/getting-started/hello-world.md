@@ -51,7 +51,7 @@ graph = StateGraph()
 graph.add_node(
     "MAIN",
     Agent(
-        model="gemini/gemini-2.5-flash",  # Works with google-genai library
+        model="google/gemini-2.5-flash",  # Works with google-genai library
         system_prompt=[{
             "role": "system",
             "content": "You are a helpful assistant. Help user queries effectively."
@@ -174,7 +174,7 @@ Content: The weather in New York is currently sunny with a temperature of 72°F!
 ```python
 # 1. Agent - The LLM wrapper
 Agent(
-    model="gemini/gemini-2.5-flash",  # Which LLM to use
+    model="google/gemini-2.5-flash",  # Which LLM to use
     system_prompt=[...],  # Agent's personality/instructions
     tool_node_name="TOOL"  # Connect to tools
 )
@@ -318,7 +318,7 @@ for msg in res["messages"]:
 
 ```python
 # Google Gemini (fast & free tier)
-Agent(model="gemini/gemini-2.5-flash", ...)
+Agent(model="google/gemini-2.5-flash", ...)
 
 # OpenAI GPT-4 (very capable)
 Agent(model="openai/gpt-4o", ...)
@@ -379,7 +379,7 @@ tool_node = ToolNode([get_weather, calculate, get_current_time])
 
 ```python
 Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{
         "role": "system",
         "content": """You are an expert Python developer.

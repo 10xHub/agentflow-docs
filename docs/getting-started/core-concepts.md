@@ -12,7 +12,7 @@ Everything in AgentFlow is built from a small set of composable primitives. Once
 from agentflow.graph import Agent
 
 agent = Agent(
-    model="gemini/gemini-2.5-flash",   # Which LLM to use
+    model="google/gemini-2.5-flash",   # Which LLM to use
     system_prompt="You are a helpful assistant.",
     tool_node_name="TOOL",             # Optional: name of the tool node
 )
@@ -29,7 +29,7 @@ The `Agent` class handles:
 
 | Provider | Example model string |
 |----------|---------------------|
-| Google Gemini | `"gemini/gemini-2.5-flash"` |
+| Google Gemini | `"google/gemini-2.5-flash"` |
 | OpenAI | `"openai/gpt-4o"` |
 | Anthropic | `"anthropic/claude-3-5-sonnet-20241022"` |
 
@@ -282,7 +282,7 @@ tool_node = ToolNode([get_weather])
 
 # 3. Create Agent connected to the tool node
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are a helpful assistant.",
     tool_node_name="TOOL",
 )

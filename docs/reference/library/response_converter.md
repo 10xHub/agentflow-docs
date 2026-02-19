@@ -45,7 +45,7 @@ from agentflow.adapters.llm.model_response_converter import ModelResponseConvert
 
 
 def main_agent(state):
-    response = completion(model="gemini/gemini-2.5-flash", messages=...)
+    response = completion(model="google/gemini-2.5-flash", messages=...)
     return ModelResponseConverter(response, converter="litellm")
 ```
 

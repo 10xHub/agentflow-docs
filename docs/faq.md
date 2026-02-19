@@ -19,7 +19,7 @@ No! AgentFlow is designed to be simple and intuitive. If you know basic Python, 
 ### Which LLM should I use?
 
 Start with whatever you have an API key for:
-- **Google Gemini** - Fast and cost-effective (`gemini/gemini-2.5-flash`)
+- **Google Gemini** - Fast and cost-effective (`google/gemini-2.5-flash`)
 - **OpenAI GPT-4** - Very capable (`openai/gpt-4o`)
 - **Anthropic Claude** - Excellent reasoning (`anthropic/claude-3-5-sonnet-20241022`)
 
@@ -223,7 +223,7 @@ Or use a `.env` file.
 
 Use the correct format: `"provider/model-name"`
 
-✅ Correct: `"openai/gpt-4o"`, `"gemini/gemini-2.5-flash"`
+✅ Correct: `"openai/gpt-4o"`, `"google/gemini-2.5-flash"`
 ❌ Wrong: `"gpt-4o"`, `"gemini-2.5-flash"`
 
 ### "Rate limit exceeded"

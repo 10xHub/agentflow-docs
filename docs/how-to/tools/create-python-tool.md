@@ -29,7 +29,7 @@ tool_node = ToolNode([get_weather])
 
 # 3. Create agent connected to tools
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are a helpful assistant. Use tools when needed.",
     tool_node_name="TOOLS"  # Connect to tools
 )
@@ -103,7 +103,7 @@ tool_node = ToolNode([get_weather, calculate, search_web])
 
 ```python
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are helpful. Use tools when needed.",
     tool_node_name="TOOLS"  # <-- This is the connection
 )
@@ -200,7 +200,7 @@ tool_node = ToolNode([get_real_weather, calculate])
 
 # Create agent
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="""You are a helpful assistant with tools.
 
 You can:

@@ -166,7 +166,7 @@ print("✅ AgentFlow installed!")
 # Minimal agent (no API call, just verifies imports)
 graph = StateGraph()
 graph.add_node("agent", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are a helpful assistant"
 ))
 print("✅ Agent created successfully!")
@@ -191,7 +191,7 @@ from agentflow.state import Message
 load_dotenv()
 
 agent = Agent(
-    model="gemini/gemini-2.5-flash",  # Change to your provider if needed
+    model="google/gemini-2.5-flash",  # Change to your provider if needed
     system_prompt="You are a helpful assistant"
 )
 
@@ -294,7 +294,7 @@ uv pip install 10xscale-agentflow google-genai
 
 | Provider | Install | API Key Variable | Model String |
 |----------|---------|-----------------|--------------|
-| **Google Gemini** | `pip install google-genai` | `GOOGLE_API_KEY` | `gemini/gemini-2.5-flash` |
+| **Google Gemini** | `pip install google-genai` | `GOOGLE_API_KEY` | `google/gemini-2.5-flash` |
 | **OpenAI** | `pip install openai` | `OPENAI_API_KEY` | `openai/gpt-4o` |
 | **Anthropic** | `pip install anthropic` | `ANTHROPIC_API_KEY` | `anthropic/claude-3-5-sonnet-20241022` |
 | **Multiple (LiteLLM)** | `pip install litellm` | set per provider | any provider string |

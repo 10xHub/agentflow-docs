@@ -220,7 +220,7 @@ from agentflow.utils.constants import END
 # Create agent
 graph = StateGraph()
 graph.add_node("agent", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant"}]
 ))
 graph.add_edge("agent", END)
@@ -388,7 +388,7 @@ Pure technical documentation:
 
 - **model** (str): LLM model identifier
   - Format: "provider/model-name"
-  - Examples: "gemini/gemini-2.5-flash", "openai/gpt-4"
+  - Examples: "google/gemini-2.5-flash", "openai/gpt-4"
   
 - **system_prompt** (List[Dict]): System instructions
   - Format: [{"role": "system", "content": "..."}]
@@ -404,7 +404,7 @@ AgentNode: Callable node for StateGraph
 
 ```python
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": "You are helpful"}]
 )
 ```

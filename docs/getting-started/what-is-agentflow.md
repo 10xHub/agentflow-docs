@@ -75,7 +75,7 @@ Use the official SDK for your LLM provider. AgentFlow doesn't force you through 
 
 ```python
 # Google Gemini
-Agent(model="gemini/gemini-2.5-flash", ...)
+Agent(model="google/gemini-2.5-flash", ...)
 
 # OpenAI GPT-4
 Agent(model="openai/gpt-4o", ...)
@@ -108,7 +108,7 @@ def search(query: str) -> str:
     return f"Results for: {query}"
 
 graph = StateGraph()
-graph.add_node("MAIN", Agent(model="gemini/gemini-2.5-flash", tool_node_name="TOOL"))
+graph.add_node("MAIN", Agent(model="google/gemini-2.5-flash", tool_node_name="TOOL"))
 graph.add_node("TOOL", ToolNode([search]))
 graph.set_entry_point("MAIN")
 

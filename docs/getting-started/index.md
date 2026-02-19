@@ -56,7 +56,7 @@ tool_node = ToolNode([get_weather])
 
 graph = StateGraph()
 graph.add_node("MAIN", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt="You are a helpful assistant.",
     tool_node_name="TOOL",
 ))

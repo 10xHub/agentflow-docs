@@ -124,7 +124,7 @@ graph = StateGraph()
 
 # Add the Agent node - it handles message conversion, tool logic, and LLM calls automatically
 graph.add_node("MAIN", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{
         "role": "system", 
         "content": "You are a helpful assistant. Use the available tools when needed to provide accurate information."
