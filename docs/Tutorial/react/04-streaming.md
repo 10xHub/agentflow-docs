@@ -42,8 +42,10 @@ User Input → Agent Reasoning → Tool Calls → LLM Streaming → Real-time UI
 ### 1. Streaming-Enabled Main Agent
 
 ```python
-from litellm import acompletion
+from openai import AsyncOpenAI
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
+
+client = AsyncOpenAI()
 
 
 async def streaming_main_agent(
@@ -70,22 +72,22 @@ async def streaming_main_agent(
     # Handle tool results vs regular conversation
     if state.context and state.context[-1].role == "tool":
         # Final response after tool execution - enable streaming
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             stream=is_stream  # Stream final responses
         )
     else:
         # Initial response with tools - avoid streaming for tool calls
         tools = await tool_node.all_tools()
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             tools=tools,
             stream=False  # Don't stream when tools are involved
         )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 ```
 
 ### 2. Stream-Compatible Tool Node
@@ -175,7 +177,7 @@ import asyncio
 import logging
 from typing import Any
 from dotenv import load_dotenv
-from litellm import acompletion
+from openai import AsyncOpenAI
 
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
 from agentflow.checkpointer import InMemoryCheckpointer
@@ -190,6 +192,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+client = AsyncOpenAI()
 
 
 # Streaming-compatible tools
@@ -291,8 +295,8 @@ async def streaming_main_agent(
     if state.context and len(state.context) > 0 and state.context[-1].role == "tool":
         # We have tool results - provide streaming final response
         logger.info("[AGENT] Generating final response with streaming")
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             stream=is_stream,  # Enable streaming for final responses
             temperature=0.7
@@ -303,15 +307,15 @@ async def streaming_main_agent(
         logger.info(f"[AGENT] Available tools: {len(tools)}")
 
         # Don't stream when making tool calls (causes parsing issues)
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             tools=tools,
             stream=False,  # Disable streaming when tools are involved
             temperature=0.7
         )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 
 
 def should_use_tools_stream(state: AgentState) -> str:
@@ -566,22 +570,22 @@ async def smart_streaming_agent(state: AgentState, config: dict) -> ModelRespons
     if state.context and state.context[-1].role == "tool":
         # RULE 2: Always stream final responses
         # Users want immediate feedback on results
-        response = await acompletion(
-            model="gpt-4",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
-            stream=is_stream and True  # Force streaming for final responses
+            stream=is_stream  # Stream final responses
         )
     else:
         # RULE 3: Disable streaming for tool decision making
         tools = await tool_node.all_tools()
-        response = await acompletion(
-            model="gpt-4",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             tools=tools,
             stream=False  # Never stream with tools
         )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 ```
 
 ### 2. Error Handling in Streams

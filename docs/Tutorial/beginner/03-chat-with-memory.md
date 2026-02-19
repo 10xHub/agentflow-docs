@@ -59,7 +59,7 @@ import os
 from dotenv import load_dotenv
 from agentflow.graph import StateGraph, END
 from agentflow.state import AgentState, Message
-from agentflow.graph.agent_class import Agent
+from agentflow.graph import Agent
 from agentflow.checkpointer import InMemoryCheckpointer  # <-- Import this
 
 load_dotenv()
@@ -79,7 +79,7 @@ Keep responses concise and friendly.
 
 # Create agent
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=system_prompt
 )
 
@@ -356,7 +356,7 @@ Keep responses concise and friendly.
 """
 
 # Create agent and workflow
-agent = Agent(model="gemini/gemini-2.5-flash", system_prompt=system_prompt)
+agent = Agent(model="google/gemini-2.5-flash", system_prompt=system_prompt)
 
 workflow = StateGraph()
 workflow.add_node("agent", agent)
@@ -483,7 +483,7 @@ chat("Remember me?", thread_id="chat1")  # Same thread ✅
 
 Awesome! Your agents now have memory!
 
-**Next tutorial:** [Multi-Agent Systems](04-multi-agent-handoff.md) →
+**Next:** [Multi-Agent Handoff](../handoff.md) →
 
 Learn how to build systems with multiple specialized agents working together.
 

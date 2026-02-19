@@ -70,7 +70,7 @@ def get_weather(location: str) -> str:
 graph = StateGraph()
 
 graph.add_node("MAIN", Agent(
-    model="gemini/gemini-2.5-flash",  # or "gpt-4", "claude-3-5-sonnet-20241022"
+    model="google/gemini-2.5-flash",  # or "openai/gpt-4o", "openai/gpt-4o-mini"
     system_prompt=[{
         "role": "system",
         "content": """You are a helpful weather assistant. 
@@ -169,7 +169,7 @@ The Agent class handles everything:
 
 ```python
 Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{
         "role": "system",
         "content": "You are a helpful weather assistant."
@@ -182,7 +182,7 @@ Agent(
 
 | Parameter | Purpose |
 |-----------|---------|
-| `model` | LiteLLM model identifier |
+| `model` | Model identifier (e.g., `"google/gemini-2.5-flash"`, `"openai/gpt-4o"`) |
 | `system_prompt` | System instructions for the agent |
 | `tool_node_name` | Name of the ToolNode in the graph |
 | `tools` | Alternative: pass tools directly |
@@ -258,7 +258,7 @@ def convert_temperature(temp: float, from_unit: str, to_unit: str) -> str:
 
 # Create agent with multiple tools
 graph.add_node("MAIN", Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{
         "role": "system",
         "content": """You are a comprehensive weather assistant.
@@ -296,7 +296,7 @@ def get_weather(location: str) -> str:
 # Build graph (same as before)
 graph = StateGraph()
 graph.add_node("MAIN", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": "You are a weather assistant."}],
     tool_node_name="TOOL"
 ))
@@ -366,7 +366,7 @@ def report_weather_issue(location: str, issue: str) -> str:
 
 # Regular user agent - only read tools
 user_agent = Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "Help users check weather."}],
     tools=[get_weather, get_forecast, report_weather_issue],
     tools_tags={"read"}  # Only get_weather and get_forecast
@@ -374,7 +374,7 @@ user_agent = Agent(
 
 # Admin agent - all tools
 admin_agent = Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "Full weather system access."}],
     tools=[get_weather, get_forecast, report_weather_issue]
     # No tags filter = all tools
@@ -389,7 +389,7 @@ admin_agent = Agent(
 
 ```python
 graph.add_node("MAIN", Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "You are helpful."}],
     tool_node_name="TOOL"
 ))
@@ -397,29 +397,38 @@ graph.add_node("MAIN", Agent(
 
 **Lines: 5** | **Time to write: 2 minutes**
 
-### Custom Functions (Traditional)
+### Custom Functions (Advanced)
 
 ```python
-async def main_agent(state: AgentState):
-    prompts = "You are helpful."
+from openai import AsyncOpenAI
+from agentflow.utils.converter import convert_messages
+from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
+
+client = AsyncOpenAI()
+
+async def main_agent(state: AgentState, config: dict):
     messages = convert_messages(
-        system_prompts=[{"role": "system", "content": prompts}],
+        system_prompts=[{"role": "system", "content": "You are helpful."}],
         state=state,
     )
-    
+
     if state.context and state.context[-1].role == "tool":
-        response = await acompletion(model="gpt-4", messages=messages)
+        response = await client.chat.completions.create(
+            model="gpt-4o", messages=messages
+        )
     else:
         tools = await tool_node.all_tools()
-        response = await acompletion(model="gpt-4", messages=messages, tools=tools)
-    
-    return ModelResponseConverter(response, converter="litellm")
+        response = await client.chat.completions.create(
+            model="gpt-4o", messages=messages, tools=tools
+        )
+
+    return ModelResponseConverter(response, converter="openai")
 
 
 graph.add_node("MAIN", main_agent)
 ```
 
-**Lines: 15** | **Time to write: 10 minutes**
+**Lines: 20** | For details, see [Custom ReAct (Advanced)](01-basic-react.md)
 
 ### When to Use Each
 
@@ -451,12 +460,12 @@ graph.add_edge("TOOL", "MAIN")  # Loop back!
 
 ❌ **Wrong:**
 ```python
-Agent(model="gpt-4", system_prompt=[...])  # No tools!
+Agent(model="openai/gpt-4o", system_prompt=[...])  # No tools!
 ```
 
 ✅ **Correct:**
 ```python
-Agent(model="gpt-4", system_prompt=[...], tool_node_name="TOOL")
+Agent(model="openai/gpt-4o", system_prompt=[...], tool_node_name="TOOL")
 ```
 
 ### 3. Infinite Loops

@@ -90,16 +90,16 @@ agent = Agent(
 
 ```python
 agent = Agent(
-    model="gemini/gemini-2.5-flash",  # Fast and cost-effective
+    model="google/gemini-2.5-flash",  # Fast and cost-effective
     system_prompt=system_prompt
 )
 ```
 
-### Option C: Using Anthropic Claude
+### Option C: OpenAI GPT-4o-mini (budget-friendly)
 
 ```python
 agent = Agent(
-    model="anthropic/claude-3-5-sonnet-20241022",  # Very capable
+    model="openai/gpt-4o-mini",  # Fast and cost-effective
     system_prompt=system_prompt
 )
 ```
@@ -202,11 +202,11 @@ The system prompt is like giving your agent a personality and job description. C
 The specialized version gives much better, on-brand responses!
 
 ### 2. **LLM Flexibility**
-You can switch between providers easily:
+Switch between providers by changing the model string:
 ```python
-model="openai/gpt-4o"        # OpenAI
-model="gemini/gemini-2.5-flash"  # Google
-model="anthropic/claude-3-5-sonnet-20241022"  # Anthropic
+model="openai/gpt-4o"            # OpenAI GPT-4o
+model="openai/gpt-4o-mini"       # OpenAI (cheaper)
+model="google/gemini-2.5-flash"  # Google Gemini
 ```
 
 All work with the same code!
@@ -276,7 +276,7 @@ Style:
 
 # Create agent (choose your LLM provider)
 agent = Agent(
-    model="gemini/gemini-2.5-flash",  # Change this to your preferred model
+    model="google/gemini-2.5-flash",  # Change this to your preferred model
     system_prompt=system_prompt
 )
 

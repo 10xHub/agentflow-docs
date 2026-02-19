@@ -281,9 +281,11 @@ tool_node = ToolNode([get_weather_with_di, get_forecast_with_di])
 ### Step 4: DI-Enabled Main Agent
 
 ```python
-from litellm import acompletion
+from openai import AsyncOpenAI
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
 from agentflow.utils.converter import convert_messages
+
+client = AsyncOpenAI()
 
 
 async def main_agent_with_di(
@@ -328,22 +330,22 @@ async def main_agent_with_di(
         # Check if we just received tool results
         if state.context and state.context[-1].role == "tool":
             # Final response after tool execution
-            response = await acompletion(
-                model="gemini/gemini-2.5-flash",
+            response = await client.chat.completions.create(
+                model="gpt-4o",
                 messages=messages,
                 timeout=api_timeout
             )
         else:
             # Regular response with tools available
             tools = await tool_node.all_tools()
-            response = await acompletion(
-                model="gemini/gemini-2.5-flash",
+            response = await client.chat.completions.create(
+                model="gpt-4o",
                 messages=messages,
                 tools=tools,
                 timeout=api_timeout
             )
 
-        return ModelResponseConverter(response, converter="litellm")
+        return ModelResponseConverter(response, converter="openai")
 
     except Exception as e:
         logger.error(f"Main agent error: {e}")

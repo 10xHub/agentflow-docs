@@ -338,11 +338,10 @@ result = await tool_node.invoke(...)
 Here's a complete example using the decorator with a React agent:
 
 ```python
-from agentflow.graph import StateGraph, ToolNode
-from agentflow.state import AgentState
-from agentflow.utils import tool, Message
-from agentflow.utils.constants import START, END
-from litellm import completion
+from agentflow.graph import Agent, StateGraph, ToolNode
+from agentflow.state import AgentState, Message
+from agentflow.utils import tool
+from agentflow.utils.constants import END
 
 # Define tools with decorator
 @tool(
@@ -362,12 +361,10 @@ def calculate(expression: str) -> float:
     name="search",
     description="Search for information on the web",
     tags=["web", "external"],
-    provider="google",
     capabilities=["rate_limited"]
 )
 def search(query: str) -> str:
     """Search the web for information."""
-    # Implementation here
     return f"Search results for: {query}"
 
 @tool(
@@ -380,39 +377,33 @@ def summarize(text: str, max_length: int = 100) -> str:
     return text[:max_length] + "..."
 
 # Create tool node
-tools = ToolNode([calculate, search, summarize])
-
-# Define agent node
-def agent_node(state: AgentState, config: dict) -> list[Message]:
-    """Agent reasoning node."""
-    response = completion(
-        model="gpt-4o-mini",
-        messages=[msg.model_dump() for msg in state.context],
-        tools=tools.all_tools_sync()
-    )
-    return [Message.from_response(response)]
+tool_node = ToolNode([calculate, search, summarize])
 
 # Define router
 def should_continue(state: AgentState) -> str:
     """Route based on last message."""
-    last_message = state.context[-1]
-    if last_message.role == "assistant" and last_message.tool_calls:
+    if state.context and state.context[-1].tools_calls:
         return "tools"
     return END
 
-# Build graph
+# Build graph using Agent class
 graph = StateGraph()
-graph.add_node("agent", agent_node)
-graph.add_node("tools", tools)
+graph.add_node("agent", Agent(
+    model="openai/gpt-4o-mini",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tool_node_name="tools"
+))
+graph.add_node("tools", tool_node)
 graph.set_entry_point("agent")
 graph.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
 graph.add_edge("tools", "agent")
 
 # Compile and use
 app = graph.compile()
-result = app.invoke({
-    "context": [Message.from_text("What is 15 * 234?", role="user")]
-})
+result = app.invoke(
+    {"messages": [Message.text_message("What is 15 * 234?")]},
+    config={"thread_id": "1"}
+)
 ```
 
 ---

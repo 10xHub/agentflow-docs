@@ -95,13 +95,13 @@ async def mcp_agent(state: AgentState, config: dict) -> ModelResponseConverter:
     # Get MCP tools dynamically
     tools = await tool_node.all_tools()
 
-    response = await acompletion(
-        model="gemini/gemini-2.0-flash",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         messages=messages,
         tools=tools
     )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 ```
 
 ## 🌤️ Complete Example: Weather Agent with MCP
@@ -210,7 +210,7 @@ def create_mcp_client() -> Client:
 # File: mcp_react_agent.py
 from typing import Any
 from dotenv import load_dotenv
-from litellm import acompletion
+from openai import AsyncOpenAI
 
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
 from agentflow.checkpointer import InMemoryCheckpointer
@@ -222,6 +222,8 @@ from agentflow.utils.converter import convert_messages
 from mcp_config import create_mcp_client
 
 load_dotenv()
+
+client = AsyncOpenAI()
 
 # Create MCP client and tool node
 mcp_client = create_mcp_client()
@@ -269,13 +271,13 @@ async def mcp_main_agent(
             print(f"  - {tool['function']['name']}")
 
     # Make LLM call with MCP tools
-    response = await acompletion(
-        model="gemini/gemini-2.5-flash",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         messages=messages,
         tools=tools,
     )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 
 
 def should_use_mcp_tools(state: AgentState) -> str:
@@ -440,13 +442,13 @@ async def filtered_mcp_agent(state: AgentState) -> ModelResponseConverter:
     filtered_tools = filter_tools_by_context(state, all_tools)
 
     # Use only relevant tools
-    response = await acompletion(
-        model="gpt-4",
+    response = await client.chat.completions.create(
+        model="gpt-4o",
         messages=messages,
         tools=filtered_tools
     )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 
 def filter_tools_by_context(state: AgentState, tools: list) -> list:
     """Filter tools based on conversation context."""
@@ -503,13 +505,13 @@ async def robust_mcp_agent(state: AgentState) -> ModelResponseConverter:
             return await fallback_response(state, "No tools available")
 
         # Normal operation with tools
-        response = await acompletion(
-            model="gpt-4",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             tools=tools
         )
 
-        return ModelResponseConverter(response, converter="litellm")
+        return ModelResponseConverter(response, converter="openai")
 
     except asyncio.TimeoutError:
         return await fallback_response(state, "Tool service timeout")
@@ -1113,13 +1115,13 @@ async def create_resilient_mcp_agent() -> StateGraph:
                 return await local_agent_fallback(state)
 
         # Use available MCP tools
-        response = await acompletion(
-            model="gpt-4",
+        response = await client.chat.completions.create(
+            model="gpt-4o",
             messages=convert_messages(system_prompts=[...], state=state),
             tools=tools
         )
 
-        return ModelResponseConverter(response, converter="litellm")
+        return ModelResponseConverter(response, converter="openai")
 
     return resilient_agent
 ```

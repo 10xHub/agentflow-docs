@@ -45,7 +45,7 @@ The basic pattern (retrieve → synthesize → END) is implemented in `basic_rag
 
 Key elements:
 - A naive in-memory keyword retriever
-- A synthesis node using LiteLLM’s `completion` (falls back to local string mode)
+- A synthesis node that calls the LLM to generate an answer from retrieved context
 - Immediate termination via a follow-up condition returning `END`
 
 Skeleton:

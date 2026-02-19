@@ -1,17 +1,17 @@
-# Agent Class - The Simple Way to Build Agents
+# Agent Class — Deep Dive
 
-The **Agent class** is Agentflow's high-level abstraction for building intelligent agents with minimal boilerplate. It handles message conversion, LLM calls, tool integration, and streaming automatically—letting you focus on what matters: your agent's behavior.
+The **Agent class** is AgentFlow's high-level abstraction for building intelligent agents. It handles message conversion, LLM calls via native provider SDKs, tool integration, and streaming — so you can focus on your agent's behavior.
 
 !!! tip "When to Use Agent Class"
-    **Use Agent class** for 90% of your agent needs. It's simple, powerful, and production-ready.
-    
-    **Use custom functions** only when you need fine-grained control over message handling, custom LLM integrations, or complex multi-step reasoning within a single node.
+    **Use Agent class** for the vast majority of your agent needs. It's simple, powerful, and production-ready.
+
+    **Use custom async functions** only when you need very fine-grained control over LLM calls — for example, calling a provider that isn't OpenAI or Google, or chaining multiple LLM calls within a single node.
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## Quick Start (5 minutes)
 
-Here's a complete working agent in under 20 lines:
+A complete working agent in under 20 lines:
 
 ```python
 from agentflow.graph import Agent, StateGraph, ToolNode
@@ -28,7 +28,7 @@ def get_weather(location: str) -> str:
 # 2. Build the graph
 graph = StateGraph()
 graph.add_node("MAIN", Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
     tool_node_name="TOOL"
 ))
@@ -48,120 +48,110 @@ graph.set_entry_point("MAIN")
 
 # 4. Run it!
 app = graph.compile()
-result = app.invoke({
-    "messages": [Message.text_message("What's the weather in New York?")]
-}, config={"thread_id": "1"})
+result = app.invoke(
+    {"messages": [Message.text_message("What's the weather in New York?")]},
+    config={"thread_id": "1"}
+)
 
 for msg in result["messages"]:
     print(f"{msg.role}: {msg.content}")
 ```
 
-**That's it!** No manual message conversion, no LLM response handling, no boilerplate.
+No manual message conversion, no LLM response handling, no boilerplate.
 
 ---
 
-## 🎯 Why Agent Class?
+## Supported Providers
 
-### Before: Custom Functions (50+ lines)
+The Agent class uses **native SDKs** — no adapter layer in between.
 
-```python
-async def main_agent(state: AgentState):
-    # Manual system prompt setup
-    system_prompt = "You are a helpful assistant."
-    
-    # Manual message conversion
-    messages = convert_messages(
-        system_prompts=[{"role": "system", "content": system_prompt}],
-        state=state,
-    )
-    
-    # Manual tool result detection
-    if state.context and state.context[-1].role == "tool":
-        response = await acompletion(model="gpt-4", messages=messages)
-    else:
-        # Manual tool retrieval
-        tools = await tool_node.all_tools()
-        response = await acompletion(model="gpt-4", messages=messages, tools=tools)
-    
-    # Manual response conversion
-    return ModelResponseConverter(response, converter="litellm")
-```
+| Provider | Model prefix | Required SDK | Install |
+|----------|-------------|-------------|---------|
+| **OpenAI** | `openai/` or `gpt-`, `o1-` | `openai` | `pip install 10xscale-agentflow[openai]` |
+| **Google Gemini** | `gemini/` or `gemini-` | `google-genai` | `pip install 10xscale-agentflow[google-genai]` |
+| **Ollama** (local) | any model name | `openai` + `base_url` | `pip install 10xscale-agentflow[openai]` |
+| **DeepSeek / Qwen / vLLM** | any model name | `openai` + `base_url` | `pip install 10xscale-agentflow[openai]` |
 
-### After: Agent Class (3 lines)
+### Model string format
+
+The provider is inferred from the model string prefix:
 
 ```python
+# Google Gemini — provider auto-detected from "gemini/" prefix
+Agent(model="google/gemini-2.5-flash", ...)
+Agent(model="google/gemini-2.0-flash", ...)
+
+# OpenAI — provider auto-detected from "openai/" prefix or "gpt-"/"o1-" prefix
+Agent(model="openai/gpt-4o", ...)
+Agent(model="openai/gpt-4o-mini", ...)
+Agent(model="openai/o3-mini", ...)
+
+# OpenAI-compatible endpoints (Ollama, DeepSeek, Qwen, vLLM, OpenRouter)
+# Requires explicit provider="openai" and base_url
 Agent(
-    model="gpt-4",
-    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
-    tool_node_name="TOOL"
+    model="llama3:8b",
+    provider="openai",
+    base_url="http://localhost:11434/v1",
+    ...
+)
+
+Agent(
+    model="deepseek-chat",
+    provider="openai",
+    base_url="https://api.deepseek.com/v1",
+    api_key="your-deepseek-key",
+    ...
 )
 ```
 
-The Agent class handles all the complexity internally while giving you the same power and flexibility.
-
 ---
 
-## 📖 Agent Class Parameters
+## Agent Class Parameters
 
-### Required Parameters
+### Core Parameters
 
-#### `model` (str)
-The LiteLLM model identifier. Supports any provider via LiteLLM.
+#### `model` (str) — required
+
+The model identifier. Use `"provider/model-name"` format or an auto-detectable prefix:
 
 ```python
-# OpenAI
-Agent(model="gpt-4", ...)
-Agent(model="gpt-4-turbo", ...)
-Agent(model="gpt-4o", ...)
-
-# Google Gemini
-Agent(model="gemini/gemini-2.5-flash", ...)
-Agent(model="gemini/gemini-2.0-flash", ...)
-
-# Anthropic Claude
-Agent(model="claude-3-5-sonnet-20241022", ...)
-Agent(model="claude-3-opus-20240229", ...)
-
-# Azure OpenAI
-Agent(model="azure/gpt-4", ...)
-
-# Local models via Ollama
-Agent(model="ollama/llama3", ...)
+Agent(model="google/gemini-2.5-flash", ...)   # Google
+Agent(model="openai/gpt-4o", ...)             # OpenAI
+Agent(model="gpt-4o-mini", ...)               # OpenAI (auto-detected)
+Agent(model="gemini-2.0-flash", ...)          # Google (auto-detected)
 ```
 
-See [LiteLLM Providers](https://docs.litellm.ai/docs/providers) for the complete list.
+#### `provider` (str | None)
 
-#### `system_prompt` (list[dict])
-The system prompt as a list of message dictionaries. Supports provider-specific options like cache control.
+Explicitly set the provider. Use this when auto-detection won't work (e.g., third-party OpenAI-compatible APIs):
 
 ```python
-# Simple system prompt
 Agent(
-    model="gpt-4",
+    model="llama3:8b",
+    provider="openai",
+    base_url="http://localhost:11434/v1",
+)
+```
+
+Supported values: `"openai"`, `"google"`
+
+#### `system_prompt` (list[dict] | None)
+
+The system prompt as a list of message dicts. Supports multi-message system prompts:
+
+```python
+# Single system message
+Agent(
+    model="openai/gpt-4o",
     system_prompt=[{
         "role": "system",
         "content": "You are a helpful assistant."
     }]
 )
 
-# With cache control (Anthropic)
+# Multi-message system prompt (e.g., for few-shot examples)
 Agent(
-    model="claude-3-5-sonnet-20241022",
-    system_prompt=[{
-        "role": "system",
-        "content": [
-            {
-                "type": "text",
-                "text": "You are a research assistant with expertise in Python.",
-                "cache_control": {"type": "ephemeral"}
-            }
-        ]
-    }]
-)
-
-# Multiple system messages
-Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[
         {"role": "system", "content": "You are a code reviewer."},
         {"role": "system", "content": "Always provide constructive feedback."}
@@ -169,10 +159,34 @@ Agent(
 )
 ```
 
+#### `base_url` (str | None)
+
+Base URL for OpenAI-compatible APIs:
+
+```python
+# Ollama (local)
+Agent(
+    model="llama3:8b",
+    provider="openai",
+    base_url="http://localhost:11434/v1",
+)
+
+# OpenRouter
+Agent(
+    model="qwen/qwen-2.5-72b-instruct",
+    provider="openai",
+    base_url="https://openrouter.ai/api/v1",
+    api_key="your-openrouter-key",
+)
+```
+
+---
+
 ### Tool Configuration
 
 #### `tools` (list[Callable] | ToolNode | None)
-Pass tools directly to the Agent. Can be a list of functions or an existing ToolNode.
+
+Pass tools directly to the Agent:
 
 ```python
 def search(query: str) -> str:
@@ -183,48 +197,39 @@ def calculator(expression: str) -> str:
     """Calculate a math expression."""
     return str(eval(expression))
 
-# Option 1: List of functions
+# List of functions — Agent wraps them in a ToolNode internally
 Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[...],
     tools=[search, calculator]
-)
-
-# Option 2: Existing ToolNode
-tool_node = ToolNode([search, calculator])
-Agent(
-    model="gpt-4",
-    system_prompt=[...],
-    tools=tool_node
 )
 ```
 
 #### `tool_node_name` (str | None)
-Reference an existing ToolNode by name in the graph. This is useful when you want to share a ToolNode between multiple nodes.
+
+Reference an existing `ToolNode` by its node name in the graph. Useful when sharing tools across agents:
 
 ```python
 graph = StateGraph()
-
-# Add ToolNode to graph
 graph.add_node("TOOL", ToolNode([get_weather, search]))
 
-# Reference it by name in Agent
 graph.add_node("MAIN", Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[...],
-    tool_node_name="TOOL"  # References the "TOOL" node
+    tool_node_name="TOOL"   # References the "TOOL" node
 ))
 ```
 
 #### `tools_tags` (set[str] | None)
-Filter which tools are available to the Agent by tags. Only tools matching the specified tags will be exposed.
+
+Filter which tools the Agent can see by tags. Only tools decorated with matching tags are exposed:
 
 ```python
 from agentflow.utils import tool
 
-@tool(tags={"search", "read"})
+@tool(tags={"search", "safe"})
 def search_docs(query: str) -> str:
-    """Search documents."""
+    """Search internal documents."""
     return f"Found: {query}"
 
 @tool(tags={"write", "dangerous"})
@@ -232,26 +237,28 @@ def delete_file(path: str) -> str:
     """Delete a file."""
     return f"Deleted: {path}"
 
-# Only expose "read" tools
+# This agent only sees "safe" tools
 Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[...],
     tools=[search_docs, delete_file],
-    tools_tags={"read"}  # Only search_docs is available
+    tools_tags={"safe"}  # Only search_docs is available
 )
 ```
+
+---
 
 ### Message Configuration
 
 #### `extra_messages` (list[Message] | None)
-Additional messages to include in every LLM call. Useful for few-shot examples or persistent context.
+
+Additional messages included in every LLM call. Useful for few-shot examples or persistent context:
 
 ```python
 from agentflow.state import Message
 
-# Add few-shot examples
 Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "You translate text."}],
     extra_messages=[
         Message.text_message("Translate 'hello' to Spanish", role="user"),
@@ -262,10 +269,13 @@ Agent(
 )
 ```
 
+---
+
 ### Context Management
 
 #### `trim_context` (bool)
-Enable automatic context trimming using a registered `BaseContextManager`. Prevents token overflow in long conversations.
+
+Enable automatic context trimming using a registered `BaseContextManager`. Prevents token overflow in long conversations:
 
 ```python
 from agentflow.state.base_context import BaseContextManager
@@ -277,58 +287,66 @@ class MyContextManager(BaseContextManager):
             state.context = state.context[-10:]
         return state
 
-# Register context manager in InjectQ container
-container.register(BaseContextManager, MyContextManager())
+# Register in InjectQ
+from injectq import InjectQ
+InjectQ.get_instance().register(BaseContextManager, MyContextManager())
 
-# Enable trimming
+# Enable trimming in Agent
 Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[...],
     trim_context=True
 )
 ```
 
-### LLM Configuration
+---
 
-#### `**llm_kwargs`
-Additional parameters passed directly to LiteLLM's `acompletion` function.
+### LLM Parameters
+
+#### `**kwargs` — temperature, max_tokens, etc.
+
+Additional parameters passed to the LLM API:
 
 ```python
 Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[...],
-    temperature=0.7,        # Creativity (0.0-2.0)
-    max_tokens=1000,        # Max response length
-    top_p=0.9,              # Nucleus sampling
-    frequency_penalty=0.5,  # Reduce repetition
-    presence_penalty=0.5,   # Encourage new topics
-    stop=["END"],           # Stop sequences
+    temperature=0.7,     # Creativity (0.0–2.0)
+    max_tokens=1000,     # Max response length
+    top_p=0.9,           # Nucleus sampling
+)
+```
+
+#### `api_key` (str | None) — for third-party APIs
+
+```python
+Agent(
+    model="deepseek-chat",
+    provider="openai",
+    base_url="https://api.deepseek.com/v1",
+    api_key="your-api-key",    # Passed via **kwargs
 )
 ```
 
 ---
 
-## 🔧 Common Patterns
+## Common Patterns
 
 ### Pattern 1: Simple Conversational Agent
 
-No tools, just conversation:
-
 ```python
 from agentflow.graph import Agent, StateGraph
-from agentflow.state import AgentState, Message
 from agentflow.utils.constants import END
 
 graph = StateGraph()
 graph.add_node("MAIN", Agent(
-    model="gpt-4",
+    model="google/gemini-2.5-flash",
     system_prompt=[{
         "role": "system",
         "content": "You are a friendly conversational assistant."
     }],
     temperature=0.8
 ))
-
 graph.add_edge("MAIN", END)
 graph.set_entry_point("MAIN")
 
@@ -337,54 +355,38 @@ app = graph.compile()
 
 ### Pattern 2: Tool-Calling Agent (ReAct)
 
-The most common pattern—agent with tools:
+The most common production pattern:
 
 ```python
 from agentflow.graph import Agent, StateGraph, ToolNode
-from agentflow.state import AgentState, Message
+from agentflow.state import AgentState
 from agentflow.utils.constants import END
 
 
 def search(query: str) -> str:
     """Search the web for information."""
-    return f"Search results for: {query}"
-
-
-def calculator(expression: str) -> float:
-    """Evaluate a math expression."""
-    return eval(expression)
+    return f"Results for: {query}"
 
 
 graph = StateGraph()
 graph.add_node("MAIN", Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{
         "role": "system",
         "content": "You are a helpful assistant. Use tools when needed."
     }],
     tool_node_name="TOOL"
 ))
-graph.add_node("TOOL", ToolNode([search, calculator]))
+graph.add_node("TOOL", ToolNode([search]))
 
 
-def should_use_tools(state: AgentState) -> str:
-    """Route based on tool calls."""
-    if not state.context:
+def route(state: AgentState) -> str:
+    if state.context and state.context[-1].tools_calls:
         return "TOOL"
-    
-    last = state.context[-1]
-    if hasattr(last, "tools_calls") and last.tools_calls and last.role == "assistant":
-        return "TOOL"
-    if last.role == "tool":
-        return "MAIN"
     return END
 
 
-graph.add_conditional_edges("MAIN", should_use_tools, {
-    "TOOL": "TOOL",
-    "MAIN": "MAIN",
-    END: END
-})
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
 graph.add_edge("TOOL", "MAIN")
 graph.set_entry_point("MAIN")
 
@@ -393,7 +395,7 @@ app = graph.compile()
 
 ### Pattern 3: Agent with Tool Filtering
 
-Control which tools are available:
+Control exactly which tools each agent can access:
 
 ```python
 from agentflow.utils import tool
@@ -403,41 +405,42 @@ from agentflow.graph import Agent, StateGraph, ToolNode
 @tool(tags={"safe", "search"})
 def search_docs(query: str) -> str:
     """Search internal documents."""
-    return f"Found documents for: {query}"
+    return f"Found: {query}"
 
 
 @tool(tags={"dangerous", "write"})
 def delete_document(doc_id: str) -> str:
     """Delete a document permanently."""
-    return f"Deleted document: {doc_id}"
+    return f"Deleted: {doc_id}"
 
 
 @tool(tags={"safe", "read"})
 def get_document(doc_id: str) -> str:
     """Get a document by ID."""
-    return f"Document {doc_id} content..."
+    return f"Document {doc_id}: ..."
 
 
-# Safe agent - only has access to safe tools
-safe_agent = Agent(
-    model="gpt-4",
+all_tools = [search_docs, delete_document, get_document]
+
+# Read-only agent — can only search and retrieve
+read_agent = Agent(
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "You help users find documents."}],
-    tools=[search_docs, delete_document, get_document],
+    tools=all_tools,
     tools_tags={"safe"}  # Only search_docs and get_document
 )
 
-# Admin agent - has all tools
+# Admin agent — has all tools
 admin_agent = Agent(
-    model="gpt-4",
+    model="openai/gpt-4o",
     system_prompt=[{"role": "system", "content": "You are an admin with full access."}],
-    tools=[search_docs, delete_document, get_document]
-    # No tags filter = all tools available
+    tools=all_tools   # No tags filter — all tools available
 )
 ```
 
-### Pattern 4: Multi-Agent with Shared Tools
+### Pattern 4: Multi-Agent with Shared ToolNode
 
-Multiple agents sharing the same ToolNode:
+Multiple agents sharing the same tool set:
 
 ```python
 from agentflow.graph import Agent, StateGraph, ToolNode
@@ -446,10 +449,12 @@ from agentflow.utils.constants import END
 
 
 def search(query: str) -> str:
+    """Search for information."""
     return f"Results: {query}"
 
 
 def calculate(expr: str) -> str:
+    """Evaluate a math expression."""
     return str(eval(expr))
 
 
@@ -460,147 +465,127 @@ graph.add_node("TOOL", ToolNode([search, calculate]))
 
 # Research agent
 graph.add_node("RESEARCHER", Agent(
-    model="gpt-4",
-    system_prompt=[{"role": "system", "content": "You research topics."}],
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You research topics thoroughly."}],
     tool_node_name="TOOL"
 ))
 
-# Calculator agent  
-graph.add_node("CALCULATOR", Agent(
-    model="gpt-4",
-    system_prompt=[{"role": "system", "content": "You solve math problems."}],
+# Math agent
+graph.add_node("MATH", Agent(
+    model="openai/gpt-4o",
+    system_prompt=[{"role": "system", "content": "You solve math problems step by step."}],
     tool_node_name="TOOL"
 ))
-
-# Router to select agent
-def route_query(state: AgentState) -> str:
-    # Simple routing based on content
-    if state.context:
-        content = str(state.context[-1].content).lower()
-        if "calculate" in content or "math" in content:
-            return "CALCULATOR"
-    return "RESEARCHER"
-
-
-graph.add_conditional_edges("__start__", route_query, {
-    "RESEARCHER": "RESEARCHER",
-    "CALCULATOR": "CALCULATOR"
-})
-# ... add remaining edges
 ```
 
 ### Pattern 5: Streaming Agent
 
-Agent class supports streaming out of the box:
+Stream tokens as the agent generates them:
 
 ```python
-app = graph.compile()
+import asyncio
+from agentflow.state import Message
 
-# Enable streaming in config
-config = {"thread_id": "1", "is_stream": True}
 
-# Use astream for streaming responses
-async for event in app.astream(
-    {"messages": [Message.text_message("Tell me a story")]},
-    config=config
-):
-    if event.content_type == "text":
-        print(event.content, end="", flush=True)
+async def stream_agent():
+    app = graph.compile()
+
+    async for event in app.astream(
+        {"messages": [Message.text_message("Tell me about Python")]},
+        config={"thread_id": "1", "is_stream": True}
+    ):
+        # Process streaming events
+        print(event)
+
+
+asyncio.run(stream_agent())
 ```
 
----
+### Pattern 6: Using the ReactAgent Prebuilt
 
-## 🔄 Agent Class vs Custom Functions
-
-| Aspect | Agent Class | Custom Functions |
-|--------|-------------|------------------|
-| **Setup time** | Minutes | Hours |
-| **Lines of code** | 10-30 | 50-150 |
-| **Message handling** | Automatic | Manual |
-| **Tool integration** | Built-in | Manual setup |
-| **Streaming** | Automatic | Manual implementation |
-| **Context trimming** | Built-in option | Custom implementation |
-| **Learning curve** | Low | Medium-High |
-| **Flexibility** | High (90% use cases) | Maximum |
-| **Best for** | Most agents | Complex custom logic |
-
-### When to Use Custom Functions
-
-Choose custom functions when you need:
-
-- **Custom LLM clients**: Not using LiteLLM (e.g., direct OpenAI SDK)
-- **Complex message preprocessing**: Multi-step transformations before LLM call
-- **Custom response handling**: Non-standard response parsing
-- **Multiple LLM calls per node**: Chains of LLM calls within a single step
-- **Custom tool execution logic**: Non-standard tool handling
-
-### Migration Path
-
-Already using custom functions? Migration is straightforward:
+For the common MAIN → TOOL → MAIN pattern, use the prebuilt `ReactAgent`:
 
 ```python
-# Before: Custom function
-async def my_agent(state: AgentState):
-    messages = convert_messages(
-        system_prompts=[{"role": "system", "content": "..."}],
-        state=state,
-    )
-    if state.context and state.context[-1].role == "tool":
-        response = await acompletion(model="gpt-4", messages=messages)
-    else:
-        tools = await tool_node.all_tools()
-        response = await acompletion(model="gpt-4", messages=messages, tools=tools)
-    return ModelResponseConverter(response, converter="litellm")
+from agentflow.graph import Agent, ToolNode
+from agentflow.prebuilt.agent import ReactAgent
+from agentflow.checkpointer import InMemoryCheckpointer
 
-# After: Agent class
-Agent(
-    model="gpt-4",
-    system_prompt=[{"role": "system", "content": "..."}],
+
+def get_weather(location: str) -> str:
+    """Get weather for a location."""
+    return f"Sunny, 72°F in {location}"
+
+
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
     tool_node_name="TOOL"
+)
+
+tool_node = ToolNode([get_weather])
+
+# ReactAgent handles the StateGraph setup and routing automatically
+app = ReactAgent().compile(
+    main_node=agent,
+    tool_node=tool_node,
+    checkpointer=InMemoryCheckpointer(),
 )
 ```
 
 ---
 
-## ⚠️ Requirements
+## Agent Class vs Custom Functions
 
-The Agent class requires LiteLLM:
+| Aspect | Agent Class | Custom Async Functions |
+|--------|-------------|----------------------|
+| **Setup time** | Minutes | Hours |
+| **Lines of code** | 10–30 | 50–150 |
+| **Message handling** | Automatic | Manual |
+| **Tool integration** | Built-in | Manual |
+| **Streaming** | Built-in | Manual |
+| **Learning curve** | Low | Medium–High |
+| **Flexibility** | High (covers 95% of use cases) | Maximum |
 
-```bash
-pip install 10xscale-agentflow[litellm]
-```
+### When to Use Custom Functions
 
-If LiteLLM is not installed, you'll get an `ImportError` with installation instructions.
+Choose custom async functions when you need:
+
+- A provider not supported by the Agent class (not OpenAI or Google)
+- Multiple LLM calls within a single node
+- Custom message preprocessing before the LLM call
+- Non-standard response parsing or post-processing
 
 ---
 
-## 🎓 Next Steps
-
-Now that you understand the Agent class:
-
-1. **[React Agent Patterns](react/00-agent-class-react.md)** - Build ReAct agents with Agent class
-2. **[Tool Decorator](tool-decorator.md)** - Organize tools with metadata and tags
-3. **[Streaming](react/04-streaming.md)** - Real-time responses
-4. **[Persistence](long_term_memory.md)** - Save conversation state
-
----
-
-## 📚 Complete API Reference
+## Complete API Reference
 
 ```python
 class Agent:
     def __init__(
         self,
-        model: str,                                    # LiteLLM model identifier
-        system_prompt: list[dict[str, Any]],          # System prompt messages
-        tools: list[Callable] | ToolNode | None = None,  # Tools for the agent
-        tool_node_name: str | None = None,            # Reference existing ToolNode
-        extra_messages: list[Message] | None = None,  # Additional context messages
-        trim_context: bool = False,                   # Enable context trimming
-        tools_tags: set[str] | None = None,           # Filter tools by tags
-        **llm_kwargs,                                 # LiteLLM parameters
+        model: str,                                     # Model identifier
+        provider: str | None = None,                    # "openai" or "google"
+        output_type: str = "text",                      # "text", "image", "video", "audio"
+        system_prompt: list[dict[str, Any]] | None = None,
+        tools: list[Callable] | ToolNode | None = None,
+        tool_node_name: str | None = None,
+        extra_messages: list[Message] | None = None,
+        base_url: str | None = None,                    # For OpenAI-compatible APIs
+        trim_context: bool = False,
+        tools_tags: set[str] | None = None,
+        api_style: str = "chat",                        # "chat" or "responses"
+        reasoning_config: dict[str, Any] | None = None,
+        **kwargs,                                       # temperature, max_tokens, api_key, etc.
     ):
-        ...
 ```
 
-The Agent class uses `acompletion` from LiteLLM internally and returns a `ModelResponseConverter` that the graph engine processes automatically.
+The Agent class uses native provider SDKs: `AsyncOpenAI` for OpenAI-compatible endpoints and `google.genai.Client` for Google Gemini.
+
+---
+
+## Next Steps
+
+- **[Tool Decorator & Filtering](tool-decorator.md)** — Organize tools with metadata and tags
+- **[Multi-Agent Handoff](handoff.md)** — Build systems with multiple specialized agents
+- **[ReAct with Agent Class](react/00-agent-class-react.md)** — The complete ReAct tutorial
+- **[Streaming](react/04-streaming.md)** — Real-time token streaming

@@ -115,7 +115,7 @@ Don't guess or make up answers.
 
 # Create the agent and connect it to the tools
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=system_prompt,
     tool_node_name="TOOLS"  # <-- This connects the agent to tools
 )
@@ -451,7 +451,7 @@ Always use tools when available!
 # Create tool node and agent
 tool_node = ToolNode([get_real_weather, calculate, get_current_time])
 agent = Agent(
-    model="gemini/gemini-2.5-flash",
+    model="google/gemini-2.5-flash",
     system_prompt=system_prompt,
     tool_node_name="TOOLS"
 )

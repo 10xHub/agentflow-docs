@@ -1,6 +1,6 @@
 # Tutorials
 
-Step-by-step guides for building real agents with AgentFlow. Start with **Beginner** if you're new, or jump into **Advanced Topics** once you have the basics.
+Step-by-step guides for building real agents with AgentFlow. Start with **Beginner** if you're new, or jump into any section once you have the basics.
 
 ---
 
@@ -9,61 +9,74 @@ Step-by-step guides for building real agents with AgentFlow. Start with **Beginn
 Before starting tutorials, make sure you've completed [Getting Started](../getting-started/index.md):
 
 - AgentFlow installed (`pip install 10xscale-agentflow`)
-- An LLM provider library installed (`google-genai`, `openai`, or `anthropic`)
+- An LLM provider library installed (`google-genai` or `openai`)
 - API key configured in `.env`
 
 ---
 
 ## Beginner Path
 
-Work through these in order for the smoothest learning curve:
+Work through these **in order** for the smoothest learning curve:
 
 | Tutorial | What You Build | Key Skills |
 |----------|---------------|------------|
-| [1. Your First Agent](beginner/01-your-first-agent.md) | Weather assistant with personality | System prompts, Agent class, workflow basics |
-| [2. Adding Tools](beginner/02-adding-tools.md) | Agent that calls Python functions | ToolNode, tool routing, conditional edges |
-| [3. Chat with Memory](beginner/03-chat-with-memory.md) | Persistent multi-turn chatbot | Checkpointers, thread IDs, conversation state |
+| [1. Your First Agent](beginner/01-your-first-agent.md) | A weather assistant with personality | System prompts, Agent class, basic workflow |
+| [2. Adding Tools](beginner/02-adding-tools.md) | An agent that calls Python functions | ToolNode, conditional routing, tool execution |
+| [3. Chat with Memory](beginner/03-chat-with-memory.md) | A persistent multi-turn chatbot | Checkpointers, thread IDs, conversation state |
+
+**Total time:** ~60 minutes
 
 ---
 
-## Advanced Topics
+## Building Agents
 
-Once you're comfortable with the basics, explore these patterns:
-
-### Agent Patterns
-
-- **[Agent Class](agent-class.md)** — Deep dive into the Agent class: configuration, tool filtering, context trimming
-- **[Tool Decorator](tool-decorator.md)** — Organize tools with metadata, tags, and descriptions for fine-grained control
-- **[Multi-Agent Handoff](handoff.md)** — Delegate tasks between specialized agents in a pipeline
-
-### ReAct Pattern (Reasoning + Acting)
-
-The ReAct pattern is the foundation of most production agents:
+Deepen your Agent class knowledge and learn production patterns:
 
 | Tutorial | Focus |
 |----------|-------|
-| [0. ReAct with Agent Class](react/00-agent-class-react.md) | Simplest ReAct setup using the Agent class |
-| [1. Basic ReAct](react/01-basic-react.md) | Build ReAct from scratch with custom functions |
-| [2. Dependency Injection](react/02-dependency-injection.md) | Inject services and config into tool nodes |
-| [3. MCP Integration](react/03-mcp-integration.md) | Connect to Model Context Protocol servers |
-| [4. Streaming](react/04-streaming.md) | Stream tokens in real-time to clients |
-| [5. Unit Testing](react/05-unit-testing.md) | Test agents without real LLM API calls |
+| [Agent Class Deep Dive](agent-class.md) | Configuration, tool filtering, context trimming, streaming |
+| [Tool Decorator & Filtering](tool-decorator.md) | Organize tools with metadata and tags |
+| [Multi-Agent Handoff](handoff.md) | Delegate tasks between specialized agents |
+| [Input Validation](input_validation.md) | Sanitize inputs and protect against prompt injection |
 
-### Memory & Storage
+---
 
-- **[Long-Term Memory](long_term_memory.md)** — Persist agent memories across sessions using the Store API
-- **[Mem0 Store Integration](mem0_store.md)** — Use Mem0 for semantic memory management
-- **[Qdrant Store Integration](qdrant_store.md)** — Vector database integration for similarity search
-- **[Embedding Store](embedding.md)** — Work with vector embeddings in agent workflows
+## ReAct Pattern (Reasoning + Acting)
 
-### Data & Retrieval
+The ReAct pattern powers most production agents — reason, act with tools, observe results, repeat:
 
-- **[RAG (Retrieval-Augmented Generation)](rag.md)** — Ground agents in external documents with semantic search
-- **[Input Validation](input_validation.md)** — Sanitize and validate user inputs before processing
+| Tutorial | Focus |
+|----------|-------|
+| [ReAct with Agent Class](react/00-agent-class-react.md) | Simplest setup — ReAct in under 30 lines |
+| [Custom ReAct (Advanced)](react/01-basic-react.md) | Build ReAct from scratch with custom async functions |
+| [Dependency Injection](react/02-dependency-injection.md) | Inject services and config into nodes with InjectQ |
+| [MCP Integration](react/03-mcp-integration.md) | Connect to Model Context Protocol servers |
+| [Streaming](react/04-streaming.md) | Stream tokens in real-time to clients |
+| [Unit Testing](react/05-unit-testing.md) | Test agents without real LLM API calls |
 
-### Complex Reasoning
+---
 
-- **[Plan-Act-Reflect Pattern](plan_act_reflect.md)** — Agents that plan a sequence of actions, execute them, and self-evaluate
+## Memory & Storage
+
+Persist agent state and enable long-term memory:
+
+| Tutorial | Focus |
+|----------|-------|
+| [Long-Term Memory](long_term_memory.md) | Persist memories across sessions using the Store API |
+| [Mem0 Store](mem0_store.md) | Managed semantic memory with Mem0 |
+| [Qdrant Vector Store](qdrant_store.md) | Vector database integration for similarity search |
+| [Embedding Store](embedding.md) | Work with vector embeddings in agent workflows |
+
+---
+
+## Retrieval & Reasoning
+
+Ground agents in external knowledge and complex multi-step reasoning:
+
+| Tutorial | Focus |
+|----------|-------|
+| [RAG (Retrieval-Augmented Generation)](rag.md) | Ground agents in external documents with semantic search |
+| [Plan-Act-Reflect Pattern](plan_act_reflect.md) | Agents that plan, execute, and self-evaluate their work |
 
 ---
 

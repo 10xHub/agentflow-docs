@@ -1,128 +1,84 @@
 # Beginner Tutorials
 
-Welcome to the AgentFlow beginner tutorials! These hands-on guides will take you from your first agent to building real applications.
+Welcome to the AgentFlow beginner tutorials! These hands-on guides take you from your first agent to building real, stateful applications.
 
 ---
 
-## 📚 Learning Path
+## Learning Path
 
-Follow these tutorials in order for the best learning experience:
+Work through these tutorials in order:
 
-### 1. [Your First Real Agent](01-your-first-agent.md) (15 minutes)
-**What you'll build:** A weather assistant with personality
+### 1. [Your First Agent](01-your-first-agent.md) (~15 minutes)
+
+**What you'll build:** A weather assistant with a custom personality
 
 **You'll learn:**
-- Creating agents with custom system prompts
-- Switching between LLM providers
-- Agent configuration best practices
+- Creating agents with system prompts
+- Switching between LLM providers (OpenAI, Google Gemini)
+- Building and running a basic workflow
 
-**Start here if:** You've completed the Hello World guide
+**Start here if:** You've completed the [Hello World](../../getting-started/hello-world.md) guide
 
 ---
 
-### 2. [Adding Tools](02-adding-tools.md) (20 minutes)
-**What you'll build:** An agent that can perform real actions
+### 2. [Adding Tools](02-adding-tools.md) (~20 minutes)
+
+**What you'll build:** An agent that fetches real data and performs calculations
 
 **You'll learn:**
 - Creating Python function tools
-- Connecting tools to agents
-- Tool routing and execution
-- Fetching real data from APIs
+- Connecting tools to agents with `ToolNode`
+- Conditional routing (tool call → tool execution → final answer)
 
 **Prerequisites:** Tutorial 1
 
 ---
 
-### 3. [Chat with Memory](03-chat-with-memory.md) (25 minutes)
-**What you'll build:** A chatbot that remembers conversations
+### 3. [Chat with Memory](03-chat-with-memory.md) (~25 minutes)
+
+**What you'll build:** A chatbot that remembers conversations across multiple turns
 
 **You'll learn:**
-- Using checkpointers for memory
-- Managing conversation threads
-- Building interactive chat loops
-- Handling multiple users
+- Using `InMemoryCheckpointer` for conversation memory
+- Managing multiple conversations with `thread_id`
+- Building an interactive chat loop
 
 **Prerequisites:** Tutorial 2
 
 ---
 
-### 4. [Multi-Agent Handoff](04-multi-agent-handoff.md) (30 minutes)
-**What you'll build:** Specialized agents working together
+## What You'll Accomplish
 
-**You'll learn:**
-- Creating multiple agents
-- Agent-to-agent handoff
-- Routing between agents
-- Building a customer support system
+By completing all three tutorials, you'll be able to:
 
-**Prerequisites:** Tutorial 3
+- Create agents with any LLM provider (OpenAI, Gemini, and more)
+- Give agents tools to perform real actions
+- Build chatbots with persistent conversation memory
+- Understand the core AgentFlow patterns used in every agent
 
 ---
 
-## 🎯 What You'll Accomplish
+## Quick Setup Reminder
 
-By completing all beginner tutorials, you'll be able to:
+If you haven't set up AgentFlow yet:
 
-✅ Create agents with any LLM provider
-✅ Give agents tools to perform real actions
-✅ Build chatbots with conversation memory
-✅ Orchestrate multiple specialized agents
-✅ Build production-ready agent applications
-
----
-
-## ⏱️ Time Estimate
-
-- **Total time:** ~90 minutes
-- **Recommended pace:** 1-2 tutorials per session
-- **Prerequisites:** Basic Python knowledge
-
----
-
-## 🔥 Quick Start
-
-If you haven't completed the Getting Started section, do that first:
-
-1. [What is AgentFlow?](../../getting-started/what-is-agentflow.md) (2 min)
-2. [Installation](../../getting-started/installation.md) (3 min)
-3. [Hello World](../../getting-started/hello-world.md) (5 min)
-4. [Core Concepts](../../getting-started/core-concepts.md) (5 min)
+1. [Installation](../../getting-started/installation.md) — install AgentFlow and an LLM SDK
+2. [Hello World](../../getting-started/hello-world.md) — run your first agent
+3. [Core Concepts](../../getting-started/core-concepts.md) — understand the building blocks
 
 Then come back here and start with Tutorial 1!
 
 ---
 
-## 💡 Learning Tips
+## After Beginner Tutorials
 
-1. **Type the code yourself** - Don't just copy-paste. Typing helps you learn.
+Once you complete these, explore:
 
-2. **Experiment** - Each tutorial has "Challenges" at the end. Try them!
-
-3. **Break things** - Change the code and see what happens. Learning from errors is powerful.
-
-4. **Build your own** - After each tutorial, try building something similar but different.
-
-5. **Join the community** - Ask questions, share what you built!
+- **[Building Agents](../agent-class.md)** — Agent class deep dive, tool filtering, handoff
+- **[ReAct Pattern](../react/README.md)** — Production agent patterns
+- **[Memory & Storage](../long_term_memory.md)** — Long-term memory and vector stores
+- **[Reference Docs](../../reference/library/index.md)** — Full API documentation
 
 ---
 
-## 🚀 After Beginner Tutorials
-
-Once you complete these tutorials, you can:
-
-- **[Intermediate Tutorials](../intermediate/index.md)** - Streaming, persistence, error handling
-- **[How-To Guides](../../how-to/index.md)** - Task-specific recipes
-- **[API Reference](../../Agentflow/index.md)** - Deep dive into the framework
-- **[Examples](../../examples/index.md)** - Real-world applications
-
----
-
-## ❓ Need Help?
-
-- **Stuck on a tutorial?** Check the "Common Issues" section in each guide
-- **Have questions?** Join our [GitHub Discussions](https://github.com/10xhub/agentflow/discussions)
-- **Found a bug?** [Open an issue](https://github.com/10xhub/agentflow/issues)
-
----
-
-**Ready to start?** [Tutorial 1: Your First Real Agent →](01-your-first-agent.md)
+**Ready to start?** [Tutorial 1: Your First Agent →](01-your-first-agent.md)

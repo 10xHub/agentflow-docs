@@ -64,7 +64,7 @@ Let's break down the complete example from `handoff_multi_agent.py` to understan
 
 ```python
 from dotenv import load_dotenv
-from litellm import completion
+from openai import OpenAI
 
 from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
 from agentflow.checkpointer import InMemoryCheckpointer
@@ -75,6 +75,8 @@ from agentflow.utils.constants import END
 from agentflow.utils.converter import convert_messages
 
 load_dotenv()
+
+client = OpenAI()
 checkpointer = InMemoryCheckpointer()
 ```
 
@@ -172,17 +174,17 @@ def coordinator_agent(state: AgentState):
     # Check if last message is a tool result
     if state.context and len(state.context) > 0 and state.context[-1].role == "tool":
         # Final response without tools
-        response = completion(model="gemini/gemini-2.0-flash-exp", messages=messages)
+        response = client.chat.completions.create(model="gpt-4o", messages=messages)
     else:
         # Regular response with tools available
         tools = coordinator_tools.all_tools_sync()
-        response = completion(
-            model="gemini/gemini-2.0-flash-exp",
+        response = client.chat.completions.create(
+            model="gpt-4o",
             messages=messages,
             tools=tools
         )
 
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter="openai")
 ```
 
 **What's happening:**
@@ -191,7 +193,7 @@ def coordinator_agent(state: AgentState):
 3. **Conditional Tool Usage**: 
    - If last message is a tool result, make a final response without offering tools
    - Otherwise, provide tools so LLM can call them
-4. **LLM Call**: Uses LiteLLM to call the model with tools
+4. **LLM Call**: Uses OpenAI SDK to call the model with tools
 5. **Response Conversion**: Converts LLM response to AgentFlow format
 
 **Pattern:** This structure is repeated for all agents with different prompts and tools.

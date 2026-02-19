@@ -131,25 +131,27 @@ nav:
           - 1. Your First Agent: Tutorial/beginner/01-your-first-agent.md
           - 2. Adding Tools: Tutorial/beginner/02-adding-tools.md
           - 3. Chat with Memory: Tutorial/beginner/03-chat-with-memory.md
-      - Advanced Topics:
-          - Agent Class: Tutorial/agent-class.md
-          - Embedding: Tutorial/embedding.md
-          - Handoff: Tutorial/handoff.md
-          - Tool Decorator: Tutorial/tool-decorator.md
-          - ReAct Pattern:
-              - Overview: Tutorial/react/README.md
-              - 0. Agent Class (ReAct): Tutorial/react/00-agent-class-react.md
-              - 1. Basic ReAct: Tutorial/react/01-basic-react.md
-              - 2. Dependency Injection: Tutorial/react/02-dependency-injection.md
-              - 3. MCP Integration: Tutorial/react/03-mcp-integration.md
-              - 4. Streaming: Tutorial/react/04-streaming.md
-              - 5. Unit Testing: Tutorial/react/05-unit-testing.md
-          - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
+      - Building Agents:
+          - Agent Class Deep Dive: Tutorial/agent-class.md
+          - Tool Decorator & Filtering: Tutorial/tool-decorator.md
+          - Multi-Agent Handoff: Tutorial/handoff.md
+          - Input Validation: Tutorial/input_validation.md
+      - ReAct Pattern:
+          - Overview: Tutorial/react/README.md
+          - ReAct with Agent Class: Tutorial/react/00-agent-class-react.md
+          - Custom ReAct (Advanced): Tutorial/react/01-basic-react.md
+          - Dependency Injection: Tutorial/react/02-dependency-injection.md
+          - MCP Integration: Tutorial/react/03-mcp-integration.md
+          - Streaming: Tutorial/react/04-streaming.md
+          - Unit Testing: Tutorial/react/05-unit-testing.md
+      - Memory & Storage:
           - Long-Term Memory: Tutorial/long_term_memory.md
           - Mem0 Store: Tutorial/mem0_store.md
+          - Qdrant Vector Store: Tutorial/qdrant_store.md
+          - Embedding Store: Tutorial/embedding.md
+      - Retrieval & Reasoning:
+          - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
           - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
-          - Input Validation: Tutorial/input_validation.md
-          - Qdrant Store Integration: Tutorial/qdrant_store.md
 
   - Reference:
       - Python Library:
