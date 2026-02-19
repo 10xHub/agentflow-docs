@@ -19,7 +19,7 @@ AgentFlow offers two approaches:
 
 ## Method 1: Agent Class (Quickest)
 
-Real example from [`pyagenity/examples/agent-class/graph.py`](https://github.com/10xhub/agentflow/blob/main/examples/agent-class/graph.py):
+Real example from [`examples/agent-class/graph.py`](https://github.com/10xscale/agentflow/blob/main/examples/agent-class/graph.py):
 
 ### Complete Working Code
 
@@ -202,17 +202,20 @@ result = app.invoke({"messages": [...]}, config={...})
 
 ## Method 2: Custom Functions (Advanced Control)
 
-For maximum control over LLM calls, use custom functions. Real example from [`pyagenity/examples/react/react_weather_agent.py`](https://github.com/10xhub/agentflow/blob/main/examples/react/react_weather_agent.py):
+For maximum control over LLM calls, write your own async node function. This lets you use any LLM library directly and apply custom logic before/after each call.
 
 ```python
 from dotenv import load_dotenv
-from litellm import acompletion
-from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
+from google import genai
+from google.genai import types
+from agentflow.adapters.llm import GoogleGenAIConverter
 from agentflow.checkpointer import InMemoryCheckpointer
 from agentflow.graph import StateGraph, ToolNode
 from agentflow.state import AgentState, Message
 from agentflow.utils.constants import END
-from agentflow.utils.converter import convert_messages
+from agentflow.utils.converter import convert_messages_to_google
+
+import os
 
 load_dotenv()
 
@@ -223,38 +226,40 @@ def get_weather(location: str, tool_call_id: str | None = None) -> str:
 
 
 tool_node = ToolNode([get_weather])
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
-# Custom agent function - you control everything
+# Custom agent function — you control the entire LLM call
 async def main_agent(state: AgentState):
-    """Main agent node with manual LLM handling."""
-    prompts = """You are a helpful assistant.
-    Your task is to assist the user in finding information and answering questions."""
+    """Main agent node with manual Google GenAI handling."""
+    system_prompt = "You are a helpful assistant. Answer questions using available tools."
 
-    # Convert messages to LLM format
-    messages = convert_messages(
-        system_prompts=[{"role": "system", "content": prompts}],
-        state=state,
-    )
+    # Convert AgentFlow state to Google GenAI format
+    contents = convert_messages_to_google(state)
 
-    # Decide whether to include tools
-    if state.context and len(state.context) > 0 and state.context[-1].role == "tool":
-        # Final response without tools (we just got tool results)
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
-            messages=messages,
+    # Decide whether to include tools this turn
+    if state.context and state.context[-1].role == "tool":
+        # Final response after tool execution — no tools needed
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(system_instruction=system_prompt),
         )
     else:
-        # Regular response with tools available
-        tools = await tool_node.all_tools()
-        response = await acompletion(
-            model="gemini/gemini-2.5-flash",
-            messages=messages,
-            tools=tools,
+        # Regular turn — make tools available
+        tools = await tool_node.all_tools(format="google_genai")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=tools,
+            ),
         )
 
-    # Convert response to AgentFlow format
-    return ModelResponseConverter(response, converter="litellm")
+    # Convert Google GenAI response to AgentFlow message format
+    converter = GoogleGenAIConverter()
+    return await converter.convert_response(response)
 
 
 def should_use_tools(state: AgentState) -> str:
@@ -299,49 +304,11 @@ for msg in res["messages"]:
 ```
 
 **Why use this approach?**
-- Full control over LLM parameters
-- Custom message formatting
-- Can use any LLM library (not just LiteLLM)
-- Advanced caching and optimization
 
----
-
-## Using Google GenAI Directly
-
-Want to use Google's official `google-genai` library? See [`examples/google_genai_example.py`](https://github.com/10xhub/agentflow/blob/main/examples/google_genai_example.py):
-
-```python
-import os
-from google import genai
-from google.genai import types
-from agentflow.adapters.llm import GoogleGenAIConverter
-
-# Create Google GenAI client
-api_key = os.getenv("GOOGLE_API_KEY")
-client = genai.Client(api_key=api_key)
-
-# Generate content
-response = client.models.generate_content(
-    model="gemini-2.0-flash-exp",
-    contents="Write a haiku about Python programming",
-    config=types.GenerateContentConfig(
-        temperature=0.7,
-        max_output_tokens=100,
-    ),
-)
-
-# Convert to AgentFlow message format
-converter = GoogleGenAIConverter()
-message = await converter.convert_response(response)
-
-print(f"Response: {message.content}")
-client.close()
-```
-
-**Benefits:**
-- Use Google's official library features
-- Direct access to Gemini-specific features
-- No LiteLLM dependency
+- Full control over every LLM call — temperature, max tokens, safety settings, etc.
+- Use Google GenAI, OpenAI, or Anthropic SDKs directly
+- Custom message pre/post-processing
+- Useful when you need provider-specific features not exposed by the Agent class
 
 ---
 
@@ -358,10 +325,39 @@ Agent(model="openai/gpt-4o", ...)
 
 # Anthropic Claude (excellent reasoning)
 Agent(model="anthropic/claude-3-5-sonnet-20241022", ...)
-
-# Local model via Ollama
-Agent(model="ollama/llama2", ...)
 ```
+
+For **local models (Ollama)** and **OpenAI-compatible endpoints** (DeepSeek, Qwen, OpenRouter, vLLM), you must pass `provider="openai"` and `base_url` explicitly — the model prefix trick doesn't apply here:
+
+```python
+# Local model via Ollama
+Agent(
+    model="llama3:8b",          # exact model tag from `ollama list`
+    provider="openai",          # Ollama exposes an OpenAI-compatible API
+    base_url="http://localhost:11434/v1",
+    system_prompt="You are a helpful assistant.",
+)
+
+# DeepSeek (Chinese model, OpenAI-compatible API)
+Agent(
+    model="deepseek-chat",
+    provider="openai",
+    base_url="https://api.deepseek.com/v1",
+    api_key="your-deepseek-key",   # passed as a kwarg
+    system_prompt="You are a helpful assistant.",
+)
+
+# Qwen via OpenRouter (or Alibaba Cloud)
+Agent(
+    model="qwen/qwen-2.5-72b-instruct",
+    provider="openai",
+    base_url="https://openrouter.ai/api/v1",
+    api_key="your-openrouter-key",
+    system_prompt="You are a helpful assistant.",
+)
+```
+
+> `provider="openai"` tells AgentFlow to use the OpenAI SDK (`AsyncOpenAI`). Any endpoint that speaks the OpenAI Chat Completions format works — Ollama, vLLM, LM Studio, OpenRouter, DeepSeek, Qwen, etc.
 
 ### Add More Tools
 
@@ -407,12 +403,6 @@ Agent(
 pip install google-genai
 ```
 
-### "No module named 'litellm'"
-
-```bash
-pip install litellm
-```
-
 ### "No API key provided"
 
 Create a `.env` file:
@@ -435,9 +425,9 @@ Then use `load_dotenv()` in your code.
 **You now have a working agent! What's next?**
 
 1. **Understand the concepts** → [Core Concepts](core-concepts.md)
-2. **Build more complex agents** → [Beginner Tutorials](../tutorials/beginner/index.md)
+2. **Build more complex agents** → [Beginner Tutorials](../Tutorial/beginner/index.md)
 3. **Task-specific guides** → [How-To Guides](../how-to/index.md)
-4. **Production deployment** → [Deployment Guides](../how-to/deployment/)
+4. **Deep dive tutorials** → [All Tutorials](../Tutorial/index.md)
 
 ---
 

@@ -1,110 +1,166 @@
 # What is AgentFlow?
 
-## The Simplest Explanation (30 seconds)
+## The 30-Second Explanation
 
-**AgentFlow** is a tool that helps you build AI agents. Think of an AI agent as a program that:
+**AgentFlow** is a Python framework for building AI agents and orchestrating multi-agent workflows.
 
-1. **Listens** to what you ask
-2. **Thinks** about it using an LLM (like ChatGPT)
-3. **Acts** to help you
+An AI agent is a program that:
 
-AgentFlow handles all the boring orchestration so you can focus on building.
+1. **Listens** — receives input (user message, event, API call)
+2. **Thinks** — uses an LLM (Gemini, GPT-4, Claude) to reason
+3. **Acts** — calls tools, generates output, or triggers other agents
+4. **Loops** — repeats until the task is complete
 
----
-
-## Let's Use an Analogy
-
-### Without AgentFlow
-Imagine a customer support system where you have to manually:
-- Read the email
-- Send it to ChatGPT
-- Read the response
-- Send it back to the customer
-- Keep track of the conversation
-- Handle errors if something goes wrong
-
-That's a lot of busywork.
-
-### With AgentFlow
-You say: "Here's my workflow: read → think → reply"
-
-AgentFlow does all the busywork. You focus on the logic.
+AgentFlow gives you the **graph-based runtime** to wire all of that together, so you focus on your logic — not on orchestration plumbing.
 
 ---
 
-## Real-World Examples
+## Why Does This Matter?
 
-### Example 1: Customer Support Bot 🤖
+Without a framework, building a production agent means manually handling:
+
+- Conversation state across multiple turns
+- Tool discovery, calling, and result injection
+- Routing decisions (which step runs next?)
+- Error handling and retries
+- Memory and checkpointing
+- Streaming responses to clients
+- Multi-agent coordination
+
+That's months of infrastructure work. AgentFlow provides it all out of the box.
+
+---
+
+## Real-World Use Cases
+
+| Use Case | What the Agent Does |
+|----------|---------------------|
+| **Customer Support Bot** | Reads queries → searches knowledge base → drafts reply |
+| **Code Review Agent** | Receives PR diff → analyzes code → suggests improvements |
+| **Research Assistant** | Gets a topic → searches web → reads articles → summarizes |
+| **Data Pipeline Agent** | Gets a task → queries DB → transforms data → writes report |
+| **Multi-Agent Team** | Orchestrator delegates tasks to specialized sub-agents |
+
+---
+
+## How AgentFlow Works
+
+AgentFlow is built around a **StateGraph** — a directed graph where:
+
+- **Nodes** are processing steps (your agent, your tools, your logic)
+- **Edges** define what runs next (fixed or conditional)
+- **State** flows through every node, carrying messages and context
+
 ```
-User → "Where's my order?" 
-AgentFlow → Searches database for order info
-         → Summarizes with LLM
-         → Sends response
+User Message
+     ↓
+  [MAIN node]    ← Agent (LLM) thinks about what to do
+     ↓
+  [TOOL node]    ← Tool executes (e.g., searches database)
+     ↓
+  [MAIN node]    ← Agent sees tool result, generates final answer
+     ↓
+  END → Response
 ```
 
-### Example 2: Code Review Agent 🔍
-```
-User → Sends code
-AgentFlow → Passes to code analyzer (tool)
-         → LLM reviews it
-         → Suggests improvements
+Every time you call `app.invoke(...)`, the graph runs — routing through nodes, executing tools, and stopping when complete.
+
+---
+
+## What Makes AgentFlow Different?
+
+### Provider-Agnostic
+
+Use the official SDK for your LLM provider. AgentFlow doesn't force you through a wrapper:
+
+```python
+# Google Gemini
+Agent(model="gemini/gemini-2.5-flash", ...)
+
+# OpenAI GPT-4
+Agent(model="openai/gpt-4o", ...)
+
+# Anthropic Claude
+Agent(model="anthropic/claude-3-5-sonnet-20241022", ...)
 ```
 
-### Example 3: Research Assistant 📚
-```
-User → "Tell me about X"
-AgentFlow → Searches the web (tool)
-         → Reads articles (tool)
-         → LLM summarizes
-         → Sends you the summary
+All work with the same graph code. Switching providers is one line.
+
+### Production-Ready Out of the Box
+
+| Feature | Description |
+|---------|-------------|
+| Checkpointing | InMemory (dev) or PostgreSQL + Redis (prod) |
+| Streaming | Real-time token streaming to clients |
+| Human-in-the-loop | Pause execution, await human input, resume |
+| Async-first | Native async/await, parallel tool execution |
+| Observability | Built-in event publishers (Console, Redis, Kafka) |
+| Multi-agent | Agent handoff and collaborative pipelines |
+
+### Minimal Boilerplate
+
+```python
+# This is a complete, working tool-calling agent:
+from agentflow.graph import Agent, StateGraph, ToolNode
+from agentflow.state import Message
+
+def search(query: str) -> str:
+    return f"Results for: {query}"
+
+graph = StateGraph()
+graph.add_node("MAIN", Agent(model="gemini/gemini-2.5-flash", tool_node_name="TOOL"))
+graph.add_node("TOOL", ToolNode([search]))
+graph.set_entry_point("MAIN")
+
+app = graph.compile()
+result = app.invoke({"messages": [Message.text_message("Search Python tutorials")]})
 ```
 
 ---
 
-## What Do You Need to Know?
+## What You Need to Know
 
-### ✅ You should know:
-- Basic Python (if-statements, functions, etc.)
-- How to use the command line
-- What an LLM is (ChatGPT, Claude, Gemini, etc.)
-- You have an API key to an LLM provider
+### Prerequisites
 
-### ❌ You DON'T need to know:
-- Building from scratch with LangChain
-- Graph theory
-- Advanced architecture patterns
-- Checkpointers, Redis, databases (we'll add that later)
+- **Python basics** — functions, classes, async/await
+- **Command line** — running `pip install` and `python script.py`
+- **An API key** — from Google, OpenAI, or Anthropic
+
+### You Do NOT Need
+
+- Prior experience with LangChain, LlamaIndex, or other frameworks
+- Graph theory or advanced architecture knowledge
+- Databases or infrastructure (use in-memory mode to start)
 
 ---
 
-## How Does AgentFlow Compare?
+## Comparison
 
-| Feature | AgentFlow | LangChain | Other Tools |
-|---------|-----------|-----------|-------------|
-| Easy to learn | ✅ Yes | ❌ Complex | Varies |
-| Works with any LLM | ✅ Yes | ✅ Yes | ❌ Often locked in |
-| Production-ready | ✅ Yes | ✅ Yes | Varies |
-| Graphs/Workflows | ✅ Simple | ✅ Complex | Varies |
-| Multi-agent support | ✅ Yes | ✅ Yes | Varies |
-| **Getting started speed** | **5 min** | **30 min** | Varies |
+| | AgentFlow | LangChain | AutoGen |
+|---|---|---|---|
+| Learning curve | Low | High | Medium |
+| Provider flexibility | Any SDK | Via LangChain adapters | Via model wrappers |
+| Production checkpointing | Built-in | Built-in | Limited |
+| Multi-agent | Built-in | Built-in | Core feature |
+| TypeScript client | Built-in | Separate package | None |
+| First agent in | 5 min | 20–30 min | 15 min |
 
 ---
 
 ## Your Learning Path
 
 ```
-You are here ↓
-
-1. What is AgentFlow? ←← YOU ARE HERE
-2. Installation (3 min)
-3. Hello World (5 min) ← Your first working agent
-4. Core Concepts (5 min)
-
-Then: Build real things!
+What is AgentFlow? ← YOU ARE HERE
+         ↓
+   Installation (pick your LLM provider)
+         ↓
+   Hello World (your first working agent with tools)
+         ↓
+   Core Concepts (5 building blocks explained)
+         ↓
+   Tutorials (memory, RAG, multi-agent, streaming...)
 ```
 
 ---
 
-## Next Step
-
-Ready? Let's [install AgentFlow](installation.md) →
+**Ready?** Let's [install AgentFlow →](installation.md)

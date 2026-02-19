@@ -36,6 +36,7 @@ For when you need full control:
 2. **[Dependency Injection](02-dependency-injection.md)** - Advanced parameter injection and container management
 3. **[MCP Integration](03-mcp-integration.md)** - Model Context Protocol for external tool systems
 4. **[Streaming Responses](04-streaming.md)** - Real-time agent responses and event handling
+5. **[Unit Testing](05-unit-testing.md)** - Test tools, routing logic, and graph flow without real LLM calls
 
 ## 🗂️ Files Overview
 
@@ -46,6 +47,7 @@ For when you need full control:
 | [Dependency Injection](02-dependency-injection.md) | Advanced DI | Custom Functions | InjectQ container, service injection |
 | [MCP Integration](03-mcp-integration.md) | External tools | Both | FastMCP client, protocol integration |
 | [Streaming](04-streaming.md) | Real-time | Both | Event streaming, delta updates |
+| [Unit Testing](05-unit-testing.md) | Testing | Both | TestAgent, MockToolRegistry, no LLM needed |
 
 ## 🚀 Quick Start
 
@@ -284,6 +286,7 @@ def debug_routing(state: AgentState) -> str:
 2. **Advanced features**: [Dependency Injection](02-dependency-injection.md) - Enterprise patterns
 3. **External integration**: [MCP Integration](03-mcp-integration.md) - Protocol-based tools
 4. **Real-time UX**: [Streaming Responses](04-streaming.md) - Progressive responses
+5. **Production quality**: [Unit Testing](05-unit-testing.md) - Test without LLM calls
 
 ## 📖 Example Files Reference
 
