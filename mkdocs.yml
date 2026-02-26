@@ -152,6 +152,12 @@ nav:
       - Retrieval & Reasoning:
           - RAG (Retrieval-Augmented Generation): Tutorial/rag.md
           - Plan-Act-Reflect Pattern: Tutorial/plan_act_reflect.md
+      - Evaluation:
+          - Single Turn Evaluation: Tutorial/evaluation_tutorial/single_turn_evaluation.md
+          - Multi Turn Evaluation: Tutorial/evaluation_tutorial/multi_turn_evaluation.md
+          - Trajectory Matching: Tutorial/evaluation_tutorial/trajectory_matching.md
+          - User Simulation: Tutorial/evaluation_tutorial/user_simulation.md
+          - QuickEval Patterns: Tutorial/evaluation_tutorial/quickeval_patterns.md
 
   - Reference:
       - Python Library:
@@ -191,13 +197,16 @@ nav:
               - Error Handling: reference/library/ERROR_HANDLING_GUIDELINES.md
           - Evaluation:
               - Overview: reference/library/evaluation/index.md
-              - Getting Started: reference/library/evaluation/getting-started.md
-              - Criteria: reference/library/evaluation/criteria.md
-              - Data Models: reference/library/evaluation/data-models.md
-              - Pytest Integration: reference/library/evaluation/pytest-integration.md
-              - Reporters: reference/library/evaluation/reporters.md
-              - User Simulation: reference/library/evaluation/user-simulation.md
-              - Advanced: reference/library/evaluation/advanced.md
+              - Getting Started:
+                  - Quickstart: reference/library/evaluation/getting_started/quickstart.md
+                  - Manual Setup: reference/library/evaluation/getting_started/manual_setup.md
+              - Reference:
+                  - Criteria: reference/library/evaluation/reference/criteria.md
+                  - Data Models: reference/library/evaluation/reference/data_models.md
+                  - Pytest Integration: reference/library/evaluation/reference/pytest_integration.md
+                  - Reporters: reference/library/evaluation/reference/reporters.md
+                  - Configuration: reference/library/evaluation/reference/configuration.md
+                  - Advanced: reference/library/evaluation/reference/advanced.md
           - Testing:
               - Overview: reference/library/testing/index.md
               - Quickstart: reference/library/testing/quickstart.md
