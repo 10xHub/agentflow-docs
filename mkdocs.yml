@@ -158,6 +158,9 @@ nav:
           - Trajectory Matching: Tutorial/evaluation_tutorial/trajectory_matching.md
           - User Simulation: Tutorial/evaluation_tutorial/user_simulation.md
           - QuickEval Patterns: Tutorial/evaluation_tutorial/quickeval_patterns.md
+      - Advanced Features:
+          - A2A Integration: Tutorial/a2a.md
+          - Skills System: Tutorial/skills.md
 
   - Reference:
       - Python Library:
@@ -210,6 +213,18 @@ nav:
           - Testing:
               - Overview: reference/library/testing/index.md
               - Quickstart: reference/library/testing/quickstart.md
+
+          - A2A (Agent-to-Agent):
+              - Overview: reference/library/a2a/index.md
+              - CLI Deployment: reference/library/a2a/cli.md
+              - Server Guide: reference/library/a2a/server.md
+              - Client Guide: reference/library/a2a/client.md
+              - Custom Executors: reference/library/a2a/executor.md
+
+          - Skills System:
+              - Overview: reference/library/skills/index.md
+              - SKILL.md Format: reference/library/skills/skill-format.md
+              - API Reference: reference/library/skills/api-reference.md
 
       - CLI Tool:
           - Overview: reference/cli/index.md
