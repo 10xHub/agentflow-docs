@@ -42,16 +42,10 @@ pip install 10xscale-agentflow[pg_checkpoint]
 
 # MCP support
 pip install 10xscale-agentflow[mcp]
-
-# LiteLLM for multi-provider support
-pip install 10xscale-agentflow[litellm]
 ```
 
-### Do I need LiteLLM?
-
-**No, it's optional.** AgentFlow works with:
-- LiteLLM (multi-provider, recommended for beginners)
-- Native SDKs (OpenAI, Google, Anthropic)
+AgentFlow works with any LLM library:
+- Native SDKs (OpenAI, Google Gemini, Anthropic)
 - Any LLM library that returns compatible responses
 
 ### Where do I put my API keys?
@@ -79,7 +73,7 @@ load_dotenv()
 | Agent Class | Custom Functions |
 |-------------|------------------|
 | 10-30 lines of code | 50-150 lines |
-| Uses LiteLLM | Use any LLM library |
+| Uses built-in Agent class | Full control over LLM calls |
 | Best for most cases | Best for custom logic |
 
 **Recommendation:** Start with Agent class. Use custom functions only if you need special LLM handling.
@@ -259,10 +253,10 @@ See: [Streaming Documentation](client/stream-usage.md)
 ### Can I use custom LLM providers?
 
 Yes! AgentFlow is LLM-agnostic. You can use:
-- Any LiteLLM-supported provider (100+ models)
-- Native SDKs (OpenAI, Google, Anthropic)
+- Native SDKs (OpenAI, Google Gemini, Anthropic)
 - Local models (Ollama, LM Studio)
 - Custom adapters
+- Any provider supported by `google-genai`, `openai`, or `anthropic` packages
 
 ### Does it work with LangChain tools?
 

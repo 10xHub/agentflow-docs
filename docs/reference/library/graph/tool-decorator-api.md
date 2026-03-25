@@ -96,9 +96,10 @@ def get_local_tool(self, tags: set[str] | None = None) -> list[dict]:
 ### Async Context
 
 ```python
-from agentflow.graph import ToolNode, StateGraph
+from agentflow.graph import Agent, ToolNode, StateGraph
 from agentflow.utils import tool
-from litellm import acompletion
+from agentflow.state import AgentState
+from agentflow.utils.constants import END
 
 @tool(tags=["safe", "read"])
 def read_data(id: int): pass
@@ -108,34 +109,30 @@ def delete_data(id: int): pass
 
 tool_node = ToolNode([read_data, delete_data])
 
-# In an async agent node
-async def agent_node(state, config):
-    # Get only safe tools for this agent
-    safe_tools = await tool_node.all_tools(tags={"safe"})
-    
-    response = await acompletion(
-        model="gpt-4o-mini",
-        messages=[...],
-        tools=safe_tools  # Only safe tools available
-    )
-    return response
+# Use Agent class to only expose safe tools
+agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tool_node_name="TOOL",
+    tools_tags={"safe"},  # Only safe tools available
+)
 ```
 
 ### Sync Context
 
 ```python
-from litellm import completion
+from agentflow.graph import Agent, ToolNode
+from agentflow.utils import tool
 
-# Sync version for non-async code
-def agent_node_sync(state, config):
-    safe_tools = tool_node.all_tools_sync(tags={"safe"})
-    
-    response = completion(
-        model="gpt-4o-mini",
-        messages=[...],
-        tools=safe_tools
-    )
-    return response
+# Sync version using Agent class
+agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{"role": "system", "content": "You are helpful."}],
+    tool_node_name="TOOL",
+    tools_tags={"safe"},
+)
 ```
 
 ### Multiple Tag Filters

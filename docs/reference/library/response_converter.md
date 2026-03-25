@@ -1,13 +1,13 @@
 ## Response Conversion Architecture
 
-LLM SDKs return provider-specific objects (LiteLLM model responses, streaming wrappers, raw dicts). Agentflow normalises these into its internal `Message` structure so downstream nodes, tool routing, publishers, and checkpointers operate over a consistent schema.
+LLM SDKs return provider-specific objects (provider model responses, streaming wrappers, raw dicts). Agentflow normalises these into its internal `Message` structure so downstream nodes, tool routing, publishers, and checkpointers operate over a consistent schema.
 
 Core pieces live in `agentflow/adapters/llm/`:
 
 | File | Purpose |
 |------|---------|
 | `base_converter.py` | Abstract `BaseConverter` defining async conversion contracts (single + streaming). |
-| `litellm_converter.py` | Concrete implementation for LiteLLM responses & streams. |
+| `provider_converter.py` | Concrete implementation for provider responses & streams. |
 | `model_response_converter.py` | Wrapper orchestrating invocation of a callable or static response plus applying a converter. |
 
 ### Why a Converter Layer?
@@ -36,26 +36,36 @@ Implement both methods for a new provider. The streaming variant yields incremen
 - A concrete response object
 - A callable (sync or async) that returns a response
 
-And a `converter` argument: either an instance of `BaseConverter` or a shortcut string (currently only `"litellm"`).
+And a `converter` argument: either an instance of `BaseConverter` or a provider shortcut string.
 
 Usage inside a node (see `examples/react/react_sync.py`):
 
 ```python
-from agentflow.adapters.llm.model_response_converter import ModelResponseConverter
+from agentflow.graph import Agent, StateGraph, ToolNode
+from agentflow.state import AgentState, Message
+from agentflow.utils.constants import END
 
 
-def main_agent(state):
-    response = completion(model="google/gemini-2.5-flash", messages=...)
-    return ModelResponseConverter(response, converter="litellm")
+def get_weather(location: str) -> str:
+    """Get weather for a location."""
+    return f"The weather in {location} is sunny, 72°F"
+
+
+agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tool_node_name="TOOL",
+)
 ```
 
 The invoke handler detects the wrapper, calls `invoke()` (or `stream()` in streaming mode), and appends the resulting `Message`(s) to `state.context`.
 
-### LiteLLM Conversion Details
+### Provider Conversion Details
 
-`LiteLLMConverter` extracts and maps:
+The built-in provider converter extracts and maps:
 
-| Source (LiteLLM) | Target (Agentflow Message) |
+| Source (Provider Response) | Target (Agentflow Message) |
 |------------------|-----------------------------|
 | `choices[0].message.content` | `TextBlock` in `content[]` |
 | `choices[0].message.reasoning_content` | `ReasoningBlock` (if present) |
@@ -70,7 +80,7 @@ Final aggregated message includes all accumulated content, reasoning, and tool c
 
 1. Node returns `ModelResponseConverter`
 2. Graph executes in streaming mode (`CompiledGraph.stream/astream`)
-3. Wrapper invokes LiteLLM streaming call (SDK returns `CustomStreamWrapper`)
+3. Wrapper invokes the provider streaming call (SDK returns a stream iterator)
 4. Each chunk processed `_process_chunk()` → yields partial `Message(delta=True)`
 5. After stream ends, a final consolidated `Message(delta=False)` is emitted
 
@@ -108,7 +118,7 @@ return ModelResponseConverter(llm_call(), converter=converter)
 
 ### Metadata & Observability
 
-Include optional `meta` when streaming (e.g. latency buckets, trace IDs). The LiteLLM converter already injects `provider`, `node_name`, and `thread_id`.
+Include optional `meta` when streaming (e.g. latency buckets, trace IDs). The built-in converter injects `provider`, `node_name`, and `thread_id`.
 
 ### Testing Strategy
 
@@ -118,7 +128,7 @@ Include optional `meta` when streaming (e.g. latency buckets, trace IDs). The Li
 
 ### Pitfalls
 
-- Always guard provider imports (as done with `HAS_LITELLM`) to avoid hard runtime deps
+- Always guard provider imports to avoid hard runtime deps
 - Ensure `delta` semantics: partial messages must be marked `delta=True`
 - Do not emit final aggregated message early—collect all content first
 

@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/pypi/pyversions/10xscale-agentflow)
 [![Coverage](https://img.shields.io/badge/coverage-75%25-yellow.svg)](#)
 
-Agentflow is a lightweight yet powerful Python framework designed for building intelligent agents and orchestrating sophisticated multi-agent workflows. Unlike frameworks that lock you into a specific LLM provider, Agentflow is provider-agnostic: bring your favorite LLM SDK—whether it's LiteLLM, OpenAI, Google Gemini, Anthropic Claude, or any other provider—and Agentflow handles everything else. The framework manages orchestration, state persistence, tool integration, control flow, and streaming, letting you focus on building agent logic rather than plumbing.
+Agentflow is a lightweight yet powerful Python framework designed for building intelligent agents and orchestrating sophisticated multi-agent workflows. Unlike frameworks that lock you into a specific LLM provider, Agentflow is provider-agnostic: bring your favorite LLM SDK—whether it's OpenAI, Google Gemini, Anthropic Claude, or any other provider—and Agentflow handles everything else. The framework manages orchestration, state persistence, tool integration, control flow, and streaming, letting you focus on building agent logic rather than plumbing.
 
 ---
 
@@ -15,7 +15,7 @@ Agentflow delivers a comprehensive set of features that cover the entire agent l
 
 ### Core orchestration capabilities
 
-- **LLM-agnostic architecture** — Works seamlessly with any language model provider through a flexible adapter pattern. Use LiteLLM for unified access to 100+ models, or integrate directly with native SDKs. Your agent logic remains portable across providers.
+- **LLM-agnostic architecture** — Works seamlessly with any language model provider through a flexible adapter pattern. Use the built-in `Agent` class with `provider` and `model` parameters for unified access to 100+ models, or integrate directly with native SDKs. Your agent logic remains portable across providers.
 
 - **StateGraph-based orchestration** — Define your agent workflows as directed graphs with nodes (processing units) and edges (transitions). Support for conditional routing, dynamic branching, and cyclical flows enables sophisticated agent behaviors.
 

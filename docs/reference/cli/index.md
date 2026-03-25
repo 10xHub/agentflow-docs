@@ -117,7 +117,7 @@ pre-commit install
 
 #### `graph/react.py`
 A fully-commented sample agent implementation featuring:
-- LiteLLM integration for AI completion
+- Agent class for AI completion
 - Tool definition and execution
 - State graph orchestration
 - Conditional routing
@@ -393,8 +393,8 @@ The CLI respects these environment variables:
 | Variable | Purpose | Used By |
 |----------|---------|---------|
 | `GRAPH_PATH` | Path to active config file | API server |
-| `GEMINI_API_KEY` | API key for Gemini models | LiteLLM |
-| `OPENAI_API_KEY` | API key for OpenAI models | LiteLLM |
+| `GEMINI_API_KEY` | API key for Gemini models | Google GenAI |
+| `OPENAI_API_KEY` | API key for OpenAI models | OpenAI SDK |
 | `JWT_SECRET_KEY` | Secret key for JWT auth | Auth system |
 | `JWT_ALGORITHM` | Algorithm for JWT (e.g., HS256) | Auth system |
 | `SNOWFLAKE_*` | Snowflake ID generator config | ID generation |

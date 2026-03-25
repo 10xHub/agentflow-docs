@@ -34,7 +34,7 @@ Choose LOW for chat responses, FULL for debugging or persistence workflows.
 
 ## Streaming Semantics
 
-When a node returns a `ModelResponseConverter` (e.g. LiteLLM wrapper) in streaming mode:
+When a node returns a `ModelResponseConverter` (e.g. from a custom agent node) in streaming mode:
 
 1. Interim partial messages with `delta=True` emitted
 2. Tool call deltas surface early so UI can reflect pending tool execution

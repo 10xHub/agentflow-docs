@@ -19,7 +19,7 @@ Scaffolds a runnable agent graph.
 
 ### Default Files
 * `agentflow.json` – main configuration
-* `graph/react.py` – example agent graph (tool, routing, LiteLLM call)
+* `graph/react.py` – example agent graph (tool, routing, Agent class call)
 * `graph/__init__.py`
 
 ### With `--prod`

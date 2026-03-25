@@ -80,22 +80,6 @@ AgentFlow uses official LLM libraries to make API calls. Pick the provider you w
     export ANTHROPIC_API_KEY=sk-ant-your-key-here
     ```
 
-=== "Multiple Providers"
-
-    **Why?** Switch between 100+ models with a unified interface
-
-    ```bash
-    pip install litellm
-    ```
-
-    Set the API keys for whichever providers you want to use:
-
-    ```bash
-    export OPENAI_API_KEY=sk-...
-    export GOOGLE_API_KEY=...
-    export ANTHROPIC_API_KEY=sk-ant-...
-    ```
-
 ---
 
 ## Step 3: Set Up API Keys
@@ -297,7 +281,7 @@ uv pip install 10xscale-agentflow google-genai
 | **Google Gemini** | `pip install google-genai` | `GOOGLE_API_KEY` | `google/gemini-2.5-flash` |
 | **OpenAI** | `pip install openai` | `OPENAI_API_KEY` | `openai/gpt-4o` |
 | **Anthropic** | `pip install anthropic` | `ANTHROPIC_API_KEY` | `anthropic/claude-3-5-sonnet-20241022` |
-| **Multiple (LiteLLM)** | `pip install litellm` | set per provider | any provider string |
+
 
 ---
 

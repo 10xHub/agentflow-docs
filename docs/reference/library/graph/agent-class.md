@@ -77,8 +77,8 @@ State Input
     │
     ▼
 ┌─────────────────────────────────┐
-│   4. LLM Call (LiteLLM)         │
-│      - acompletion()            │
+│   4. LLM Call                   │
+│      - Native provider SDK      │
 │      - Streaming supported      │
 └─────────────────────────────────┘
     │
@@ -204,14 +204,15 @@ async for event in app.astream(
 class Agent:
     def __init__(
         self,
-        model: str,                                    # Required: LiteLLM model identifier
+        model: str,                                    # Required: model identifier (e.g., "gemini-2.5-flash")
         system_prompt: list[dict[str, Any]],          # Required: System prompt messages
         tools: list[Callable] | ToolNode | None = None,  # Direct tool specification
         tool_node_name: str | None = None,            # Reference existing ToolNode by name
+        provider: str | None = None,                  # LLM provider (e.g., "google", "openai", "anthropic")
         extra_messages: list[Message] | None = None,  # Additional context messages
         trim_context: bool = False,                   # Enable context trimming
         tools_tags: set[str] | None = None,           # Filter tools by tags
-        **llm_kwargs,                                 # Additional LiteLLM parameters
+        **llm_kwargs,                                 # Additional provider parameters
     ):
 ```
 
@@ -219,14 +220,15 @@ class Agent:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `model` | `str` | LiteLLM model identifier (e.g., "gpt-4", "google/gemini-2.5-flash") |
+| `model` | `str` | Model identifier (e.g., "gemini-2.5-flash", "gpt-4o") |
 | `system_prompt` | `list[dict]` | System messages with role and content |
 | `tools` | `list[Callable]` or `ToolNode` | Tools to make available (alternative to tool_node_name) |
 | `tool_node_name` | `str` | Name of ToolNode registered in the graph |
+| `provider` | `str` | LLM provider name (e.g., "google", "openai", "anthropic") |
 | `extra_messages` | `list[Message]` | Additional messages included in every call |
 | `trim_context` | `bool` | Whether to trim context using BaseContextManager |
 | `tools_tags` | `set[str]` | Tags to filter available tools |
-| `**llm_kwargs` | `Any` | Additional parameters for acompletion (temperature, max_tokens, etc.) |
+| `**llm_kwargs` | `Any` | Additional parameters passed to the provider (temperature, max_tokens, etc.) |
 
 ### Methods
 
@@ -258,7 +260,7 @@ async def execute(
 ### When to Use Custom Functions
 
 ✅ **Choose custom functions when you need:**
-- Custom LLM clients (not LiteLLM)
+- Custom LLM clients with non-standard interfaces
 - Complex message preprocessing
 - Multiple LLM calls per node
 - Non-standard response handling
@@ -289,7 +291,7 @@ async def main_agent(state: AgentState):
         tools = await tool_node.all_tools()
         response = await acompletion(model="gpt-4", messages=messages, tools=tools)
     
-    return ModelResponseConverter(response, converter="litellm")
+    return ModelResponseConverter(response, converter=converter)
 ```
 
 ---
@@ -332,7 +334,7 @@ Agent(model="gpt-4", ..., tool_node_name="TOOL")
 
 ### LLM Parameters
 
-Pass any LiteLLM parameter through `**llm_kwargs`:
+Pass any additional parameter through `**llm_kwargs`:
 
 ```python
 Agent(
@@ -351,17 +353,23 @@ Agent(
 
 ## Requirements
 
-The Agent class requires LiteLLM:
+The Agent class is included with the base install:
 
 ```bash
-pip install 10xscale-agentflow[litellm]
+pip install 10xscale-agentflow
 ```
 
-If LiteLLM is not installed, you'll get an `ImportError`:
+Choose your LLM provider SDK separately:
 
-```
-ImportError: litellm is required for Agent class. 
-Install it with: pip install 10xscale-agentflow[litellm]
+```bash
+# Google Gemini
+pip install 10xscale-agentflow[google-genai]
+
+# Or use OpenAI
+pip install openai
+
+# Or Anthropic
+pip install anthropic
 ```
 
 ---

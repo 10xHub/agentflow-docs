@@ -52,7 +52,9 @@ class MyNameGenerator(ThreadNameGenerator):
 
 ```python
 from agentflow_cli import ThreadNameGenerator
-from litellm import acompletion
+from google import genai
+
+client = genai.Client()
 
 class MyNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:
@@ -61,19 +63,15 @@ class MyNameGenerator(ThreadNameGenerator):
             return "new-conversation"
         
         # Call AI to generate a meaningful name
-        response = await acompletion(
-            model="google/gemini-2.0-flash-exp",
-            messages=[{
-                "role": "user",
-                "content": f"""Please generate a short thread name (2-3 words, hyphen-separated) 
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=f"""Please generate a short thread name (2-3 words, hyphen-separated) 
 for this conversation:
 {chr(10).join(messages)}
-Reply only with the thread name, nothing else."""
-            }],
-            max_tokens=20
+Reply only with the thread name, nothing else.""",
         )
         
-        return response.choices[0].message.content.strip()
+        return response.text.strip()
 ```
 
 ## Configuration in agentflow.json
@@ -108,7 +106,9 @@ project/
 **graph/thread_name_generator.py:**
 ```python
 from agentflow_cli import ThreadNameGenerator
-from litellm import acompletion
+from google import genai
+
+client = genai.Client()
 
 class MyNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:
@@ -116,16 +116,12 @@ class MyNameGenerator(ThreadNameGenerator):
         if not messages:
             return "new-conversation"
         
-        response = await acompletion(
-            model="google/gemini-2.0-flash-exp",
-            messages=[{
-                "role": "user",
-                "content": f"""Generate a thread name for: {chr(10).join(messages[:2])}"""
-            }],
-            max_tokens=20
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=f"Generate a thread name for: {chr(10).join(messages[:2])}",
         )
         
-        return response.choices[0].message.content.strip()
+        return response.text.strip()
 ```
 
 ## Best Practices
