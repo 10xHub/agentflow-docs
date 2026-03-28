@@ -228,8 +228,29 @@ class Agent:
 | `extra_messages` | `list[Message]` | Additional messages included in every call |
 | `trim_context` | `bool` | Whether to trim context using BaseContextManager |
 | `tools_tags` | `set[str]` | Tags to filter available tools |
+| `retry_config` | `RetryConfig \\| bool \\| None` | Retry and backoff behavior for transient LLM errors (503/429 etc.). Set to `True` for defaults, `False`/`None` to disable, or custom `RetryConfig`. |
+| `fallback_models` | `list[str \\| tuple[str, str]]` | Ordered fallback model list, e.g. `["gpt-4o-mini", ("gemini-2.0-flash", "google")]`. |
 | `**llm_kwargs` | `Any` | Additional parameters passed to the provider (temperature, max_tokens, etc.) |
+### Retry and Fallback Behavior
 
+The Agent class supports robust retry and fallback configuration to handle transient LLM service issues like `503 Service Unavailable`:
+
+- `retry_config`: Controls retry count and backoff parameters. Default (when `True`) is 3 retries with exponential backoff (1s, 2s, 4s). Set to `False`/`None` to disable.
+- `fallback_models`: Ordered list of models to try after primary model retries are exhausted.
+
+Example:
+
+```python
+from agentflow.graph import Agent
+from agentflow.graph.agent_internal.constants import RetryConfig
+
+agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    retry_config=RetryConfig(max_retries=4, initial_delay=1.0),
+    fallback_models=["gemini-2.0-flash", ("gpt-4o-mini", "openai")],
+)
+```
 ### Methods
 
 #### `execute(state, config)`
