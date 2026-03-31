@@ -33,6 +33,7 @@ agentflow build
 |---------|-------------|
 | `agentflow init` | Initialize a new project with config and graph scaffold |
 | `agentflow api` | Start the development API server |
+| `agentflow play` | Start the API server and open the hosted playground |
 | `agentflow build` | Generate Docker deployment files |
 | `agentflow version` | Display CLI and package versions |
 
@@ -223,6 +224,58 @@ agentflow api --verbose
 curl http://localhost:8000/ping
 
 # 5. Make changes to your graph - server auto-reloads
+```
+
+---
+
+## `agentflow play`
+
+Start the AgentFlow API development server and automatically open the hosted playground with the local backend URL prefilled.
+
+### Synopsis
+
+```bash
+agentflow play [OPTIONS]
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--config`, `-c` | STRING | `agentflow.json` | Path to configuration file |
+| `--host`, `-H` | STRING | `0.0.0.0` | Host to bind the server to |
+| `--port`, `-p` | INTEGER | `8000` | Port to bind the server to |
+| `--reload` / `--no-reload` | FLAG | `True` | Enable/disable auto-reload |
+| `--verbose`, `-v` | FLAG | `False` | Enable verbose logging |
+| `--quiet`, `-q` | FLAG | `False` | Suppress all output except errors |
+
+### Behavior
+
+1. Runs the same API server as `agentflow api`
+2. Waits until the local backend is reachable on the selected host and port
+3. Opens the hosted playground in the default browser
+4. Passes the local backend URL to the playground as `backendUrl`
+
+### Examples
+
+**Start with default settings and open the playground:**
+```bash
+agentflow play
+```
+
+**Start on localhost only:**
+```bash
+agentflow play --host 127.0.0.1
+```
+
+**Start on a custom port:**
+```bash
+agentflow play --port 9000
+```
+
+**Start without auto-reload:**
+```bash
+agentflow play --no-reload
 ```
 
 ---

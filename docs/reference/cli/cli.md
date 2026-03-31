@@ -9,6 +9,7 @@
 | `agentflow init` | Create `agentflow.json` and sample graph under `graph/` |
 | `agentflow init --prod` | Same as init plus tooling files (`pyproject.toml`, `.pre-commit-config.yaml`) |
 | `agentflow api` | Run development API server (FastAPI + Uvicorn) |
+| `agentflow play` | Run the API server and open the hosted playground with the local backend URL |
 | `agentflow build` | Generate Dockerfile (and optional docker-compose.yml) |
 | `agentflow version` | Show CLI and installed package versions |
 
@@ -58,6 +59,23 @@ Behavior:
 * Loads `.env` (or file specified in config).
 * Sets `GRAPH_PATH` env var for runtime.
 
+## Play
+Starts the API server and opens the hosted playground with the local backend URL prefilled.
+
+Key options:
+
+| Option | Default | Notes |
+|--------|---------|-------|
+| `--config/-c` | `agentflow.json` | Config file path |
+| `--host/-H` | `0.0.0.0` | Use `127.0.0.1` for local only |
+| `--port/-p` | `8000` | Port to bind |
+| `--reload/--no-reload` | reload on | Auto-reload for dev |
+
+Behavior:
+* Starts the same API server as `agentflow api`.
+* Waits for the local server to become reachable.
+* Opens `https://playground-463bd.web.app?backendUrl=http://127.0.0.1:8000` in the default browser when using localhost binding.
+
 ## Build
 Generates production Docker artifacts.
 
@@ -101,6 +119,7 @@ Displays both the CLI internal version and the package version read from `pyproj
 agentflow init
 agentflow init --prod
 agentflow api --reload
+agentflow play
 agentflow build --docker-compose
 agentflow version
 ```
