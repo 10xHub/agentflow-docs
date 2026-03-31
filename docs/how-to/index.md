@@ -20,6 +20,14 @@ Each guide follows this structure:
 
 ---
 
+## 🖼️ Multimodal
+
+Send images, audio, video, and documents through your agents:
+
+- [Multimodal Guide](multimodal.md) — Content blocks, file upload API, image processing, media storage, security, and provider optimizations
+
+---
+
 ## 🤖 Agents
 
 Build and configure agents:
@@ -86,6 +94,9 @@ Deploy your agents to production:
 
 **...create an agent**
 → [Create a Simple Agent](agents/create-simple-agent.md)
+
+**...send images or files to my agent**
+→ [Multimodal Guide](multimodal.md)
 
 **...give my agent tools**
 → [Create a Python Function Tool](tools/create-python-tool.md)

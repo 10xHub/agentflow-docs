@@ -200,6 +200,12 @@ Understanding how Agentflow manages state is crucial for building reliable agent
 - [Checkpointers](./context/checkpointer.md) — Persistence strategies
 - [Store abstractions](./context/store.md) — Custom storage backends
 
+### Media and multimodal
+
+Send images, audio, video, and documents through your agents. Includes image processing, security validation, and provider-specific optimizations:
+
+- [Media & Multimodal reference](./media.md) — Full API for content blocks, media storage, security, and provider helpers
+
 ### Tools and integrations
 
 Tools enable agents to interact with external systems. Learn how to integrate Python functions, MCP servers, Composio actions, and LangChain tools:
@@ -261,6 +267,7 @@ A fully typed client library for consuming AgentFlow APIs from web and Node.js a
 - **Streaming support** — Real-time updates with SSE and WebSocket fallbacks
 - **Thread management** — Create, list, update, and delete conversation threads
 - **Memory operations** — Search and manage agent memory across conversations
+- **File upload & multimodal** — Upload images and documents, compose multimodal messages
 - **Error handling** — Comprehensive error types with recovery strategies
 
 [Learn more about the TypeScript client →](../client/index.md)

@@ -162,9 +162,15 @@ nav:
           - A2A Integration: Tutorial/a2a.md
           - Skills System: Tutorial/skills.md
 
+  - How-To Guides:
+      - Overview: how-to/index.md
+      - Multimodal (Images, Audio, Documents): how-to/multimodal.md
+
   - Reference:
       - Python Library:
           - Overview: reference/library/index.md
+          - Media & Multimodal:
+              - Multimodal Overview: reference/library/media.md
           - Graph (Workflow):
               - Overview: reference/library/graph/index.md
               - Agent Class: reference/library/graph/agent-class.md
@@ -239,6 +245,7 @@ nav:
           - Overview: reference/client/index.md
           - Quick Start: reference/client/quick_start.md
           - API Reference: reference/client/api-reference.md
+          - File Upload & Multimodal: reference/client/file-upload.md
           - Invoke Usage: reference/client/invoke-usage.md
           - Streaming Quick Ref: reference/client/stream-quick-ref.md
           - Streaming Usage: reference/client/stream-usage.md

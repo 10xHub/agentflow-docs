@@ -160,6 +160,8 @@ Media blocks enable agents to communicate through:
 - **Audio responses** for accessibility
 - **Document references** for detailed information
 
+All media blocks reference their data through `MediaRef(kind, url/data_base64/file_id, mime_type)`. See the [Media & Multimodal Reference](../media.md) for the full API including image processing, storage backends, security validation, and provider-specific optimizations.
+
 ### **Tool Interaction Blocks**: Structured Actions
 
 ```python
