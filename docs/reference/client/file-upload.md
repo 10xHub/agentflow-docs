@@ -9,6 +9,7 @@ The AgentFlow client provides four file-related methods plus message helpers for
 | Method | Description |
 |--------|-------------|
 | `client.uploadFile(file)` | Upload a file, get metadata & `file_id` |
+| `client.getFileAccessUrl(fileId)` | Get the best access URL for rendering or download |
 | `client.getFile(fileId)` | Download a file as a `Blob` |
 | `client.getFileInfo(fileId)` | Get file metadata (no download) |
 | `client.getMultimodalConfig()` | Read server multimodal settings |
@@ -39,6 +40,17 @@ const response = await client.invoke({
   thread_id: 'my-thread',
 });
 ```
+
+### Recommended Production Pattern
+
+If you are building a real app, prefer this flow:
+
+1. `client.uploadFile(file)`
+2. `Message.withFile(text, upload.data.file_id, upload.data.mime_type)`
+3. Use `upload.data.direct_url ?? upload.data.url` for UI rendering when needed
+4. Use `client.getFileAccessUrl(fileId)` when you need a fresh best-access URL later
+
+This is the most scalable path because the backend can store media externally and use cached signed URLs instead of shipping large base64 payloads through every model request.
 
 ### Upload & Summarize a PDF
 
@@ -89,6 +101,8 @@ interface FileUploadResponse {
     filename: string;              // Original filename
     extracted_text: string | null; // Extracted text (documents only)
     url: string;                   // agentflow:// URL for referencing
+    direct_url?: string | null;    // Best direct access URL, often signed in cloud mode
+    direct_url_expires_at?: number | null;
   };
   metadata: ResponseMetadata;
 }
@@ -102,6 +116,7 @@ const fileInput = document.querySelector<HTMLInputElement>('#file-input');
 const result = await client.uploadFile(fileInput!.files![0]);
 console.log(result.data.file_id); // "abc123"
 console.log(result.data.url);     // "agentflow://media/abc123"
+console.log(result.data.direct_url); // "https://..." when available
 
 // From a Blob with custom name
 const blob = new Blob([csvData], { type: 'text/csv' });
@@ -163,10 +178,49 @@ interface FileInfoResponse {
     file_id: string;
     mime_type: string;
     size_bytes: number;
+    filename?: string | null;
     extracted_text: string | null;
+    direct_url?: string | null;
+    direct_url_expires_at?: number | null;
   };
   metadata: ResponseMetadata;
 }
+```
+
+---
+
+## getFileAccessUrl()
+
+Get the best access URL for a file.
+
+**Endpoint:** `GET /v1/files/{file_id}/url`
+
+```typescript
+async getFileAccessUrl(fileId: string): Promise<FileAccessUrlResponse>
+```
+
+### Response
+
+```typescript
+interface FileAccessUrlResponse {
+  data: {
+    file_id: string;
+    url: string;
+    expires_at?: number | null;
+    mime_type: string;
+  };
+  metadata: ResponseMetadata;
+}
+```
+
+### Notes
+
+- In cloud-backed deployments, this is typically a short-lived signed URL.
+- In local or memory-backed deployments, this may fall back to the API file route.
+
+```typescript
+const access = await client.getFileAccessUrl(upload.data.file_id);
+img.src = access.data.url;
 ```
 
 ---
@@ -213,6 +267,8 @@ static withImage(
 
 The `imageUrl` can be an HTTPS URL, base64 data URL, or `agentflow://` URL from `uploadFile`.
 
+For production apps, prefer uploaded file references or remote URLs over inline base64.
+
 ```typescript
 // URL
 Message.withImage('Describe this', 'https://example.com/photo.jpg');
@@ -224,6 +280,15 @@ Message.withImage('What do you see?', r.data.url);
 // Base64
 Message.withImage('Analyze', 'data:image/png;base64,iVBOR...');
 ```
+
+### Should I Pass Base64 Directly?
+
+Only for small/simple cases.
+
+- Good: quick demos, tests, notebooks, tiny screenshots
+- Not ideal: production uploads, repeated requests, large images
+
+If you pass inline base64, the image stays inline unless your server explicitly offloads it. That means it does not benefit from the signed URL path or signed URL cache.
 
 ### Message.withFile()
 

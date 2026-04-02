@@ -73,6 +73,35 @@ const msg3 = Message.multimodal([
 ]);
 ```
 
+## What Should I Use?
+
+Use this rule of thumb:
+
+- Use a normal HTTPS URL when your image is already publicly reachable or you control a media CDN.
+- Use `client.uploadFile()` and then `Message.withFile(...)` for production app uploads.
+- Use inline base64 only for small, one-off examples, tests, prototypes, or local scripts.
+
+### Production Recommendation
+
+For production systems, prefer this flow:
+
+1. Upload the file to AgentFlow with `client.uploadFile(...)`.
+2. Build the message with `Message.withFile(...)` using the returned `file_id`.
+3. Let the backend resolve that file into a cached signed URL when needed.
+
+This keeps large media out of request bodies, avoids repeated base64 inflation, and allows cloud-backed storage to scale across workers and frontend clients.
+
+### What Happens If I Send Base64?
+
+Inline base64 still works, but it stays inline unless you explicitly offload it on the server side.
+
+- The current system will send the base64 image directly to the provider.
+- It will not automatically become a signed URL.
+- It will not use the signed URL cache path.
+- Large base64 payloads increase request size, memory usage, and latency.
+
+So base64 is supported, but it is not the recommended production path.
+
 ## Content Block Types
 
 | Block Type | Python Class | Description |
@@ -199,6 +228,17 @@ message = ensure_media_offloaded(message, store)
 # ImageBlock.media now has kind="url", url="agentflow://media/abc123"
 # instead of kind="data", data_base64="..." 
 ```
+
+### When To Use Offloading
+
+If your app or gateway receives inline base64 from clients, call `ensure_media_offloaded()` at the ingestion boundary before the message enters graph execution.
+
+Use this especially when:
+
+- users paste screenshots or images as base64
+- a frontend sends `data:` URLs directly
+- messages may contain medium or large images
+- you want cloud-backed media to use signed URLs and cache efficiently later
 
 ## Security
 

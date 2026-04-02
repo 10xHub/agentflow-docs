@@ -49,6 +49,16 @@ ref = MediaRef(kind="data", data_base64="iVBOR...", mime_type="image/png")
 ref = MediaRef(kind="file_id", file_id="file-abc123", mime_type="application/pdf")
 ```
 
+### Practical Guidance
+
+As a library user, choose the media reference type based on the use case:
+
+- `kind="url"`: Best for production when media already lives in object storage, a CDN, or another reachable URL.
+- `kind="file_id"`: Best when you use the API upload flow and want the backend to resolve storage-backed media efficiently.
+- `kind="data"`: Fine for small inline payloads, tests, and prototypes, but not the recommended production path.
+
+If you pass `kind="data"` with base64 today, the content is sent inline unless you explicitly offload it. It will not automatically become a signed URL by itself.
+
 ### MediaRef Fields
 
 | Field | Type | Description |
@@ -202,6 +212,19 @@ store = LocalFileMediaStore(base_path="./uploads")
 message = ensure_media_offloaded(message, store)
 # ImageBlock.media now has kind="url", url="agentflow://media/abc123"
 ```
+
+### Recommended Ingestion Pattern
+
+If your application accepts base64 images from users, call `ensure_media_offloaded()` before graph execution.
+
+That gives you the production path:
+
+1. receive inline media from the client
+2. offload it into a `BaseMediaStore`
+3. replace base64 with a lightweight `agentflow://media/{key}` reference
+4. let the resolver produce direct URLs for model providers when supported
+
+This is the safest way to prevent large base64 blobs from inflating message payloads and memory usage.
 
 ### MediaOffloadPolicy
 
