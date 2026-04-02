@@ -256,8 +256,7 @@ agent = Agent(
                 "You have access to specialized skill modes that give you "
                 "deeper expertise in specific domains.\n"
                 "When the user's request clearly matches a skill, activate "
-                "it immediately by calling set_skill() before doing anything else.\n"
-                "When the task is done, call clear_skill() to return to general mode."
+                "it immediately by calling set_skill() before doing anything else."
             ),
         }
     ],
@@ -265,12 +264,11 @@ agent = Agent(
         skills_dir=SKILLS_DIR,
         inject_trigger_table=True,  # Auto-appends skill table to system prompt
         hot_reload=True,            # Re-reads SKILL.md on every call (great for dev)
-        auto_deactivate=True,       # Activating new skill clears the old one
     ),
     trim_context=True,  # Safe with skills - they survive trimming!
 )
 
-# Get the tool node - already includes set_skill and clear_skill
+# Get the tool node - includes set_skill tool
 tool_node = agent.get_tool_node()
 
 
@@ -402,28 +400,75 @@ You: What's the average of these numbers: 10, 20, 30
 
 ## How It Works
 
-1. **Startup**: The agent discovers skills from `./skills/` and registers `set_skill` and `clear_skill` tools.
+1. **Startup**: The agent discovers skills from `./skills/` and registers the `set_skill` tool.
 
 2. **System Prompt**: Each LLM call includes:
    - Your base system prompt
-   - A trigger table listing all skills
-   - Active skill content (if a skill is active)
+   - A trigger table listing all skills with their triggers and resources
 
 3. **Skill Activation**: When the LLM calls `set_skill("code-review")`:
-   - The tool returns `"SKILL_ACTIVATED:code-review"`
-   - The framework stores this in `state.execution_meta.internal_data`
-   - On the next LLM call, the skill's instructions are injected
+   - The tool returns the full skill content in format: `## SKILL: CODE-REVIEW\n\n{skill instructions}`
 
-4. **Context Trimming**: Skills survive `trim_context=True` because:
-   - The active skill name is stored in `internal_data`, not message history
-   - Skill content is re-injected fresh on every call
+4. **Resource Loading**: To load a specific resource file:
+   - Call `set_skill("code-review", "style-guide.md")` 
+   - The tool returns: `## Resource: style-guide.md\n\n{file content}`
+
+5. **Context Trimming**: Skills survive `trim_context=True` because:
+   - The skill content is returned as a tool result
+   - The LLM uses this content directly in its response
+   - Content is re-loaded fresh on each call when needed
+
+## Resources Feature
+
+Skills can include additional reference files (resources) that can be loaded on-demand:
+
+### Adding Resources to a Skill
+
+In your SKILL.md frontmatter, add a `resources` list:
+
+```markdown
+---
+name: code-review
+description: Perform thorough code reviews
+metadata:
+  triggers:
+    - review my code
+    - check this code
+  resources:
+    - style-guide.md
+    - security-checklist.md
+---
+```
+
+### Loading Resources
+
+The LLM can load specific resources during a conversation:
+
+```python
+# Call set_skill with resource name to load that specific file
+# The tool returns the resource content directly
+set_skill("code-review", "style-guide.md")
+# Returns: ## Resource: style-guide.md\n\n{content of style-guide.md}
+```
+
+The trigger table shows available resources, and the LLM knows to call `set_skill(name, resource)` to load them.
+
+### Example: Code Review with Resources
+
+Here's how resources work in practice:
+
+1. User asks: "Review my Python code"
+2. LLM calls `set_skill("code-review")` 
+3. Tool returns the skill content
+4. If the user then asks about style conventions, the LLM calls `set_skill("code-review", "style-guide.md")`
+5. Tool returns the style guide content, which the LLM uses to answer
 
 ## Next Steps
 
-- Add a `style-guide.md` resource to the code-review skill
+- Add resource files to your skills for reference documentation
 - Create custom skills for your domain
-- Explore `max_active=2` to allow multiple skills at once
 - Use tags to organize and filter skills
+- Explore the hot_reload option for development
 
 ## Full Example Code
 

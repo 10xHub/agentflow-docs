@@ -11,8 +11,6 @@ from agentflow.skills import SkillConfig
 
 config = SkillConfig(
     skills_dir="./skills/",
-    max_active=1,
-    auto_deactivate=True,
     inject_trigger_table=True,
     hot_reload=True,
 )
@@ -28,19 +26,15 @@ agent = Agent(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `skills_dir` | `str \| None` | `None` | Path to folder containing skill subdirectories. If `None`, no skills are discovered from disk. |
-| `max_active` | `int` | `1` | Maximum number of simultaneously active skills. |
-| `auto_deactivate` | `bool` | `True` | When `True`, activating a new skill automatically clears the previous one. |
 | `inject_trigger_table` | `bool` | `True` | Appends a markdown table of all skills to the system prompt so the LLM knows when to use each skill. |
 | `hot_reload` | `bool` | `True` | Re-reads SKILL.md files when their modification time changes. Safe for production (mtime check is cheap). |
 
-### Example: Multiple Active Skills
+### Example
 
 ```python
-# Allow up to 2 skills active at once
+# Configure skills
 config = SkillConfig(
     skills_dir="./skills/",
-    max_active=2,
-    auto_deactivate=False,  # Don't clear previous skills
 )
 ```
 
@@ -163,84 +157,68 @@ table = registry.build_trigger_table()
 # Returns:
 # ## Available Skills
 #
-# | Skill | When to use |
-# |-------|-------------|
-# | `code-review` | review my code; find bugs; code review |
+# ### How to Use Skills
+# When the user's request matches a skill:
+# 1. Call `set_skill(skill_name)` to load the skill instructions
+# 2. Read the loaded content — it may reference additional resources
+# 3. If you need a specific resource mentioned in the skill, call `set_skill(skill_name, resource_name)`
+# 4. Then provide your answer using the loaded content
+# ### Skills & Resources
+#
+# **`code-review`** — triggers: "review my code", "find bugs", "code review"
 # ...
 ```
 
 ---
 
-## Tools: set_skill and clear_skill
+## Tool: set_skill
 
-When skills are enabled, the Agent's ToolNode automatically includes two tools:
+When skills are enabled, the Agent's ToolNode automatically includes the `set_skill` tool.
 
-### set_skill(skill_name: str) -> str
+### set_skill(skill_name: str, resource: str | None = None) -> str
 
-Activates a skill. The LLM calls this when a user request matches a skill domain.
+Activates a skill or loads a specific resource. The LLM calls this when a user request matches a skill domain.
+
+**Arguments:**
+- `skill_name` (required): Name of the skill to load
+- `resource` (optional): If provided, loads this specific resource file instead of the skill instructions
 
 **Returns:**
-- `"SKILL_ACTIVATED:<skill_name>"` on success
+- `"## SKILL: {NAME}\n\n{skill content}"` on success
+- `"## Resource: {filename}\n\n{resource content}"` when loading a resource
 - `"ERROR: Unknown skill '<name>'. Available: ..."` if skill not found
 
 **Example LLM interaction:**
 ```
 User: Can you review my Python code?
 Assistant: [calls set_skill("code-review")]
-Tool Result: SKILL_ACTIVATED:code-review
+Tool Result: ## SKILL: CODE-REVIEW
+
+You are now in **CODE REVIEW** mode...
 Assistant: [responds using code-review skill instructions]
 ```
 
-### clear_skill() -> str
+**Loading a resource:**
+```
+Assistant: [calls set_skill("code-review", "style-guide.md")]
+Tool Result: ## Resource: style-guide.md
 
-Deactivates all active skills, returning to general mode.
-
-**Returns:** `"SKILL_DEACTIVATED"`
+# Style Guide
+...
+```
 
 ---
 
-## SkillInjector
+## How Skills Work
 
-Internal class that builds system prompt messages from active skills. You typically don't use this directly.
+The skill system works differently from the old "active skill injection" model:
 
-```python
-from agentflow.skills.injection import SkillInjector
+1. **Trigger Table**: The LLM sees all available skills in the system prompt
+2. **Skill Activation**: When the LLM calls `set_skill("skill-name")`, the tool returns the full skill content
+3. **Resource Loading**: `set_skill("skill-name", "resource.md")` loads specific resource files
+4. **No State Storage**: Skills don't store state in `execution_meta` - instead, content is returned as tool results and the LLM uses it directly
 
-injector = SkillInjector(registry, config)
-
-# Build prompts for active skills
-prompts = injector.build_skill_prompts(["code-review"])
-# Returns: [{"role": "system", "content": "## ACTIVE SKILL: CODE REVIEW\n..."}]
-```
-
-### Methods
-
-#### `build_skill_prompts(active_skills: list[str]) -> list[dict[str, str]]`
-
-Builds system prompt dicts for each active skill. Each dict contains:
-- Skill body content
-- Appended resource files
-- Routing note (tells LLM to check other skills on next turn)
-
----
-
-## State Storage
-
-Active skills are stored in `state.execution_meta.internal_data["active_skills"]` as a list of strings.
-
-```python
-# Check active skills
-active = state.execution_meta.internal_data.get("active_skills", [])
-
-# Manually set (not recommended - use set_skill tool instead)
-state.execution_meta.internal_data["active_skills"] = ["code-review"]
-```
-
-**Why this location?**
-
-- `state.context` (message history) can be trimmed by `MessageContextManager`
-- `execution_meta.internal_data` is never trimmed
-- Skills survive context trimming automatically
+This design is simpler and works better with context trimming - skill content is re-loaded fresh when needed.
 
 ---
 
