@@ -32,6 +32,14 @@ Complete API reference for all endpoints in the @10xscale/agentflow-client libra
   - [deleteMemory()](#deletememory)
   - [listMemories()](#listmemories)
   - [forgetMemories()](#forgetmemories)
+- [File Upload & Multimodal](#file-upload--multimodal)
+  - [uploadFile()](#uploadfile)
+  - [getFile()](#getfile)
+  - [getFileInfo()](#getfileinfo)
+  - [getMultimodalConfig()](#getmultimodalconfig)
+  - [Message.withImage()](#messagewithimage)
+  - [Message.withFile()](#messagewithfile)
+  - [Message.multimodal()](#messagemultimodal)
 
 ---
 
@@ -1434,6 +1442,193 @@ console.log('Forget success:', response.data.success);
 - `PermissionError` (403) - No permission to delete
 - `ValidationError` (422) - Validation failed
 - `ServerError` (500+) - Server issues
+
+---
+
+## File Upload & Multimodal
+
+### uploadFile()
+
+Upload a file (image, audio, document) to the server for use in multimodal messages.
+
+**Endpoint:** `POST /v1/files/upload`
+
+**Signature:**
+```typescript
+uploadFile(
+  file: File | Blob | { data: Blob; filename: string }
+): Promise<FileUploadResponse>
+```
+
+**Returns:**
+```typescript
+interface FileUploadResponse {
+  data: {
+    file_id: string;          // Unique file identifier
+    mime_type: string;         // Detected MIME type
+    size_bytes: number;        // File size in bytes
+    filename: string;          // Original filename
+    extracted_text: string | null; // Text extracted from documents (PDF, DOCX)
+    url: string;               // agentflow:// URL for referencing
+  };
+  metadata: ResponseMetadata;
+}
+```
+
+**Example:**
+```typescript
+// Upload a file from an <input> element
+const fileInput = document.querySelector('input[type="file"]');
+const result = await client.uploadFile(fileInput.files[0]);
+
+// Use the result in a multimodal message
+const msg = Message.withImage('Describe this', result.data.url);
+await client.invoke({ messages: [msg], thread_id: 'my-thread' });
+```
+
+**Throws:**
+- `BadRequestError` (400) - File too large or invalid format
+- `AuthenticationError` (401) - Invalid authentication
+- `ValidationError` (422) - Validation failed
+- `ServerError` (500+) - Server issues
+
+---
+
+### getFile()
+
+Download a stored file by its file ID. Returns raw binary data.
+
+**Endpoint:** `GET /v1/files/{file_id}`
+
+**Signature:**
+```typescript
+getFile(fileId: string): Promise<Blob>
+```
+
+**Example:**
+```typescript
+const blob = await client.getFile('abc123');
+const url = URL.createObjectURL(blob);
+// Use url in an <img> tag or download link
+```
+
+---
+
+### getFileInfo()
+
+Get metadata about a stored file without downloading the binary.
+
+**Endpoint:** `GET /v1/files/{file_id}/info`
+
+**Signature:**
+```typescript
+getFileInfo(fileId: string): Promise<FileInfoResponse>
+```
+
+**Returns:**
+```typescript
+interface FileInfoResponse {
+  data: {
+    file_id: string;
+    mime_type: string;
+    size_bytes: number;
+    extracted_text: string | null;
+  };
+  metadata: ResponseMetadata;
+}
+```
+
+---
+
+### getMultimodalConfig()
+
+Get the current multimodal configuration from the server.
+
+**Endpoint:** `GET /v1/config/multimodal`
+
+**Signature:**
+```typescript
+getMultimodalConfig(): Promise<MultimodalConfigResponse>
+```
+
+**Returns:**
+```typescript
+interface MultimodalConfigResponse {
+  data: {
+    media_storage_type: string;  // "memory" | "local" | "s3" | "gcs"
+    media_storage_path: string;
+    media_max_size_mb: number;
+    document_handling: string;   // "extract_text" | "pass_raw" | "skip"
+  };
+  metadata: ResponseMetadata;
+}
+```
+
+---
+
+### Message.withImage()
+
+Static helper to create a message with an image (via URL or base64).
+
+**Signature:**
+```typescript
+static withImage(
+  text: string,
+  imageUrl: string,
+  role?: 'user' | 'assistant' | 'system'
+): Message
+```
+
+**Example:**
+```typescript
+const msg = Message.withImage('What is in this image?', 'https://example.com/photo.jpg');
+const msg2 = Message.withImage('Describe this', 'data:image/png;base64,...');
+```
+
+---
+
+### Message.withFile()
+
+Static helper to create a message referencing an uploaded file. Automatically selects the correct block type (ImageBlock, AudioBlock, VideoBlock, or DocumentBlock) based on MIME type.
+
+**Signature:**
+```typescript
+static withFile(
+  text: string,
+  fileId: string,
+  mimeType?: string,
+  role?: 'user' | 'assistant' | 'system'
+): Message
+```
+
+**Example:**
+```typescript
+const upload = await client.uploadFile(pdfFile);
+const msg = Message.withFile('Summarize this', upload.data.file_id, 'application/pdf');
+```
+
+---
+
+### Message.multimodal()
+
+Static helper to create a message with arbitrary content blocks.
+
+**Signature:**
+```typescript
+static multimodal(
+  blocks: ContentBlock[],
+  role?: 'user' | 'assistant' | 'system'
+): Message
+```
+
+**Example:**
+```typescript
+const msg = Message.multimodal([
+  new TextBlock('Compare these two images:'),
+  new ImageBlock(new MediaRef('url', 'https://example.com/a.jpg')),
+  new ImageBlock(new MediaRef('url', 'https://example.com/b.jpg')),
+]);
+```
 
 ---
 

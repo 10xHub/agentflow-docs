@@ -21,6 +21,7 @@ Welcome to the **AgentFlow Client** documentation! This guide will help you inte
 - ✅ **Streaming Support** - Real-time responses for chat interfaces
 - ✅ **Tool Execution** - Automatic local tool handling
 - ✅ **State Management** - Dynamic schema-based state handling
+- ✅ **File Upload & Multimodal** - Upload images/documents, compose multimodal messages
 - ✅ **React-Ready** - Built specifically for React applications
 - ✅ **TypeScript** - Full type safety and IntelliSense support
 

@@ -102,6 +102,12 @@ Scheduled: "Process emails"
 Agent: Reads → Categorizes → Takes action
 ```
 
+### 🖼️ Image & Document Analysis
+```
+User: Uploads a photo or PDF
+Agent: Analyzes content → Answers questions
+```
+
 All with the same simple pattern.
 
 ---
@@ -110,7 +116,8 @@ All with the same simple pattern.
 
 - **🚀 Fast to build** - Agents in minutes, not weeks
 - **🧠 Any LLM** - Works with OpenAI, Gemini, Claude, or your favorite provider
-- **🔧 Simple API** - No framework bloat, just clean Python
+- **�️ Multimodal** - Send images, audio, video, and documents to your agents
+- **�🔧 Simple API** - No framework bloat, just clean Python
 - **📦 Production-ready** - Deploy with confidence
 - **🎓 Easy to learn** - Start simple, scale gradually
 

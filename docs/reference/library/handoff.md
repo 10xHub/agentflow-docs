@@ -105,8 +105,7 @@ transfer_to_writer = create_handoff_tool(
 ### Step 2: Define Agents with Tools
 
 ```python
-from agentflow.graph import ToolNode
-from litellm import completion
+from agentflow.graph import Agent, ToolNode
 
 # Coordinator with handoff tools
 coordinator_tools = ToolNode([
@@ -114,15 +113,15 @@ coordinator_tools = ToolNode([
     transfer_to_writer
 ])
 
-def coordinator_agent(state):
-    """Delegates tasks to specialists."""
-    tools = coordinator_tools.all_tools_sync()
-    response = completion(
-        model="gpt-4",
-        messages=state.context,
-        tools=tools
-    )
-    return {"messages": [response]}
+coordinator_agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{
+        "role": "system",
+        "content": "You are a coordinator. Delegate tasks to specialists."
+    }],
+    tool_node_name="coordinator_tools",
+)
 
 # Researcher with handoff back to coordinator
 researcher_tools = ToolNode([
@@ -130,15 +129,15 @@ researcher_tools = ToolNode([
     transfer_to_coordinator
 ])
 
-def researcher_agent(state):
-    """Performs research tasks."""
-    tools = researcher_tools.all_tools_sync()
-    response = completion(
-        model="gpt-4",
-        messages=state.context,
-        tools=tools
-    )
-    return {"messages": [response]}
+researcher_agent = Agent(
+    model="gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{
+        "role": "system",
+        "content": "You are a researcher. Perform research tasks."
+    }],
+    tool_node_name="researcher_tools",
+)
 ```
 
 ### Step 3: Build the Graph

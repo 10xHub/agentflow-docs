@@ -262,7 +262,7 @@ if need_tools:
     response = completion(model=model, messages=messages, tools=tools)
 ```
 
-The LiteLLM converter then observes any resulting `tool_calls` in the response and the graph routes accordingly.
+The built-in response converter then observes any resulting `tool_calls` in the response and the graph routes accordingly.
 
 ---
 

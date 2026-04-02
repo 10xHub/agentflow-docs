@@ -184,9 +184,36 @@ Message.text_message("Hi! How can I help?", "assistant")
 ```
 
 Every Message has:
-- `content` — what was said
+- `content` — what was said (a list of **content blocks**)
 - `role` — `"user"`, `"assistant"`, or `"tool"`
 - `tools_calls` — list of tool calls if the LLM decided to use tools
+
+### Multimodal Messages
+
+Messages can carry more than text. Use **content blocks** to send images, audio, video, or documents alongside text:
+
+```python
+from agentflow.state.message_block import TextBlock, ImageBlock, MediaRef
+
+# Send an image with a question
+msg = Message(
+    role="user",
+    content=[
+        TextBlock(text="What is in this image?"),
+        ImageBlock(media=MediaRef(kind="url", url="https://example.com/photo.jpg")),
+    ],
+)
+```
+
+| Block Type | Use For |
+|-----------|---------|
+| `TextBlock` | Plain text |
+| `ImageBlock` | JPEG, PNG, WebP, GIF |
+| `AudioBlock` | WAV, MP3, OGG |
+| `VideoBlock` | MP4, WebM |
+| `DocumentBlock` | PDF, DOCX, etc. |
+
+See the [Multimodal How-To Guide](../how-to/multimodal.md) for full details.
 
 ---
 
