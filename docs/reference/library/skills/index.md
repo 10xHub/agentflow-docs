@@ -86,7 +86,7 @@ agent = Agent(
     ),
 )
 
-# The tool_node already includes set_skill and clear_skill
+# The tool_node includes the set_skill tool
 tool_node = agent.get_tool_node()
 
 def should_use_tools(state):
@@ -132,29 +132,30 @@ The agent will:
 │                        Agent.execute()                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. Base system prompt                                          │
-│  2. Trigger table (all available skills)                        │
-│  3. Active skill content (if skill is active)                   │
-│  4. User messages from state.context                            │
+│  2. Trigger table (all available skills with triggers/resources)│
+│  3. User messages from state.context                            │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
                          LLM Response
                               │
-         ┌────────────────────┴────────────────────┐
-         │                                         │
-    Text response                          Tool call: set_skill()
-         │                                         │
-         ▼                                         ▼
-        END                                   ToolNode
-                                                   │
-                                   "SKILL_ACTIVATED:code-review"
-                                                   │
-                                    State updated with active skill
-                                                   │
-                                              Back to MAIN
-                                                   │
-                                    Skill content now injected
+          ┌────────────────────┴────────────────────┐
+          │                                         │
+     Text response                          Tool call: set_skill()
+          │                                         │
+          ▼                                         ▼
+         END                                   ToolNode
+                                                    │
+                                    "## SKILL: CODE-REVIEW\n\n{content}"
+                                                    │
+                                    Skill content returned as tool result
+                                                    │
+                                               Back to MAIN
+                                                    │
+                                    LLM uses skill content in response
 ```
+
+The `set_skill()` tool returns the full skill content directly, which the LLM uses to formulate its response. Resources can be loaded by calling `set_skill("skill-name", "resource.md")`.
 
 ## Next Steps
 

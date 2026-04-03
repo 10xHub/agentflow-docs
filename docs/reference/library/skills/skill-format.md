@@ -97,13 +97,13 @@ metadata:
     - is this code good
 ```
 
-Only the first 3 triggers are shown in the table. Choose the most distinctive ones first.
+Only the first 4 triggers are shown in the table. Choose the most distinctive ones first.
 
 **Tip:** Make triggers natural and varied. The LLM uses semantic matching, so you don't need to cover every possible phrase.
 
 ## Resources
 
-Resources are additional files that get injected alongside the skill content. They're useful for:
+Resources are additional files that can be loaded on-demand during a conversation. They're useful for:
 
 - Style guides
 - Reference documentation
@@ -127,18 +127,17 @@ code-review/
     └── other.md      ✗ Won't be found (relative path doesn't traverse dirs)
 ```
 
-Resources are appended to the skill content with a clear header:
+### Loading Resources
 
+Resources are loaded via the `set_skill` tool by passing the resource filename as the second argument:
+
+```python
+# Load a specific resource file
+set_skill("code-review", "style-guide.md")
+# Returns: ## Resource: style-guide.md\n\n{content of the file}
 ```
-## ACTIVE SKILL: CODE REVIEW
 
-[SKILL.md body content]
-
----
-### Reference: style-guide.md
-
-[style-guide.md content]
-```
+The trigger table shows available resources, and the LLM knows to call `set_skill("skill-name", "resource-name")` to load them.
 
 ## Tags
 
@@ -173,7 +172,7 @@ metadata:
 
 ## Skill Body (Instructions)
 
-Everything after the closing `---` is the skill body. This content is injected as a system message when the skill is active.
+Everything after the closing `---` is the skill body. This content is returned as a tool result when the LLM calls `set_skill("skill-name")`.
 
 ### Best Practices
 
