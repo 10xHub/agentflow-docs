@@ -1,48 +1,7 @@
 import Link from '@docusaurus/Link';
-import useBaseUrl from '@docusaurus/useBaseUrl';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
-import {type FormEvent, useMemo, useState} from 'react';
 import HomepageFeatures from '../components/HomepageFeatures';
-
-const searchItems = [
-  {
-    title: 'Get Started',
-    description: 'Start the AgentFlow golden path.',
-    href: '/docs/get-started',
-    keywords: 'start install quickstart first agent setup',
-  },
-  {
-    title: 'Beginner Path',
-    description: 'Learn AgentFlow one concept at a time.',
-    href: '/docs/beginner',
-    keywords: 'beginner tutorial learn mental model',
-  },
-  {
-    title: 'Architecture',
-    description: 'Understand packages, runtime, API, client, and storage.',
-    href: '/docs/concepts/architecture',
-    keywords: 'concepts architecture graph api client playground',
-  },
-  {
-    title: 'Python Reference',
-    description: 'Reference entry point for the core library.',
-    href: '/docs/reference/python',
-    keywords: 'python reference agent graph state tools checkpointer',
-  },
-  {
-    title: 'API and CLI Reference',
-    description: 'Reference entry point for serving AgentFlow apps.',
-    href: '/docs/reference/api-cli',
-    keywords: 'api cli agentflow init play server commands',
-  },
-  {
-    title: 'Troubleshooting',
-    description: 'Recover from install, import, API, and playground issues.',
-    href: '/docs/troubleshooting',
-    keywords: 'troubleshoot error import install play api',
-  },
-];
 
 const docTracks = [
   {
@@ -91,28 +50,6 @@ result = app.invoke({
 })`;
 
 export default function Home() {
-  const [query, setQuery] = useState('');
-  const normalizedQuery = query.trim().toLowerCase();
-  const searchMatches = useMemo(() => {
-    if (!normalizedQuery) {
-      return searchItems.slice(0, 3);
-    }
-
-    return searchItems
-      .filter((item) =>
-        `${item.title} ${item.description} ${item.keywords}`
-          .toLowerCase()
-          .includes(normalizedQuery),
-      )
-      .slice(0, 3);
-  }, [normalizedQuery]);
-  const searchTarget = useBaseUrl(searchMatches[0]?.href ?? '/docs/get-started');
-
-  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    window.location.href = searchTarget;
-  }
-
   return (
     <Layout
       title="Production-ready multi-agent framework"
@@ -139,30 +76,6 @@ export default function Home() {
                   Learn the model
                 </Link>
               </div>
-              <form className="heroSearch" onSubmit={handleSearchSubmit} role="search">
-                <label className="heroSearchLabel" htmlFor="home-docs-search">
-                  Search the docs
-                </label>
-                <div className="heroSearchBox">
-                  <span aria-hidden="true">/</span>
-                  <input
-                    id="home-docs-search"
-                    type="search"
-                    placeholder="Search install, API, playground, memory..."
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                  />
-                  <button type="submit">Open</button>
-                </div>
-                <div className="heroSearchResults" aria-live="polite">
-                  {searchMatches.map((item) => (
-                    <Link key={item.href} to={item.href}>
-                      <strong>{item.title}</strong>
-                      <span>{item.description}</span>
-                    </Link>
-                  ))}
-                </div>
-              </form>
               <div className="trustBar">
                 <span>Python library</span>
                 <span>API and CLI</span>
