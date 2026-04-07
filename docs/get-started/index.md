@@ -6,17 +6,26 @@ slug: /get-started
 
 # Start here
 
-:::note Draft
-This sprint-0 page defines the direction for the golden path. The full copy-paste tutorial will be completed in the get-started sprint.
-:::
-
 AgentFlow is a framework for building multi-agent applications that can grow from a prototype into a production system.
 
-Most agent tutorials show one prompt call. AgentFlow focuses on the parts you need after that first demo works: workflow structure, tool execution, state, checkpointing, storage, APIs, streaming, and client integration.
+Most agent tutorials stop at one prompt call. AgentFlow focuses on what comes after that first demo works: workflow structure, tools, state, checkpointing, storage, APIs, streaming, and frontend integration.
 
-## What you will learn first
+:::tip Recommended path
+If you are new to AgentFlow, start with installation, build one small agent, then use the concept pages to understand the bigger architecture.
+:::
 
-Follow this path if you are new to AgentFlow:
+## Your first route
+
+| Step | Page | Outcome |
+| --- | --- | --- |
+| 1 | [Installation](./installation.md) | Prepare the local Python environment and understand the packages. |
+| 2 | [Your First Agent](./first-agent.md) | Compile and invoke a minimal AgentFlow workflow. |
+| 3 | [Why AgentFlow](../concepts/why-agentflow.md) | Learn why AgentFlow treats agent apps as maintainable software systems. |
+| 4 | [Architecture](../concepts/architecture.md) | See how the Python library, API, client, playground, and docs fit together. |
+
+## What you will learn
+
+By the end of the first route, you should be able to:
 
 1. Install the Python library and choose a model provider.
 2. Build a small agent that can receive a message and return a response.
@@ -28,6 +37,16 @@ Follow this path if you are new to AgentFlow:
 ## Where AgentFlow fits
 
 AgentFlow is designed for teams that want a repeatable structure for agent apps. You should be able to focus on the agent behavior instead of rewriting orchestration, persistence, and transport code for every project.
+
+## When to use each section
+
+| Section | Use it when |
+| --- | --- |
+| [Beginner Path](../beginner/index.md) | You want a slower, concept-by-concept learning track. |
+| [Concepts](../concepts/index.md) | You want to understand the framework model before changing architecture. |
+| [How-To Guides](../how-to/index.md) | You know the task and want the shortest practical path. |
+| [Reference](../reference/index.md) | You need exact API, CLI, or package behavior. |
+| [Troubleshooting](../troubleshooting/index.md) | Something did not run and you want the fastest recovery checklist. |
 
 ## Next step
 

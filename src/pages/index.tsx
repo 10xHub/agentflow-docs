@@ -44,6 +44,34 @@ const searchItems = [
   },
 ];
 
+const docTracks = [
+  {
+    eyebrow: '01',
+    title: 'Get the first agent running',
+    body: 'Install AgentFlow, create a single workflow node, and understand the smallest useful app shape.',
+    href: '/docs/get-started',
+  },
+  {
+    eyebrow: '02',
+    title: 'Learn the framework model',
+    body: 'See how agents, tools, state, checkpoints, APIs, clients, and the playground fit together.',
+    href: '/docs/concepts/why-agentflow',
+  },
+  {
+    eyebrow: '03',
+    title: 'Move toward production',
+    body: 'Add persistence, streaming, troubleshooting, and reference-backed integration patterns.',
+    href: '/docs/how-to',
+  },
+];
+
+const stackItems = [
+  ['agentflow', 'Core Python runtime'],
+  ['agentflow-api', 'API, CLI, and serving layer'],
+  ['agentflow-client', 'TypeScript client surface'],
+  ['agentflow-playground', 'Hosted testing workspace'],
+];
+
 const quickstart = `from agentflow.core.graph import Agent, StateGraph
 from agentflow.core.state import AgentState, Message
 from agentflow.utils import END
@@ -142,21 +170,54 @@ export default function Home() {
                 <span>Production guides</span>
               </div>
             </div>
-            <div className="codeCard" aria-label="AgentFlow quickstart code sample">
-              <div className="codeCardHeader">
-                <span></span>
-                <span></span>
-                <span></span>
-                <strong>first_agent.py</strong>
+            <div className="heroVisual">
+              <div className="codeCard" aria-label="AgentFlow quickstart code sample">
+                <div className="codeCardHeader">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <strong>first_agent.py</strong>
+                </div>
+                <pre>
+                  <code>{quickstart}</code>
+                </pre>
               </div>
-              <pre>
-                <code>{quickstart}</code>
-              </pre>
+              <div className="stackCard" aria-label="AgentFlow package map">
+                <p className="stackCardLabel">Connected stack</p>
+                {stackItems.map(([name, body]) => (
+                  <div className="stackCardRow" key={name}>
+                    <strong>{name}</strong>
+                    <span>{body}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <HomepageFeatures />
+
+        <section className="section section--tracks">
+          <div className="container">
+            <div className="sectionHeader sectionHeader--center">
+              <p className="eyebrow">Documentation tracks</p>
+              <Heading as="h2">Pick the next useful page fast.</Heading>
+              <p>
+                The main docs now separate learning, architecture, and production work
+                so readers can move forward without scanning the whole sidebar.
+              </p>
+            </div>
+            <div className="trackGrid">
+              {docTracks.map((track) => (
+                <Link className="trackCard" to={track.href} key={track.title}>
+                  <span>{track.eyebrow}</span>
+                  <Heading as="h3">{track.title}</Heading>
+                  <p>{track.body}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className="section section--journey">
           <div className="container">

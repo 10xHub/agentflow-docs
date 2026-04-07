@@ -5,8 +5,8 @@ description: Install AgentFlow and prepare your first local project.
 
 # Installation
 
-:::note Draft
-This page is a sprint-0 placeholder. Exact package install commands will be validated before the golden path is marked ready.
+:::note Local workspace
+These commands target the current multi-package workspace. Package-published installation commands should be validated before they are added to the golden path.
 :::
 
 AgentFlow is currently organized as a multi-package workspace:

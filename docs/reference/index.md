@@ -6,20 +6,22 @@ slug: /reference
 
 # Reference
 
-:::note Draft
-This page is a sprint-0 placeholder. Reference pages should be treated as incomplete until they are checked against source code.
+Reference docs are for developers who already know what they want to use and need exact behavior, options, and examples.
+
+:::note Source alignment
+Reference pages should stay factual and source-aligned. If a behavior has not been checked against the current package source yet, the page should say so clearly.
 :::
 
-Reference docs should be factual and source-aligned. They are for developers who already know what they want to use and need exact behavior, options, and examples.
+## Reference areas
 
-## Planned reference areas
+| Area | Use it for |
+| --- | --- |
+| [Python library](./python/index.md) | Core runtime APIs for workflows, agents, state, tools, checkpointing, storage, callbacks, and evaluation. |
+| [API and CLI](./api-cli/index.md) | Serving, CLI commands, API configuration, streaming endpoints, threads, memory, and deployment workflows. |
+| REST API | Endpoint behavior, request and response contracts, status codes, and errors. |
+| TypeScript client | Frontend and full-stack integration helpers for calling an AgentFlow API. |
+| Configuration | Environment variables, project layout, provider settings, and deployment options. |
 
-1. Python library.
-2. API and CLI.
-3. REST API.
-4. TypeScript client.
-5. Configuration.
+## Where to go next
 
-## Current public reference
-
-Start with the [Python library](./python/index.md) or the [API and CLI](./api-cli/index.md) draft entry points.
+Start with the [Python library](./python/index.md) for workflow code, or [API and CLI](./api-cli/index.md) for serving and integration work.

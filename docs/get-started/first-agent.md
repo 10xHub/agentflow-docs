@@ -5,8 +5,8 @@ description: Build and run a small AgentFlow workflow.
 
 # Your first agent
 
-:::note Draft
-This page is a sprint-0 placeholder. The sample uses current import paths, but the final tutorial still needs full command-level validation.
+:::note Local validation
+The sample uses the current workspace import paths. Run it from the activated repository environment while the package-published golden path is being finalized.
 :::
 
 This page starts with the simplest useful mental model:

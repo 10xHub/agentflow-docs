@@ -6,24 +6,25 @@ slug: /production
 
 # Production
 
-:::note Draft
-This page is currently hidden from the sprint-0 sidebar and will be folded into later how-to and concept work.
-:::
-
 Production docs should help teams move from a working demo to a maintainable service.
+
+:::tip Production mindset
+Treat the workflow as application code: define clear boundaries, persist the right state, observe failures, and keep the API contract stable.
+:::
 
 ## Production checklist
 
-1. Define workflow boundaries.
-2. Use stable state schemas.
-3. Configure checkpointing and storage.
-4. Add structured logging and callbacks.
-5. Validate tool inputs and outputs.
-6. Add retry and failure handling.
-7. Test important trajectories.
-8. Expose a stable API contract.
-9. Connect application surfaces through the documented client.
-10. Deploy with environment-specific configuration.
+| Area | Checklist |
+| --- | --- |
+| Workflow design | Define workflow boundaries and keep state schemas stable. |
+| Persistence | Configure checkpointing and storage for recoverable threads. |
+| Observability | Add structured logging, callbacks, and useful error reporting. |
+| Tool safety | Validate tool inputs and outputs before they affect application state. |
+| Reliability | Add retry and failure handling where external systems are involved. |
+| Evaluation | Test important trajectories before release. |
+| API contract | Expose stable request, response, streaming, thread, and memory behavior. |
+| Frontend integration | Connect application surfaces through the documented client. |
+| Deployment | Use environment-specific configuration for provider keys, storage, and runtime settings. |
 
 ## Documentation goal
 
