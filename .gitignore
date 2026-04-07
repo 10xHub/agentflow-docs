@@ -7,3 +7,7 @@ site/
 # Python artifacts
 __pycache__/
 *.pyc
+.docusaurus
+build
+node_modules
+npm-debug.log*

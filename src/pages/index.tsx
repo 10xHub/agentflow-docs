@@ -1,0 +1,191 @@
+import Link from '@docusaurus/Link';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import Layout from '@theme/Layout';
+import Heading from '@theme/Heading';
+import {type FormEvent, useMemo, useState} from 'react';
+import HomepageFeatures from '../components/HomepageFeatures';
+
+const searchItems = [
+  {
+    title: 'Get Started',
+    description: 'Start the AgentFlow golden path.',
+    href: '/docs/get-started',
+    keywords: 'start install quickstart first agent setup',
+  },
+  {
+    title: 'Beginner Path',
+    description: 'Learn AgentFlow one concept at a time.',
+    href: '/docs/beginner',
+    keywords: 'beginner tutorial learn mental model',
+  },
+  {
+    title: 'Architecture',
+    description: 'Understand packages, runtime, API, client, and storage.',
+    href: '/docs/concepts/architecture',
+    keywords: 'concepts architecture graph api client playground',
+  },
+  {
+    title: 'Python Reference',
+    description: 'Reference entry point for the core library.',
+    href: '/docs/reference/python',
+    keywords: 'python reference agent graph state tools checkpointer',
+  },
+  {
+    title: 'API and CLI Reference',
+    description: 'Reference entry point for serving AgentFlow apps.',
+    href: '/docs/reference/api-cli',
+    keywords: 'api cli agentflow init play server commands',
+  },
+  {
+    title: 'Troubleshooting',
+    description: 'Recover from install, import, API, and playground issues.',
+    href: '/docs/troubleshooting',
+    keywords: 'troubleshoot error import install play api',
+  },
+];
+
+const quickstart = `from agentflow.core.graph import Agent, StateGraph
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+workflow = StateGraph(state_schema=AgentState)
+workflow.add_node("assistant", Agent(
+    model="openai/gpt-4o",
+    system_prompt="You are a helpful production assistant.",
+))
+
+workflow.set_entry_point("assistant")
+workflow.add_edge("assistant", END)
+
+app = workflow.compile()
+result = app.invoke({
+    "messages": [Message.text_message("Summarize today's priorities", "user")]
+})`;
+
+export default function Home() {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const searchMatches = useMemo(() => {
+    if (!normalizedQuery) {
+      return searchItems.slice(0, 3);
+    }
+
+    return searchItems
+      .filter((item) =>
+        `${item.title} ${item.description} ${item.keywords}`
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
+      .slice(0, 3);
+  }, [normalizedQuery]);
+  const searchTarget = useBaseUrl(searchMatches[0]?.href ?? '/docs/get-started');
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    window.location.href = searchTarget;
+  }
+
+  return (
+    <Layout
+      title="Production-ready multi-agent framework"
+      description="AgentFlow helps teams build, ship, and operate multi-agent systems with reusable orchestration, memory, API, and client foundations.">
+      <main>
+        <section className="hero hero--agentflow">
+          <div className="heroOrb heroOrb--one" />
+          <div className="heroOrb heroOrb--two" />
+          <div className="container heroGrid">
+            <div className="heroCopy">
+              <p className="eyebrow">Production docs for agent teams</p>
+              <Heading as="h1" className="heroTitle">
+                Build agents. Ship the runtime. Keep the docs clear.
+              </Heading>
+              <p className="heroSubtitle">
+                AgentFlow documents the path from a first Python agent to a running API,
+                hosted playground, TypeScript client, and production-ready memory.
+              </p>
+              <div className="heroActions">
+                <Link className="button button--primary button--lg" to="/docs/get-started">
+                  Start building
+                </Link>
+                <Link className="button button--secondary button--lg" to="/docs/concepts/why-agentflow">
+                  Learn the model
+                </Link>
+              </div>
+              <form className="heroSearch" onSubmit={handleSearchSubmit} role="search">
+                <label className="heroSearchLabel" htmlFor="home-docs-search">
+                  Search the docs
+                </label>
+                <div className="heroSearchBox">
+                  <span aria-hidden="true">/</span>
+                  <input
+                    id="home-docs-search"
+                    type="search"
+                    placeholder="Search install, API, playground, memory..."
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                  <button type="submit">Open</button>
+                </div>
+                <div className="heroSearchResults" aria-live="polite">
+                  {searchMatches.map((item) => (
+                    <Link key={item.href} to={item.href}>
+                      <strong>{item.title}</strong>
+                      <span>{item.description}</span>
+                    </Link>
+                  ))}
+                </div>
+              </form>
+              <div className="trustBar">
+                <span>Python library</span>
+                <span>API and CLI</span>
+                <span>TypeScript client</span>
+                <span>Production guides</span>
+              </div>
+            </div>
+            <div className="codeCard" aria-label="AgentFlow quickstart code sample">
+              <div className="codeCardHeader">
+                <span></span>
+                <span></span>
+                <span></span>
+                <strong>first_agent.py</strong>
+              </div>
+              <pre>
+                <code>{quickstart}</code>
+              </pre>
+            </div>
+          </div>
+        </section>
+
+        <HomepageFeatures />
+
+        <section className="section section--journey">
+          <div className="container">
+            <div className="sectionHeader">
+              <p className="eyebrow">Beginner-friendly by design</p>
+              <Heading as="h2">A docs path that teaches the product, not just the API.</Heading>
+              <p>
+                The new docs are organized around the real journey: install the library,
+                build one agent, add tools, add memory, expose it through the API, connect
+                a client, then deploy with confidence.
+              </p>
+            </div>
+            <div className="journeyGrid">
+              {[
+                ['01', 'First agent', 'Create a small, working agent and understand the moving parts.'],
+                ['02', 'Tools and state', 'Give the agent capabilities and learn how state moves through a workflow.'],
+                ['03', 'Multi-agent flow', 'Compose agents into predictable handoffs and reusable workflows.'],
+                ['04', 'Production surface', 'Add persistence, APIs, streaming, clients, and deployment practices.'],
+              ].map(([step, title, body]) => (
+                <article className="journeyCard" key={step}>
+                  <span>{step}</span>
+                  <Heading as="h3">{title}</Heading>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+    </Layout>
+  );
+}

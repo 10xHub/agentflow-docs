@@ -1,18 +1,13 @@
-# Makefile for PyAgenity packaging, publishing, and docs
+.PHONY: docs-serve docs-build docs-typecheck docs-clear
 
-.PHONY: docs-serve docs-build docs-deploy
-
-# ---------- Docs Section ----------
 docs-serve:
-	@echo "Serving docs at http://127.0.0.1:8000"
-	mkdocs serve -a 127.0.0.1:8000
+	npm run start
 
 docs-build:
-	# Build docs without strict mode to avoid aborting on warnings
-	mkdocs build
+	npm run build
 
-# Deploy to GitHub Pages
-docs-deploy: docs-build
-	uv pip install mkdocs ghp-import
-	ghp-import -n -p -f site
-	@echo "✅ Docs deployed to GitHub Pages"
+docs-typecheck:
+	npm run typecheck
+
+docs-clear:
+	npm run clear

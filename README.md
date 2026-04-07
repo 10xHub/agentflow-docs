@@ -1,168 +1,72 @@
-# 10xScale AgentFlow Documentation
+# AgentFlow Docs
 
-Official documentation for the AgentFlow ecosystem—a comprehensive, production-ready stack for building, deploying, and consuming multi-agent systems.
+Professional documentation site for the AgentFlow ecosystem.
 
-This documentation covers three interconnected components:
+This site is now built with **Docusaurus** so the documentation can support a product-quality landing page, beginner learning paths, MDX/React examples, and GitHub Pages deployment.
 
-- **[AgentFlow Python Library](docs/Agentflow/index.md)** — Core framework for building agent graphs and orchestrating multi-agent workflows
-- **[AgentFlow CLI](docs/cli/index.md)** — Command-line tool for scaffolding projects, running local servers, and deploying to production
-- **[AgentFlow TypeScript Client](docs/client/index.md)** — Fully typed client library for consuming AgentFlow APIs in web and Node.js applications
-
-Built with **MkDocs + Material theme**, managed with **uv** for fast, reproducible builds.
-
----
-
-## � Documentation Restructuring (NEW!)
-
-**We're restructuring the documentation to be beginner-friendly!** The current docs are too advanced and confusing for new users.
-
-### Key Planning Documents
-
-📖 **[DOCUMENTATION_PLAN.md](./DOCUMENTATION_PLAN.md)** - Complete restructuring plan with detailed content structure  
-📊 **[EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md)** - Quick overview of the new plan  
-🎨 **[VISUAL_STRUCTURE.md](./VISUAL_STRUCTURE.md)** - Visual diagrams showing new structure  
-✅ **[IMPLEMENTATION_CHECKLIST.md](./IMPLEMENTATION_CHECKLIST.md)** - Step-by-step implementation guide
-
-### What's Changing?
-
-**Current Problems:**
-- ❌ Too advanced for beginners
-- ❌ No clear learning path
-- ❌ Missing "Hello World" example
-- ❌ Documentation scattered across repos
-
-**New Structure:**
-- ✅ Getting Started (5-minute Hello World)
-- ✅ Progressive Tutorials (beginner → advanced)
-- ✅ Task-focused How-To Guides
-- ✅ Complete API Reference
-- ✅ Concept Explanations
-- ✅ Real-world Examples
-- ✅ Single source of truth
-
-**Goal:** Get beginners from "What is AgentFlow?" to "I built a working agent!" in under 1 hour.
-
----
-
-## �🚀 Quick Start
-
-### Requirements
-
-- [uv](https://docs.astral.sh/uv/) installed
-
-### Install dependencies
-
-Dependencies are tracked in `pyproject.toml` and locked in `uv.lock`:
+## Local Development
 
 ```bash
-uv sync
+npm install
+npm run start
 ```
 
-### Run the local development server
+The dev server runs at `http://localhost:3000`.
+
+## Build
 
 ```bash
-uv run mkdocs serve
+npm run build
+npm run serve
 ```
 
-The site will be available at **http://127.0.0.1:8000/**
+The static output is generated into `build/`.
 
-### Build static site
+## GitHub Pages
 
-```bash
-uv run mkdocs build
+The workflow at `.github/workflows/deploy.yml` builds the site and deploys it to GitHub Pages.
+
+By default, it assumes a project page URL like:
+
+```text
+https://<owner>.github.io/<repo>/
 ```
 
-The static output is generated into the `site/` directory (ignored by Git).
+For a custom domain such as `https://docs.agentflow.ai`, set `SITE_URL` and `BASE_URL` in the workflow or repository variables:
 
----
-
-## 📁 Project Structure
-
+```text
+SITE_URL=https://docs.agentflow.ai
+BASE_URL=/
 ```
+
+## Structure
+
+```text
 docs/
-├── index.md                 # Landing page for the ecosystem
-├── Agentflow/              # Python library documentation
-│   ├── index.md            # Library overview and quick start
-│   ├── graph/              # Graph orchestration concepts
-│   ├── context/            # State and context management
-│   └── ...
-├── cli/                    # CLI documentation
-│   ├── index.md            # CLI overview
-│   ├── cli.md              # Command reference
-│   ├── configuration.md    # Configuration guide
-│   └── ...
-├── client/                 # TypeScript client documentation
-│   ├── index.md            # Client overview
-│   ├── api-reference.md    # Full API reference
-│   ├── stream-usage.md     # Streaming guide
-│   └── ...
-└── Tutorial/               # Step-by-step tutorials
-    ├── rag.md              # RAG implementation
-    ├── long_term_memory.md # Memory management
-    └── react/              # React agent tutorials
-
-mkdocs.yml                  # MkDocs configuration
-pyproject.toml              # Project metadata and dependencies
-uv.lock                     # Reproducible dependency lockfile
+  get-started/
+  concepts/
+  tutorials/
+  how-to/
+  production/
+  reference/
+src/
+  components/
+  css/
+  pages/
+static/
+  img/
 ```
 
----
+The previous MkDocs content is preserved under `docs-mkdocs-legacy/` so it can be mined during the rewrite.
 
-## 🔧 Configuration
+## Legacy MkDocs
 
-### Dependencies
+The old MkDocs config files are still in the repo for reference:
 
-Key dependencies include:
-
-- **mkdocs** — Static site generator
-- **mkdocs-material** — Material Design theme
-- **mkdocs-mermaid2-plugin** — Mermaid diagram support
-- **mkdocstrings** — Auto-generate API docs from Python docstrings (optional)
-
-All dependencies are managed via `pyproject.toml` and can be updated with:
-
-```bash
-uv sync
+```text
+mkdocs.yml
+pyproject.toml
+uv.lock
 ```
 
-### Theme and Plugins
-
-Configured in `mkdocs.yml`:
-
-- Material theme with custom colors and features
-- Mermaid diagrams for visual architecture representations
-- Search functionality
-- Navigation structure for organized browsing
-
----
-
-## 📝 Contributing
-
-### Adding new documentation
-
-1. Create a new Markdown file in the appropriate directory under `docs/`
-2. Update `mkdocs.yml` navigation if needed
-3. Test locally with `uv run mkdocs serve`
-4. Build to verify: `uv run mkdocs build`
-
-### Documentation style
-
-- Use clear, concise language
-- Include code examples where applicable
-- Add links to related sections
-- Use proper Markdown formatting
-- Include badges for PyPI, GitHub, etc. where relevant
-
----
-
-## 🔗 Useful Links
-
-- **GitHub Repository**: https://github.com/10xhub/agentflow
-- **PyPI Package**: https://pypi.org/project/10xscale-agentflow/
-- **Examples**: https://github.com/10xhub/agentflow/tree/main/examples
-
----
-
-## 📄 License
-
-This documentation is part of the AgentFlow project. See the main repository for license information.
+They are no longer the primary docs site.

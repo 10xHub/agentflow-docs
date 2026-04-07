@@ -1,0 +1,253 @@
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-font-family-base:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --ifm-font-family-monospace:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --ifm-heading-font-weight: 760;
+  --ifm-code-font-size: 92%;
+  --agentflow-card: rgba(255, 255, 255, 0.86);
+  --agentflow-border: rgba(15, 23, 42, 0.11);
+  --agentflow-muted: #556070;
+  --agentflow-shadow: 0 1.5rem 4rem rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] {
+  --ifm-background-color: #08111f;
+  --ifm-background-surface-color: #0c1727;
+  --ifm-navbar-background-color: rgba(8, 17, 31, 0.82);
+  --ifm-footer-background-color: #050914;
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --agentflow-card: rgba(15, 23, 42, 0.72);
+  --agentflow-border: rgba(148, 163, 184, 0.18);
+  --agentflow-muted: #a8b3c7;
+  --agentflow-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.24);
+}
+
+.navbar {
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--agentflow-border);
+  box-shadow: none;
+}
+
+.navbar__brand {
+  font-weight: 800;
+}
+
+.hero--agentflow {
+  position: relative;
+  overflow: hidden;
+  padding: 7rem 0 5rem;
+  color: var(--ifm-font-color-base);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.25), transparent 26rem),
+    radial-gradient(circle at 85% 10%, rgba(124, 58, 237, 0.24), transparent 24rem),
+    linear-gradient(180deg, rgba(37, 99, 235, 0.08), transparent 65%);
+}
+
+.heroGrid {
+  display: grid;
+  align-items: center;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 1.04fr) minmax(22rem, 0.96fr);
+}
+
+.heroCopy {
+  max-width: 46rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.75rem;
+  color: var(--ifm-color-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin-bottom: 1.25rem;
+  font-size: clamp(2.7rem, 6vw, 5.55rem);
+  line-height: 0.95;
+  letter-spacing: -0.07em;
+}
+
+.heroSubtitle {
+  max-width: 42rem;
+  color: var(--agentflow-muted);
+  font-size: clamp(1.08rem, 2vw, 1.32rem);
+  line-height: 1.75;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.button {
+  border-radius: 999px;
+  font-weight: 760;
+}
+
+.button--secondary {
+  border-color: var(--agentflow-border);
+  color: var(--ifm-font-color-base);
+  background: var(--agentflow-card);
+}
+
+.trustBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+}
+
+.trustBar span {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--agentflow-border);
+  border-radius: 999px;
+  color: var(--agentflow-muted);
+  background: var(--agentflow-card);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.codeCard {
+  overflow: hidden;
+  border: 1px solid var(--agentflow-border);
+  border-radius: 1.6rem;
+  background: #07101d;
+  box-shadow: 0 2rem 6rem rgba(2, 6, 23, 0.35);
+}
+
+.codeCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.codeCardHeader span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.codeCardHeader span:nth-child(2) {
+  background: #f59e0b;
+}
+
+.codeCardHeader span:nth-child(3) {
+  background: #22c55e;
+}
+
+.codeCardHeader strong {
+  margin-left: 0.5rem;
+  font-weight: 650;
+}
+
+.codeCard pre {
+  margin: 0;
+  padding: 1.5rem;
+  overflow: auto;
+  color: #dbeafe;
+  background: transparent;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.section {
+  padding: 5rem 0;
+}
+
+.section--journey {
+  background:
+    linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.08)),
+    var(--ifm-background-color);
+}
+
+.sectionHeader {
+  max-width: 48rem;
+  margin-bottom: 2rem;
+}
+
+.sectionHeader h2 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.sectionHeader p:not(.eyebrow) {
+  color: var(--agentflow-muted);
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+
+.journeyGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.journeyCard {
+  padding: 1.5rem;
+  border: 1px solid var(--agentflow-border);
+  border-radius: 1.35rem;
+  background: var(--agentflow-card);
+}
+
+.journeyCard span {
+  display: inline-flex;
+  margin-bottom: 1.4rem;
+  color: var(--ifm-color-primary);
+  font-weight: 850;
+}
+
+.journeyCard h3 {
+  font-size: 1.18rem;
+}
+
+.journeyCard p {
+  color: var(--agentflow-muted);
+  line-height: 1.7;
+}
+
+.theme-doc-markdown {
+  font-size: 1.03rem;
+  line-height: 1.78;
+}
+
+.theme-doc-markdown h1 {
+  letter-spacing: -0.05em;
+}
+
+@media screen and (max-width: 996px) {
+  .hero--agentflow {
+    padding: 4.5rem 0 3.5rem;
+  }
+
+  .heroGrid,
+  .journeyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroTitle {
+    letter-spacing: -0.05em;
+  }
+}
