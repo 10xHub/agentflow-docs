@@ -73,8 +73,8 @@ const config: Config = {
           label: 'Docs',
         },
         {to: '/docs/get-started', label: 'Get Started', position: 'left'},
-        {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
-        {to: '/docs/reference/python', label: 'Reference', position: 'left'},
+        {to: '/docs/get-started/expose-with-api', label: 'API', position: 'left'},
+        {to: '/docs/get-started/connect-client', label: 'Client', position: 'left'},
         {
           href: 'https://github.com/10xscale/agentflow',
           label: 'GitHub',
@@ -89,15 +89,16 @@ const config: Config = {
           title: 'Learn',
           items: [
             {label: 'Start here', to: '/docs/get-started'},
-            {label: 'Core concepts', to: '/docs/concepts/why-agentflow'},
-            {label: 'Troubleshooting', to: '/docs/troubleshooting'},
+            {label: 'What is AgentFlow?', to: '/docs/get-started/what-is-agentflow'},
+            {label: 'First Python agent', to: '/docs/get-started/first-python-agent'},
           ],
         },
         {
-          title: 'Reference',
+          title: 'Golden path',
           items: [
-            {label: 'Python library', to: '/docs/reference/python'},
-            {label: 'API and CLI', to: '/docs/reference/api-cli'},
+            {label: 'Installation', to: '/docs/get-started/installation'},
+            {label: 'Expose with API', to: '/docs/get-started/expose-with-api'},
+            {label: 'Open playground', to: '/docs/get-started/open-playground'},
           ],
         },
         {

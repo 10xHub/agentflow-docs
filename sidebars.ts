@@ -8,8 +8,12 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'get-started/index',
+        'get-started/what-is-agentflow',
         'get-started/installation',
-        'get-started/first-agent',
+        'get-started/first-python-agent',
+        'get-started/expose-with-api',
+        'get-started/connect-client',
+        'get-started/open-playground',
       ],
     },
   ],

@@ -1,62 +1,91 @@
 ---
 title: Installation
-description: Install AgentFlow and prepare your first local project.
+description: Install the AgentFlow library, CLI, and TypeScript client.
 ---
 
 # Installation
 
-:::note Local workspace
-These commands target the current multi-package workspace. Package-published installation commands should be validated before they are added to the golden path.
-:::
+Install the packages you need for the golden path.
 
-AgentFlow is currently organized as a multi-package workspace:
+```mermaid
+flowchart LR
+  Python[Python app] --> Core[Core Python package]
+  Python --> CLI[CLI package]
+  TS[TypeScript app] --> Client[TypeScript client package]
+```
 
-| Package | Purpose |
-| --- | --- |
-| `agentflow` | Core Python library for agents, state, tools, checkpoints, and storage. |
-| `agentflow-api` | API and CLI layer for exposing and operating AgentFlow apps. |
-| `agentflow-client` | TypeScript client for calling AgentFlow APIs from application code. |
-| `agentflow-playground` | Hosted playground opened by `agentflow play` for testing a running API. |
+## Python packages
 
-## Python environment
-
-From the repository root:
+Create a project folder and virtual environment:
 
 ```bash
+mkdir hello-agentflow
+cd hello-agentflow
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install the core Python library and CLI:
+
+```bash
+pip install 10xscale-agentflow 10xscale-agentflow-cli
+```
+
+Verify the CLI is available:
+
+```bash
+agentflow version
+```
+
+The core library gives you `StateGraph`, `AgentState`, and `Message`. The CLI gives you commands like `agentflow init`, `agentflow api`, and `agentflow play`.
+
+## TypeScript client
+
+If your app calls AgentFlow from TypeScript, install the client package:
+
+```bash
+npm install @10xscale/agentflow-client
+```
+
+You can do this in your application project or in a small Node.js test project.
+
+The client package does not run your graph. It sends requests to a running AgentFlow API server.
+
+## Model provider keys
+
+The first Python example in this guide does not call a model. When you switch to an LLM-backed agent, set the key for the provider you use:
+
+```bash
+export OPENAI_API_KEY="your-openai-key"
+```
+
+Use the environment variable that matches your model provider.
+
+For this guide, provider keys are optional until you replace the demo node with an LLM-backed agent.
+
+## Contributor workspace
+
+If you are working inside the AgentFlow repository instead of a new app, use the shared repository virtual environment:
+
+```bash
+cd /Users/shudipto/Projects/agentflow
 source /Users/shudipto/Projects/agentflow/.venv/bin/activate
 ```
 
-Then work inside the package you are changing:
+Then move into the package you are changing before running package-specific commands:
 
 ```bash
-cd /Users/shudipto/Projects/agentflow/agentflow
+cd agentflow
 ```
 
-## First install target
+## Package roles
 
-For most backend examples, start with the Python library:
-
-```bash
-uv sync
-```
-
-If you are working on the API or CLI package:
-
-```bash
-cd /Users/shudipto/Projects/agentflow/agentflow-api
-uv sync
-```
-
-## Environment variables
-
-Set the model provider key required by your example:
-
-```bash
-export OPENAI_API_KEY="your-api-key"
-```
-
-Later docs will include provider-specific setup for OpenAI, Gemini, Claude, local models, and deployment environments.
+| Package | Install when |
+| --- | --- |
+| `10xscale-agentflow` | You build Python graphs, agents, tools, state, checkpointers, or storage. |
+| `10xscale-agentflow-cli` | You want `agentflow init`, `agentflow api`, and `agentflow play`. |
+| `@10xscale/agentflow-client` | You call an AgentFlow API from TypeScript. |
 
 ## Next step
 
-Build the [first agent](./first-agent.md).
+Build your [first Python agent](./first-python-agent.md).

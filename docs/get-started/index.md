@@ -1,53 +1,77 @@
 ---
-title: Start Here
-description: A beginner-friendly path for learning AgentFlow from first agent to production.
+title: Get Started
+description: The golden path from installation to a running AgentFlow app.
 slug: /get-started
 ---
 
-# Start here
+# Get started
 
-AgentFlow is a framework for building multi-agent applications that can grow from a prototype into a production system.
+This path takes you from a new project to a Python agent served by the AgentFlow API, tested in the hosted playground, and called from TypeScript.
 
-Most agent tutorials stop at one prompt call. AgentFlow focuses on what comes after that first demo works: workflow structure, tools, state, checkpointing, storage, APIs, streaming, and frontend integration.
+It intentionally avoids advanced concepts. The goal is one working app first.
 
-:::tip Recommended path
-If you are new to AgentFlow, start with installation, build one small agent, then use the concept pages to understand the bigger architecture.
-:::
+```mermaid
+flowchart LR
+  Install[Install packages] --> Python[Run Python graph]
+  Python --> API[Serve with API]
+  API --> Client[Call from TypeScript]
+  API --> Play[Open hosted playground]
+```
 
-## Your first route
+## Golden path
 
 | Step | Page | Outcome |
 | --- | --- | --- |
-| 1 | [Installation](./installation.md) | Prepare the local Python environment and understand the packages. |
-| 2 | [Your First Agent](./first-agent.md) | Compile and invoke a minimal AgentFlow workflow. |
-| 3 | [Why AgentFlow](../concepts/why-agentflow.md) | Learn why AgentFlow treats agent apps as maintainable software systems. |
-| 4 | [Architecture](../concepts/architecture.md) | See how the Python library, API, client, playground, and docs fit together. |
+| 1 | [What is AgentFlow?](./what-is-agentflow.md) | Understand what AgentFlow provides before installing it. |
+| 2 | [Installation](./installation.md) | Install the Python library, CLI, and TypeScript client. |
+| 3 | [First Python Agent](./first-python-agent.md) | Run a minimal graph locally. |
+| 4 | [Expose with API](./expose-with-api.md) | Serve the graph with `agentflow api`. |
+| 5 | [Connect Client](./connect-client.md) | Call the API with `AgentFlowClient`. |
+| 6 | [Open Playground](./open-playground.md) | Start the API and hosted playground with `agentflow play`. |
 
-## What you will learn
+## Prerequisites
 
-By the end of the first route, you should be able to:
+You need:
 
-1. Install the Python library and choose a model provider.
-2. Build a small agent that can receive a message and return a response.
-3. Add a tool so the agent can take action.
-4. Learn how state moves through a workflow.
-5. Add persistence and expose the workflow through the API layer.
-6. Connect from the TypeScript client when you are ready for an application surface.
+- Python 3.12 or newer.
+- Node.js 20 or newer if you want to run the TypeScript client example.
+- A terminal where you can install Python and npm packages.
 
-## Where AgentFlow fits
+The first local graph example does not call an LLM, so you can verify the framework before adding provider keys.
 
-AgentFlow is designed for teams that want a repeatable structure for agent apps. You should be able to focus on the agent behavior instead of rewriting orchestration, persistence, and transport code for every project.
+## How the pieces connect
 
-## When to use each section
+The Python library owns the graph runtime. The CLI creates and serves a project around that graph. The TypeScript client and hosted playground both talk to the same local API server.
 
-| Section | Use it when |
-| --- | --- |
-| [Beginner Path](../beginner/index.md) | You want a slower, concept-by-concept learning track. |
-| [Concepts](../concepts/index.md) | You want to understand the framework model before changing architecture. |
-| [How-To Guides](../how-to/index.md) | You know the task and want the shortest practical path. |
-| [Reference](../reference/index.md) | You need exact API, CLI, or package behavior. |
-| [Troubleshooting](../troubleshooting/index.md) | Something did not run and you want the fastest recovery checklist. |
+```mermaid
+flowchart TB
+  Library[Core Python package] --> Graph[Compiled graph app]
+  CLI[CLI package] --> Server[Local AgentFlow API]
+  Graph --> Server
+  Client[TypeScript client package] --> Server
+  Playground[Hosted playground] --> Server
+```
+
+## Commands you will use
+
+```bash
+pip install 10xscale-agentflow 10xscale-agentflow-cli
+npm install @10xscale/agentflow-client
+agentflow init
+agentflow api
+agentflow play
+```
+
+## What you will have
+
+By the end, you will have:
+
+- A local `graph/react.py` file that exports `app`.
+- An `agentflow.json` file that points the API to that graph.
+- A running API server on `http://127.0.0.1:8000`.
+- A hosted playground session opened by `agentflow play`.
+- A minimal TypeScript `AgentFlowClient` call.
 
 ## Next step
 
-Start with [Installation](./installation.md), then build your [first agent](./first-agent.md).
+Start with [What is AgentFlow?](./what-is-agentflow.md).

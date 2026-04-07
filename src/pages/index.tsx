@@ -14,13 +14,13 @@ const docTracks = [
     eyebrow: '02',
     title: 'Learn the framework model',
     body: 'See how agents, tools, state, checkpoints, APIs, clients, and the playground fit together.',
-    href: '/docs/concepts/why-agentflow',
+    href: '/docs/get-started/what-is-agentflow',
   },
   {
     eyebrow: '03',
     title: 'Move toward production',
     body: 'Add persistence, streaming, troubleshooting, and reference-backed integration patterns.',
-    href: '/docs/how-to',
+    href: '/docs/get-started/expose-with-api',
   },
 ];
 
@@ -31,23 +31,28 @@ const stackItems = [
   ['agentflow-playground', 'Hosted testing workspace'],
 ];
 
-const quickstart = `from agentflow.core.graph import Agent, StateGraph
+const quickstart = `from agentflow.core.graph import StateGraph
 from agentflow.core.state import AgentState, Message
 from agentflow.utils import END
 
-workflow = StateGraph(state_schema=AgentState)
-workflow.add_node("assistant", Agent(
-    model="openai/gpt-4o",
-    system_prompt="You are a helpful production assistant.",
-))
+def assistant(state: AgentState) -> Message:
+    latest = state.context[-1].text()
+    return Message.text_message(
+        f"AgentFlow received: {latest}",
+        role="assistant",
+    )
 
-workflow.set_entry_point("assistant")
-workflow.add_edge("assistant", END)
+graph = StateGraph(AgentState)
+graph.add_node("assistant", assistant)
+graph.set_entry_point("assistant")
+graph.add_edge("assistant", END)
 
-app = workflow.compile()
+app = graph.compile()
 result = app.invoke({
-    "messages": [Message.text_message("Summarize today's priorities", "user")]
-})`;
+    "messages": [Message.text_message("Summarize today")]
+})
+
+print(result["messages"][-1].text())`;
 
 export default function Home() {
   return (
@@ -72,7 +77,7 @@ export default function Home() {
                 <Link className="button button--primary button--lg" to="/docs/get-started">
                   Start building
                 </Link>
-                <Link className="button button--secondary button--lg" to="/docs/concepts/why-agentflow">
+                <Link className="button button--secondary button--lg" to="/docs/get-started/what-is-agentflow">
                   Learn the model
                 </Link>
               </div>
