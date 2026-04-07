@@ -19,7 +19,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Beginner Path',
-      collapsed: false,
+      collapsed: true,
       items: [
         'beginner/index',
         'beginner/mental-model',
@@ -29,6 +29,70 @@ const sidebars: SidebarsConfig = {
         'beginner/run-with-api',
         'beginner/test-with-playground',
         'beginner/call-from-typescript',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Concepts',
+      collapsed: true,
+      items: [
+        'concepts/architecture',
+        'concepts/state-graph',
+        'concepts/agents-and-tools',
+        'concepts/state-and-messages',
+        'concepts/checkpointing-and-threads',
+        'concepts/memory-and-store',
+        'concepts/streaming',
+        'concepts/media-and-files',
+        'concepts/dependency-injection',
+        'concepts/production-runtime',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'How-to guides',
+      collapsed: true,
+      items: [
+        {
+          type: 'category',
+          label: 'API & CLI',
+          items: [
+            'how-to/api-cli/initialize-project',
+            'how-to/api-cli/run-api-server',
+            'how-to/api-cli/open-playground',
+            'how-to/api-cli/configure-agentflow-json',
+            'how-to/api-cli/add-auth',
+            'how-to/api-cli/generate-docker-files',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reference',
+      collapsed: true,
+      items: [
+        {
+          type: 'category',
+          label: 'API & CLI',
+          items: [
+            'reference/api-cli/commands',
+            'reference/api-cli/configuration',
+            'reference/api-cli/auth',
+            'reference/api-cli/environment',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'REST API',
+          items: [
+            'reference/rest-api/graph',
+            'reference/rest-api/threads',
+            'reference/rest-api/memory-store',
+            'reference/rest-api/files',
+            'reference/rest-api/ping',
+          ],
+        },
       ],
     },
   ],
