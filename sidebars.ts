@@ -16,6 +16,21 @@ const sidebars: SidebarsConfig = {
         'get-started/open-playground',
       ],
     },
+    {
+      type: 'category',
+      label: 'Beginner Path',
+      collapsed: false,
+      items: [
+        'beginner/index',
+        'beginner/mental-model',
+        'beginner/your-first-agent',
+        'beginner/add-a-tool',
+        'beginner/add-memory',
+        'beginner/run-with-api',
+        'beginner/test-with-playground',
+        'beginner/call-from-typescript',
+      ],
+    },
   ],
 };
 
