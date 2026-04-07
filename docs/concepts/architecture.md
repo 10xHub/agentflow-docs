@@ -25,9 +25,12 @@ flowchart TB
   subgraph Core["10xscale-agentflow (Python)"]
     Graph[StateGraph / Agent / ToolNode]
     State[AgentState / Message]
+    Prebuilt[ReactAgent / RouterAgent / prebuilt tools]
     Checkpointer[Checkpointer]
     Store[Memory store]
+    Media[Media store]
     Runtime[Runtime / Publisher]
+    QA[QA / testing utilities]
   end
 
   TS -->|HTTP| API
@@ -38,31 +41,39 @@ flowchart TB
   Graph --> State
   Graph --> Checkpointer
   Graph --> Store
+  Graph --> Media
   Graph --> Runtime
 ```
 
-### `10xscale-agentflow`
+---
 
-The core Python library. Contains:
+### `10xscale-agentflow` — core Python library
 
-- **`agentflow.core`** — `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`
-- **`agentflow.storage`** — `InMemoryCheckpointer`, `PgCheckpointer`, `QdrantStore`, `Mem0Store`
-- **`agentflow.runtime`** — publisher adapters for streaming and async execution
-- **`agentflow.qa`** — testing utilities
+| Sub-package | Key exports |
+|---|---|
+| `agentflow.core` | `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, `StreamChunk` |
+| `agentflow.prebuilt.agent` | `ReactAgent`, `RouterAgent`, `RAGAgent`, `create_react_agent` |
+| `agentflow.prebuilt.tools` | `safe_calculator`, `fetch_url`, `google_web_search`, `file_read`, `file_write`, `memory_tool`, `create_handoff_tool` |
+| `agentflow.storage.checkpointer` | `InMemoryCheckpointer`, `PgCheckpointer` |
+| `agentflow.storage.store` | `QdrantStore`, `Mem0Store` |
+| `agentflow.storage.media` | `InMemoryMediaStore`, `LocalFileMediaStore`, `CloudMediaStore` |
+| `agentflow.runtime` | Publisher adapters (SSE, A2A) |
+| `agentflow.utils` | `ResponseGranularity`, `CallbackManager`, `tool` decorator |
+| `agentflow.qa` | Testing helpers and evaluation tools |
 
-### `10xscale-agentflow-cli`
-
-The API and CLI package. Contains:
+### `10xscale-agentflow-cli` — API and CLI
 
 - **`agentflow api`** — starts a FastAPI server that serves a compiled graph
 - **`agentflow play`** — same as `api`, plus opens the hosted playground
 - **`agentflow init`** — scaffolds `agentflow.json` and `graph/react.py`
-- **`agentflow build`** — generates a Dockerfile
+- **`agentflow build`** — generates a Dockerfile and docker-compose
 - REST routers for graph invoke, streaming, threads, memory store, and file uploads
 
-### `@10xscale/agentflow-client`
+### `@10xscale/agentflow-client` — TypeScript HTTP client
 
-The TypeScript HTTP client. Wraps the REST API with typed methods for invoke, stream, threads, and memory.
+Wraps the REST API with typed methods for invoke, stream, threads, and memory.
+
+---
 
 ## Request flow: invoke
 
@@ -90,16 +101,21 @@ sequenceDiagram
 
 ## Request flow: stream
 
-The stream flow is identical through authentication and state loading. The difference is the graph sends chunks incrementally using server-sent events (SSE), and the response is a `StreamingResponse`.
+The stream flow is identical through authentication and state loading. The difference is the graph sends `StreamChunk` events incrementally using server-sent events (SSE), and the response is a `StreamingResponse`. Each `StreamChunk` carries an `event` field (`"message"`, `"state"`, `"error"`, or `"updates"`).
+
+---
 
 ## Key design decisions
 
 | Decision | Rationale |
-| --- | --- |
-| Graph is compiled once at startup | Avoids repeated module loading per request |
+|---|---|
+| Graph compiled once at startup | Avoids repeated module loading per request |
 | `thread_id` in every request | Allows stateless servers to restore conversation history |
 | Checkpointer is injected, not hardcoded | Graph code does not depend on the storage backend |
 | Auth is middleware, not in the graph | Business logic stays separate from access control |
+| `injectq` for service wiring | Nodes and tools declare dependencies declaratively; the runtime resolves them |
+
+---
 
 ## Next step
 
