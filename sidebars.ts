@@ -50,6 +50,29 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Tutorials',
+      collapsed: true,
+      items: [
+        'tutorials/index',
+        {
+          type: 'category',
+          label: 'From Examples',
+          items: [
+            'tutorials/from-examples/agent-class',
+            'tutorials/from-examples/custom-state',
+            'tutorials/from-examples/google-genai',
+            'tutorials/from-examples/tool-decorator',
+            'tutorials/from-examples/react-agent',
+            'tutorials/from-examples/react-agent-validation',
+            'tutorials/from-examples/react-streaming',
+            'tutorials/from-examples/stream-sync',
+            'tutorials/from-examples/stop-stream',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'How-to guides',
       collapsed: true,
       items: [
