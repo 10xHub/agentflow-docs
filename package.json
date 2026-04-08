@@ -4,7 +4,7 @@
   "private": true,
   "description": "Professional documentation site for AgentFlow.",
   "scripts": {
-    "start": "NO_UPDATE_NOTIFIER=1 docusaurus start",
+    "start": "NO_UPDATE_NOTIFIER=1 docusaurus clear && NO_UPDATE_NOTIFIER=1 docusaurus start",
     "build": "NO_UPDATE_NOTIFIER=1 docusaurus build",
     "serve": "NO_UPDATE_NOTIFIER=1 docusaurus serve",
     "clear": "NO_UPDATE_NOTIFIER=1 docusaurus clear",
