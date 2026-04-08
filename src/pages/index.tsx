@@ -6,21 +6,21 @@ import HomepageFeatures from '../components/HomepageFeatures';
 const docTracks = [
   {
     eyebrow: '01',
-    title: 'Get the first agent running',
-    body: 'Install AgentFlow, create a single workflow node, and understand the smallest useful app shape.',
+    title: 'Start with a working Python agent',
+    body: 'Install AgentFlow, run your first agent, and move from local code to a served app without guessing the next step.',
     href: '/docs/get-started',
   },
   {
     eyebrow: '02',
-    title: 'Learn the framework model',
-    body: 'See how agents, tools, state, checkpoints, APIs, clients, and the playground fit together.',
-    href: '/docs/get-started/what-is-agentflow',
+    title: 'Learn the core concepts',
+    body: 'Understand agents, tools, state, memory, streaming, and production runtime boundaries before you scale up.',
+    href: '/docs/concepts/architecture',
   },
   {
     eyebrow: '03',
-    title: 'Move toward production',
-    body: 'Add persistence, streaming, troubleshooting, and reference-backed integration patterns.',
-    href: '/docs/get-started/expose-with-api',
+    title: 'Use tutorials, how-to guides, and reference',
+    body: 'Jump into example-driven tutorials, targeted implementation guides, and API reference for Python, REST, and TypeScript.',
+    href: '/docs/tutorials',
   },
 ];
 
@@ -31,34 +31,40 @@ const stackItems = [
   ['agentflow-playground', 'Hosted testing workspace'],
 ];
 
-const quickstart = `from agentflow.core.graph import StateGraph
+const quickstart = `from agentflow.core import Agent, StateGraph, ToolNode
 from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+from agentflow.utils.constants import END
 
-def assistant(state: AgentState) -> Message:
-    latest = state.context[-1].text()
-    return Message.text_message(
-        f"AgentFlow received: {latest}",
-        role="assistant",
-    )
+checkpointer = InMemoryCheckpointer()
 
-graph = StateGraph(AgentState)
-graph.add_node("assistant", assistant)
-graph.set_entry_point("assistant")
-graph.add_edge("assistant", END)
+def get_weather(location: str) -> str:
+    return f"The weather in {location} is sunny"
 
-app = graph.compile()
-result = app.invoke({
-    "messages": [Message.text_message("Summarize today")]
-})
+tool_node = ToolNode([get_weather])
 
-print(result["messages"][-1].text())`;
+agent = Agent(
+    model="gemini-3-flash-preview",
+    provider="google",
+    system_prompt="You are a helpful assistant.",
+    trim_context=True,
+    reasoning_config=True,
+    tool_node=tool_node,
+)
+
+graph = StateGraph()
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+graph.add_conditional_edges("MAIN", should_use_tools, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+
+app = graph.compile(checkpointer=checkpointer)`;
 
 export default function Home() {
   return (
     <Layout
-      title="Production-ready multi-agent framework"
-      description="AgentFlow helps teams build, ship, and operate multi-agent systems with reusable orchestration, memory, API, and client foundations.">
+      title="AgentFlow Docs: Python AI Agents, APIs, Memory, and TypeScript Clients"
+      description="Learn how to build AI agents with AgentFlow using Python, tools, memory, streaming, APIs, and TypeScript clients. Explore tutorials, how-to guides, and API reference.">
       <main>
         <section className="hero hero--agentflow">
           <div className="heroOrb heroOrb--one" />
@@ -67,25 +73,26 @@ export default function Home() {
             <div className="heroCopy">
               <p className="eyebrow">Production docs for agent teams</p>
               <Heading as="h1" className="heroTitle">
-                Build agents. Ship the runtime. Keep the docs clear.
+                Production-ready AI agents in seconds.
               </Heading>
               <p className="heroSubtitle">
-                AgentFlow documents the path from a first Python agent to a running API,
-                hosted playground, TypeScript client, and production-ready memory.
+                Build scalable agent workflows with tools, memory, streaming, APIs, and
+                clients on top of one runtime. Start with a working agent fast, then grow
+                into stateful, production-ready systems without rewriting the foundation.
               </p>
               <div className="heroActions">
                 <Link className="button button--primary button--lg" to="/docs/get-started">
                   Start building
                 </Link>
-                <Link className="button button--secondary button--lg" to="/docs/get-started/what-is-agentflow">
-                  Learn the model
+                <Link className="button button--secondary button--lg" to="/docs/tutorials">
+                  Browse tutorials
                 </Link>
               </div>
               <div className="trustBar">
-                <span>Python library</span>
-                <span>API and CLI</span>
-                <span>TypeScript client</span>
-                <span>Production guides</span>
+                <span>Beginner path</span>
+                <span>Concepts</span>
+                <span>Tutorials</span>
+                <span>Reference</span>
               </div>
             </div>
             <div className="heroVisual">
@@ -94,7 +101,7 @@ export default function Home() {
                   <span></span>
                   <span></span>
                   <span></span>
-                  <strong>first_agent.py</strong>
+                  <strong>react_sync.py</strong>
                 </div>
                 <pre>
                   <code>{quickstart}</code>
