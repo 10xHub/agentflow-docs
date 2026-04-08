@@ -31,6 +31,11 @@ flowchart LR
     Q --> R[Multimodal]
     R --> S[Multiagent]
     S --> T[Handoff]
+    T --> U[Skills]
+    U --> V[Skills Chat]
+    V --> W[Testing]
+    W --> X[Evaluation]
+    X --> Y[Graceful Shutdown]
 ```
 
 ## From examples
@@ -60,6 +65,11 @@ These tutorials are based on code in `agentflow/examples/`:
 - [Multimodal](/docs/tutorials/from-examples/multimodal)
 - [Multiagent](/docs/tutorials/from-examples/multiagent)
 - [Handoff](/docs/tutorials/from-examples/handoff)
+- [Skills](/docs/tutorials/from-examples/skills)
+- [Skills Chat](/docs/tutorials/from-examples/skills-chat)
+- [Testing](/docs/tutorials/from-examples/testing)
+- [Evaluation](/docs/tutorials/from-examples/evaluation)
+- [Graceful Shutdown](/docs/tutorials/from-examples/graceful-shutdown)
 
 ## How to use this section
 
@@ -71,6 +81,7 @@ If you are new to AgentFlow, follow the pages in the order shown above. The tuto
 - Add `ReAct Agent with Validation` for safer input handling.
 - Finish with the streaming tutorials to learn real-time output and cancellation patterns.
 - Continue into the advanced section for MCP, memory, multimodal input, and multi-agent coordination.
+- Finish with the sprint 9 tutorials to learn skills, testing, evaluation, and clean shutdown behavior.
 
 ## Before you start
 

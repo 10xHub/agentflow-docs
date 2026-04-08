@@ -5,6 +5,63 @@
 
 ---
 
+## 2026-04-08 Sprint Update
+
+### Sprint 9: Example-Based Tutorials, Part 3
+
+Status: Completed except A2A, which was explicitly deferred by user request for this sprint pass.
+
+Delivered in `agentflow-docs/docs/tutorials/from-examples/`:
+
+- `skills.md`
+- `skills-chat.md`
+- `testing.md`
+- `evaluation.md`
+- `graceful-shutdown.md`
+
+Also updated:
+
+- `docs/tutorials/index.md` to include the new sprint 9 tutorials
+- `sidebars.ts` to expose the new tutorials in docs navigation
+
+Notes:
+
+- `a2a-currency-agent.md` was intentionally not created in this pass because the user asked to skip A2A work.
+- The sprint 9 tutorials that were delivered were written as detailed step-by-step walkthroughs with Mermaid diagrams.
+- Full Docusaurus build validation could not be run in this environment because `npm` is not installed.
+
+### Sprint 10: Production And Troubleshooting
+
+Status: Completed.
+
+Delivered in `agentflow-docs/docs/how-to/production/`:
+
+- `environment-variables.md`
+- `auth-and-authorization.md`
+- `checkpointing.md`
+- `deployment.md`
+- `troubleshooting.md`
+
+Delivered in `agentflow-docs/docs/troubleshooting/`:
+
+- `installation.md`
+- `api-server.md`
+- `client.md`
+- `playground.md`
+
+Also updated:
+
+- `sidebars.ts` to add public `Production` and `Troubleshooting` navigation sections
+
+Acceptance notes:
+
+- Troubleshooting pages use a symptoms / cause / fix structure
+- Production pages distinguish development defaults from production recommendations
+- Playground troubleshooting only covers `agentflow play` and hosted playground connection issues
+- Deployment docs link back to `agentflow build`
+
+---
+
 ## 📊 Current Status
 
 ### ✅ What Exists
