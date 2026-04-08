@@ -323,15 +323,6 @@ This is useful when you want to share one `ToolNode` across multiple agents.
 
 ---
 
-## Related concepts
-
-- [Dependency injection](./dependency-injection.md)
-- [State and messages](./state-and-messages.md)
-- [StateGraph and nodes](./state-graph.md)
-```
-
-The decorator adds name, description, tags, and other metadata without changing how the function is called.
-
 ## What you learned
 
 - `Agent` wraps a language model and handles system prompt templating.
@@ -343,3 +334,4 @@ The decorator adds name, description, tags, and other metadata without changing 
 
 - [StateGraph and nodes](./state-graph.md)
 - [Dependency injection](./dependency-injection.md)
+- [State and messages](./state-and-messages.md)

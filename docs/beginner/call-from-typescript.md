@@ -158,6 +158,6 @@ You have completed the beginner path. Your agent can now:
 
 ## Next steps
 
-- **Core concepts** — understand how the pieces fit together at scale *(coming in a future sprint)*
-- **Add a real checkpointer** — replace `InMemoryCheckpointer` with Postgres for production *(coming in a future sprint)*
-- **Python library reference** — explore the full `StateGraph` and `Agent` API *(coming in a future sprint)*
+- **Core concepts** — understand how the pieces fit together at scale ([Concepts](/docs/concepts/architecture.md))
+- **Add a real checkpointer** — replace `InMemoryCheckpointer` with Postgres for production ([Checkpointing guide](/docs/how-to/production/checkpointing.md))
+- **Python library reference** — explore the full `StateGraph` and `Agent` API ([Reference](/docs/reference/python/agent.md))

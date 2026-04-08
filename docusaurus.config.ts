@@ -72,11 +72,9 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-        {to: '/docs/beginner', label: 'Beginner', position: 'left'},
+        {to: '/docs/courses', label: 'Courses', position: 'left'},
         {to: '/docs/concepts/architecture', label: 'Concepts', position: 'left'},
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
-        {to: '/docs/how-to/api-cli/initialize-project', label: 'How-to', position: 'left'},
-        {to: '/docs/reference/python/graph', label: 'Reference', position: 'left'},
         {
           href: 'https://github.com/10xscale/agentflow',
           label: 'GitHub',
