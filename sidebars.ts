@@ -211,6 +211,8 @@ const sidebars: SidebarsConfig = {
         "troubleshooting/api-server",
         "troubleshooting/client",
         "troubleshooting/playground",
+        "troubleshooting/error-codes",
+        "troubleshooting/error-patterns",
       ],
     },
     {

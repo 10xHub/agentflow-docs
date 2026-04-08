@@ -117,6 +117,7 @@ Install the required extras or packages for the feature you are actually using.
 - [Installation](/docs/get-started/installation)
 - [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json)
 - [Environment Variables](/docs/how-to/production/environment-variables)
+- [Error Codes Reference](/docs/troubleshooting/error-codes)
 
 ## What you learned
 

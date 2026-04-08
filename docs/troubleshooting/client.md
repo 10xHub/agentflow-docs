@@ -66,10 +66,14 @@ flowchart TD
 - client generates a new thread per request
 - no checkpointer configured on the server
 
+**Error code**: `STORAGE_NOT_FOUND_000` (if server returns 404)
+
 **Fix**
 
 - reuse one `thread_id` across a conversation
 - verify server-side checkpointing is enabled if persistence is required
+
+---
 
 ## Issue: stream endpoint behaves differently from invoke
 
@@ -89,11 +93,26 @@ flowchart TD
 - test with `curl --no-buffer`
 - check intermediary proxy behavior if deployed
 
+---
+
+## Error Code Quick Reference
+
+| Symptom | Error Code | Action |
+|---------|------------|--------|
+| Resource not found | `STORAGE_NOT_FOUND_000` | Check thread_id validity |
+| Transient failure | `STORAGE_TRANSIENT_000` | Retry request |
+| Validation error | `VALIDATION_000` | Check request format |
+
+See [Error Codes Reference](/docs/troubleshooting/error-codes) for full documentation.
+
+---
+
 ## Related docs
 
 - [Connect Client](/docs/get-started/connect-client)
 - [TypeScript Client Reference](/docs/reference/client/agentflow-client)
 - [API Server Troubleshooting](/docs/troubleshooting/api-server)
+- [Error Codes Reference](/docs/troubleshooting/error-codes)
 
 ## What you learned
 

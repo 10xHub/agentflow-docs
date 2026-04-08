@@ -101,11 +101,26 @@ Use reload only for active local development.
 - checkpointer backend unavailable
 - inconsistent `thread_id` usage
 
+**Error codes**: `STORAGE_NOT_FOUND_000`, `STORAGE_TRANSIENT_000`
+
 **Fix**
 
 - configure a checkpointer
 - verify backend connectivity
 - use a stable `thread_id`
+
+---
+
+## Error Code Quick Reference
+
+| Symptom | Error Code | Action |
+|---------|------------|--------|
+| Infinite loop / max iterations | `RECURSION_000` | Increase recursion_limit or fix routing |
+| Thread not found | `STORAGE_NOT_FOUND_000` | Verify thread_id, check storage |
+| Database timeout | `STORAGE_TRANSIENT_000` | Retry with backoff, check DB health |
+| Schema mismatch | `STORAGE_SCHEMA_000` | Run migrations after upgrade |
+
+See [Error Codes Reference](/docs/troubleshooting/error-codes) for full documentation.
 
 ## Issue: requests are unexpectedly public
 
