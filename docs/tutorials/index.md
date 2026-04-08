@@ -20,6 +20,17 @@ flowchart LR
     D --> G[React Streaming]
     G --> H[Synchronous Streaming]
     H --> I[Stop Stream]
+    I --> J[Dependency Injection]
+    J --> K[MCP Server]
+    K --> L[MCP Client]
+    L --> M[MCP ReAct Agent]
+    M --> N[GitHub MCP]
+    N --> O[MCP File Download]
+    O --> P[Memory]
+    P --> Q[Qdrant Memory]
+    Q --> R[Multimodal]
+    R --> S[Multiagent]
+    S --> T[Handoff]
 ```
 
 ## From examples
@@ -36,6 +47,20 @@ These tutorials are based on code in `agentflow/examples/`:
 - [Synchronous Streaming](/docs/tutorials/from-examples/stream-sync)
 - [Stop Stream](/docs/tutorials/from-examples/stop-stream)
 
+## Advanced integrations
+
+- [Dependency Injection](/docs/tutorials/from-examples/dependency-injection)
+- [MCP Server](/docs/tutorials/from-examples/mcp-server)
+- [MCP Client](/docs/tutorials/from-examples/mcp-client)
+- [MCP ReAct Agent](/docs/tutorials/from-examples/mcp-react-agent)
+- [GitHub MCP](/docs/tutorials/from-examples/github-mcp)
+- [MCP File Download](/docs/tutorials/from-examples/mcp-file-download)
+- [Memory](/docs/tutorials/from-examples/memory)
+- [Qdrant Memory](/docs/tutorials/from-examples/qdrant-memory)
+- [Multimodal](/docs/tutorials/from-examples/multimodal)
+- [Multiagent](/docs/tutorials/from-examples/multiagent)
+- [Handoff](/docs/tutorials/from-examples/handoff)
+
 ## How to use this section
 
 If you are new to AgentFlow, follow the pages in the order shown above. The tutorials are designed to build on each other:
@@ -45,6 +70,7 @@ If you are new to AgentFlow, follow the pages in the order shown above. The tuto
 - Use `ReAct Agent` to assemble the core graph loop.
 - Add `ReAct Agent with Validation` for safer input handling.
 - Finish with the streaming tutorials to learn real-time output and cancellation patterns.
+- Continue into the advanced section for MCP, memory, multimodal input, and multi-agent coordination.
 
 ## Before you start
 
