@@ -53,13 +53,20 @@ The client package does not run your graph. It sends requests to a running Agent
 
 ## Model provider keys
 
-The first Python example in this guide does not call a model. When you switch to an LLM-backed agent, set the key for the provider you use:
+The first Python example in this guide does not call a model. When you switch to an LLM-backed agent, set the credentials for the provider you use:
 
 ```bash
+# OpenAI
 export OPENAI_API_KEY="your-openai-key"
+
+# Google Gemini (via Google AI Studio)
+export GEMINI_API_KEY="your-gemini-key"
+
+# Vertex AI (Gemini on Google Cloud)
+export GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
 ```
 
-Use the environment variable that matches your model provider.
+See the [Providers](../providers/index.md) section for per-provider setup, authentication, and full examples.
 
 For this guide, provider keys are optional until you replace the demo node with an LLM-backed agent.
 

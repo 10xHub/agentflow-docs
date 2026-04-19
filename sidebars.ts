@@ -73,6 +73,17 @@ const sidebars: SidebarsConfig = {
 
     {
       type: "category",
+      label: "Providers",
+      collapsed: true,
+      items: [
+        "providers/index",
+        "providers/openai",
+        "providers/google",
+        "providers/vertex-ai",
+      ],
+    },
+    {
+      type: "category",
       label: "Beginner Path",
       collapsed: true,
       items: [
