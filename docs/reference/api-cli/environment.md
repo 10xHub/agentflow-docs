@@ -128,3 +128,34 @@ REDOCS_PATH=
 | Variable | Description |
 | --- | --- |
 | `SENTRY_DSN` | Sentry DSN for error tracking (optional) |
+
+---
+
+## LLM provider variables
+
+Set these based on the `provider` you use on your `Agent`. They are read at client creation time.
+
+### OpenAI (`provider="openai"`)
+
+| Variable | Description |
+| --- | --- |
+| `OPENAI_API_KEY` | API key from https://platform.openai.com |
+
+### Google Gemini (`provider="google"`)
+
+| Variable | Description |
+| --- | --- |
+| `GEMINI_API_KEY` | API key from https://aistudio.google.com (preferred) |
+| `GOOGLE_API_KEY` | Fallback name for the Gemini API key |
+
+### Vertex AI (`provider="vertex_ai"`)
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GOOGLE_CLOUD_PROJECT` | — | **Required.** GCP project ID with the Vertex AI API enabled |
+| `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI calls |
+| `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to a service-account JSON key (Application Default Credentials) |
+
+:::note Vertex AI authentication
+Vertex AI authenticates via [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), not an API key. In local development point `GOOGLE_APPLICATION_CREDENTIALS` at a service-account key file. On GCP runtimes (Cloud Run, GKE, Compute Engine) the attached service account is picked up automatically.
+:::
