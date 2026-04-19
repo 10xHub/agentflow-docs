@@ -8,7 +8,7 @@ sidebar_position: 3
 
 Run Gemini models (`gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`) through the Gemini API. This is the fastest way to get started with Gemini — a single API key is all you need.
 
-For production workloads on Google Cloud with IAM and audit logging, use [Vertex AI](./vertex-ai) instead. Both providers accept the same model names.
+For production workloads on Google Cloud with IAM and audit logging, use [Vertex AI](./vertex-ai.md) instead. Both providers accept the same model names.
 
 ## Setup
 
@@ -126,7 +126,7 @@ Pass `reasoning_config=True` to enable with defaults or `False` to disable.
 
 ## When to switch to Vertex AI
 
-Move to [`provider="vertex_ai"`](./vertex-ai) when you need:
+Move to [`provider="vertex_ai"`](./vertex-ai.md) when you need:
 
 - IAM-scoped access control instead of a shared API key
 - Regional data residency
