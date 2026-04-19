@@ -6,7 +6,7 @@ sidebar_position: 4
 
 # Vertex AI
 
-Run the same Gemini models as the [Google](./google) provider, but through Google Cloud Vertex AI. Instead of an API key, Vertex AI authenticates via Application Default Credentials — so you get IAM, audit logs, regional data residency, and VPC Service Controls.
+Run the same Gemini models as the [Google](./google.md) provider, but through Google Cloud Vertex AI. Instead of an API key, Vertex AI authenticates via Application Default Credentials — so you get IAM, audit logs, regional data residency, and VPC Service Controls.
 
 ## When to use Vertex AI
 
@@ -17,7 +17,7 @@ Choose `provider="vertex_ai"` when:
 - You want per-user / per-service IAM permissions instead of a shared API key.
 - You need GCP audit logging or VPC Service Controls.
 
-For local prototyping, the [Google](./google) provider with a simple API key is usually easier.
+For local prototyping, the [Google](./google.md) provider with a simple API key is usually easier.
 
 ## Setup
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         print(f"[{msg.role}] {msg}")
 ```
 
-Notice this is identical to the [Google provider example](./google#full-example-with-tools) except for `provider="vertex_ai"`. Every other AgentFlow feature — tools, streaming, reasoning, multimodal — works the same way.
+Notice this is identical to the [Google provider example](./google.md#full-example-with-tools) except for `provider="vertex_ai"`. Every other AgentFlow feature — tools, streaming, reasoning, multimodal — works the same way.
 
 ## Environment variables
 

@@ -22,9 +22,9 @@ agent = Agent(
 
 | Provider | Backend | Typical models |
 |---|---|---|
-| [`openai`](./openai) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
-| [`google`](./google) | Gemini API (Google AI Studio) | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
-| [`vertex_ai`](./vertex-ai) | Gemini via Google Cloud Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+| [`openai`](./openai.md) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
+| [`google`](./google.md) | Gemini API (Google AI Studio) | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+| [`vertex_ai`](./vertex-ai.md) | Gemini via Google Cloud Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
 
 ## Choosing a provider
 
