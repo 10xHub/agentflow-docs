@@ -79,7 +79,6 @@ const sidebars: SidebarsConfig = {
         "providers/index",
         "providers/openai",
         "providers/google",
-        "providers/vertex-ai",
       ],
     },
     {

@@ -143,15 +143,20 @@ Set these based on the `provider` you use on your `Agent`. They are read at clie
 
 ### Google Gemini (`provider="google"`)
 
+The Google provider supports two backends: the Gemini API (default) and Vertex AI. See [Using Vertex AI](../../providers/google.md#using-vertex-ai).
+
+**Gemini API (Google AI Studio):**
+
 | Variable | Description |
 | --- | --- |
 | `GEMINI_API_KEY` | API key from https://aistudio.google.com (preferred) |
 | `GOOGLE_API_KEY` | Fallback name for the Gemini API key |
 
-### Vertex AI (`provider="vertex_ai"`)
+**Vertex AI** (enable with `use_vertex_ai=True` on the agent or `GOOGLE_GENAI_USE_VERTEXAI=true`):
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `GOOGLE_GENAI_USE_VERTEXAI` | — | Set to `true` to route the Google provider through Vertex AI process-wide |
 | `GOOGLE_CLOUD_PROJECT` | — | **Required.** GCP project ID with the Vertex AI API enabled |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI calls |
 | `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to a service-account JSON key (Application Default Credentials) |

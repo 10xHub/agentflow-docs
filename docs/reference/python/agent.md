@@ -34,7 +34,7 @@ agent = Agent(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `model` | `str` | **required** | Model identifier. Examples: `"gpt-4o"`, `"gpt-4o-mini"`, `"gemini-2.0-flash"`, `"gemini-2.5-flash"`. |
-| `provider` | `str \| None` | `None` | Provider name. Supported: `"openai"`, `"google"`, `"vertex_ai"`. If `None`, the provider is inferred from the model name. |
+| `provider` | `str \| None` | `None` | Provider name. Supported: `"openai"`, `"google"`. If `None`, the provider is inferred from the model name. |
 | `output_type` | `str` | `"text"` | Expected output type. Use `"text"` for normal responses or `"json"` for structured JSON output. |
 | `system_prompt` | `list[dict] \| None` | `None` | System prompt as a list of message dicts, e.g. `[{"role": "system", "content": "..."}]`. |
 | `tool_node` | `str \| ToolNode \| None` | `None` | Tools available to the agent. Pass a `ToolNode` instance or the string name of an existing graph node. |
@@ -48,6 +48,7 @@ agent = Agent(
 | `retry_config` | `RetryConfig \| bool \| None` | `True` | Retry configuration for transient API errors. `True` enables default retry, `False` disables. |
 | `fallback_models` | `list[str \| tuple[str, str]] \| None` | `None` | Ordered list of fallback model identifiers (or `(model, provider)` tuples) to try if the primary model fails. |
 | `multimodal_config` | `MultimodalConfig \| None` | `None` | Configuration for multimodal file handling — controls auto-offload thresholds. |
+| `use_vertex_ai` | `bool` | `False` | Google provider only. Route Gemini calls through Vertex AI instead of the Gemini API. Equivalent to setting `GOOGLE_GENAI_USE_VERTEXAI=true`. See [Using Vertex AI](../../providers/google.md#using-vertex-ai). |
 | `**kwargs` | any | — | Additional provider-specific parameters passed directly to the LLM SDK. |
 
 ---
@@ -57,8 +58,9 @@ agent = Agent(
 | `provider` | Backend | Models |
 |---|---|---|
 | [`"openai"`](../../providers/openai.md) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
-| [`"google"`](../../providers/google.md) | Gemini API (Google AI Studio) | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
-| [`"vertex_ai"`](../../providers/vertex-ai.md) | Gemini via Google Cloud Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+| [`"google"`](../../providers/google.md) | Gemini API (Google AI Studio) or Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+
+The `"google"` provider supports both the Gemini API and Vertex AI. Toggle Vertex AI with `use_vertex_ai=True` on the agent or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment — see [Using Vertex AI](../../providers/google.md#using-vertex-ai).
 
 See the [Providers](../../providers/index.md) section for setup, environment variables, and full examples.
 
@@ -68,8 +70,6 @@ If `provider` is `None`, the library infers the provider from the `model` string
 
 - Models starting with `"gpt"`, `"o1"`, `"o3"`, `"o4"` → `"openai"`
 - Models starting with `"gemini"` → `"google"`
-
-`"vertex_ai"` is never inferred — set it explicitly, since its model names overlap with `"google"`.
 
 ---
 
@@ -225,7 +225,7 @@ When `auto_offload=True` and a `media_store` is attached to the compiled graph, 
 | Error | Cause | Fix |
 |---|---|---|
 | `AuthenticationError` | Missing or invalid API key. | Set `OPENAI_API_KEY`, `GOOGLE_API_KEY`/`GEMINI_API_KEY`, or Vertex AI credentials in your environment. |
-| `ValueError: GOOGLE_CLOUD_PROJECT environment variable must be set` | `provider="vertex_ai"` was used without a GCP project. | Export `GOOGLE_CLOUD_PROJECT` and ensure Application Default Credentials are configured. |
+| `ValueError: GOOGLE_CLOUD_PROJECT environment variable must be set` | Vertex AI was enabled (`use_vertex_ai=True` or `GOOGLE_GENAI_USE_VERTEXAI=true`) without a GCP project. | Export `GOOGLE_CLOUD_PROJECT` and ensure Application Default Credentials are configured. |
 | `ImportError: google-genai SDK is required` | The `google-genai` SDK is not installed. | Install it: `pip install 10xscale-agentflow[google-genai]` (or `pip install google-genai`). |
 | `InferenceError` | LLM provider returned an unexpected response. | Check the model name and provider. If using fallbacks, inspect the `fallback_models` list. |
 | `ValueError: Invalid tool_node` | `tool_node` is a string but no node with that name exists in the graph. | Add the ToolNode to the graph before using its name as a reference. |
