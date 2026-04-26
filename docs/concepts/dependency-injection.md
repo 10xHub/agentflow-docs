@@ -1,6 +1,7 @@
 ---
 title: Dependency Injection
 description: Injectable parameters, injectq service containers, and how to wire custom services into AgentFlow nodes and tools.
+sidebar_position: 11
 ---
 
 # Dependency injection

@@ -1,6 +1,7 @@
 ---
 title: Media and Files
 description: How to build multimodal messages with images, audio, video, and documents using MediaRef, content blocks, and media stores.
+sidebar_position: 10
 ---
 
 # Media and files

@@ -1,6 +1,7 @@
 ---
 title: Checkpointing and Threads
 description: How checkpointers save and restore conversation state across calls using thread IDs.
+sidebar_position: 7
 ---
 
 # Checkpointing and threads

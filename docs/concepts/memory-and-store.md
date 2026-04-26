@@ -1,6 +1,7 @@
 ---
 title: Memory and Store
 description: How long-term memory works in AgentFlow — memory_tool, retrieval modes, MemoryIntegration, and MemoryConfig.
+sidebar_position: 8
 ---
 
 # Memory and store

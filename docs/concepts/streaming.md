@@ -1,6 +1,7 @@
 ---
 title: Streaming
 description: How invoke, stream, and astream work; StreamChunk fields; ResponseGranularity; and how to consume SSE in TypeScript.
+sidebar_position: 5
 ---
 
 # Streaming

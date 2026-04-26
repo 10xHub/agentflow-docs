@@ -1,6 +1,7 @@
 ---
 title: Production Runtime
 description: How AgentFlow serves agents in production, including async execution, publisher adapters, and multi-worker deployments.
+sidebar_position: 18
 ---
 
 # Production runtime

@@ -1,6 +1,7 @@
 ---
 title: Architecture
 description: An overview of how AgentFlow packages fit together and how requests flow from client to graph.
+sidebar_position: 1
 ---
 
 # Architecture

@@ -1,6 +1,7 @@
 ---
 title: Agents and Tools
 description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options.
+sidebar_position: 3
 ---
 
 # Agents and tools

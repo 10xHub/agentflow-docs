@@ -1,6 +1,7 @@
 ---
 title: StateGraph and Nodes
 description: Full StateGraph API — constructor, add_node, edges, compile, interrupt, override, and the compiled graph methods.
+sidebar_position: 2
 ---
 
 # StateGraph and nodes
