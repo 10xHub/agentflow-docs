@@ -48,6 +48,15 @@ agentflow.json
 graph/
   __init__.py
   react.py
+skills/
+  agent-skills/
+    SKILL.md
+    references/
+      skill-concepts.md
+      agentflow.md
+      claude.md
+      codex.md
+      github.md
 .env
 ```
 
@@ -87,8 +96,22 @@ A starter ReAct (Reasoning and Acting) agent. This is a reference implementation
 - How to create a graph with a single agent node
 - How to compile the graph (which enables checkpointing and real-time updates)
 - How to prepare the graph as a FastAPI route (via `graph.invoke()` and `graph.stream()`)
+- How to discover the generated `skills/` directory and expose a `set_skill` tool
 
 You must keep an `app` variable defined that holds the compiled graph. Replace the graph logic with your own while preserving this export.
+
+### skills/
+
+Starter agent skill library for Claude, AgentFlow agents, Codex, and GitHub workflows. It follows a compact main-file plus references structure:
+
+- `skills/agent-skills/SKILL.md` — main skill entry point and reference map
+- `skills/agent-skills/references/skill-concepts.md` — skill layout, frontmatter, resources, and validation
+- `skills/agent-skills/references/agentflow.md` — AgentFlow graph and `SkillConfig` patterns
+- `skills/agent-skills/references/claude.md` — Claude-facing repository guidance
+- `skills/agent-skills/references/codex.md` — Codex skill authoring workflow
+- `skills/agent-skills/references/github.md` — GitHub MCP and repository automation workflow
+
+The generated `graph/react.py` discovers this folder and adds a `set_skill` tool so the model can load `agent-skills` and request exact reference files during a run.
 
 ### .env
 
@@ -110,7 +133,7 @@ If you have already initialized a project and want to regenerate the starter fil
 agentflow init --force
 ```
 
-This overwrites `agentflow.json`, `graph/__init__.py`, and `graph/react.py`. Use `--force` carefully—it will replace existing code.
+This overwrites `agentflow.json`, `graph/__init__.py`, `graph/react.py`, and generated files under `skills/`. Use `--force` carefully—it will replace existing code and skill instructions.
 
 ## Initialize a production project
 

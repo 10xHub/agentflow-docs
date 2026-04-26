@@ -83,6 +83,14 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Skills",
+      collapsed: true,
+      items: [
+        "skills/index",
+      ],
+    },
+    {
+      type: "category",
       label: "Beginner Path",
       collapsed: true,
       items: [

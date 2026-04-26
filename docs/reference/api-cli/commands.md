@@ -42,6 +42,15 @@ agentflow.json
 graph/
   __init__.py
   react.py
+skills/
+  agent-skills/
+    SKILL.md
+    references/
+      skill-concepts.md
+      agentflow.md
+      claude.md
+      codex.md
+      github.md
 ```
 
 **With `--prod`:**
@@ -51,6 +60,15 @@ agentflow.json
 graph/
   __init__.py
   react.py
+skills/
+  agent-skills/
+    SKILL.md
+    references/
+      skill-concepts.md
+      agentflow.md
+      claude.md
+      codex.md
+      github.md
 pyproject.toml
 .pre-commit-config.yaml
 ```
@@ -155,6 +173,65 @@ agentflow build --docker-compose --service-name my-agent
 
 # Custom Python version
 agentflow build --python-version 3.12
+```
+
+---
+
+## agentflow skills
+
+Install bundled AgentFlow skills into project-local assistant skill directories.
+
+```bash
+agentflow skills [OPTIONS]
+```
+
+When `--agent` is omitted in an interactive terminal, the command prompts:
+
+```text
+Which agent?
+- 1. Codex
+- 2. Claude
+- 3. GitHub
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--agent`, `-a` | prompt | Target agent: `codex`, `claude`, `github`, or menu number `1`, `2`, `3` |
+| `--path`, `-p` | `.` | Project directory where the skills should be installed |
+| `--force`, `-f` | `false` | Overwrite the existing installed AgentFlow skill directory |
+| `--all` | `false` | Install skills for every supported agent |
+| `--list`, `-l` | `false` | List supported agents and exit |
+| `--verbose`, `-v` | `false` | Enable verbose logging |
+| `--quiet`, `-q` | `false` | Suppress output except errors |
+
+Install locations:
+
+| Agent | Installed files |
+| --- | --- |
+| Codex | `.agents/skills/agentflow/` |
+| Claude | `.claude/skills/agentflow/` |
+| GitHub | `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow/` |
+
+**Example:**
+
+```bash
+# Prompt for target agent
+agentflow skills
+
+# Install for Codex
+agentflow skills --agent codex
+
+# Install for Claude in another project directory
+agentflow skills --agent claude --path ./my-agent
+
+# Install for every supported assistant
+agentflow skills --all
+
+# List supported assistants
+agentflow skills --list
+
+# Overwrite an existing install
+agentflow skills --agent github --force
 ```
 
 ---
