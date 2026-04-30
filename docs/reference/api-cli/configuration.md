@@ -26,7 +26,15 @@ description: Complete reference for all fields in agentflow.json.
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "authorization": "graph.auth:my_authorization_backend",
   "env": ".env",
-  "auth": "jwt"
+  "auth": "jwt",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  }
 }
 ```
 
@@ -157,6 +165,28 @@ Requires `JWT_SECRET_KEY` and `JWT_ALGORITHM` environment variables.
 ```
 
 See [Auth reference](./auth.md) for the custom backend interface.
+
+---
+
+### `rate_limit`
+
+Sliding-window rate limiter configuration.
+
+```json
+"rate_limit": {
+  "enabled": true,
+  "backend": "memory",
+  "requests": 100,
+  "window": 60,
+  "by": "ip",
+  "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+}
+```
+
+Omit this field (or set it to `null`) to disable rate limiting entirely.
+
+For the full field reference, backend options, response headers, and custom backend
+interface see [Rate Limiting](./rate-limiting.md).
 
 ---
 
