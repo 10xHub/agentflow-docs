@@ -52,7 +52,21 @@ const config: Config = {
           showLastUpdateAuthor: false,
           showLastUpdateTime: true,
         },
-        blog: false,
+        blog: {
+          path: 'blog',
+          routeBasePath: 'blog',
+          showReadingTime: true,
+          blogSidebarTitle: 'Latest posts',
+          blogSidebarCount: 10,
+          postsPerPage: 10,
+          feedOptions: {
+            type: ['rss', 'atom'],
+            title: 'AgentFlow Blog — Building Production AI Agents in Python',
+            description:
+              'Deep dives, patterns, and migration guides for building production AI agents with AgentFlow.',
+            xslt: true,
+          },
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -169,6 +183,7 @@ const config: Config = {
         {to: '/docs/courses', label: 'Courses', position: 'left'},
         {to: '/docs/concepts/architecture', label: 'Concepts', position: 'left'},
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
+        {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/10xscale/agentflow',
           label: 'GitHub',

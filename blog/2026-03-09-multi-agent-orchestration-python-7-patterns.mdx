@@ -1,0 +1,222 @@
+---
+slug: multi-agent-orchestration-python-7-patterns
+title: "Multi-Agent Orchestration in Python — 7 Patterns That Actually Work"
+description: Seven multi-agent orchestration patterns in Python — sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code.
+authors: [team]
+tags: [python, multi-agent, orchestration, patterns, architecture]
+date: 2026-03-09
+keywords:
+  - multi-agent orchestration python
+  - multi-agent patterns
+  - python multi-agent framework
+  - agent orchestration
+  - router supervisor agent
+image: /img/agentflow-social-card.png
+---
+
+Most "multi-agent" demos collapse into a `for` loop calling two LLMs. That works for a blog post and not much else. Real multi-agent systems need explicit control flow, shared state, and a way to debug when one specialist agent goes off the rails.
+
+Here are seven orchestration patterns we see ship in production Python codebases — and when each one is the right tool.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="Multi-Agent Orchestration in Python — 7 Patterns That Actually Work"
+  description="Seven multi-agent orchestration patterns in Python — sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code."
+  datePublished="2026-03-09"
+  slug="multi-agent-orchestration-python-7-patterns"
+  keywords={["multi-agent orchestration", "python multi-agent", "agent patterns", "supervisor agent"]}
+/>
+
+## A quick mental model
+
+A graph-based runtime models multi-agent flows as **nodes** (agents or tools) connected by **edges** (control flow). State is shared across the graph, and each pattern below is just a different way of wiring the edges.
+
+We use [AgentFlow](/docs/get-started)'s `StateGraph` for the examples; the patterns translate to LangGraph, AutoGen, or CrewAI with minor syntax changes.
+
+## Pattern 1 — Sequential pipeline
+
+The simplest case: agent A → agent B → agent C, in order.
+
+```python
+from agentflow.core.graph import Agent, StateGraph
+from agentflow.core.state import AgentState
+from agentflow.utils import END
+
+researcher = Agent(model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Find three sources for the topic."}])
+writer = Agent(model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Use the sources to write a 200-word brief."}])
+editor = Agent(model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Tighten and copy-edit the brief."}])
+
+graph = StateGraph(AgentState)
+graph.add_node("RESEARCH", researcher)
+graph.add_node("WRITE", writer)
+graph.add_node("EDIT", editor)
+
+graph.set_entry_point("RESEARCH")
+graph.add_edge("RESEARCH", "WRITE")
+graph.add_edge("WRITE", "EDIT")
+graph.add_edge("EDIT", END)
+```
+
+**Use when:** the order is fixed and each step depends on the previous output. Content pipelines, ETL with LLM enrichment, document synthesis.
+
+## Pattern 2 — Parallel fan-out + fan-in
+
+Run multiple specialists in parallel, then combine.
+
+```python
+graph = StateGraph(AgentState)
+graph.add_node("FETCH", source_agent)
+graph.add_node("SUMMARIZE_A", summarizer_a)  # different angle
+graph.add_node("SUMMARIZE_B", summarizer_b)
+graph.add_node("MERGE", merger_agent)
+
+graph.set_entry_point("FETCH")
+graph.add_edge("FETCH", "SUMMARIZE_A")
+graph.add_edge("FETCH", "SUMMARIZE_B")
+graph.add_edge("SUMMARIZE_A", "MERGE")
+graph.add_edge("SUMMARIZE_B", "MERGE")
+graph.add_edge("MERGE", END)
+```
+
+**Use when:** independent perspectives or independent work units (multi-source research, ensemble reasoning). The fan-in node sees both outputs in shared state.
+
+## Pattern 3 — Router (deterministic dispatch)
+
+A non-LLM router decides which specialist runs next based on a Python function. Cheap, fast, debuggable.
+
+```python
+from agentflow.utils import END
+
+def route_by_intent(state):
+    last = state.context[-1].text() if state.context else ""
+    if "refund" in last.lower(): return "REFUNDS"
+    if "delivery" in last.lower(): return "SHIPPING"
+    return "GENERAL"
+
+graph.add_node("REFUNDS", refunds_agent)
+graph.add_node("SHIPPING", shipping_agent)
+graph.add_node("GENERAL", general_agent)
+
+graph.set_entry_point("ROUTE")  # placeholder; route is conditional
+graph.add_conditional_edges(
+    "ROUTE", route_by_intent,
+    {"REFUNDS": "REFUNDS", "SHIPPING": "SHIPPING", "GENERAL": "GENERAL"},
+)
+```
+
+**Use when:** the routing decision is deterministic. Saves an LLM call, reduces latency, makes routing trivially testable.
+
+## Pattern 4 — LLM router (semantic dispatch)
+
+When the routing logic itself needs natural-language understanding, the router becomes a small LLM that picks a downstream node by name.
+
+```python
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.prebuilt.tools import create_handoff_tool
+
+router_tools = ToolNode([
+    create_handoff_tool("refunds", "Send to refunds specialist"),
+    create_handoff_tool("shipping", "Send to shipping specialist"),
+    create_handoff_tool("general", "Handle as general inquiry"),
+])
+
+router = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Choose the right specialist for the user's question."}],
+    tool_node="ROUTER_TOOLS",
+)
+```
+
+**Use when:** intent is ambiguous (multilingual, domain-specific phrasing). Use a small fast model to keep cost down — the router does not need to be the same model that handles the response.
+
+## Pattern 5 — Handoff (specialists pass control)
+
+Specialists can hand off to each other directly, not just back to a central router. This gives you free-form conversations between agents while keeping every transition explicit.
+
+```python
+researcher_tools = ToolNode([
+    create_handoff_tool("writer", "Hand findings to writer"),
+    create_handoff_tool("done", "End the workflow"),
+])
+writer_tools = ToolNode([
+    create_handoff_tool("researcher", "Need more research"),
+    create_handoff_tool("done", "Finalize the draft"),
+])
+```
+
+**Use when:** the workflow is collaborative and the path is data-dependent. Critic ↔ author loops, debate, hierarchical task decomposition. See the [handoff how-to](/docs/how-to/python/handoff-between-agents) for the full pattern.
+
+## Pattern 6 — Supervisor (manager + workers)
+
+A supervisor agent decides who works on what, monitors progress, and stops when the goal is met.
+
+```python
+supervisor = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": (
+        "You manage a team of specialists. Decide who handles each task. "
+        "When all subtasks are complete, return DONE."
+    )}],
+    tool_node="SUPERVISOR_TOOLS",
+)
+```
+
+**Use when:** tasks decompose into subtasks of variable count (research → analyse → report; coding → testing → docs). The supervisor pattern is what most teams reach for after sequential pipelines stop scaling.
+
+Set `recursion_limit` in your invoke config to cap runaway loops.
+
+## Pattern 7 — Human-in-the-loop interrupt
+
+The graph pauses at a node, surfaces state to a human, and resumes when the human approves or edits.
+
+```python
+# Pause before high-risk actions
+graph.add_node("APPROVE", human_review_node)  # writes a "needs_approval" marker
+
+result = app.invoke(
+    {"messages": [Message.text_message("Refund order #123 for $400.")]},
+    config={"thread_id": "human-loop-1"},
+)
+# State is checkpointed at APPROVE; resume after human input
+app.invoke(
+    {"approval": True},
+    config={"thread_id": "human-loop-1"},
+)
+```
+
+**Use when:** decisions exceed the agent's authority — payments, customer-facing emails, destructive operations. Pair with a checkpointer so the pause is durable across restarts.
+
+## How to pick
+
+| Workflow shape | Pattern |
+|---|---|
+| Fixed steps in order | Sequential |
+| Independent work in parallel | Fan-out + fan-in |
+| Cheap, deterministic dispatch | Router (Python) |
+| Semantic dispatch | LLM router |
+| Collaborative agent-to-agent | Handoff |
+| Variable-count subtasks | Supervisor |
+| Risky or revenue actions | Human-in-the-loop |
+
+You can mix patterns in one graph — a supervisor for top-level dispatch, sequential pipelines per subtask, human-in-the-loop on the final step. The graph syntax is the same.
+
+## Production gotchas
+
+- **Always set `recursion_limit`.** Default to 10–25. Routers and supervisors love to loop.
+- **Log the graph state at every node boundary.** With `AgentState` shared, this is one log line per node, not one per LLM call.
+- **Persist threads from day one.** A multi-agent flow without checkpointing is a research script, not a product.
+- **Use small models for routers.** A `gemini-2.5-flash` router calling a `claude-3-5-sonnet` specialist is the right cost shape.
+- **Avoid free-form chat between agents.** Handoffs as explicit tool calls are easier to debug than free-form messages.
+
+## Further reading
+
+- [State graph concept](/docs/concepts/state-graph) — how nodes, edges, and routing work
+- [Handoff between agents](/docs/how-to/python/handoff-between-agents) — full handoff pattern
+- [Multi-agent tutorial](/docs/tutorials/from-examples/multiagent) — runnable example
+- [Compare AgentFlow vs LangGraph / CrewAI / AutoGen](/docs/compare) — same patterns in other frameworks
+
+Once you have the right pattern, the rest is implementation. [Get started](/docs/get-started) and ship the first version this week.

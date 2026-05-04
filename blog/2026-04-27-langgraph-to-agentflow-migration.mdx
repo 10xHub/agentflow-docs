@@ -1,0 +1,330 @@
+---
+slug: langgraph-to-agentflow-migration
+title: "From LangGraph to AgentFlow — A Complete Migration Walkthrough"
+description: A step-by-step LangGraph to AgentFlow migration walkthrough — graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code.
+authors: [team]
+tags: [langgraph, migration, agentflow, python, walkthrough]
+date: 2026-04-27
+keywords:
+  - langgraph to agentflow
+  - migrate langgraph
+  - langgraph migration guide
+  - port langgraph
+  - langgraph alternative migration
+image: /img/agentflow-social-card.png
+---
+
+If you have a LangGraph agent in production and want to move to AgentFlow, this is the playbook. The graph mental model is the same, so the port is mostly mechanical — most teams complete it in an afternoon.
+
+We will walk a real, two-agent example end-to-end: imports, state, nodes, edges, checkpointing, API serving, and the TypeScript client.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="From LangGraph to AgentFlow — A Complete Migration Walkthrough"
+  description="A step-by-step LangGraph to AgentFlow migration walkthrough — graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code."
+  datePublished="2026-04-27"
+  slug="langgraph-to-agentflow-migration"
+  keywords={["langgraph migration", "agentflow", "port langgraph"]}
+/>
+
+## What changes, what stays
+
+| Concept | LangGraph | AgentFlow |
+|---|---|---|
+| Graph builder | `StateGraph(MyState)` | `StateGraph(AgentState)` |
+| State | `TypedDict` you define | Built-in `AgentState` (extensible) |
+| Messages | `langchain_core.messages.HumanMessage`, etc. | `agentflow.core.state.Message` |
+| Nodes | Plain functions | `Agent` / `ToolNode` / functions |
+| Conditional edges | `add_conditional_edges` | `add_conditional_edges` (same name) |
+| Compile | `workflow.compile(checkpointer=...)` | `graph.compile(checkpointer=...)` |
+| Memory saver | `MemorySaver`, `PostgresSaver` | `InMemoryCheckpointer`, `PgCheckpointer` |
+| Invoke | `app.invoke({"messages": [...]})` | `app.invoke({"messages": [...]}, config={"thread_id": ...})` |
+| API serving | LangGraph Platform / FastAPI | `agentflow api` (built-in) |
+| TS client | None first-party | `@10xscale/agentflow-client` |
+
+The shape is identical. The names and types are different.
+
+## The example: ReAct agent + tool
+
+Our starting point — a LangGraph ReAct agent that calls a `get_weather` tool.
+
+### Before (LangGraph)
+
+```python
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+@tool
+def get_weather(location: str) -> str:
+    """Get current weather for a city."""
+    return f"It is sunny and 22°C in {location}."
+
+memory = MemorySaver()
+app = create_react_agent(
+    "openai:gpt-4o-mini",
+    tools=[get_weather],
+    checkpointer=memory,
+)
+
+result = app.invoke(
+    {"messages": [HumanMessage("Weather in Tokyo?")]},
+    config={"configurable": {"thread_id": "demo-1"}},
+)
+print(result["messages"][-1].content)
+```
+
+### After (AgentFlow)
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+from agentflow.utils import END
+
+def get_weather(location: str) -> str:
+    """Get current weather for a city."""
+    return f"It is sunny and 22°C in {location}."
+
+tool_node = ToolNode([get_weather])
+agent = Agent(
+    model="google/gemini-2.5-flash",  # or "openai/gpt-4o-mini"
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+memory = InMemoryCheckpointer()
+app = graph.compile(checkpointer=memory)
+
+result = app.invoke(
+    {"messages": [Message.text_message("Weather in Tokyo?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+The notable differences:
+
+- **No `@tool` decorator.** AgentFlow reads the type hints + docstring directly.
+- **Explicit graph construction.** LangGraph's `create_react_agent` hides the graph; AgentFlow shows it. Once you've built one, the boilerplate becomes a snippet.
+- **`Message.text_message(...)` instead of `HumanMessage(...)`.**
+- **`thread_id` at top level of config**, not inside `configurable`.
+- **`message.text()` instead of `message.content`.**
+
+## Step-by-step migration checklist
+
+### 1. Replace imports
+
+```python
+# - from langchain_core.messages import HumanMessage, AIMessage
+# - from langgraph.graph import StateGraph, END
+# - from langgraph.prebuilt import create_react_agent
+# - from langgraph.checkpoint.memory import MemorySaver
+# - from langgraph.checkpoint.postgres import PostgresSaver
+
+# + from agentflow.core.graph import Agent, StateGraph, ToolNode
+# + from agentflow.core.state import AgentState, Message
+# + from agentflow.storage.checkpointer import InMemoryCheckpointer, PgCheckpointer
+# + from agentflow.utils import END
+```
+
+### 2. Convert tools
+
+LangGraph `@tool` → plain function. The `@tool` decorator does mostly type extraction, which AgentFlow does automatically.
+
+```python
+# - @tool
+# - def get_weather(location: str) -> str:
+# -     """Get weather."""
+# -     return ...
+
+# + def get_weather(location: str) -> str:
+# +     """Get weather."""
+# +     return ...
+```
+
+Wrap them in `ToolNode([fn1, fn2, ...])`.
+
+### 3. Replace `create_react_agent` with explicit graph
+
+This is the biggest mechanical change. LangGraph's prebuilt hides the graph; AgentFlow asks you to define it. Use the snippet above as the template — it is the same for any ReAct agent.
+
+If you have many ReAct agents, factor the graph construction into a helper:
+
+```python
+def build_react_graph(agent: Agent, tool_node: ToolNode):
+    g = StateGraph(AgentState)
+    g.add_node("MAIN", agent)
+    g.add_node("TOOL", tool_node)
+    g.add_conditional_edges("MAIN", _route, {"TOOL": "TOOL", END: END})
+    g.add_edge("TOOL", "MAIN")
+    g.set_entry_point("MAIN")
+    return g.compile()
+```
+
+### 4. Convert state schema
+
+If you used a custom `TypedDict`:
+
+```python
+# LangGraph
+class MyState(TypedDict):
+    messages: Annotated[list[AnyMessage], add_messages]
+    user_id: str
+    cart: list[dict]
+```
+
+AgentFlow's `AgentState` already has `messages` and `context`. Add custom fields by subclassing:
+
+```python
+from agentflow.core.state import AgentState
+
+class MyState(AgentState):
+    user_id: str = ""
+    cart: list[dict] = []
+```
+
+Pass `MyState` to `StateGraph(MyState)`. The runtime treats your fields as state slots.
+
+### 5. Convert checkpointer
+
+```python
+# - memory = MemorySaver()
+# + memory = InMemoryCheckpointer()
+
+# - with PostgresSaver.from_conn_string("postgresql://...") as cp:
+# -     app = workflow.compile(checkpointer=cp)
+# + cp = PgCheckpointer(
+# +     db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+# +     redis_url="redis://localhost:6379/0",
+# + )
+# + app = graph.compile(checkpointer=cp)
+```
+
+`PgCheckpointer` requires both Postgres and Redis. Redis is for hot-path access; if you do not have one yet, run `redis:7-alpine` in Docker. See [production checkpointing](/docs/how-to/production/checkpointing).
+
+### 6. Update invoke calls
+
+```python
+# - app.invoke(
+# -     {"messages": [HumanMessage("hi")]},
+# -     config={"configurable": {"thread_id": "u1"}},
+# - )
+
+# + app.invoke(
+# +     {"messages": [Message.text_message("hi")]},
+# +     config={"thread_id": "u1", "recursion_limit": 25},
+# + )
+```
+
+`recursion_limit` lives on the invoke config in AgentFlow. Set it; LangGraph's default is also bounded but AgentFlow asks you to be explicit.
+
+### 7. Update reading state
+
+```python
+# - response = result["messages"][-1].content
+# + response = result["messages"][-1].text()
+```
+
+`Message.text()` returns plain text. For multimodal messages, use `.parts`.
+
+### 8. Drop your custom FastAPI server
+
+If you were running a hand-rolled FastAPI service to expose LangGraph over HTTP:
+
+```bash
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+`agentflow.json`:
+
+```json
+{"agent": "graph.react:app"}
+```
+
+You now have `POST /v1/graph/invoke`, `POST /v1/graph/stream`, and `GET /v1/graph/threads/{id}`. The hand-rolled FastAPI usually deletes 100–300 lines.
+
+### 9. Replace your TypeScript fetcher
+
+If you wrote a custom fetch + SSE parser to call LangGraph from a frontend:
+
+```typescript
+// - const response = await fetch("/api/agent", { method: "POST", body: JSON.stringify(...) });
+// - // ... custom SSE parsing ...
+
+// + import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+// + const client = new AgentFlowClient({baseUrl: "/api"});
+// + const result = await client.invoke([Message.text_message(text)], {config: {thread_id}});
+```
+
+The typed client handles SSE, reconnection, and types.
+
+## Multi-agent migrations
+
+For LangGraph multi-agent workflows (router → specialists, supervisors, handoffs), the migration follows the same pattern:
+
+- LangGraph `Command` for handoffs → AgentFlow `create_handoff_tool`
+- LangGraph supervisor pattern → AgentFlow router node + handoff tools
+
+See the [handoff tutorial](/docs/how-to/python/handoff-between-agents) for the full pattern. The [multi-agent orchestration post](/blog/multi-agent-orchestration-python-7-patterns) covers when each shape is the right call.
+
+## What you keep
+
+You do not have to rewrite:
+
+- **Tool implementations.** Plain Python functions move over as-is.
+- **External integrations.** Vector stores, databases, custom retrievers — all unchanged.
+- **System prompts.** Copy them across.
+- **Evals and tests.** Most of them only care about the input/output of the agent, which stays the same.
+
+What changes is the orchestration layer in the middle.
+
+## After the migration
+
+Once the port is done, you usually want to:
+
+1. **Add streaming** — use `app.stream()` / `app.astream()` and the SSE endpoint
+2. **Move to `PgCheckpointer`** — production durability
+3. **Add the TypeScript client** — kill the hand-rolled fetcher
+4. **Set `recursion_limit`** — explicitly cap loops
+5. **Add OpenTelemetry traces** — see [production observability](/blog/production-ai-agents-observability-retries)
+
+These are all optional but each saves real time downstream.
+
+## Common migration gotchas
+
+1. **Forgetting `recursion_limit`.** LangGraph's default is 25; AgentFlow asks you to set it. If your agent loops, this is the first place to check.
+2. **`message.content` → `message.text()`.** Easy to miss in tests.
+3. **`configurable` config key.** AgentFlow uses top-level `config`, not nested `configurable`. Update everywhere.
+4. **Custom state schema.** If you used `Annotated` reducers (e.g., `add_messages`), AgentFlow handles the messages reducer for you. Custom reducers go on subclassed state fields.
+5. **Tool docstrings.** AgentFlow reads them as the tool description for the model. Make sure they are accurate.
+
+## Further reading
+
+- [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph) — head-to-head
+- [State graph concept](/docs/concepts/state-graph)
+- [Add memory](/docs/beginner/add-memory) — checkpointer setup
+- [Handoff between agents](/docs/how-to/python/handoff-between-agents)
+- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
+
+If you want to compare the runtime first, [Get started](/docs/get-started) and reproduce your LangGraph agent in 30 minutes.

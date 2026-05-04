@@ -1,0 +1,222 @@
+---
+slug: ai-agents-vs-workflows
+title: "AI Agents vs Workflows — When to Use Each (and How to Tell)"
+description: A practical guide to choosing between AI agents and deterministic workflows. Decision tree, hybrid patterns, and Python code for each in 2026.
+authors: [team]
+tags: [agents, workflows, architecture, decision-making, python]
+date: 2026-05-04
+keywords:
+  - ai agents vs workflows
+  - agentic vs deterministic
+  - when to use ai agents
+  - workflow vs agent
+  - python workflow framework
+image: /img/agentflow-social-card.png
+---
+
+"Should this be an agent or a workflow?" gets asked in every architecture review of an AI system. The answer is rarely binary — most production systems are hybrids. But you should know which mode you are in for any given subsystem, because the operational cost is wildly different.
+
+Here is the practical decision framework.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="AI Agents vs Workflows — When to Use Each (and How to Tell)"
+  description="A practical guide to choosing between AI agents and deterministic workflows. Decision tree, hybrid patterns, and Python code for each in 2026."
+  datePublished="2026-05-04"
+  slug="ai-agents-vs-workflows"
+  keywords={["ai agents vs workflows", "agent architecture", "workflow design"]}
+/>
+
+## The crisp definitions
+
+**Workflow:** the LLM does not decide control flow. You wrote the steps; the model fills in language-shaped tasks at specific points.
+
+**Agent:** the LLM decides control flow. You give it tools and a goal; it picks the next action at each step.
+
+A "graph with conditional edges" is a workflow if the conditions are deterministic Python; it is an agent if the conditions involve the model picking the next node.
+
+This is a continuum, not a binary. Most systems are 80% workflow and 20% agent.
+
+## Workflow code
+
+```python
+def summarize_call(transcript: str) -> dict:
+    # Step 1: extract entities (LLM)
+    entities = llm.extract(transcript, schema=EntitySchema)
+
+    # Step 2: classify intent (LLM)
+    intent = llm.classify(transcript, labels=INTENTS)
+
+    # Step 3: write summary (LLM)
+    summary = llm.summarize(transcript, max_words=120)
+
+    # Step 4: store (deterministic)
+    db.write(call_id, {"entities": entities, "intent": intent, "summary": summary})
+
+    return {"entities": entities, "intent": intent, "summary": summary}
+```
+
+Three LLM calls, in a fixed order. The model never picks the next step.
+
+## Agent code
+
+```python
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": (
+        "Help the user with their support request. "
+        "Use lookup_order to find their order, refund_order to issue refunds, "
+        "or escalate_to_human if you cannot resolve it."
+    )}],
+    tool_node="TOOL",
+)
+
+# The model decides which tools to call, in what order, and when to stop
+app.invoke(
+    {"messages": [Message.text_message("My order #123 hasn't arrived.")]},
+    config={"thread_id": "support-1"},
+)
+```
+
+The model picks: look up the order, check status, decide whether to refund or escalate, etc. *That decision* is what makes this an agent.
+
+## When workflows win
+
+Workflows are the right answer when:
+
+- **The steps are predictable.** Most data pipelines, ETL with LLM enrichment, batch processing.
+- **You need determinism.** Compliance review, regulated outputs, anything where the path matters as much as the result.
+- **Cost matters.** Each LLM call is paid; a fixed pipeline pays only for what you need.
+- **Latency matters.** No "the model is thinking" loops. Steps run sequentially with predictable timings.
+- **You need to test it.** Workflows are easy to unit-test; agent loops are not.
+
+A workflow with three LLM calls is a far simpler operational target than an agent that *might* make three calls — or seven, or none.
+
+## When agents win
+
+Agents are the right answer when:
+
+- **The path depends on the input.** Customer support: did the user ask for a refund or a status check?
+- **You can't enumerate the steps in advance.** Research tasks, debugging tasks, anything with branching.
+- **The model needs to decide when to stop.** Open-ended exploration with a clear goal.
+- **Tool selection matters.** When the right tool depends on what the user said, the model is the natural router.
+
+The killer feature of agents is *deciding when to stop*. Workflows always run to the end; agents can finish early.
+
+## Hybrid: the most common production shape
+
+Most production systems are hybrids:
+
+```
+[ Deterministic workflow ]
+    Step 1: Extract entities
+    Step 2: Classify intent
+    Step 3: ──── Branch on intent ────
+                    │
+                    ├─→ [ Simple workflow: format response ]
+                    │
+                    └─→ [ Agent: handle complex cases ]
+                            └─ tool calls, loops, etc.
+    Step 4: Log result
+```
+
+The deterministic shell handles the boring parts (extraction, logging, routing). The agent handles the parts where the model needs to decide.
+
+Code shape:
+
+```python
+def handle_request(req):
+    intent = llm.classify(req.text, labels=INTENTS)
+
+    if intent == "simple_lookup":
+        return run_lookup_workflow(req)
+
+    if intent == "complex_support":
+        return support_agent.invoke(
+            {"messages": [Message.text_message(req.text)]},
+            config={"thread_id": req.user_id},
+        )
+```
+
+This is the right shape for a typical SaaS support system. 80% workflow (cheap, deterministic, fast), 20% agent (handles the long tail).
+
+## A decision tree
+
+For any subsystem in your architecture, ask:
+
+1. **Can I enumerate the steps in advance?**
+   - Yes → workflow
+   - No → agent
+
+2. **Does the path depend on the input?**
+   - Yes → agent (or branching workflow)
+   - No → workflow
+
+3. **Does the model need to decide when to stop?**
+   - Yes → agent
+   - No → workflow
+
+4. **Does this need to be deterministic for compliance / testing?**
+   - Yes → workflow (even if the obvious shape is an agent)
+   - No → either is fine
+
+When in doubt, start with a workflow. It is easier to upgrade a workflow to an agent than to downgrade.
+
+## Operational cost differences
+
+| Concern | Workflow | Agent |
+|---|---|---|
+| Token cost per request | Predictable | Variable, can spike |
+| Latency p95 | Predictable | Long tail |
+| Failure modes | Step N failed | Loop runaway, tool error, recursion limit |
+| Testability | Each step in isolation | End-to-end only |
+| Observability | One trace per step | Full graph trace |
+| Recovery | Retry from failed step | Resume thread from checkpoint |
+
+Agents pay an "intelligence tax" — the freedom to decide costs you in token spend, latency variance, and operational complexity. Charge for that intelligence only when you need it.
+
+## Same primitive, different uses
+
+A graph runtime like AgentFlow or LangGraph supports both. The runtime is the same; the wiring is different:
+
+- **Workflow:** edges are deterministic, conditional functions are pure Python
+- **Agent:** at least one node is an `Agent` whose tool choice drives an edge
+
+You can mix them in one graph — a workflow that calls into a small agent for one branch, then resumes deterministic processing.
+
+```python
+graph = StateGraph(AgentState)
+graph.add_node("EXTRACT", extract_node)             # workflow
+graph.add_node("CLASSIFY", classify_node)           # workflow
+graph.add_node("AGENT", complex_support_agent)      # agent
+graph.add_node("LOG", log_node)                     # workflow
+
+graph.add_edge("EXTRACT", "CLASSIFY")
+graph.add_conditional_edges(
+    "CLASSIFY",
+    lambda s: "AGENT" if s.intent == "complex" else "LOG",
+    {"AGENT": "AGENT", "LOG": "LOG"},
+)
+graph.add_edge("AGENT", "LOG")
+graph.add_edge("LOG", END)
+```
+
+This is the production shape for most non-trivial AI systems.
+
+## Common mistakes
+
+1. **Agent-everything.** Wrapping a 3-step pipeline in an agent because "agents are cool." You pay 3× the tokens for the same outcome with worse predictability.
+2. **Workflow-everything.** A long if-else chain trying to anticipate every case the model could handle in two tool calls. Use the agent.
+3. **No determinism boundary.** When the model gets to call any tool any time, your audit log is unreadable. Define agent boundaries explicitly.
+4. **Skipping the workflow shell.** A pure agent in production with no deterministic guardrails is a footgun. Wrap it.
+5. **Not setting `recursion_limit`.** Agents loop. Always cap them.
+
+## Further reading
+
+- [State graph concept](/docs/concepts/state-graph) — runtime shared by both shapes
+- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
+- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis) — pure agent example
+- [Production AI agents (observability + retries)](/blog/production-ai-agents-observability-retries)
+
+If your system is mostly a workflow with one agent loop, [Get started](/docs/get-started) — the same runtime handles both, with the same primitives.

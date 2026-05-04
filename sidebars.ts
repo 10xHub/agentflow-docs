@@ -87,6 +87,30 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Use Cases",
+      collapsed: true,
+      items: [
+        "use-cases/index",
+        "use-cases/customer-support-agent",
+        "use-cases/data-extraction-agent",
+        "use-cases/coding-agent",
+        "use-cases/research-agent",
+        "use-cases/rag-agent",
+      ],
+    },
+    {
+      type: "category",
+      label: "Integrations",
+      collapsed: true,
+      items: [
+        "integrations/index",
+        "integrations/agentflow-with-fastapi",
+        "integrations/agentflow-with-nextjs",
+        "integrations/agentflow-with-postgres",
+      ],
+    },
+    {
+      type: "category",
       label: "Providers",
       collapsed: true,
       items: [
