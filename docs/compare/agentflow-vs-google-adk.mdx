@@ -1,0 +1,227 @@
+---
+title: AgentFlow vs Google ADK — Open-Source Alternative
+description: AgentFlow vs Google Agent Development Kit compared. Open-source provider-neutral runtime with REST API and TypeScript client vs Vertex-tied ADK.
+keywords:
+  - google adk alternative
+  - google agent development kit alternative
+  - agentflow vs google adk
+  - vertex ai agent framework
+  - python ai agent framework
+  - open source agent framework
+sidebar_position: 6
+---
+
+# AgentFlow vs Google ADK: an open-source, provider-neutral alternative
+
+**Google's Agent Development Kit (ADK)** is Google's official Python framework for building agents that run on Gemini and Vertex AI. It is opinionated, well-integrated with the Google stack, and a strong choice if you are committed to Vertex. **AgentFlow** is an independent, MIT-licensed runtime that supports Gemini and Vertex AI as first-class providers — alongside OpenAI, Anthropic, and others — without tying your codebase to a single cloud.
+
+If you like ADK's mental model but need provider neutrality, MIT licensing, or a built-in API + TypeScript client, this page shows what AgentFlow gives you.
+
+## TL;DR — AgentFlow vs Google ADK
+
+<CompareTable
+  competitorName="Google ADK"
+  caption="ADK is Google's Python agent framework for Gemini and Vertex AI. AgentFlow is provider-neutral with first-party Google support."
+  rows={[
+    {dimension: 'Provider scope', agentflow: 'OpenAI, Anthropic, Google (Gemini + Vertex AI), and others', competitor: 'Optimised for Gemini / Vertex AI'},
+    {dimension: 'Orchestration', agentflow: 'Typed StateGraph with conditional edges and sub-graphs', competitor: 'Sequential / Parallel / Loop agents and workflows'},
+    {dimension: 'State', agentflow: 'AgentState + Message stream you can inspect anywhere', competitor: 'Session state with structured events'},
+    {dimension: 'Persistence', agentflow: 'Built-in InMemoryCheckpointer / PgCheckpointer (Postgres + Redis)', competitor: 'Sessions service (in-memory or Vertex AI session backend)'},
+    {dimension: 'API serving', agentflow: 'Built-in `agentflow api` REST + SSE server', competitor: 'Deploy via Vertex AI Agent Engine or roll-your-own', emphasis: 'agentflow'},
+    {dimension: 'TypeScript client', agentflow: 'Typed `@10xscale/agentflow-client`', competitor: 'No first-party TS client'},
+    {dimension: 'Cloud lock-in', agentflow: 'Runs anywhere — laptop, Docker, Kubernetes, any cloud', competitor: 'Best experience on Google Cloud / Vertex AI'},
+    {dimension: 'License', agentflow: 'MIT', competitor: 'Apache-2.0'},
+  ]}
+/>
+
+## Why teams choose AgentFlow over Google ADK
+
+1. **Provider neutrality.** Most production teams run more than one model — Gemini for cost-effective tasks, Anthropic for long context, OpenAI for specific reasoning. AgentFlow makes that a one-line change. ADK is best when you commit to Gemini.
+2. **Run anywhere.** AgentFlow has no required cloud. The same `agentflow api` server runs on a laptop, a single VM, AWS ECS, or Google Cloud Run. ADK ships with a strong path to Vertex AI Agent Engine; off that path, you assemble it yourself.
+3. **MIT vs Apache-2.0.** Both are permissive. If your legal team prefers MIT for downstream redistribution, AgentFlow is one fewer thing to discuss.
+4. **Typed TypeScript client out of the box.** ADK does not ship a first-party TS SDK. AgentFlow does.
+5. **Same CLI for dev and production.** `agentflow api` is the binary you run locally and the binary you deploy. No swap to a different runtime in the cloud.
+
+## Same agent on Gemini, both frameworks
+
+A small **ReAct agent calling one tool**, written first in Google ADK, then in AgentFlow — both targeting Gemini.
+
+### Google ADK
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool
+
+def get_weather(location: str) -> str:
+    """Get current weather for a location."""
+    return f"The weather in {location} is sunny and 22°C."
+
+agent = LlmAgent(
+    name="weather_assistant",
+    model="gemini-2.0-flash",
+    instruction="You are a helpful assistant. Use get_weather when asked about weather.",
+    tools=[FunctionTool(func=get_weather)],
+)
+
+# Run via the ADK CLI / runner
+# adk run agent.py
+```
+
+### AgentFlow (also on Gemini)
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+def get_weather(location: str) -> str:
+    """Get current weather for a location."""
+    return f"The weather in {location} is sunny and 22°C."
+
+tool_node = ToolNode([get_weather])
+agent = Agent(
+    model="google/gemini-2.5-flash",  # or "vertex-ai/gemini-2.5-flash"
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in Bengaluru?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+The Gemini integration is first-class on both sides. The difference is that AgentFlow's `model="google/gemini-2.5-flash"` could just as easily be `"openai/gpt-4o-mini"` or `"anthropic/claude-3-5-sonnet"` with no other code changes. See [the Google provider docs](/docs/providers/google) for Vertex AI configuration.
+
+## Workflow patterns
+
+ADK's `SequentialAgent`, `ParallelAgent`, and `LoopAgent` express common patterns directly. AgentFlow expresses the same with graph primitives:
+
+| ADK pattern | AgentFlow equivalent |
+|---|---|
+| `SequentialAgent([a, b, c])` | `add_edge("A", "B"); add_edge("B", "C")` |
+| `ParallelAgent([a, b])` | Two nodes that both write to state, joined by a fan-in node |
+| `LoopAgent(agent, max_iterations=N)` | Self-looping node + `recursion_limit=N` in the invoke config |
+| Sub-agents / handoff | Router node + `create_handoff_tool` |
+
+The graph primitives compose more flexibly — you can mix sequential, parallel, and looping in the same graph without switching abstractions.
+
+## Persistence, sessions, and threads
+
+ADK has a sessions service (in-memory or Vertex AI-backed). AgentFlow uses checkpointers keyed by `thread_id`:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+)
+
+app = graph.compile(checkpointer=checkpointer)
+app.invoke(
+    {"messages": [Message.text_message("Continue our previous chat.")]},
+    config={"thread_id": "user-42"},
+)
+```
+
+The same primitive works on a laptop (`InMemoryCheckpointer`) and in production (`PgCheckpointer`) with no code change. With ADK you typically use the in-memory sessions service in dev and the Vertex AI sessions backend in prod — that switch is straightforward but ties you to Vertex.
+
+## Serving as an API
+
+```bash
+pip install 10xscale-agentflow-cli
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+Endpoints:
+
+- `POST /v1/graph/invoke` — run the graph and return final messages
+- `POST /v1/graph/stream` — server-sent events for streaming
+- `GET /v1/graph/threads/{thread_id}` — fetch persisted state
+
+You deploy this anywhere a container runs. ADK's recommended production path is Vertex AI Agent Engine, which is excellent inside the Google stack but a different deployment story.
+
+## TypeScript client
+
+```typescript
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+
+for await (const chunk of client.stream(
+  [Message.text_message("What's the weather in Bengaluru?")],
+  {config: {thread_id: "ts-stream-1"}},
+)) {
+  if (chunk.type === "message_chunk") process.stdout.write(chunk.content ?? "");
+}
+```
+
+There is no first-party TypeScript client for ADK; teams typically call the Vertex AI endpoints directly or wrap the REST API by hand.
+
+## Migrating from Google ADK
+
+The conversion is mostly mechanical:
+
+1. `LlmAgent(model=..., instruction=..., tools=[...])` → `Agent(model="google/gemini-2.5-flash", system_prompt=[{"role": "system", "content": ...}], tool_node="TOOL")`.
+2. `FunctionTool(func=fn)` → `ToolNode([fn])`.
+3. `SequentialAgent` → chain of `add_edge` calls. `ParallelAgent` → fan-out + fan-in nodes. `LoopAgent` → self-loop + `recursion_limit`.
+4. Sessions service → `PgCheckpointer` (or `InMemoryCheckpointer` for dev) plus `thread_id` in config.
+5. Vertex AI deployment → `agentflow api` running anywhere. Keep the Google provider config the same — point at Vertex AI by setting the project / region environment variables.
+
+## When Google ADK is still the right pick
+
+- **Heavy Vertex AI investment.** If your data, models, and observability all live in Vertex AI, ADK + Vertex AI Agent Engine is the path of least resistance.
+- **Google-native tooling.** Tight integration with Google Cloud Logging, BigQuery, and IAM is a real win for some teams.
+- **Single-provider commitment.** If you have decided on Gemini for the foreseeable future, the slight optimization ADK gets from being Google-built may matter.
+
+For everyone else — multi-provider teams, MIT-license requirements, or anyone deploying outside Google Cloud — AgentFlow gives you an open runtime with first-class Gemini support.
+
+<FAQ items={[
+  {
+    q: "Does AgentFlow support Vertex AI as well as Google AI Studio?",
+    a: "Yes. AgentFlow's Google provider supports both Google AI (Gemini API) and Vertex AI. Switch by setting the appropriate credentials and provider prefix — see the providers/google docs for the full configuration."
+  },
+  {
+    q: "Can I run AgentFlow on Google Cloud Run / GKE?",
+    a: "Yes. The CLI server is a standard Python ASGI app — package it in a container and deploy on Cloud Run, GKE, or any Kubernetes cluster. Connect to Vertex AI for Gemini calls and a managed Postgres for the checkpointer."
+  },
+  {
+    q: "Does AgentFlow have anything like ADK's SequentialAgent / ParallelAgent / LoopAgent?",
+    a: "Yes — these patterns are graph primitives. Sequential is a chain of edges, parallel is a fan-out / fan-in, and loop is a self-edge with a recursion_limit. The graph composes more flexibly than the named agent types."
+  },
+  {
+    q: "Is AgentFlow's approach to session state compatible with ADK migrations?",
+    a: "Mostly yes. ADK's sessions and AgentFlow's checkpointed threads both keyed by an opaque ID. Migrating session contents is usually a one-time export / import job."
+  },
+  {
+    q: "Is AgentFlow free for commercial use?",
+    a: "Yes. AgentFlow is MIT-licensed."
+  },
+]} />
+
+## Next steps
+
+- [Get started with AgentFlow](/docs/get-started)
+- [Google provider configuration](/docs/providers/google) — Gemini API and Vertex AI
+- [Deployment guide](/docs/how-to/production/deployment) — running AgentFlow in production
+- [Compare AgentFlow against other frameworks](/docs/compare)

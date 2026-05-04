@@ -73,6 +73,20 @@ const sidebars: SidebarsConfig = {
 
     {
       type: "category",
+      label: "Compare",
+      collapsed: false,
+      items: [
+        "compare/index",
+        "compare/agentflow-vs-langgraph",
+        "compare/agentflow-vs-crewai",
+        "compare/agentflow-vs-autogen",
+        "compare/agentflow-vs-llamaindex-agents",
+        "compare/agentflow-vs-google-adk",
+        "compare/best-python-agent-framework-2026",
+      ],
+    },
+    {
+      type: "category",
       label: "Providers",
       collapsed: true,
       items: [

@@ -61,6 +61,7 @@ const SECTION_KEYWORDS = {
   tutorials: ['ai agent tutorial', 'multi-agent tutorial', 'agentflow examples'],
   courses: ['genai course', 'ai agent course', 'agent engineering course'],
   troubleshooting: ['agentflow troubleshooting', 'agent debugging', 'ai agent errors'],
+  compare: ['python ai agent framework comparison', 'langgraph alternative', 'agentflow vs', 'best agent framework'],
 };
 
 const BASE_KEYWORDS = ['agentflow', 'python ai agent framework'];
@@ -101,7 +102,20 @@ function parseFm(fmText) {
     let val = rawVal;
     // Block list (next lines starting with `  -`)
     if (val === '' || val === '|' || val === '>') {
-      // multi-line scalar — treat as string, capture next indented lines
+      // First check if next lines are a YAML list (`  - item`) — those are arrays
+      const items = [];
+      let j = i + 1;
+      while (j < lines.length && /^\s+-\s+/.test(lines[j])) {
+        items.push(lines[j].replace(/^\s+-\s+/, '').replace(/^['"]|['"]$/g, ''));
+        j++;
+      }
+      if (items.length) {
+        out[key] = items;
+        order.push(key);
+        i = j;
+        continue;
+      }
+      // Otherwise treat as multi-line scalar — join indented lines as a string
       const buf = [];
       i++;
       while (i < lines.length && /^\s+\S/.test(lines[i])) {

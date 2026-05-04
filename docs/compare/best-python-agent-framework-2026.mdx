@@ -1,0 +1,133 @@
+---
+title: Best Python Agent Frameworks in 2026 — Roundup
+description: "Opinionated 2026 roundup of top Python AI agent frameworks — AgentFlow, LangGraph, CrewAI, AutoGen, LlamaIndex Agents, and Google ADK. Picks for each."
+keywords:
+  - best python agent framework
+  - top ai agent frameworks
+  - python agent framework comparison
+  - ai agent framework 2026
+  - production agent framework
+  - open source agent framework
+sidebar_position: 7
+---
+
+# Best Python AI agent frameworks in 2026
+
+The Python agent ecosystem has consolidated around a handful of credible frameworks. Each has a clear identity and a set of teams it serves well. This roundup is opinionated — we maintain AgentFlow, so we will tell you when we think it is the right pick and when it is not.
+
+## How we score
+
+For each framework, we score five dimensions that matter for production teams:
+
+- **Orchestration model** — how you express multi-step / multi-agent flows
+- **Persistence** — checkpointing, threads, resumability
+- **Production server** — what it takes to expose the agent over HTTP
+- **Frontend story** — first-party clients for TypeScript / JavaScript
+- **Provider neutrality** — locking you in vs leaving the door open
+
+## The frameworks at a glance
+
+<CompareTable
+  competitorName="The field"
+  caption="Snapshot of the major Python agent frameworks. Categories are deliberately broad — see each comparison for nuance."
+  rows={[
+    {dimension: 'AgentFlow', agentflow: 'Typed graph runtime with built-in API + TS client', competitor: 'Open source, MIT, multi-provider'},
+    {dimension: 'LangGraph', agentflow: '—', competitor: 'Graph runtime (open source) + LangGraph Platform (paid)'},
+    {dimension: 'CrewAI', agentflow: '—', competitor: 'Role-based crews; OSS + CrewAI Enterprise'},
+    {dimension: 'AutoGen (Microsoft)', agentflow: '—', competitor: 'Conversational multi-agent + AutoGen Studio'},
+    {dimension: 'LlamaIndex Agents', agentflow: '—', competitor: 'RAG-first agents on top of LlamaIndex indexes'},
+    {dimension: 'Google ADK', agentflow: '—', competitor: 'Gemini- and Vertex AI-optimized agent kit'},
+  ]}
+/>
+
+## Our picks
+
+### Best for production multi-agent products: AgentFlow
+
+If you are building a real product — a chat surface, a co-pilot, an internal automation — AgentFlow gives you the most "deployable out of the box" of the major frameworks: typed graphs, persistent threads with `PgCheckpointer`, a REST + SSE server (`agentflow api`), and a typed TypeScript client (`@10xscale/agentflow-client`). MIT-licensed, no required SaaS account.
+
+**Choose AgentFlow if:** you want one Python project that handles orchestration, state, the API, and the frontend SDK without gluing five libraries together. → [Get started](/docs/get-started)
+
+### Best for the LangChain ecosystem: LangGraph
+
+If your codebase is already deep into LangChain — runnables, retrievers, LangSmith — LangGraph keeps that ecosystem cohesive. The graph mental model is similar to AgentFlow's, so most of the patterns transfer either way. You will assemble FastAPI / SSE yourself unless you adopt LangGraph Platform.
+
+**Choose LangGraph if:** the LangChain dependency tree is already a load-bearing part of your stack. → [AgentFlow vs LangGraph](./agentflow-vs-langgraph)
+
+### Best for prototype-friendly role-based crews: CrewAI
+
+CrewAI's "Researcher → Writer → Editor" DSL is genuinely the fastest way to write a multi-agent script. For prototypes, internal tools, and one-off automations, it is hard to beat. Production characteristics (debuggability, persistence, API serving) require more glue.
+
+**Choose CrewAI if:** you want roles + tasks + sequential or hierarchical processes, and your deployment story is "run this Python script on a worker." → [AgentFlow vs CrewAI](./agentflow-vs-crewai)
+
+### Best for research and conversational experiments: AutoGen
+
+AutoGen 0.4's actor model and group-chat primitives are powerful for academic experiments and emergent multi-agent conversations. AutoGen Studio is a great tool for designing flows visually. The production server tier is BYO.
+
+**Choose AutoGen if:** you are exploring novel multi-agent dynamics, working in a Microsoft / Azure ecosystem, or want to see what emergent agent conversations look like. → [AgentFlow vs AutoGen](./agentflow-vs-autogen)
+
+### Best for document-heavy RAG: LlamaIndex Agents
+
+If your product is "chat with my PDFs," "query a corpus," or "search and summarise documents," LlamaIndex's retrieval, indexing, and parsing stack is best in class. The agent layer is a thin wrapper on top — pleasant for single-agent RAG, lighter on multi-agent orchestration.
+
+**Choose LlamaIndex Agents if:** retrieval *is* the product. (And consider pairing it with AgentFlow when you outgrow the agent layer.) → [AgentFlow vs LlamaIndex Agents](./agentflow-vs-llamaindex-agents)
+
+### Best for committed Vertex AI users: Google ADK
+
+If you are all-in on Gemini and Vertex AI, ADK is the official Google path with first-party support and Vertex AI Agent Engine for hosted execution. Provider neutrality and MIT licensing are not strengths.
+
+**Choose Google ADK if:** Vertex AI is the answer for your team across data, models, and ops. → [AgentFlow vs Google ADK](./agentflow-vs-google-adk)
+
+## A quick decision tree
+
+| Your situation | Start with |
+|---|---|
+| Building a stateful multi-agent product with a frontend | **AgentFlow** |
+| Already heavy in LangChain | **LangGraph** |
+| Spinning up a 3-role crew in 30 minutes | **CrewAI** |
+| Research / experiments with multi-agent conversations | **AutoGen** |
+| RAG over documents is the core feature | **LlamaIndex Agents** (often + AgentFlow for the runtime) |
+| All-in on Vertex AI | **Google ADK** |
+
+## Why "best" depends on what you measure
+
+Two teams can pick different frameworks for the same use case and both be right. The critical questions:
+
+1. **Where does your code live in 12 months?** If you are migrating to a new vendor, single-provider frameworks are riskier.
+2. **What is your deployment story?** A built-in server saves weeks; a paid hosting tier might save more or might lock you in.
+3. **What language is your product surface?** Python-only stacks feel different from full-stack apps with TypeScript frontends.
+4. **How much glue can your team maintain?** Every "easy hello world" hides a different production budget.
+
+When you have answers, the choice usually narrows to two frameworks. The compare pages above run head-to-head between AgentFlow and each of the others — read the one that maps to your second-place option.
+
+<FAQ items={[
+  {
+    q: "Are these frameworks mutually exclusive?",
+    a: "No. A common pattern is LlamaIndex for retrieval + AgentFlow for the runtime, or LangChain primitives for tools wrapped inside an AgentFlow graph. Pick the framework that owns the runtime and use the others as libraries."
+  },
+  {
+    q: "What changes between 2025 and 2026 in this list?",
+    a: "AutoGen 0.4 settled into its new architecture, Google ADK reached production use on Vertex AI, and AgentFlow shipped a TypeScript client and managed CLI. The relative positions are stable; the production stack is the dimension where the field is differentiating most."
+  },
+  {
+    q: "Is open source enough, or do I need a hosted option?",
+    a: "Most production teams ship the open-source runtime themselves and use a hosted option only for tracing or evals. AgentFlow, LangGraph, CrewAI, AutoGen, ADK, and LlamaIndex all run on your infrastructure — the hosted variants are optional."
+  },
+  {
+    q: "How do I evaluate two frameworks side by side without committing?",
+    a: "Pick a small, real use case (e.g., a 2-agent flow with one tool and persistent threads). Implement it in both frameworks, deploy both behind a load balancer, and compare cold-start time, p95 latency under load, observability, and the size of the codebase you have to maintain. The differences become obvious in a week."
+  },
+  {
+    q: "Where does AgentFlow differ most from the field?",
+    a: "The bundled production stack — a runtime, an opinionated API/CLI, a typed TypeScript client, and an MIT license — in one project, with no required SaaS account. Other frameworks have parts of this; AgentFlow sets out to ship the whole stack."
+  },
+]} />
+
+## Next steps
+
+- [AgentFlow vs LangGraph](./agentflow-vs-langgraph)
+- [AgentFlow vs CrewAI](./agentflow-vs-crewai)
+- [AgentFlow vs AutoGen](./agentflow-vs-autogen)
+- [AgentFlow vs LlamaIndex Agents](./agentflow-vs-llamaindex-agents)
+- [AgentFlow vs Google ADK](./agentflow-vs-google-adk)
+- [Get started with AgentFlow](/docs/get-started)

@@ -1,0 +1,56 @@
+.tableWrap {
+  margin: 1.5rem 0 2rem;
+  overflow-x: auto;
+  border: 1px solid var(--agentflow-border);
+  border-radius: 0.85rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.caption {
+  margin: 0;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--agentflow-border);
+  color: var(--agentflow-muted);
+  font-size: 0.9rem;
+}
+
+.compareTable {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.compareTable th,
+.compareTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--agentflow-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compareTable thead th {
+  background: var(--agentflow-soft);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.compareTable tbody tr:last-child th,
+.compareTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.dim {
+  width: 26%;
+  color: var(--agentflow-muted);
+  font-weight: 600;
+}
+
+.brand {
+  color: var(--ifm-color-primary);
+}
+
+.cellWin {
+  background: rgba(37, 99, 235, 0.08);
+  font-weight: 600;
+}

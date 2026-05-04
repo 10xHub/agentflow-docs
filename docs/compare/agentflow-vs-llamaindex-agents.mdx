@@ -1,0 +1,234 @@
+---
+title: AgentFlow vs LlamaIndex Agents — Runtime vs RAG
+description: AgentFlow vs LlamaIndex Agents compared. Where a typed state graph, threads, REST API, and TS client beat RAG-first agents for production multi-agent apps.
+keywords:
+  - llamaindex agents alternative
+  - agentflow vs llamaindex
+  - llamaindex vs agentflow
+  - python ai agent framework
+  - rag agent framework
+  - agent runtime python
+sidebar_position: 5
+---
+
+# AgentFlow vs LlamaIndex Agents: runtime-first vs RAG-first
+
+**LlamaIndex** built its identity around retrieval-augmented generation — indexes, query engines, and tools that wrap them. Its **agent layer** (`AgentRunner`, `FunctionAgent`, `Workflow`, `ReActAgent`) builds on those primitives. **AgentFlow** comes from the other direction: a runtime built for orchestrating *any* agent or tool, with a typed graph, persistence, and an API server included.
+
+If your app is mostly a RAG pipeline with light agent behavior, LlamaIndex Agents is a fine choice. If you are building a stateful, multi-agent product where retrieval is one tool among many, this page shows what AgentFlow gives you.
+
+## TL;DR — AgentFlow vs LlamaIndex Agents
+
+<CompareTable
+  competitorName="LlamaIndex Agents"
+  caption="LlamaIndex's agent surface includes FunctionAgent, ReActAgent, and the newer Workflow API. This compares the production characteristics."
+  rows={[
+    {dimension: 'Primary focus', agentflow: 'Multi-agent runtime — graphs, state, threads, API', competitor: 'RAG-first; agents wrap indexes and query engines'},
+    {dimension: 'Orchestration', agentflow: 'Typed StateGraph with conditional edges and sub-graphs', competitor: 'Workflow API (events + steps); plus prebuilt agent runners'},
+    {dimension: 'State', agentflow: 'AgentState + Message stream shared by all nodes', competitor: 'Per-agent memory; Workflow uses event payloads'},
+    {dimension: 'Persistence', agentflow: 'Built-in InMemoryCheckpointer / PgCheckpointer (Postgres + Redis)', competitor: 'Memory modules; persistence usually wired by the application'},
+    {dimension: 'API serving', agentflow: 'Built-in `agentflow api` REST + SSE server', competitor: 'No bundled production server; LlamaCloud is a separate paid product', emphasis: 'agentflow'},
+    {dimension: 'TypeScript client', agentflow: 'Typed `@10xscale/agentflow-client`', competitor: 'No first-party TS client'},
+    {dimension: 'RAG integration', agentflow: 'Use any vector store via tools; pair with LlamaIndex retrievers easily', competitor: 'Best-in-class — RAG is the framework\'s core'},
+    {dimension: 'Best for', agentflow: 'Stateful multi-agent products with frontend + backend', competitor: 'Index-heavy apps, single-agent RAG, document chat'},
+  ]}
+/>
+
+## Why teams pair (or replace) LlamaIndex Agents with AgentFlow
+
+1. **Retrieval is one tool, not the whole app.** Modern agent products call retrievers, but they also call APIs, run code, route between specialists, and manage long sessions. AgentFlow models the whole flow as a graph; retrieval is one node or one tool.
+2. **You want a runtime, not just primitives.** LlamaIndex gives you excellent retrieval, parsing, and indexing primitives. AgentFlow gives you the runtime that orchestrates them and serves the result over HTTP.
+3. **Threads and resumability are first-class.** Persistent threads with `thread_id` are how AgentFlow handles long sessions. LlamaIndex memory modules cover parts of this; the rest you assemble.
+4. **End-to-end stack.** `agentflow api` + `@10xscale/agentflow-client` give you the API and the typed frontend client. With LlamaIndex, you wire FastAPI / LlamaCloud and a custom fetcher.
+
+## Same use case, both frameworks
+
+A small **RAG-aware agent** that can search a document index and answer with citations.
+
+### LlamaIndex (FunctionAgent + tool-wrapped retriever)
+
+```python
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.tools import QueryEngineTool
+from llama_index.llms.openai import OpenAI
+
+documents = SimpleDirectoryReader("./docs").load_data()
+index = VectorStoreIndex.from_documents(documents)
+
+search = QueryEngineTool.from_defaults(
+    query_engine=index.as_query_engine(),
+    name="search_docs",
+    description="Search the product documentation.",
+)
+
+agent = FunctionAgent(
+    tools=[search],
+    llm=OpenAI(model="gpt-4o-mini"),
+    system_prompt="You answer questions using the search_docs tool. Cite sources.",
+)
+
+response = await agent.run("How do I configure SSO?")
+print(response)
+```
+
+### AgentFlow (graph + retriever-as-tool)
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+# Wrap any retriever — LlamaIndex, LangChain, raw vector client — as a tool
+def search_docs(query: str) -> str:
+    """Search the product documentation index and return passages with sources."""
+    # call your retriever here
+    return "Result text with [doc-1] [doc-2] citations"
+
+tool_node = ToolNode([search_docs])
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{
+        "role": "system",
+        "content": "Answer questions using search_docs. Always cite sources by ID.",
+    }],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("How do I configure SSO?")]},
+    config={"thread_id": "rag-1"},
+)
+print(result["messages"][-1].text())
+```
+
+You keep LlamaIndex for retrieval (where it shines) and let AgentFlow drive the conversation, persist the thread, and expose the API.
+
+## Using AgentFlow + LlamaIndex together
+
+Many teams reach for AgentFlow because they have **outgrown** the agent layer of their RAG framework but want to keep the indexing pipeline. The pattern that works:
+
+```python
+from llama_index.core import VectorStoreIndex
+from llama_index.core import StorageContext, load_index_from_storage
+
+storage = StorageContext.from_defaults(persist_dir="./index_store")
+index = load_index_from_storage(storage)
+qe = index.as_query_engine()
+
+def search_docs(query: str) -> str:
+    """Search internal docs. Returns passages with source ids."""
+    response = qe.query(query)
+    return str(response)
+```
+
+Drop `search_docs` into a `ToolNode` and you have AgentFlow orchestrating an LlamaIndex retriever. No rewrite of your indexing pipeline.
+
+## Persistence and threads
+
+AgentFlow's checkpointer makes long sessions trivial:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+app = graph.compile(checkpointer=PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+))
+
+# Same user, separate device, hours later — full state is restored
+app.invoke(
+    {"messages": [Message.text_message("What did you tell me earlier about SSO?")]},
+    config={"thread_id": "user-42"},
+)
+```
+
+LlamaIndex's `ChatMemoryBuffer` and friends cover the in-process case; for cross-process, multi-replica deployments, AgentFlow's checkpointer is closer to what production needs.
+
+## Serving as an API
+
+```bash
+pip install 10xscale-agentflow-cli
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+You get REST + SSE endpoints for invoke, stream, and thread state — all OSS, deployable on your own infrastructure. LlamaCloud is excellent if you want hosted indexing and parsing, but it does not replace the agent server tier you would otherwise build yourself.
+
+## Calling from TypeScript
+
+```typescript
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+const result = await client.invoke(
+  [Message.text_message("How do I configure SSO?")],
+  {config: {thread_id: "ts-rag-1"}},
+);
+console.log(result.messages.at(-1)?.text());
+```
+
+## Migrating from LlamaIndex Agents
+
+Common path:
+
+1. Keep your LlamaIndex indexes and retrievers — wrap them as Python functions and add to a `ToolNode`.
+2. Replace `FunctionAgent` / `ReActAgent` with an AgentFlow `Agent` plus a `ToolNode` and conditional edges.
+3. Replace `Workflow` events with explicit graph nodes and `add_conditional_edges`.
+4. Move chat memory from `ChatMemoryBuffer` to a checkpointer + `thread_id`.
+5. Drop your custom FastAPI server in favor of `agentflow api`.
+
+## When LlamaIndex Agents is still the right pick
+
+- **Document-centric apps.** If your product is "chat with my PDFs" or "query a corpus", LlamaIndex's full retrieval stack is best-in-class.
+- **Single-agent RAG.** A `FunctionAgent` over a query engine is the shortest path to a working assistant. AgentFlow only pays off once you add multi-agent flows, persistent threads, or a separate frontend.
+- **You want LlamaCloud's managed parsing/indexing.** That is a real and useful product; AgentFlow does not replace it.
+
+For everyone else, the typical pattern is: **LlamaIndex for retrieval, AgentFlow for the runtime and the API.**
+
+<FAQ items={[
+  {
+    q: "Can I use my LlamaIndex indexes inside an AgentFlow agent?",
+    a: "Yes. Wrap your query engine in a Python function, hand it to a ToolNode, and the agent will call it the same way it calls any other tool. The retrieval stack stays identical."
+  },
+  {
+    q: "Does AgentFlow have its own retrieval / indexing?",
+    a: "AgentFlow does not bundle a retrieval framework. It is provider-agnostic — pair it with LlamaIndex, LangChain retrievers, raw vector clients (Qdrant, Pinecone, pgvector), or your own retriever. See the qdrant-memory tutorial for an example."
+  },
+  {
+    q: "How does memory in AgentFlow compare to LlamaIndex's ChatMemoryBuffer?",
+    a: "AgentFlow checkpoints the full graph state per thread_id, which subsumes chat-memory-buffer behavior and adds resumability and cross-process durability. For semantic recall, you typically pair the checkpointer with a vector tool."
+  },
+  {
+    q: "Is the AgentFlow API server suitable for serving RAG agents at scale?",
+    a: "Yes. The CLI server uses async I/O, supports streaming via SSE, and the PgCheckpointer is built on Postgres + Redis. Deploy it like any FastAPI service: containerize, scale horizontally, put behind a load balancer."
+  },
+  {
+    q: "Is AgentFlow free for commercial use?",
+    a: "Yes. AgentFlow is MIT-licensed, including the API/CLI and the TypeScript client."
+  },
+]} />
+
+## Next steps
+
+- [Get started with AgentFlow](/docs/get-started)
+- [Add a tool](/docs/beginner/add-a-tool) — wrap any retriever as a tool the agent can call
+- [Memory and store](/docs/concepts/memory-and-store) — persistence patterns for agent state
+- [Compare AgentFlow against other frameworks](/docs/compare)

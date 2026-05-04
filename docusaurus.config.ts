@@ -165,6 +165,7 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
+        {to: '/docs/compare', label: 'Compare', position: 'left'},
         {to: '/docs/courses', label: 'Courses', position: 'left'},
         {to: '/docs/concepts/architecture', label: 'Concepts', position: 'left'},
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
