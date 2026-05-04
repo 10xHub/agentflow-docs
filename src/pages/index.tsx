@@ -2,6 +2,7 @@ import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import HomepageFeatures from '../components/HomepageFeatures';
+import {trackEvent} from '../lib/analytics';
 
 const docTracks = [
   {
@@ -86,10 +87,16 @@ export default function Home() {
                 foundation.
               </p>
               <div className="heroActions">
-                <Link className="button button--primary button--lg" to="/docs/get-started">
+                <Link
+                  className="button button--primary button--lg"
+                  to="/docs/get-started"
+                  onClick={() => trackEvent('cta_start_building', {location: 'hero'})}>
                   Start building
                 </Link>
-                <Link className="button button--secondary button--lg" to="/docs/tutorials">
+                <Link
+                  className="button button--secondary button--lg"
+                  to="/docs/tutorials"
+                  onClick={() => trackEvent('cta_browse_tutorials', {location: 'hero'})}>
                   Browse tutorials
                 </Link>
               </div>
@@ -139,7 +146,13 @@ export default function Home() {
             </div>
             <div className="trackGrid">
               {docTracks.map((track) => (
-                <Link className="trackCard" to={track.href} key={track.title}>
+                <Link
+                  className="trackCard"
+                  to={track.href}
+                  key={track.title}
+                  onClick={() =>
+                    trackEvent('cta_doc_track', {track: track.title, href: track.href})
+                  }>
                   <span>{track.eyebrow}</span>
                   <Heading as="h3">{track.title}</Heading>
                   <p>{track.body}</p>
