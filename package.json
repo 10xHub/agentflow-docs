@@ -8,7 +8,9 @@
     "build": "NO_UPDATE_NOTIFIER=1 docusaurus build",
     "serve": "NO_UPDATE_NOTIFIER=1 docusaurus serve",
     "clear": "NO_UPDATE_NOTIFIER=1 docusaurus clear",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seo:audit": "node scripts/audit-frontmatter.mjs",
+    "seo:og-image": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.8.1",
