@@ -1,8 +1,16 @@
 ---
-title: Background Task Manager
+title: Background Task Manager — AgentFlow Python AI Agents
 description: BackgroundTaskManager — launch and track asyncio tasks from node functions without blocking the graph response.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - background task manager
 sidebar_position: 15
 ---
+
 
 # Background Task Manager
 

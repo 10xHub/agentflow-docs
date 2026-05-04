@@ -1,7 +1,15 @@
 ---
 title: "Lesson 7: Evals, Safety, Cost, and Release"
-description: Build confidence in your GenAI system with evaluation, safety guardrails, and a release checklist.
+description: Build confidence in your GenAI system with evaluation, safety guardrails, and a release checklist. Part of the AgentFlow genai course guide for.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - lesson 7 evals safety cost and release
 ---
+
 
 # Lesson 7: Evals, Safety, Cost, and Release
 

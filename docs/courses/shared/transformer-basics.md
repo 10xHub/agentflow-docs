@@ -1,7 +1,15 @@
 ---
-title: Transformer Basics
+title: Transformer Basics — AgentFlow Python AI Agent Framework
 description: Enough transformer architecture intuition to understand attention, context windows, and scaling implications for building GenAI systems.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - transformer basics
 ---
+
 
 # Transformer Basics
 

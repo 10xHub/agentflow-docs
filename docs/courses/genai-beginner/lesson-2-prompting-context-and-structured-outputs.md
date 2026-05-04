@@ -1,7 +1,15 @@
 ---
-title: "Lesson 2: Prompting, Context Engineering, and Structured Outputs"
-description: Master reliable prompt design, context management, and schema-based outputs for production systems.
+title: Lesson 2 Prompting Context And Structured Outputs
+description: Master reliable prompt design, context management, and schema-based outputs for production systems. Part of the AgentFlow genai course guide for.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - lesson 2 prompting context and structured outputs
 ---
+
 
 # Lesson 2: Prompting, Context Engineering, and Structured Outputs
 

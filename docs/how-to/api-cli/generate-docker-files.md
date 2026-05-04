@@ -1,7 +1,15 @@
 ---
-title: Generate Docker Files
-description: How to use agentflow build to generate a Dockerfile and docker-compose.yml.
+title: Generate Docker Files — AgentFlow Python AI Agent Framework
+description: How to use agentflow build to generate a Dockerfile and docker-compose.yml. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+keywords:
+  - agentflow api
+  - agentflow cli
+  - agent rest api
+  - agentflow
+  - python ai agent framework
+  - generate docker files
 ---
+
 
 # Generate Docker files
 

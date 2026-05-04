@@ -1,7 +1,15 @@
 ---
-title: LLM Basics for Engineers
+title: LLM Basics for Engineers — AgentFlow Python AI Agents
 description: A practical mental model of what an LLM is, what it does well, and where it fails for software engineers building GenAI systems.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - llm basics for engineers
 ---
+
 
 # LLM Basics for Engineers
 

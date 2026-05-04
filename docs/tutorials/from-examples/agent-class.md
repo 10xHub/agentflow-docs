@@ -1,8 +1,16 @@
 ---
-title: "Agent Class Pattern"
-sidebar_label: "Agent Class Pattern"
-description: "Build a weather-aware assistant using the Agent class, ToolNode, and conditional routing in a StateGraph."
+title: Agent Class Pattern — AgentFlow Python AI Agent Framework
+sidebar_label: Agent Class Pattern
+description: Build a weather-aware assistant using the Agent class, ToolNode, and conditional routing in a StateGraph.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - agent class pattern
 ---
+
 
 # Agent Class Pattern
 

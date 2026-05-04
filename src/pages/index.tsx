@@ -63,22 +63,27 @@ app = graph.compile(checkpointer=checkpointer)`;
 export default function Home() {
   return (
     <Layout
-      title="AgentFlow Docs: Python AI Agents, APIs, Memory, and TypeScript Clients"
-      description="Learn how to build AI agents with AgentFlow using Python, tools, memory, streaming, APIs, and TypeScript clients. Explore tutorials, how-to guides, and API reference.">
+      title="AgentFlow — Open-Source Python Framework for Production AI Agents"
+      description="AgentFlow is an open-source Python framework for building production AI agents — multi-agent orchestration, memory, streaming, REST API, and TypeScript client out of the box. A modern alternative to LangGraph, CrewAI, and AutoGen.">
       <main>
         <section className="hero hero--agentflow">
           <div className="heroOrb heroOrb--one" />
           <div className="heroOrb heroOrb--two" />
           <div className="container heroGrid">
             <div className="heroCopy">
-              <p className="eyebrow">Production docs for agent teams</p>
+              <p className="eyebrow">Open-source · Python 3.10+ · MIT licensed</p>
               <Heading as="h1" className="heroTitle">
-                Production-ready AI agents in seconds.
+                Build production-ready AI agents in Python — in minutes, not weeks.
+              </Heading>
+              <Heading as="h2" className="heroSubheadline">
+                A batteries-included framework for multi-agent orchestration, memory, and
+                streaming APIs — a modern alternative to LangGraph, CrewAI, and AutoGen.
               </Heading>
               <p className="heroSubtitle">
-                Build scalable agent workflows with tools, memory, streaming, APIs, and
-                clients on top of one runtime. Start with a working agent fast, then grow
-                into stateful, production-ready systems without rewriting the foundation.
+                AgentFlow gives Python teams a graph-based runtime, durable state and
+                checkpointing, a REST API and CLI, and a typed TypeScript client — so you
+                can ship a working agent fast and scale to production without rewriting the
+                foundation.
               </p>
               <div className="heroActions">
                 <Link className="button button--primary button--lg" to="/docs/get-started">

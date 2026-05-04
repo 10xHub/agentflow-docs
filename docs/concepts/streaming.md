@@ -1,7 +1,15 @@
 ---
-title: Streaming
+title: Streaming — AgentFlow Python AI Agent Framework
 description: How invoke, stream, and astream work; StreamChunk fields; ResponseGranularity; and how to consume SSE in TypeScript.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - streaming
 ---
+
 
 # Streaming
 

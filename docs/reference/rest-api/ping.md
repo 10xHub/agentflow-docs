@@ -1,7 +1,15 @@
 ---
-title: REST API — Ping
-description: Health check endpoint for the AgentFlow API server.
+title: REST API — Ping — AgentFlow Python AI Agent Framework
+description: Health check endpoint for the AgentFlow API server. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+keywords:
+  - rest api reference
+  - agent http api
+  - agentflow rest endpoints
+  - agentflow
+  - python ai agent framework
+  - rest api — ping
 ---
+
 
 # REST API: Ping
 

@@ -1,8 +1,16 @@
 ---
-title: Upload files
-description: Step-by-step guide to uploading images, audio, and documents and using them in multimodal messages.
+title: How to upload files — AgentFlow Python AI Agent Framework
+description: Step-by-step guide to uploading images, audio, and documents and using them in multimodal messages. Part of the AgentFlow agentflow typescript client guide for.
+keywords:
+  - agentflow typescript client
+  - ai agent client
+  - agent sdk
+  - agentflow
+  - python ai agent framework
+  - how to upload files
 sidebar_position: 6
 ---
+
 
 # How to upload files
 

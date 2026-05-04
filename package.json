@@ -10,10 +10,12 @@
     "clear": "NO_UPDATE_NOTIFIER=1 docusaurus clear",
     "typecheck": "tsc --noEmit",
     "seo:audit": "node scripts/audit-frontmatter.mjs",
+    "seo:fix": "node scripts/fix-frontmatter.mjs",
     "seo:og-image": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.8.1",
+    "@docusaurus/plugin-client-redirects": "^3.9.2",
     "@docusaurus/preset-classic": "^3.8.1",
     "@docusaurus/theme-mermaid": "^3.8.1",
     "@mdx-js/react": "^3.1.0",

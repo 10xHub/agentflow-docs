@@ -1,7 +1,15 @@
 ---
-title: Add Memory
-description: Persist conversation state across calls using InMemoryCheckpointer.
+title: Add Memory — AgentFlow Python AI Agent Framework
+description: Persist conversation state across calls using InMemoryCheckpointer. Part of the AgentFlow ai agents for beginners guide for production-ready Python AI agents.
+keywords:
+  - ai agents for beginners
+  - first ai agent python
+  - agentflow tutorial
+  - agentflow
+  - python ai agent framework
+  - add memory
 ---
+
 
 # Add memory
 

@@ -1,8 +1,16 @@
 ---
-title: Message
-description: Reference for the Message class and all content block types in the AgentFlow TypeScript client.
+title: "`Message` — AgentFlow Python AI Agent Framework"
+description: Reference for the Message class and all content block types in the AgentFlow TypeScript client. Part of the AgentFlow typescript client reference guide for.
+keywords:
+  - typescript client reference
+  - agent client api
+  - agentflow client sdk
+  - agentflow
+  - python ai agent framework
+  - "`message`"
 sidebar_position: 2
 ---
+
 
 # `Message`
 

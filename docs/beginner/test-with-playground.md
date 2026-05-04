@@ -1,7 +1,15 @@
 ---
-title: Test with the Playground
-description: Use agentflow play to open the hosted playground and inspect your agent in a browser UI.
+title: Test with the Playground — AgentFlow Python AI Agents
+description: Use agentflow play to open the hosted playground and inspect your agent in a browser UI. Part of the AgentFlow ai agents for beginners guide for.
+keywords:
+  - ai agents for beginners
+  - first ai agent python
+  - agentflow tutorial
+  - agentflow
+  - python ai agent framework
+  - test with the playground
 ---
+
 
 # Test with the playground
 

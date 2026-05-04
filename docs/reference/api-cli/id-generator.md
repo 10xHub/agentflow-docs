@@ -1,3 +1,15 @@
+---
+title: ID Generator — AgentFlow Python AI Agent Framework
+description: AgentFlow uses ID generators to create unique identifiers for threads, messages, and other persisted records.
+keywords:
+  - agentflow api reference
+  - rest api documentation
+  - agent cli reference
+  - agentflow
+  - python ai agent framework
+  - id generator
+---
+
 # ID Generator
 
 AgentFlow uses ID generators to create unique identifiers for threads, messages, and other persisted records. The generator determines both the ID format and the ID type used in the system.

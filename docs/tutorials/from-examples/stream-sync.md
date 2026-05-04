@@ -1,8 +1,16 @@
 ---
-title: "Synchronous Streaming"
-sidebar_label: "Synchronous Streaming"
-description: "Use app.stream() for synchronous token-by-token streaming with a custom state and is_stream config flag."
+title: Synchronous Streaming — AgentFlow Python AI Agent Framework
+sidebar_label: Synchronous Streaming
+description: Use app.stream() for synchronous token-by-token streaming with a custom state and is_stream config flag.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - synchronous streaming
 ---
+
 
 # Synchronous Streaming
 

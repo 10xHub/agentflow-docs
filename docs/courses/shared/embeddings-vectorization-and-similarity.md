@@ -1,7 +1,15 @@
 ---
 title: Embeddings and Similarity
 description: Master vectorization, cosine similarity, and nearest-neighbor retrieval for building production-grade RAG systems.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - embeddings and similarity
 ---
+
 
 # Embeddings and Similarity
 

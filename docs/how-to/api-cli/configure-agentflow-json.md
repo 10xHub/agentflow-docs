@@ -1,7 +1,15 @@
 ---
-title: Configure agentflow.json
-description: How to configure agentflow.json for checkpointers, stores, auth, and environment variables.
+title: Configure agentflow.json — Python AI Agent Framework
+description: How to configure agentflow.json for checkpointers, stores, auth, and environment variables. Part of the AgentFlow agentflow api guide for production-ready.
+keywords:
+  - agentflow api
+  - agentflow cli
+  - agent rest api
+  - agentflow
+  - python ai agent framework
+  - configure agentflowjson
 ---
+
 
 # Configure agentflow.json
 

@@ -1,7 +1,15 @@
 ---
-title: Dependency Injection
+title: Dependency Injection — AgentFlow Python AI Agent Framework
 description: Injectable parameters, injectq service containers, and how to wire custom services into AgentFlow nodes and tools.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - dependency injection
 ---
+
 
 # Dependency injection
 

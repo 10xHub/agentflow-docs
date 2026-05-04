@@ -1,8 +1,16 @@
 ---
-title: State
-description: AgentState, custom state, reducers, and the add_messages pattern for the agentflow Python library.
+title: State — AgentFlow Python AI Agent Framework
+description: AgentState, custom state, reducers, and the add_messages pattern for the agentflow Python library. Part of the AgentFlow agentflow python reference guide for.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - state
 sidebar_position: 3
 ---
+
 
 # State
 

@@ -1,8 +1,16 @@
 ---
-title: GenAI Courses
-description: Learn to build production-grade GenAI systems with AgentFlow through structured, hands-on courses.
+title: GenAI Courses — AgentFlow Python AI Agent Framework
+description: Learn to build production-grade GenAI systems with AgentFlow through structured, hands-on courses. Part of the AgentFlow genai course guide for.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - genai courses
 slug: /courses
 ---
+
 
 # GenAI Courses
 

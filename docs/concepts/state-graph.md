@@ -1,7 +1,15 @@
 ---
-title: StateGraph and Nodes
+title: StateGraph and Nodes — AgentFlow Python AI Agent Framework
 description: Full StateGraph API — constructor, add_node, edges, compile, interrupt, override, and the compiled graph methods.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - stategraph and nodes
 ---
+
 
 # StateGraph and nodes
 

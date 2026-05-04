@@ -1,7 +1,15 @@
 ---
 title: Capstone Project - Engineer Assistant
-description: Build a complete GenAI application that demonstrates all concepts from the beginner course.
+description: Build a complete GenAI application that demonstrates all concepts from the beginner course. Part of the AgentFlow genai course guide for production-ready.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - capstone project - engineer assistant
 ---
+
 
 # Capstone Project - Engineer Assistant
 

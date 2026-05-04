@@ -75,6 +75,15 @@ const config: Config = {
   themes: ['@docusaurus/theme-mermaid'],
 
   plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          // Add entries when you rename or move pages, e.g.:
+          // {from: '/docs/old-slug', to: '/docs/new-slug'},
+        ],
+      },
+    ],
     function structuredDataPlugin() {
       const canonical = siteUrl.replace(/\/$/, '');
       const githubUrl = 'https://github.com/10xscale/agentflow';

@@ -1,7 +1,15 @@
 ---
-title: Open Playground
-description: Start the AgentFlow API and hosted playground with one CLI command.
+title: Open Playground — AgentFlow Python AI Agent Framework
+description: Start the AgentFlow API and hosted playground with one CLI command. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
+keywords:
+  - agentflow get started
+  - python ai agent setup
+  - agentflow installation
+  - agentflow
+  - python ai agent framework
+  - open playground
 ---
+
 
 # Open playground
 

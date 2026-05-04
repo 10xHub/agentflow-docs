@@ -1,8 +1,16 @@
 ---
-title: "MCP File Download"
-sidebar_label: "MCP File Download"
-description: "Use a GitHub MCP-backed AgentFlow graph to retrieve repository files such as README content through remote MCP tools."
+title: MCP File Download — AgentFlow Python AI Agent Framework
+sidebar_label: MCP File Download
+description: Use a GitHub MCP-backed AgentFlow graph to retrieve repository files such as README content through remote MCP tools.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - mcp file download
 ---
+
 
 # MCP File Download
 

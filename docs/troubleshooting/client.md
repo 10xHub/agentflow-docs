@@ -1,7 +1,15 @@
 ---
-title: "Client Troubleshooting"
-description: "Symptoms, causes, and fixes for common AgentFlow TypeScript and HTTP client integration issues."
+title: Client Troubleshooting — AgentFlow Python AI Agent Framework
+description: Symptoms, causes, and fixes for common AgentFlow TypeScript and HTTP client integration issues. Part of the AgentFlow agentflow troubleshooting guide for.
+keywords:
+  - agentflow troubleshooting
+  - agent debugging
+  - ai agent errors
+  - agentflow
+  - python ai agent framework
+  - client troubleshooting
 ---
+
 
 # Client troubleshooting
 

@@ -1,7 +1,15 @@
 ---
-title: What Is AgentFlow?
-description: Understand the role AgentFlow plays in an agent application.
+title: What Is AgentFlow? — Python AI Agent Framework Documentation
+description: Understand the role AgentFlow plays in an agent application. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
+keywords:
+  - agentflow get started
+  - python ai agent setup
+  - agentflow installation
+  - agentflow
+  - python ai agent framework
+  - what is agentflow
 ---
+
 
 # What is AgentFlow?
 

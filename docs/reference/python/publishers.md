@@ -1,8 +1,16 @@
 ---
-title: Publishers
+title: Publishers — AgentFlow Python AI Agent Framework
 description: BasePublisher, ConsolePublisher, RedisPublisher, KafkaPublisher, RabbitMQPublisher — stream execution events from the graph.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - publishers
 sidebar_position: 10
 ---
+
 
 # Publishers
 

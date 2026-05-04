@@ -1,8 +1,16 @@
 ---
-title: Files
-description: Reference for file upload and media access methods on AgentFlowClient.
+title: Files — AgentFlow Python AI Agent Framework
+description: Reference for file upload and media access methods on AgentFlowClient. Part of the AgentFlow typescript client reference guide for production-ready Python AI.
+keywords:
+  - typescript client reference
+  - agent client api
+  - agentflow client sdk
+  - agentflow
+  - python ai agent framework
+  - files
 sidebar_position: 7
 ---
+
 
 # Files
 

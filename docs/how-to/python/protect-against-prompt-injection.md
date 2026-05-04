@@ -1,7 +1,15 @@
 ---
 title: Protect against prompt injection
-description: How to use CallbackManager and PromptInjectionValidator to guard your agent against prompt injection, jailbreak, and other OWASP LLM01:2025 attacks.
+description: "How to use CallbackManager and PromptInjectionValidator to guard your agent against prompt injection, jailbreak, and other OWASP LLM01:2025 attacks."
+keywords:
+  - agentflow python
+  - python ai agent guide
+  - multi-agent python
+  - agentflow
+  - python ai agent framework
+  - protect against prompt injection
 ---
+
 
 # Protect against prompt injection
 

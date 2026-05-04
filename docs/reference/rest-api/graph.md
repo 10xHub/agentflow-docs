@@ -1,7 +1,15 @@
 ---
-title: REST API — Graph
-description: Reference for the graph invoke, stream, stop and details endpoints.
+title: REST API — Graph — AgentFlow Python AI Agent Framework
+description: Reference for the graph invoke, stream, stop and details endpoints. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+keywords:
+  - rest api reference
+  - agent http api
+  - agentflow rest endpoints
+  - agentflow
+  - python ai agent framework
+  - rest api — graph
 ---
+
 
 # REST API: Graph
 

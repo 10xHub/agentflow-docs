@@ -1,8 +1,16 @@
 ---
-title: "Testing"
-sidebar_label: "Testing"
-description: "Use QuickTest to write low-boilerplate, deterministic tests for AgentFlow graphs without hitting a live model."
+title: Testing — AgentFlow Python AI Agent Framework
+sidebar_label: Testing
+description: Use QuickTest to write low-boilerplate, deterministic tests for AgentFlow graphs without hitting a live model.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - testing
 ---
+
 
 # Testing
 

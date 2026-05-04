@@ -136,6 +136,16 @@ body {
   letter-spacing: -0.07em;
 }
 
+.heroSubheadline {
+  max-width: 44rem;
+  margin-bottom: 1.1rem;
+  color: var(--agentflow-strong);
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
 .heroSubtitle {
   max-width: 42rem;
   color: var(--agentflow-muted);

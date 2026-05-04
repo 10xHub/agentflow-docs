@@ -42,16 +42,36 @@ function parseFrontMatter(src) {
   if (end === -1) return null;
   const block = src.slice(3, end).trim();
   const fm = {};
-  for (const line of block.split('\n')) {
-    const m = line.match(/^(\w+):\s*(.*)$/);
-    if (!m) continue;
+  const lines = block.split('\n');
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const m = line.match(/^(\w[\w-]*):\s*(.*)$/);
+    if (!m) {
+      i++;
+      continue;
+    }
     const [, key, raw] = m;
     let val = raw.trim();
+    if (val === '') {
+      const items = [];
+      let j = i + 1;
+      while (j < lines.length && /^\s+-\s+/.test(lines[j])) {
+        items.push(lines[j].replace(/^\s+-\s+/, '').replace(/^['"]|['"]$/g, ''));
+        j++;
+      }
+      if (items.length) {
+        fm[key] = items;
+        i = j;
+        continue;
+      }
+    }
     if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
     else if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
     else if (val.startsWith('[') && val.endsWith(']'))
-      val = val.slice(1, -1).split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
+      val = val.slice(1, -1).split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
     fm[key] = val;
+    i++;
   }
   return fm;
 }

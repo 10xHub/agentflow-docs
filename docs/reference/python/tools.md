@@ -1,8 +1,16 @@
 ---
-title: Tools
+title: Tools — AgentFlow Python AI Agent Framework
 description: ToolNode — the unified tool registry and executor for local functions, MCP, Composio, and LangChain tools.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - tools
 sidebar_position: 6
 ---
+
 
 # Tools
 

@@ -1,7 +1,15 @@
 ---
 title: "Lesson 5: Router, Manager, and Specialist Patterns"
-description: Design multi-agent systems with routing, delegation, and coordination.
+description: Design multi-agent systems with routing, delegation, and coordination. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - lesson 5 router manager and specialist patterns
 ---
+
 
 # Lesson 5: Router, Manager, and Specialist Patterns
 

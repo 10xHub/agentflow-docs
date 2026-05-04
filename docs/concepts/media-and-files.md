@@ -1,7 +1,15 @@
 ---
-title: Media and Files
+title: Media and Files — AgentFlow Python AI Agent Framework
 description: How to build multimodal messages with images, audio, video, and documents using MediaRef, content blocks, and media stores.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - media and files
 ---
+
 
 # Media and files
 
