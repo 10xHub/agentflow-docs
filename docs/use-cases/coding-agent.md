@@ -1,5 +1,6 @@
 ---
 title: Build a Coding AI Agent in Python
+sidebar_label: Coding
 description: How to build a coding AI agent in Python. Code generation, file editing, test running, and the real-world tools production coding agents need.
 keywords:
   - coding ai agent

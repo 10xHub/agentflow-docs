@@ -1,5 +1,6 @@
 ---
 title: Build a Customer Support AI Agent in Python
+sidebar_label: Customer Support
 description: Reference architecture for a production customer support AI agent in Python. Intent routing, ticket lookup, refund tools, and human handoff with AgentFlow.
 keywords:
   - customer support ai agent

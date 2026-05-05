@@ -1,5 +1,6 @@
 ---
 title: Add Authentication — AgentFlow Python AI Agent Framework
+sidebar_label: Add Authentication
 description: How to add JWT or custom authentication to the AgentFlow API. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
 keywords:
   - agentflow api

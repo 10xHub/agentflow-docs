@@ -1,5 +1,6 @@
 ---
 title: Run work in the background
+sidebar_label: Run work in the background
 description: How to fire-and-forget async tasks from inside a node without blocking the graph using BackgroundTaskManager.
 keywords:
   - agentflow python

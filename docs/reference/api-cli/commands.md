@@ -1,5 +1,6 @@
 ---
 title: CLI Commands — AgentFlow Python AI Agent Framework
+sidebar_label: CLI Commands
 description: Complete reference for all agentflow CLI commands and their options. Part of the AgentFlow agentflow api reference guide for production-ready Python AI agents.
 keywords:
   - agentflow api reference

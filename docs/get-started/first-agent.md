@@ -1,5 +1,6 @@
 ---
 title: Your First Agent — AgentFlow Python AI Agent Framework
+sidebar_label: Your First Agent
 description: Legacy entry that points to the current first Python agent guide. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
 keywords:
   - agentflow get started

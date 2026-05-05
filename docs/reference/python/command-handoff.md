@@ -1,5 +1,6 @@
 ---
 title: "Command & Handoff — AgentFlow Python AI Agent Framework"
+sidebar_label: "Command & Handoff"
 description: Command and create_handoff_tool — control graph routing from inside nodes and transfer execution between agents.
 keywords:
   - agentflow python reference

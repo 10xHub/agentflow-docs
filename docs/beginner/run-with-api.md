@@ -1,5 +1,6 @@
 ---
 title: Run with the API — AgentFlow Python AI Agent Framework
+sidebar_label: Run with the API
 description: Expose your agent over HTTP using agentflow init and agentflow api. Part of the AgentFlow ai agents for beginners guide for production-ready Python AI agents.
 keywords:
   - ai agents for beginners

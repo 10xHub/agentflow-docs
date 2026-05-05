@@ -1,5 +1,6 @@
 ---
 title: Architecture Review Exercise
+sidebar_label: Architecture Review Exercise
 description: Apply advanced course concepts to compare and choose between GenAI architectures. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

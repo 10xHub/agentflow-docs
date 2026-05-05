@@ -1,5 +1,6 @@
 ---
 title: Playground Troubleshooting
+sidebar_label: Playground Troubleshooting
 description: Symptoms, causes, and fixes for hosted playground connection issues when using agentflow play. Part of the AgentFlow agentflow troubleshooting guide for.
 keywords:
   - agentflow troubleshooting

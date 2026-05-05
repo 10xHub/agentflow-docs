@@ -1,5 +1,6 @@
 ---
 title: API Server Troubleshooting
+sidebar_label: API Server Troubleshooting
 description: Symptoms, causes, and fixes for common AgentFlow API server startup and runtime issues. Part of the AgentFlow agentflow troubleshooting guide for.
 keywords:
   - agentflow troubleshooting

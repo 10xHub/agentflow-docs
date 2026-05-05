@@ -1,5 +1,6 @@
 ---
 title: Build a Data Extraction AI Agent in Python
+sidebar_label: Data Extraction
 description: How to build a structured data extraction AI agent in Python. Pull entities, fields, and relationships from unstructured text with AgentFlow + Pydantic.
 keywords:
   - data extraction ai agent

@@ -1,5 +1,6 @@
 ---
 title: "Lesson 8: Observability, Testing, Security, and Deployment"
+sidebar_label: Lesson 8
 description: Achieve production readiness with comprehensive testing, monitoring, and security controls. Part of the AgentFlow genai course guide for production-ready.
 keywords:
   - genai course

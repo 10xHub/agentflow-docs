@@ -1,5 +1,6 @@
 ---
 title: "AgentFlow with FastAPI: Embed an Agent in Your App"
+sidebar_label: with FastAPI
 description: How to embed an AgentFlow agent in your existing FastAPI service. Mount the runtime, add custom routes, share auth, and stream responses.
 keywords:
   - agentflow fastapi

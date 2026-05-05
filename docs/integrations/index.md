@@ -1,5 +1,6 @@
 ---
 title: "AgentFlow Integrations: FastAPI, Next.js, Postgres"
+sidebar_label: Overview
 description: AgentFlow integrations with FastAPI, Next.js, and Postgres. Reference patterns for embedding agents in your existing stack with minimal glue.
 keywords:
   - agentflow integrations

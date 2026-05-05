@@ -1,5 +1,6 @@
 ---
 title: "AI Agent Use Cases: Build with AgentFlow"
+sidebar_label: Overview
 description: Production-shaped use cases for AgentFlow. Customer support, data extraction, coding agents, research assistants, and RAG. Each with reference architecture.
 keywords:
   - ai agent use cases

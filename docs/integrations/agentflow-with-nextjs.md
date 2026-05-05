@@ -1,5 +1,6 @@
 ---
 title: "AgentFlow with Next.js: Build a Streaming Agent Frontend"
+sidebar_label: with Next.js
 description: How to call an AgentFlow Python agent from a Next.js frontend with streaming, auth, and typed responses. Server actions, route handlers, and AgentFlow.
 keywords:
   - agentflow nextjs

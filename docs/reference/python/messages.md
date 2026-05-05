@@ -1,5 +1,6 @@
 ---
 title: Messages — AgentFlow Python AI Agent Framework
+sidebar_label: Messages
 description: Message, ContentBlock types, MediaRef, TokenUsages — the wire format for all agent communication. Part of the AgentFlow agentflow python reference guide for.
 keywords:
   - agentflow python reference

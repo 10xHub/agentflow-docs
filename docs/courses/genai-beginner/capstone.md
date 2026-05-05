@@ -1,5 +1,6 @@
 ---
 title: Capstone Project - Engineer Assistant
+sidebar_label: Capstone Project - Engineer Assistant
 description: Build a complete GenAI application that demonstrates all concepts from the beginner course. Part of the AgentFlow genai course guide for production-ready.
 keywords:
   - genai course

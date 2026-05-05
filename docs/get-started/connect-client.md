@@ -1,5 +1,6 @@
 ---
 title: Connect Client — AgentFlow Python AI Agent Framework
+sidebar_label: Connect Client
 description: Call a running AgentFlow API with the TypeScript client. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
 keywords:
   - agentflow get started

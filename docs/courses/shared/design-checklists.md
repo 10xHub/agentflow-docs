@@ -1,5 +1,6 @@
 ---
 title: Design Checklists — AgentFlow Python AI Agent Framework
+sidebar_label: Design Checklists
 description: Decision checklists for GenAI system design across both beginner and advanced tracks. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

@@ -1,5 +1,6 @@
 ---
 title: Installation Troubleshooting
+sidebar_label: Installation Troubleshooting
 description: Symptoms, causes, and fixes for common AgentFlow installation and environment setup issues. Part of the AgentFlow agentflow troubleshooting guide for.
 keywords:
   - agentflow troubleshooting

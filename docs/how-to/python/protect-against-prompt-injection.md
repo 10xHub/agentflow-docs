@@ -1,5 +1,6 @@
 ---
 title: Protect against prompt injection
+sidebar_label: Protect against prompt injection
 description: "How to use CallbackManager and PromptInjectionValidator to guard your agent against prompt injection, jailbreak, and other OWASP LLM01:2025 attacks."
 keywords:
   - agentflow python

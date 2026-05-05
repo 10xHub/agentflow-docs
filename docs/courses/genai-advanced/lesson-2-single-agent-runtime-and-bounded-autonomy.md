@@ -1,5 +1,6 @@
 ---
 title: "Lesson 2: Single-Agent Runtime and Bounded Autonomy"
+sidebar_label: Lesson 2
 description: Design agent runtimes with explicit limits, recovery paths, and failure containment. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

@@ -1,5 +1,6 @@
 ---
 title: "Lesson 3: Tools, Files, and MCP Basics"
+sidebar_label: Lesson 3
 description: Learn to extend agent capabilities with safe, well-designed tools and file handling. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

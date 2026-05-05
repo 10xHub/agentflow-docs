@@ -1,5 +1,6 @@
 ---
 title: Testing — AgentFlow Python AI Agent Framework
+sidebar_label: Testing
 description: TestAgent, QuickTest, TestResult, MockMCPClient — test agentflow graphs without making LLM API calls.
 keywords:
   - agentflow python reference

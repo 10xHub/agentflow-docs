@@ -1,5 +1,6 @@
 ---
 title: Agent — AgentFlow Python AI Agent Framework
+sidebar_label: Agent
 description: The Agent class — a smart node that handles LLM calls, tool use, memory, skills, and retries. Part of the AgentFlow agentflow python reference guide for.
 keywords:
   - agentflow python reference

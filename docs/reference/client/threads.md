@@ -1,5 +1,6 @@
 ---
 title: Threads — AgentFlow Python AI Agent Framework
+sidebar_label: Threads
 description: Reference for all thread, state, and message methods on AgentFlowClient. Part of the AgentFlow typescript client reference guide for production-ready Python AI.
 keywords:
   - typescript client reference

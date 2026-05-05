@@ -1,5 +1,6 @@
 ---
 title: "Lesson 6: Handoffs, Human Review, and Control Surfaces"
+sidebar_label: Lesson 6
 description: Implement human-in-the-loop with approval flows, interrupts, and control surfaces. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

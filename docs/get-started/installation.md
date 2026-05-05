@@ -1,5 +1,6 @@
 ---
 title: Installation — AgentFlow Python AI Agent Framework
+sidebar_label: Installation
 description: Install the AgentFlow library, CLI, and TypeScript client. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
 keywords:
   - agentflow get started

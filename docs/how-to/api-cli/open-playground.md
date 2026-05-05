@@ -1,5 +1,6 @@
 ---
 title: Open the Playground — AgentFlow Python AI Agent Framework
+sidebar_label: Open the Playground
 description: How to use agentflow play to start the API and open the hosted playground. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
 keywords:
   - agentflow api

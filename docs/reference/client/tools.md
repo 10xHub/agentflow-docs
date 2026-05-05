@@ -1,5 +1,6 @@
 ---
 title: Tools — AgentFlow Python AI Agent Framework
+sidebar_label: Tools
 description: Reference for registering and using remote (browser-side) tools with AgentFlowClient. Part of the AgentFlow typescript client reference guide for.
 keywords:
   - typescript client reference

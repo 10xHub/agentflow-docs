@@ -1,5 +1,6 @@
 ---
 title: Providers — AgentFlow Python AI Agent Framework
+sidebar_label: Providers
 description: How to choose and configure an LLM provider for your AgentFlow agents. Part of the AgentFlow llm providers guide for production-ready Python AI agents.
 keywords:
   - llm providers

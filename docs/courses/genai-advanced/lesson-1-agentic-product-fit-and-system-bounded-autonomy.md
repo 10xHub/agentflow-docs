@@ -1,5 +1,6 @@
 ---
 title: "Lesson 1: Agentic Product Fit and System Boundaries"
+sidebar_label: Lesson 1
 description: Learn when to use deterministic workflows, single agents, or multi-agent systems. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

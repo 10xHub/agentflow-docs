@@ -1,5 +1,6 @@
 ---
 title: "Lesson 5: State, Memory, Threads, and Streaming"
+sidebar_label: Lesson 5
 description: Build conversation-aware applications with persistent state and streaming responses. Part of the AgentFlow genai course guide for production-ready Python AI.
 keywords:
   - genai course

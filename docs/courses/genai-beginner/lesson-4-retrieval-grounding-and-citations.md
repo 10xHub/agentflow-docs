@@ -1,5 +1,6 @@
 ---
 title: "Lesson 4: Retrieval, Grounding, and Citations"
+sidebar_label: Lesson 4
 description: Ground agent responses in real knowledge using retrieval-augmented generation. Part of the AgentFlow genai course guide for production-ready Python AI agents.
 keywords:
   - genai course

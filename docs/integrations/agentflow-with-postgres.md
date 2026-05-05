@@ -1,5 +1,6 @@
 ---
 title: "AgentFlow with Postgres: Durable Agent Threads"
+sidebar_label: with Postgres
 description: How to wire AgentFlow's PgCheckpointer to a Postgres + Redis backend for durable agent threads. Setup, schema, sizing, and operational patterns.
 keywords:
   - agentflow postgres

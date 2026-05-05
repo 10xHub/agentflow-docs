@@ -1,5 +1,6 @@
 ---
 title: Error Codes Reference — AgentFlow Python AI Agent Framework
+sidebar_label: Error Codes Reference
 description: Complete reference for all AgentFlow error codes, exception hierarchy, and structured error responses.
 keywords:
   - agentflow troubleshooting

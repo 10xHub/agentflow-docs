@@ -1,5 +1,6 @@
 ---
 title: Build a Research AI Agent in Python
+sidebar_label: Research
 description: How to build a research AI agent in Python. Web search, source verification, synthesis, and citations. With AgentFlow code and production guardrails.
 keywords:
   - research ai agent

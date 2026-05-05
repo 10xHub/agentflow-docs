@@ -1,5 +1,6 @@
 ---
 title: Add a Tool — AgentFlow Python AI Agent Framework
+sidebar_label: Add a Tool
 description: Give your agent a callable function with ToolNode and conditional routing. Part of the AgentFlow ai agents for beginners guide for production-ready Python AI.
 keywords:
   - ai agents for beginners

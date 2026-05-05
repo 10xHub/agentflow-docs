@@ -1,5 +1,6 @@
 ---
 title: Create and configure the client
+sidebar_label: Create and configure the client
 description: Step-by-step guide to installing, instantiating, and verifying AgentFlowClient. Part of the AgentFlow agentflow typescript client guide for production-ready.
 keywords:
   - agentflow typescript client

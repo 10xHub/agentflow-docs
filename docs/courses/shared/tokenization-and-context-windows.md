@@ -1,5 +1,6 @@
 ---
 title: Tokenization and Context Windows
+sidebar_label: Tokenization and Context Windows
 description: Master token budgeting, context window management, and cost optimization for production GenAI systems.
 keywords:
   - genai course

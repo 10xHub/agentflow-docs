@@ -1,5 +1,6 @@
 ---
 title: Prompt and Output Patterns Cheatsheet
+sidebar_label: Prompt and Output Patterns Cheatsheet
 description: A comprehensive quick-reference for prompting techniques, structured outputs, tool schemas, and reliable output handling for production GenAI systems.
 keywords:
   - genai course

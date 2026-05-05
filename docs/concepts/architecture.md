@@ -1,5 +1,6 @@
 ---
 title: Architecture — AgentFlow Python AI Agent Framework
+sidebar_label: Architecture
 description: An overview of how AgentFlow packages fit together and how requests flow from client to graph. Part of the AgentFlow agentflow concepts guide for.
 keywords:
   - agentflow concepts

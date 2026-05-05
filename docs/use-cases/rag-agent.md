@@ -1,5 +1,6 @@
 ---
 title: "Build a RAG AI Agent in Python: Done Right"
+sidebar_label: RAG
 description: How to build a RAG AI agent in Python that scales beyond chat-with-your-PDFs. Hybrid retrieval, reranking, citations, and AgentFlow code.
 keywords:
   - rag ai agent python

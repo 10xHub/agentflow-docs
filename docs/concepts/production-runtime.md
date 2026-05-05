@@ -1,5 +1,6 @@
 ---
 title: Production Runtime — AgentFlow Python AI Agent Framework
+sidebar_label: Production Runtime
 description: How AgentFlow serves agents in production, including async execution, publisher adapters, and multi-worker deployments.
 keywords:
   - agentflow concepts

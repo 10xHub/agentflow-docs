@@ -1,5 +1,6 @@
 ---
 title: "AgentFlow vs LangGraph, CrewAI, AutoGen: Compared"
+sidebar_label: Overview
 description: Side-by-side comparisons of AgentFlow against the leading Python AI agent frameworks. LangGraph, CrewAI, AutoGen, LlamaIndex Agents, and Google ADK.
 keywords:
   - python ai agent framework comparison

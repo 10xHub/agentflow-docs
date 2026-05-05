@@ -1,5 +1,6 @@
 ---
 title: Expose with API — AgentFlow Python AI Agent Framework
+sidebar_label: Expose with API
 description: Serve your first AgentFlow graph with the CLI API server. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
 keywords:
   - agentflow get started

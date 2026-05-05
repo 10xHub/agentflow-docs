@@ -1,5 +1,6 @@
 ---
 title: Environment Variables — AgentFlow Python AI Agent Framework
+sidebar_label: Environment Variables
 description: How to manage AgentFlow environment variables safely across development, staging, and production deployments.
 keywords:
   - production ai agents

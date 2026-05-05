@@ -1,5 +1,6 @@
 ---
 title: Get Started — AgentFlow Python AI Agent Framework
+sidebar_label: Get Started
 description: The golden path from installation to a running AgentFlow app. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
 keywords:
   - agentflow get started
