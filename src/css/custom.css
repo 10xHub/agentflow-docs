@@ -1,5 +1,6 @@
 @import "./tokens.css";
 @import "./typography.css";
+@import "./docs.css";
 
 html {
   scroll-behavior: smooth;
