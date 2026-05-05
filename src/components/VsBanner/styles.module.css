@@ -1,0 +1,71 @@
+.banner {
+  margin: 1.5rem 0 2.25rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(139, 92, 246, 0.08), transparent 60%),
+    var(--af-bg-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.4rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--af-border-hi);
+  border-radius: var(--af-radius-pill);
+  background: var(--af-bg-2);
+  color: var(--af-text-strong);
+}
+
+.brand svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.brandText {
+  font-family: var(--af-font-sans);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.vs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--af-radius-pill);
+  background:
+    linear-gradient(135deg, var(--af-blue) 0%, var(--af-violet) 100%);
+  color: #ffffff;
+  font-family: var(--af-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.28);
+}
+
+.tagline {
+  margin: 0.85rem 0 0;
+  color: var(--af-text-dim);
+  font-family: var(--af-font-sans);
+  font-size: 0.96rem;
+  font-style: italic;
+  line-height: 1.6;
+  text-align: center;
+}

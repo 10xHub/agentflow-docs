@@ -1,0 +1,228 @@
+---
+slug: streaming-agent-responses-fastapi-sse
+title: "Streaming Agent Responses with FastAPI and SSE: A Practical Guide"
+description: How to stream AI agent responses to a frontend over Server-Sent Events from a Python FastAPI backend. Handles tool calls, errors, and reconnection.
+authors: [team]
+tags: [streaming, fastapi, sse, python, api, frontend]
+date: 2026-03-30
+keywords:
+  - stream ai agent fastapi
+  - sse python ai agent
+  - server-sent events agent
+  - streaming llm fastapi
+  - agent streaming api
+image: /img/agentflow-social-card.png
+---
+
+A blocking 30-second response is not a product. The first token in 200ms is. Server-Sent Events (SSE) is still the simplest way to stream agent output from a Python backend to a browser, and it composes well with auth, reconnection, and tool calls.
+
+Here is the production-shaped pattern.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="Streaming Agent Responses with FastAPI and SSE. A Practical Guide"
+  description="How to stream AI agent responses to a frontend over Server-Sent Events from a Python FastAPI backend. Handles tool calls, errors, and reconnection."
+  datePublished="2026-03-30"
+  slug="streaming-agent-responses-fastapi-sse"
+  keywords={["streaming", "fastapi", "sse", "python ai agent"]}
+/>
+
+## Why SSE, not WebSockets
+
+For agent responses, SSE wins on the things that matter:
+
+- **HTTP/2 friendly**. Works through every proxy and CDN
+- **Automatic reconnect**. Browser does it for you
+- **One-way**. Exactly the data shape you need
+- **Auth is just a header**. No special handshake
+
+WebSockets win for full-duplex, low-latency interaction (collaborative editing, multiplayer). For chat / agent streaming, SSE is simpler and more reliable.
+
+## What an event stream actually looks like
+
+Each event is a line beginning with `data: ` followed by a JSON payload. AgentFlow's stream emits events with a discriminator field:
+
+```
+event: message_chunk
+data: {"role": "assistant", "content": "Looking up "}
+
+event: message_chunk
+data: {"role": "assistant", "content": "the weather"}
+
+event: tool_start
+data: {"name": "get_weather", "args": {"location": "Tokyo"}}
+
+event: tool_end
+data: {"name": "get_weather", "output": "Sunny, 22°C"}
+
+event: message_chunk
+data: {"role": "assistant", "content": "Tokyo is sunny..."}
+
+event: done
+data: {"thread_id": "user-1", "tokens": 124}
+```
+
+Your frontend parses each event and updates the UI accordingly: append text on `message_chunk`, show a "calling tool..." indicator on `tool_start`, hide it on `tool_end`.
+
+## Server side: AgentFlow's built-in API
+
+The fastest path: use `agentflow api`, which already serves SSE-correctly.
+
+```bash
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+`POST /v1/graph/stream` is the streaming endpoint. No FastAPI to wire yourself.
+
+If you need custom routing, auth, or pre-processing, mount AgentFlow inside your existing FastAPI app instead.
+
+## Server side: custom FastAPI integration
+
+Embedding AgentFlow's stream in a FastAPI route:
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+import json
+
+from agentflow.core.state import Message
+from agentflow.utils import ResponseGranularity
+from agentflow.core.state.stream_chunks import StreamEvent
+
+from my_app.graph import app as agent_app  # your compiled graph
+
+api = FastAPI()
+
+class Body(BaseModel):
+    thread_id: str
+    text: str
+
+@api.post("/agent/stream")
+async def stream(body: Body):
+    async def gen():
+        try:
+            async for chunk in agent_app.astream(
+                {"messages": [Message.text_message(body.text)]},
+                config={"thread_id": body.thread_id, "recursion_limit": 25},
+                response_granularity=ResponseGranularity.LOW,
+            ):
+                if chunk.event == StreamEvent.MESSAGE and chunk.message:
+                    payload = {"role": chunk.message.role, "content": chunk.message.text()}
+                    yield f"event: message_chunk\ndata: {json.dumps(payload)}\n\n"
+                elif chunk.event == StreamEvent.TOOL_START:
+                    yield f"event: tool_start\ndata: {json.dumps(chunk.payload)}\n\n"
+                elif chunk.event == StreamEvent.TOOL_END:
+                    yield f"event: tool_end\ndata: {json.dumps(chunk.payload)}\n\n"
+            yield "event: done\ndata: {}\n\n"
+        except Exception as e:  # noqa: BLE001
+            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",  # disable nginx buffering
+    })
+```
+
+Notes:
+
+- **`X-Accel-Buffering: no`** prevents nginx from holding events in a buffer
+- **Trailing `\n\n`** ends an SSE event. Required by the spec
+- **`recursion_limit`** caps runaway loops at the API boundary
+- **Catch and emit `error` events** rather than crashing mid-stream
+
+## Frontend: vanilla browser
+
+Modern browsers ship `EventSource`, but it does not support custom headers (auth) for non-GET requests. For POST + auth, use `fetch` with a manual SSE parser or [`@microsoft/fetch-event-source`](https://www.npmjs.com/package/@microsoft/fetch-event-source).
+
+If you do not need auth, a vanilla `EventSource` is fine:
+
+```ts
+const es = new EventSource("/agent/stream?thread_id=u1&text=hello");
+es.addEventListener("message_chunk", (e) => {
+  const {content} = JSON.parse(e.data);
+  appendToUI(content);
+});
+es.addEventListener("done", () => es.close());
+```
+
+## Frontend: TypeScript with auth
+
+Use AgentFlow's typed client. It handles SSE parsing, reconnection, and Auth headers:
+
+```ts
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({
+  baseUrl: "/api",  // or full URL
+  headers: {Authorization: `Bearer ${token}`},
+});
+
+for await (const chunk of client.stream(
+  [Message.text_message("Plan my trip to Tokyo.")],
+  {config: {thread_id: "user-1"}},
+)) {
+  if (chunk.type === "message_chunk") {
+    appendToUI(chunk.content ?? "");
+  } else if (chunk.type === "tool_start") {
+    showToolIndicator(chunk.name);
+  } else if (chunk.type === "tool_end") {
+    hideToolIndicator();
+  }
+}
+```
+
+The type definitions match the server's event shape. No untyped JSON in your UI.
+
+## Reconnection and resume
+
+`EventSource` reconnects automatically with the last-event-id header. For agent streams, this is harder: you do not want to replay the whole conversation, just the events the client missed.
+
+The robust pattern:
+
+1. Client requests `?thread_id=X`
+2. Server starts streaming from the *current* graph state (the checkpointer holds it)
+3. On disconnect, the server keeps running (do not bind the agent to the SSE response)
+4. Client reconnects with the same `thread_id` and reads only new events
+
+Implementing step 3 cleanly requires a publisher / pub-sub between the agent and the SSE handler. For the "good enough" version: persist progress to the checkpointer and have the client poll-then-reconnect.
+
+For the production version, see [Streaming concept](/docs/concepts/streaming) and [stream-sync tutorial](/docs/tutorials/from-examples/stream-sync).
+
+## Backpressure
+
+If the client is slow (mobile, bad network), and the agent is fast, the buffer fills. Two choices:
+
+- **Drop intermediate token chunks** when the client is behind (acceptable for chat)
+- **Batch tokens** into 50–100ms windows (smooths jitter, costs ~1 frame of latency)
+
+AgentFlow's `ResponseGranularity` setting controls this.`LOW` for individual tokens, higher for batched chunks.
+
+## Auth and rate limits
+
+A few rules of thumb:
+
+1. **Authenticate the request, not the SSE connection.** Pass a JWT in the body of the initial POST; the SSE response is implicitly authenticated.
+2. **Rate limit by user**, not by IP. Agent users sit behind shared NATs.
+3. **Cap `recursion_limit`** server-side. Do not trust the client to send a sane value.
+4. **Add a per-stream timeout** (60–180 s). Long stalls usually mean the model is stuck; better to fail than hang.
+
+See [Auth and authorization](/docs/how-to/production/auth-and-authorization) for AgentFlow's auth options.
+
+## Common gotchas
+
+- **CORS preflight blocks SSE** if the browser sends `Access-Control-Request-Headers` with custom headers. Use `client.stream` or `fetch-event-source`, not raw `EventSource`, when auth is involved.
+- **Server-side proxy buffering.** Nginx, Cloudflare, and AWS ALBs all need explicit "no buffering" hints.
+- **Long-running connections + autoscaling.** SSE connections are sticky; account for that in your scaling policy (use connection draining, not hard kills).
+- **Mobile networks drop frequently.** Reconnection logic is not optional.
+
+## Further reading
+
+- [Streaming concept](/docs/concepts/streaming)
+- [Stream-sync tutorial](/docs/tutorials/from-examples/stream-sync)
+- [Production deployment](/docs/how-to/production/deployment)
+- [Stop a stream](/docs/tutorials/from-examples/stop-stream). Handling client cancellation
+
+When you are ready, [Get started](/docs/get-started). The default `agentflow api` command serves correctly-formatted SSE out of the box.

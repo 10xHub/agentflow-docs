@@ -1,21 +1,25 @@
 import Heading from '@theme/Heading';
+import GlowCard from '../GlowCard';
 import styles from './styles.module.css';
 
 const features = [
   {
-    title: 'Orchestration first',
+    icon: 'Network' as const,
+    title: 'Graph orchestration',
     description:
-      'Model agents as workflows with explicit state, routing, and execution boundaries instead of scattered prompt calls.',
+      'Typed StateGraph with conditional edges, sub-graphs, recursion limits, and explicit routing. Agents you can read, log, and replay.',
   },
   {
-    title: 'Production foundations',
+    icon: 'DatabaseZap' as const,
+    title: 'Production persistence',
     description:
-      'Bring checkpointing, storage, background work, callbacks, and graceful failure handling into the core architecture.',
+      'InMemoryCheckpointer for dev, PgCheckpointer (Postgres + Redis) for prod. Threads survive restarts and resume across replicas.',
   },
   {
+    icon: 'Unplug' as const,
     title: 'Backend to frontend',
     description:
-      'Document one connected stack across the Python library, API and CLI package, hosted playground, and TypeScript client.',
+      'Built-in REST and SSE server, a typed TypeScript client, and a hosted playground. One project, full stack, no glue.',
   },
 ];
 
@@ -23,17 +27,19 @@ export default function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
-        <div className="sectionHeader">
+        <div className="sectionHeader sectionHeader--center">
           <p className="eyebrow">Framework foundations</p>
-          <Heading as="h2">Everything a serious agent app needs, in one path.</Heading>
+          <Heading as="h2">Everything a serious agent app needs.</Heading>
+          <p>
+            One Python project. Typed graphs, durable threads, a production
+            server, and a typed TypeScript client. Without the glue tax.
+          </p>
         </div>
         <div className={styles.grid}>
-          {features.map((feature) => (
-            <article className={styles.card} key={feature.title}>
-              <div className={styles.icon} aria-hidden="true" />
-              <Heading as="h3">{feature.title}</Heading>
-              <p>{feature.description}</p>
-            </article>
+          {features.map((f) => (
+            <GlowCard key={f.title} icon={f.icon} title={f.title}>
+              <p>{f.description}</p>
+            </GlowCard>
           ))}
         </div>
       </div>

@@ -1,3 +1,16 @@
+---
+title: Thread Name Generator — AgentFlow Python AI Agent Framework
+sidebar_label: Thread Name Generator
+description: AgentFlow can optionally generate user-friendly thread names for new conversation threads. Part of the AgentFlow agentflow api reference guide for.
+keywords:
+  - agentflow api reference
+  - rest api documentation
+  - agent cli reference
+  - agentflow
+  - python ai agent framework
+  - thread name generator
+---
+
 # Thread Name Generator
 
 AgentFlow can optionally generate user-friendly thread names for new conversation threads. This is useful for readability in dashboards, logs, and any UI that surfaces thread history.

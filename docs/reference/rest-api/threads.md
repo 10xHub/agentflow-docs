@@ -1,7 +1,16 @@
 ---
-title: REST API — Threads
-description: Reference for the thread state and messages endpoints.
+title: REST API — Threads — AgentFlow Python AI Agent Framework
+sidebar_label: REST API
+description: Reference for the thread state and messages endpoints. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+keywords:
+  - rest api reference
+  - agent http api
+  - agentflow rest endpoints
+  - agentflow
+  - python ai agent framework
+  - rest api — threads
 ---
+
 
 # REST API: Threads
 

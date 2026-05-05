@@ -30,7 +30,7 @@ Use `StreamEmitter` when:
 - Batch processing (show item count progress)
 
 ❌ **Don't use for:**
-- Fast operations that complete in <100ms (overhead not worth it)
+- Fast operations that complete in &lt;100ms (overhead not worth it)
 - Simple tool results that don't require intermediate feedback
 - Non-streaming execution paths (emit is None anyway, so safe to call but won't do anything)
 
@@ -476,7 +476,7 @@ for i, item in enumerate(items):
 
 ## See Also
 
-- [StreamEmitter Reference](../reference/python/stream-emitter.md) — Complete API documentation
-- [Streaming Architecture](../reference/streaming.md) — How streaming chunks and granularity work
-- [Dependency Injection](../reference/dependency-injection.md) — How parameters like `emit` and `state` are injected
-- [Example: react_stream/stream_sync.py](../../examples/react_stream/stream_sync.py) — Full working example in the repository
+- [StreamEmitter Reference](../../reference/python/stream-emitter.md) — Complete API documentation
+- [Streaming Architecture](../../concepts/streaming.md) — How streaming chunks and granularity work
+- [Dependency Injection](../../concepts/dependency-injection.md) — How parameters like `emit` and `state` are injected
+- [Example: react_stream/stream_sync.py](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stream_sync.py) — Full working example in the repository

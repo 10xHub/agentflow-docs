@@ -1,7 +1,16 @@
 ---
-title: REST API — Files
-description: Reference for the file upload and retrieval endpoints.
+title: REST API — Files — AgentFlow Python AI Agent Framework
+sidebar_label: REST API
+description: Reference for the file upload and retrieval endpoints. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+keywords:
+  - rest api reference
+  - agent http api
+  - agentflow rest endpoints
+  - agentflow
+  - python ai agent framework
+  - rest api — files
 ---
+
 
 # REST API: Files
 

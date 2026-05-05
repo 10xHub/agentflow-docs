@@ -1,8 +1,17 @@
 ---
-title: Memory stores
-description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents.
+title: Memory stores — AgentFlow Python AI Agent Framework
+sidebar_label: Memory stores
+description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents. Part of the AgentFlow agentflow python reference guide for production-ready Python AI.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - memory stores
 sidebar_position: 8
 ---
+
 
 # Memory stores
 

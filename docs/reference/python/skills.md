@@ -1,8 +1,17 @@
 ---
-title: Skills
-description: SkillConfig and SkillMeta — inject SKILL.md documents into Agent system prompts at runtime.
+title: Skills — AgentFlow Python AI Agent Framework
+sidebar_label: Skills
+description: SkillConfig and SkillMeta — inject SKILL.md documents into Agent system prompts at runtime. Part of the AgentFlow agentflow python reference guide for.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - skills
 sidebar_position: 4
 ---
+
 
 # Skills
 

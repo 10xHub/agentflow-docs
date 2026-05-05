@@ -1,0 +1,333 @@
+---
+slug: deploy-ai-agent-docker-aws
+title: "Deploy an AI Agent to Production: Docker, AWS, and the Boring Bits"
+description: A practical Docker + AWS deployment guide for a Python AI agent. Image build, ECS Fargate, secrets, autoscaling, and the boring ops you actually need.
+authors: [team]
+tags: [deployment, docker, aws, ecs, production, devops]
+date: 2026-04-20
+keywords:
+  - deploy ai agent
+  - python agent docker
+  - ecs ai agent
+  - aws agent deployment
+  - production agent deployment
+image: /img/agentflow-social-card.png
+---
+
+A working agent on your laptop is not a deployed agent. The gap is mostly boring: a Dockerfile, secrets, a database, autoscaling, observability. Done well, it is one afternoon. Done sloppily, it is a series of 3am pages.
+
+Here is the path from compiled graph to production on AWS. Docker image, ECS Fargate, RDS, secrets, scaling.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="Deploy an AI Agent to Production. Docker, AWS, and the Boring Bits"
+  description="A practical Docker + AWS deployment guide for a Python AI agent. Image build, ECS Fargate, secrets, autoscaling, and the boring ops you actually need."
+  datePublished="2026-04-20"
+  slug="deploy-ai-agent-docker-aws"
+  keywords={["deploy ai agent", "docker", "aws", "ecs", "production"]}
+/>
+
+## The shape of a production deployment
+
+For a Python agent service on AWS, the minimum viable architecture is:
+
+```
+ALB → ECS Fargate (your agent) → RDS Postgres (checkpointer)
+                              → ElastiCache Redis (hot path)
+                              → Secrets Manager (API keys)
+                              → CloudWatch (logs)
+```
+
+Each box is one or two days of work. The agent itself is the small part.
+
+## Step 1: Dockerfile
+
+A small, reproducible image:
+
+```dockerfile
+FROM python:3.12-slim
+
+# Reduce image size, avoid pyc files baked in by package install
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install system deps if you need them (e.g. for asyncpg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps first for layer caching
+COPY pyproject.toml uv.lock ./
+RUN pip install uv && uv pip install --system --no-cache-dir -e .
+
+# Copy app code last
+COPY . .
+
+# AgentFlow CLI
+RUN pip install --no-cache-dir 10xscale-agentflow-cli
+
+EXPOSE 8000
+
+# Use exec form so signals reach the process
+CMD ["agentflow", "api", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+If you prefer to skip the Dockerfile, AgentFlow's CLI can scaffold one:
+
+```bash
+agentflow init
+agentflow generate-docker
+```
+
+See [Generate Docker files](/docs/how-to/api-cli/generate-docker-files) for the generated content.
+
+## Step 2: Local docker-compose for development
+
+```yaml
+version: "3.9"
+
+services:
+  agent:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/agentflow
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentflow
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+volumes:
+  pgdata:
+```
+
+Run `docker compose up`, send a request to `localhost:8000`. If this works, ECS will work. Only the configuration changes.
+
+## Step 3: Build and push to ECR
+
+```bash
+aws ecr create-repository --repository-name agentflow-app
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin <account>.dkr.ecr.us-east-1.amazonaws.com
+
+docker build -t agentflow-app:latest .
+docker tag agentflow-app:latest <account>.dkr.ecr.us-east-1.amazonaws.com/agentflow-app:latest
+docker push <account>.dkr.ecr.us-east-1.amazonaws.com/agentflow-app:latest
+```
+
+For CI, use the official `aws-actions/amazon-ecr-login` GitHub Action.
+
+## Step 4: RDS Postgres for the checkpointer
+
+Create the smallest instance that fits your throughput. For a starting point: `db.t4g.medium`, single-AZ, 50 GB storage.
+
+```bash
+aws rds create-db-instance \
+  --db-instance-identifier agentflow-prod \
+  --db-instance-class db.t4g.medium \
+  --engine postgres \
+  --master-username agentflow \
+  --master-user-password 'use-secrets-manager-instead' \
+  --allocated-storage 50 \
+  --vpc-security-group-ids sg-xxx \
+  --db-subnet-group-name your-private-subnet-group
+```
+
+Connection string format: `postgresql+asyncpg://agentflow:<password>@<host>:5432/agentflow`. Pass via Secrets Manager (next step), not env vars in the task definition.
+
+## Step 5: ElastiCache Redis for hot-path state
+
+`cache.t4g.small` works for most production loads. Single-shard, no clustering needed initially.
+
+Connection string: `redis://<host>:6379/0`.
+
+## Step 6: Secrets Manager
+
+Never put `OPENAI_API_KEY` in plaintext in your task definition. Create a secret per credential:
+
+```bash
+aws secretsmanager create-secret \
+  --name agentflow/prod/openai \
+  --secret-string '{"OPENAI_API_KEY":"sk-..."}'
+```
+
+Reference it in the ECS task definition's `secrets` block, not `environment`.
+
+## Step 7: ECS Fargate task definition
+
+```json
+{
+  "family": "agentflow-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "containerDefinitions": [
+    {
+      "name": "agent",
+      "image": "<account>.dkr.ecr.us-east-1.amazonaws.com/agentflow-app:latest",
+      "portMappings": [{"containerPort": 8000, "protocol": "tcp"}],
+      "environment": [
+        {"name": "DATABASE_URL", "value": "postgresql+asyncpg://agentflow:_/agentflow.cluster-xxx.us-east-1.rds.amazonaws.com:5432/agentflow"},
+        {"name": "REDIS_URL", "value": "redis://agentflow.xxx.cache.amazonaws.com:6379/0"}
+      ],
+      "secrets": [
+        {"name": "OPENAI_API_KEY", "valueFrom": "arn:aws:secretsmanager:...:secret:agentflow/prod/openai:OPENAI_API_KEY::"}
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/agentflow-app",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "agent"
+        }
+      }
+    }
+  ]
+}
+```
+
+Notes:
+
+- 1 vCPU + 2 GB is plenty for an I/O-bound agent service. Add CPU only if you have CPU-bound tools.
+- Health checks hit `/health` (AgentFlow exposes this by default).
+- Logs flow to CloudWatch; route from there to your log platform.
+
+## Step 8: ALB and SSL
+
+Put the service behind an Application Load Balancer with HTTPS:
+
+- Target group: HTTP 8000, health check on `/health`
+- Listener: HTTPS 443 with an ACM certificate
+- Idle timeout: **300 seconds**. Important for SSE streams
+
+If your idle timeout is too low (default is 60s), long agent streams get cut. Tune it.
+
+## Step 9: Autoscaling
+
+For an agent service, scale on CPU (less likely the bottleneck) or **active connections per task** (more likely). Define a target tracking policy:
+
+- Target: 30 active connections per task
+- Min: 2 tasks (HA across AZs)
+- Max: 20 tasks
+
+LLM-bound services are usually I/O-bound. CPU autoscaling underestimates load. Connection-based scaling is closer to truth.
+
+## Step 10: Observability
+
+CloudWatch is the default; most teams ship logs onward to Datadog, Honeycomb, or self-hosted Loki. Either way:
+
+- Subscribe the log group to your platform's ingestion
+- Add the OTEL collector as a sidecar if you want traces
+- Define alarms on:
+  - Service `UnhealthyHostCount` > 0 for 5 min
+  - p95 latency > 5 s for 5 min
+  - Stream-error rate > 5% for 5 min
+
+The [production observability post](/blog/production-ai-agents-observability-retries) covers what to log and trace inside the agent.
+
+## CI/CD with GitHub Actions
+
+A reasonable pipeline:
+
+```yaml
+name: deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<account>:role/github-actions-deploy
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - run: |
+          docker build -t agentflow-app:${{ github.sha }} .
+          docker tag agentflow-app:${{ github.sha }} ${{ env.ECR_REGISTRY }}/agentflow-app:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/agentflow-app:${{ github.sha }}
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          service: agentflow-app
+          cluster: agentflow-prod
+          task-definition: ./.aws/task-def.json
+```
+
+Use OIDC for credentials (the `id-token: write` block). Never long-lived AWS keys in GitHub.
+
+## What about Cloud Run / Kubernetes?
+
+The same architecture works on:
+
+- **Google Cloud Run**. Replace ECS with Cloud Run, RDS with Cloud SQL, ElastiCache with Memorystore. Slightly simpler ops; same code.
+- **GKE / EKS**. Replace ECS task definition with a Deployment + Service. More flexible, more ops.
+- **Fly.io / Render**. Containers are containers. Mostly the same.
+
+Pick whichever your team already operates. The Python agent does not care.
+
+## Cost expectations (rough)
+
+A small production agent service on AWS, moderate traffic:
+
+| Resource | Monthly |
+|---|---|
+| ECS Fargate (2× 1 vCPU / 2 GB) | $40 |
+| RDS Postgres `t4g.medium` | $60 |
+| ElastiCache Redis `t4g.small` | $30 |
+| ALB | $20 |
+| CloudWatch logs / data transfer | $20 |
+| **Infra subtotal** | **~$170** |
+| LLM provider tokens | varies (usually dominates) |
+
+Most teams' bills are 10× the infra in token costs. Plan accordingly.
+
+## Common gotchas
+
+1. **ALB idle timeout < SSE stream length.** Streams get cut mid-response. Bump to 300s.
+2. **Database connection pool too small.** A `PgCheckpointer` writes per node; under load, sized it for `n_tasks × n_concurrent_streams × 2`.
+3. **Secrets in plaintext env vars.** Use Secrets Manager and `secrets` blocks.
+4. **No health check.** ECS happily routes traffic to dead pods. `/health` is one line of code.
+5. **Single-AZ RDS.** Cheap until your AZ has an outage. For real production, multi-AZ.
+
+## Further reading
+
+- [Production runtime concept](/docs/concepts/production-runtime)
+- [Deployment guide](/docs/how-to/production/deployment). Full deploy walkthrough
+- [Generate Docker files](/docs/how-to/api-cli/generate-docker-files)
+- [Production observability + retries](/blog/production-ai-agents-observability-retries)
+- [Auth and authorization](/docs/how-to/production/auth-and-authorization)
+
+For a working stack to start from, [Get started](/docs/get-started). The same `agentflow api` server you run locally is what runs in your ECS task.

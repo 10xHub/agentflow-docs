@@ -1,0 +1,150 @@
+.tableWrap {
+  margin: 1.75rem 0 2.5rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background: var(--af-bg-1);
+  box-shadow: var(--af-glow-soft);
+  overflow: hidden;
+}
+
+.caption {
+  margin: 0;
+  padding: 0.95rem 1.4rem;
+  border-bottom: 1px solid var(--af-border);
+  background: var(--af-bg-2);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-sans);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.compareTable {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.compareTable th,
+.compareTable td {
+  padding: 0.95rem 1.1rem;
+  border-bottom: 1px solid var(--af-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compareTable thead th {
+  background: var(--af-bg-2);
+  color: var(--af-text-strong);
+  font-family: var(--af-font-sans);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.005em;
+}
+
+.compareTable tbody tr:last-child th,
+.compareTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.compareTable tbody tr:nth-child(odd) td,
+.compareTable tbody tr:nth-child(odd) th {
+  background: rgba(148, 163, 184, 0.025);
+}
+
+.dimHead {
+  width: 26%;
+  color: var(--af-text-dim) !important;
+  font-weight: 600 !important;
+  font-size: 0.86rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+}
+
+.dim {
+  width: 26%;
+  color: var(--af-text-dim);
+  font-family: var(--af-font-sans);
+  font-weight: 600;
+  font-size: 0.94rem;
+}
+
+.brand {
+  position: relative;
+  color: var(--af-text-strong) !important;
+}
+
+.brandDot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: var(--af-radius-pill);
+  background: var(--af-blue-hi);
+  box-shadow: 0 0 8px var(--af-blue-hi);
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+
+.competitor {
+  color: var(--af-text-dim) !important;
+}
+
+.cell {
+  position: relative;
+  color: var(--af-text);
+  line-height: 1.55;
+}
+
+.cell > span {
+  display: inline-block;
+}
+
+.cellWin {
+  background:
+    linear-gradient(90deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04) 70%, transparent),
+    transparent !important;
+  color: var(--af-text-strong) !important;
+  font-weight: 600;
+}
+
+.winMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.5rem;
+  border-radius: var(--af-radius-pill);
+  background: var(--af-blue);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+
+/* Sticky first column on mobile so dimension stays visible while scrolling */
+@media screen and (max-width: 768px) {
+  .compareTable th[scope='row'],
+  .compareTable th.dimHead {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--af-bg-1);
+  }
+
+  .compareTable thead th.dimHead {
+    background: var(--af-bg-2);
+  }
+
+  .compareTable tbody tr:nth-child(odd) th[scope='row'] {
+    background: var(--af-bg-1);
+  }
+}

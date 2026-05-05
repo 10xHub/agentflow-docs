@@ -1,110 +1,117 @@
-:root {
-  --ifm-color-primary: #2563eb;
-  --ifm-color-primary-dark: #1d4ed8;
-  --ifm-color-primary-darker: #1e40af;
-  --ifm-color-primary-darkest: #1e3a8a;
-  --ifm-color-primary-light: #3b82f6;
-  --ifm-color-primary-lighter: #60a5fa;
-  --ifm-color-primary-lightest: #93c5fd;
-  --ifm-font-family-base:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  --ifm-font-family-monospace:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  --ifm-heading-font-weight: 760;
-  --ifm-code-font-size: 92%;
-  --agentflow-card: rgba(255, 255, 255, 0.86);
-  --agentflow-border: rgba(15, 23, 42, 0.11);
-  --agentflow-muted: #556070;
-  --agentflow-soft: #eef4ff;
-  --agentflow-strong: #0f172a;
-  --agentflow-gradient:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(124, 58, 237, 0.92));
-  --agentflow-shadow: 0 1.5rem 4rem rgba(15, 23, 42, 0.08);
-}
-
-[data-theme='dark'] {
-  --ifm-background-color: #08111f;
-  --ifm-background-surface-color: #0c1727;
-  --ifm-navbar-background-color: rgba(8, 17, 31, 0.82);
-  --ifm-footer-background-color: #050914;
-  --ifm-color-primary: #60a5fa;
-  --ifm-color-primary-dark: #3b82f6;
-  --ifm-color-primary-darker: #2563eb;
-  --ifm-color-primary-darkest: #1d4ed8;
-  --agentflow-card: rgba(15, 23, 42, 0.72);
-  --agentflow-border: rgba(148, 163, 184, 0.18);
-  --agentflow-muted: #a8b3c7;
-  --agentflow-soft: rgba(59, 130, 246, 0.12);
-  --agentflow-strong: #f8fafc;
-  --agentflow-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.24);
-}
+@import "./tokens.css";
+@import "./typography.css";
+@import "./docs.css";
 
 html {
   scroll-behavior: smooth;
 }
 
+html,
 body {
-  background:
-    radial-gradient(circle at 10% -10%, rgba(37, 99, 235, 0.12), transparent 30rem),
-    radial-gradient(circle at 95% 0%, rgba(124, 58, 237, 0.1), transparent 28rem),
-    var(--ifm-background-color);
+  background: var(--af-bg-0);
+  color: var(--af-text);
 }
 
+/* Docusaurus's main wrapper — make sure it fills the viewport so scrolling
+ * never reveals a different layer behind it. */
+#__docusaurus,
+.main-wrapper {
+  background: var(--af-bg-0);
+  min-height: 100vh;
+}
+
+/* Navbar — translucent, blurred, dev-tool feel */
 .navbar {
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--agentflow-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--af-border);
   box-shadow: none;
 }
 
 .navbar__brand {
   font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
+.navbar__link {
+  font-weight: 500;
+}
+
+/* Buttons — reskinned, slightly tighter radius for dev-tool feel */
+.button {
+  border-radius: var(--af-radius-pill);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.button--primary {
+  --ifm-button-color: #ffffff;
+  --ifm-button-background-color: var(--af-blue);
+  --ifm-button-border-color: var(--af-blue);
+  background: linear-gradient(180deg, var(--af-blue-hi) 0%, var(--af-blue) 100%);
+  box-shadow: var(--af-glow-blue);
+  color: #ffffff;
+}
+
+.button--primary:hover {
+  background: linear-gradient(180deg, #4f8df9 0%, var(--af-blue-hi) 100%);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.5),
+              0 16px 48px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Specificity bump: Infima's `.button.button--secondary` (0,2,0) sets
+ * color: var(--ifm-color-gray-900) which is near-black even in dark mode and
+ * makes our text invisible. Match its specificity by repeating `.button`. */
+.button.button--secondary {
+  border-color: var(--af-border-hi);
+  background: var(--af-bg-1);
+  color: var(--af-text);
+}
+
+.button.button--secondary:hover {
+  border-color: var(--af-blue-hi);
+  background: var(--af-bg-2);
+  color: var(--af-text-strong);
+  transform: translateY(-1px);
+}
+
+[data-theme='light'] .button.button--secondary {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--af-text-strong);
+}
+
+/* Hero — retire blurred orbs and grid backdrop entirely. Replace with a
+ * single subtle mesh that respects the brand blue.
+ */
 .hero--agentflow {
   position: relative;
   overflow: hidden;
-  padding: 7rem 0 5rem;
-  color: var(--ifm-font-color-base);
+  padding: 6rem 0 4.5rem;
+  color: var(--af-text);
   background:
-    radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.25), transparent 26rem),
-    radial-gradient(circle at 85% 10%, rgba(124, 58, 237, 0.24), transparent 24rem),
-    linear-gradient(180deg, rgba(37, 99, 235, 0.08), transparent 65%);
+    radial-gradient(ellipse at 50% -20%, rgba(37, 99, 235, 0.22), transparent 55%),
+    radial-gradient(ellipse at 100% 0%, rgba(139, 92, 246, 0.14), transparent 50%);
+  background-color: var(--af-bg-0);
 }
 
-.hero--agentflow::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  content: "";
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
-  background-size: 4rem 4rem;
-  mask-image: linear-gradient(180deg, #000, transparent 80%);
+[data-theme='light'] .hero--agentflow {
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(37, 99, 235, 0.10), transparent 55%),
+    radial-gradient(ellipse at 100% 0%, rgba(139, 92, 246, 0.06), transparent 50%);
+  background-color: var(--af-bg-0);
 }
 
-.heroOrb {
-  position: absolute;
-  z-index: 0;
-  width: 18rem;
-  height: 18rem;
-  border-radius: 999px;
-  filter: blur(12px);
-  opacity: 0.45;
-  pointer-events: none;
+.hero--agentflow::before,
+.hero--agentflow::after {
+  content: none;
 }
 
-.heroOrb--one {
-  top: 8rem;
-  right: 12%;
-  background: rgba(59, 130, 246, 0.24);
-}
-
+.heroOrb,
+.heroOrb--one,
 .heroOrb--two {
-  bottom: 2rem;
-  left: 8%;
-  background: rgba(124, 58, 237, 0.2);
+  display: none;
 }
 
 .heroGrid {
@@ -121,145 +128,121 @@ body {
 }
 
 .eyebrow {
-  margin-bottom: 0.75rem;
-  color: var(--ifm-color-primary);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-pill);
+  background: var(--af-bg-1);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .heroTitle {
-  margin-bottom: 1.25rem;
-  font-size: clamp(2.7rem, 6vw, 5.55rem);
-  line-height: 0.95;
-  letter-spacing: -0.07em;
+  margin-bottom: 1rem;
+  max-width: 22ch;
+  font-size: clamp(2.1rem, 4.2vw, 4rem);
+  font-weight: 720;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.heroSubheadline {
+  max-width: 42rem;
+  margin-bottom: 0.85rem;
+  color: var(--af-text-strong);
+  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.008em;
 }
 
 .heroSubtitle {
-  max-width: 42rem;
-  color: var(--agentflow-muted);
-  font-size: clamp(1.08rem, 2vw, 1.32rem);
-  line-height: 1.75;
+  max-width: 38rem;
+  color: var(--af-text-dim);
+  font-size: clamp(1rem, 1.4vw, 1.08rem);
+  line-height: 1.65;
 }
 
 .heroActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.85rem;
   margin-top: 2rem;
-}
-
-.button {
-  border-radius: 999px;
-  font-weight: 760;
-}
-
-.heroActions .button {
-  box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.12);
-}
-
-.heroActions .button--primary {
-  --ifm-button-color: #ffffff;
-  --ifm-button-background-color: #2563eb;
-  --ifm-button-border-color: #2563eb;
-  color: #ffffff;
-}
-
-.button--secondary {
-  --ifm-button-color: var(--agentflow-strong);
-  --ifm-button-background-color: var(--agentflow-card);
-  --ifm-button-border-color: var(--agentflow-border);
-  border-color: var(--agentflow-border);
-  color: var(--agentflow-strong);
-  background: var(--agentflow-card);
-}
-
-[data-theme='dark'] .heroActions .button--secondary {
-  --ifm-button-color: #dbeafe;
-  --ifm-button-background-color: rgba(15, 23, 42, 0.62);
-  --ifm-button-border-color: rgba(96, 165, 250, 0.34);
-  color: #dbeafe;
-  background: rgba(15, 23, 42, 0.62);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 1rem 2.5rem rgba(2, 6, 23, 0.22);
-}
-
-[data-theme='dark'] .heroActions .button--secondary:hover {
-  --ifm-button-color: #ffffff;
-  --ifm-button-background-color: rgba(37, 99, 235, 0.22);
-  --ifm-button-border-color: rgba(147, 197, 253, 0.58);
-  color: #ffffff;
-  background: rgba(37, 99, 235, 0.22);
 }
 
 .trustBar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 2.5rem;
+  gap: 0.6rem;
+  margin-top: 2rem;
 }
 
 .trustBar span {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 999px;
-  color: var(--agentflow-muted);
-  background: var(--agentflow-card);
-  font-size: 0.86rem;
-  font-weight: 650;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-pill);
+  background: var(--af-bg-1);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
+/* Hero visual — keep code card placeholder for now; U2 replaces with real
+ * <TerminalBlock> component.
+ */
 .heroVisual {
   position: relative;
 }
 
 .codeCard {
   overflow: hidden;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1.6rem;
-  background: #07101d;
-  box-shadow: 0 2rem 6rem rgba(2, 6, 23, 0.35);
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background: var(--af-code-bg);
+  box-shadow: var(--af-shadow-card);
 }
 
 .codeCardHeader {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  color: #94a3b8;
-  font-size: 0.82rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--af-border);
+  background: var(--af-bg-1);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-mono);
+  font-size: 0.76rem;
 }
 
 .codeCardHeader span {
   width: 0.7rem;
   height: 0.7rem;
-  border-radius: 999px;
+  border-radius: var(--af-radius-pill);
   background: #ef4444;
 }
 
-.codeCardHeader span:nth-child(2) {
-  background: #f59e0b;
-}
-
-.codeCardHeader span:nth-child(3) {
-  background: #22c55e;
-}
+.codeCardHeader span:nth-child(2) { background: #f59e0b; }
+.codeCardHeader span:nth-child(3) { background: #22c55e; }
 
 .codeCardHeader strong {
   margin-left: 0.5rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codeCard pre {
   margin: 0;
-  padding: 1.5rem;
+  padding: 1.4rem 1.5rem;
   overflow: auto;
-  color: #dbeafe;
   background: transparent;
-  font-size: 0.9rem;
+  color: var(--af-code-text);
+  font-family: var(--af-font-mono);
+  font-size: 0.86rem;
   line-height: 1.65;
 }
 
@@ -267,21 +250,21 @@ body {
   position: relative;
   z-index: 2;
   width: min(22rem, 88%);
-  margin: -2.5rem 1.25rem 0 auto;
+  margin: -2rem 1.25rem 0 auto;
   padding: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 1.25rem;
-  background: rgba(15, 23, 42, 0.9);
-  box-shadow: 0 1.5rem 4rem rgba(2, 6, 23, 0.3);
+  border: 1px solid var(--af-border-hi);
+  border-radius: var(--af-radius-lg);
+  background: var(--af-bg-2);
+  box-shadow: var(--af-shadow-card);
 }
 
 .stackCardLabel {
   margin: 0 0 0.75rem;
-  color: #93c5fd;
-  font-size: 0.75rem;
-  font-weight: 850;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  color: var(--af-blue-hi);
+  font-family: var(--af-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .stackCardRow {
@@ -290,39 +273,88 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.78rem 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  border-top: 1px solid var(--af-border);
 }
 
 .stackCardRow strong {
-  color: #f8fafc;
-  font-size: 0.92rem;
+  color: var(--af-text-strong);
+  font-family: var(--af-font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .stackCardRow span {
-  color: #94a3b8;
-  font-size: 0.82rem;
+  color: var(--af-text-dim);
+  font-size: 0.8rem;
   text-align: right;
 }
 
+/* Generic sections */
 .section {
   padding: 5rem 0;
 }
 
+.section--switcher {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.06), transparent 60%),
+    transparent;
+}
+
+.section--package-map {
+  padding-bottom: 3rem;
+}
+
+.section--final-cta {
+  padding: 6rem 0 7rem;
+}
+
+.finalCta {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  border: 1px solid var(--af-border-hi);
+  border-radius: var(--af-radius-xl);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.18), transparent 60%),
+    var(--af-bg-1);
+  box-shadow: var(--af-glow-soft);
+  text-align: center;
+}
+
+.finalCta h2 {
+  margin-bottom: 0.85rem;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.finalCta p {
+  margin-bottom: 1.75rem;
+  color: var(--af-text-dim);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.finalCta .heroActions {
+  justify-content: center;
+  margin-top: 0;
+}
+
 .section--tracks {
   background:
-    radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.12), transparent 24rem),
-    var(--ifm-background-color);
+    radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.08), transparent 40%),
+    transparent;
 }
 
 .section--journey {
   background:
-    linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.08)),
-    var(--ifm-background-color);
+    linear-gradient(180deg, transparent, rgba(37, 99, 235, 0.06)),
+    transparent;
 }
 
 .sectionHeader {
   max-width: 48rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .sectionHeader--center {
@@ -332,108 +364,117 @@ body {
 }
 
 .sectionHeader h2 {
-  font-size: clamp(2rem, 4vw, 3.4rem);
-  line-height: 1.05;
-  letter-spacing: -0.045em;
+  font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
 }
 
 .sectionHeader p:not(.eyebrow) {
-  color: var(--agentflow-muted);
-  font-size: 1.08rem;
-  line-height: 1.8;
+  color: var(--af-text-dim);
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
+/* Track cards (Documentation tracks section) */
 .trackGrid {
   display: grid;
-  gap: 1.25rem;
+  gap: 1rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .trackCard {
   position: relative;
   overflow: hidden;
-  min-height: 18rem;
+  min-height: 17rem;
   padding: 2rem;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1.6rem;
-  color: var(--ifm-font-color-base);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--agentflow-card) 92%, transparent), var(--agentflow-card)),
-    radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 16rem);
-  box-shadow: var(--agentflow-shadow);
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background: linear-gradient(180deg, var(--af-bg-1) 0%, var(--af-bg-0) 100%);
+  color: var(--af-text);
   text-decoration: none;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
 .trackCard::after {
   position: absolute;
   right: -3rem;
   bottom: -3rem;
-  width: 9rem;
-  height: 9rem;
-  border-radius: 999px;
+  width: 8rem;
+  height: 8rem;
+  border-radius: var(--af-radius-pill);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.4), transparent 70%);
+  opacity: 0.6;
   content: "";
-  background: var(--agentflow-gradient);
-  opacity: 0.14;
 }
 
 .trackCard:hover {
-  border-color: color-mix(in srgb, var(--ifm-color-primary) 58%, var(--agentflow-border));
-  color: var(--ifm-font-color-base);
+  border-color: var(--af-border-glow);
+  color: var(--af-text-strong);
   text-decoration: none;
-  transform: translateY(-4px);
+  transform: translateY(-3px);
+  box-shadow: var(--af-glow-blue);
 }
 
 .trackCard span {
   display: inline-flex;
-  margin-bottom: 3rem;
-  color: var(--ifm-color-primary);
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  margin-bottom: 2rem;
+  color: var(--af-blue-hi);
+  font-family: var(--af-font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .trackCard h3 {
   max-width: 18rem;
-  font-size: 1.45rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 .trackCard p {
-  color: var(--agentflow-muted);
-  line-height: 1.75;
+  color: var(--af-text-dim);
+  line-height: 1.7;
 }
 
+/* Journey cards (4-step row) */
 .journeyGrid {
   display: grid;
-  gap: 1rem;
+  gap: 0.85rem;
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .journeyCard {
   padding: 1.5rem;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1.35rem;
-  background: var(--agentflow-card);
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-lg);
+  background: var(--af-bg-1);
 }
 
 .journeyCard span {
   display: inline-flex;
   margin-bottom: 1.4rem;
-  color: var(--ifm-color-primary);
-  font-weight: 850;
+  color: var(--af-blue-hi);
+  font-family: var(--af-font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .journeyCard h3 {
-  font-size: 1.18rem;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .journeyCard p {
-  color: var(--agentflow-muted);
-  line-height: 1.7;
+  color: var(--af-text-dim);
+  font-size: 0.94rem;
+  line-height: 1.65;
 }
 
+/* Doc page polish (very light touch — scope is marketing only) */
 .theme-doc-markdown {
-  font-size: 1.03rem;
+  font-size: 1rem;
   line-height: 1.78;
 }
 
@@ -443,45 +484,39 @@ body {
 }
 
 .theme-doc-markdown h1 {
-  letter-spacing: -0.05em;
+  letter-spacing: -0.04em;
 }
 
 .theme-doc-markdown h2 {
   margin-top: 2.6rem;
-  letter-spacing: -0.035em;
-}
-
-.theme-doc-markdown p {
-  color: color-mix(in srgb, var(--ifm-font-color-base) 88%, var(--agentflow-muted));
+  letter-spacing: -0.025em;
 }
 
 .theme-doc-markdown table {
   display: table;
   overflow: hidden;
   width: 100%;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1rem;
-  box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-md);
 }
 
 .theme-doc-markdown thead {
-  background: var(--agentflow-soft);
+  background: var(--af-bg-1);
 }
 
 .theme-doc-markdown th,
 .theme-doc-markdown td {
-  border-color: var(--agentflow-border);
+  border-color: var(--af-border);
 }
 
 .theme-doc-markdown .theme-admonition {
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1rem;
-  box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-md);
 }
 
 @media screen and (max-width: 996px) {
   .hero--agentflow {
-    padding: 4.5rem 0 3.5rem;
+    padding: 4rem 0 3rem;
   }
 
   .heroGrid,
@@ -491,11 +526,54 @@ body {
   }
 
   .heroTitle {
-    letter-spacing: -0.05em;
+    letter-spacing: -0.035em;
   }
 
   .stackCard {
     width: auto;
     margin: 1rem 0 0;
+  }
+}
+
+/* ─── Focus rings — visible keyboard focus across marketing surfaces ─── */
+
+/* Use :focus-visible so mouse clicks don't show the ring, only keyboard nav. */
+.button:focus-visible,
+.trackCard:focus-visible,
+.heroActions a:focus-visible,
+.menu__link:focus-visible,
+.breadcrumbs__link:focus-visible,
+.table-of-contents__link:focus-visible,
+.pagination-nav__link:focus-visible {
+  outline: 2px solid var(--af-blue-hi);
+  outline-offset: 2px;
+  text-decoration: none;
+}
+
+/* For dark surfaces that already have a colored border, lift the ring outside */
+.trackCard:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────
+ * Users with prefers-reduced-motion get a near-instant transition pass and
+ * all decorative animations are paused (marquee + gradient hero glows).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Defang transform-on-hover effects so they don't suddenly snap */
+  .trackCard:hover,
+  .button--primary:hover,
+  .button--secondary:hover,
+  .pagination-nav__link:hover {
+    transform: none !important;
   }
 }

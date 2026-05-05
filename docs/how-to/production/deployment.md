@@ -1,7 +1,16 @@
 ---
-title: "Deployment"
-description: "Production deployment guidance for AgentFlow APIs, including containers, runtime settings, shared persistence, and release checks."
+title: Deployment — AgentFlow Python AI Agent Framework
+sidebar_label: Deployment
+description: Production deployment guidance for AgentFlow APIs, including containers, runtime settings, shared persistence, and release checks.
+keywords:
+  - production ai agents
+  - agent deployment
+  - agent observability
+  - agentflow
+  - python ai agent framework
+  - deployment
 ---
+
 
 # Deployment
 

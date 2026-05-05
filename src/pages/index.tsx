@@ -2,6 +2,14 @@ import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import HomepageFeatures from '../components/HomepageFeatures';
+import TerminalBlock from '../components/TerminalBlock';
+import StatsBar from '../components/StatsBar';
+import LogoWall from '../components/LogoWall';
+import CodeSwitcher, {type CodeSample} from '../components/CodeSwitcher';
+import PackageMap from '../components/PackageMap';
+import Icon from '../components/Icon';
+import {brandIcons} from '../lib/brand-icons';
+import {trackEvent} from '../lib/analytics';
 
 const docTracks = [
   {
@@ -24,117 +32,250 @@ const docTracks = [
   },
 ];
 
-const stackItems = [
-  ['agentflow', 'Core Python runtime'],
-  ['agentflow-api', 'API, CLI, and serving layer'],
-  ['agentflow-client', 'TypeScript client surface'],
-  ['agentflow-playground', 'Hosted testing workspace'],
-];
-
-const quickstart = `from agentflow.core import Agent, StateGraph, ToolNode
+const heroQuickstart = `from agentflow.core.graph import Agent, StateGraph, ToolNode
 from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
-
-checkpointer = InMemoryCheckpointer()
+from agentflow.utils import END
 
 def get_weather(location: str) -> str:
-    return f"The weather in {location} is sunny"
-
-tool_node = ToolNode([get_weather])
+    """Get current weather for a city."""
+    return f"The weather in {location} is sunny."
 
 agent = Agent(
-    model="gemini-3-flash-preview",
-    provider="google",
-    system_prompt="You are a helpful assistant.",
-    trim_context=True,
-    reasoning_config=True,
-    tool_node=tool_node,
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
+    tool_node="TOOL",
 )
 
-graph = StateGraph()
+graph = StateGraph(AgentState)
 graph.add_node("MAIN", agent)
-graph.add_node("TOOL", tool_node)
-graph.add_conditional_edges("MAIN", should_use_tools, {"TOOL": "TOOL", END: END})
+graph.add_node("TOOL", ToolNode([get_weather]))
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
 graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
 
-app = graph.compile(checkpointer=checkpointer)`;
+app = graph.compile()`;
+
+const samples: CodeSample[] = [
+  {
+    label: 'AgentFlow',
+    badge: 'recommended',
+    filename: 'agent.py',
+    language: 'python',
+    code: `from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", ToolNode([get_weather]))
+# ... add edges + compile + invoke
+app = graph.compile()`,
+    footer: 'Same graph mental model. No LangChain dependency. Built-in API + TS client.',
+  },
+  {
+    label: 'LangGraph',
+    filename: 'agent.py',
+    language: 'python',
+    code: `from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+@tool
+def get_weather(location: str) -> str:
+    """Get current weather."""
+    return f"The weather in {location} is sunny."
+
+memory = MemorySaver()
+app = create_react_agent(
+    "openai:gpt-4o-mini",
+    tools=[get_weather],
+    checkpointer=memory,
+)`,
+    footer: 'LangGraph: requires langchain_core, prebuilt agent hides the graph.',
+  },
+  {
+    label: 'CrewAI',
+    filename: 'crew.py',
+    language: 'python',
+    code: `from crewai import Agent, Task, Crew, Process
+
+agent = Agent(
+    role="Weather assistant",
+    goal="Answer weather questions accurately",
+    backstory="Expert meteorologist",
+    tools=[get_weather_tool],
+)
+
+task = Task(
+    description="Answer the weather question",
+    expected_output="Current weather summary",
+    agent=agent,
+)
+
+crew = Crew(agents=[agent], tasks=[task], process=Process.sequential)
+result = crew.kickoff()`,
+    footer: 'CrewAI: role-based DSL. Persistence + API serving are extra glue.',
+  },
+  {
+    label: 'AutoGen',
+    filename: 'agent.py',
+    language: 'python',
+    code: `import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+
+async def main():
+    model = OpenAIChatCompletionClient(model="gpt-4o-mini")
+    agent = AssistantAgent(
+        "weather",
+        model_client=model,
+        system_message="Helpful assistant. Use get_weather.",
+        tools=[get_weather],
+    )
+    await agent.run_stream(task="Weather in Tokyo?")
+
+asyncio.run(main())`,
+    footer: 'AutoGen: conversation-driven. LLM-powered selectors hide control flow.',
+  },
+  {
+    label: 'Google ADK',
+    filename: 'agent.py',
+    language: 'python',
+    code: `from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool
+
+agent = LlmAgent(
+    name="weather_assistant",
+    model="gemini-2.0-flash",
+    instruction="Helpful assistant. Use get_weather when asked.",
+    tools=[FunctionTool(func=get_weather)],
+)`,
+    footer: 'Google ADK: opinionated for Vertex AI. Best on Google Cloud.',
+  },
+];
+
+const journey = [
+  {step: '01', title: 'First agent', body: 'Create a working agent and understand the moving parts.'},
+  {step: '02', title: 'Tools and state', body: 'Give the agent capabilities; learn how state moves through a workflow.'},
+  {step: '03', title: 'Multi-agent flow', body: 'Compose agents into predictable handoffs and reusable workflows.'},
+  {step: '04', title: 'Production surface', body: 'Add persistence, APIs, streaming, clients, and deployment.'},
+];
 
 export default function Home() {
   return (
     <Layout
-      title="AgentFlow Docs: Python AI Agents, APIs, Memory, and TypeScript Clients"
-      description="Learn how to build AI agents with AgentFlow using Python, tools, memory, streaming, APIs, and TypeScript clients. Explore tutorials, how-to guides, and API reference.">
+      title="AgentFlow: Open-Source Python Framework for Production AI Agents"
+      description="An open-source Python framework for building production AI agents. Multi-agent orchestration, memory, streaming, REST API, and TypeScript client included. A modern alternative to LangGraph, CrewAI, and AutoGen.">
       <main>
+        {/* HERO */}
         <section className="hero hero--agentflow">
-          <div className="heroOrb heroOrb--one" />
-          <div className="heroOrb heroOrb--two" />
           <div className="container heroGrid">
             <div className="heroCopy">
-              <p className="eyebrow">Production docs for agent teams</p>
+              <p className="eyebrow">
+                <Icon name="Sparkles" size={12} /> &nbsp;v1.0 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.10+
+              </p>
               <Heading as="h1" className="heroTitle">
-                Production-ready AI agents in seconds.
+                Production AI agents in Python. Ship in minutes.
+              </Heading>
+              <Heading as="h2" className="heroSubheadline">
+                A batteries-included framework for multi-agent orchestration,
+                memory, and streaming APIs. A modern alternative to LangGraph,
+                CrewAI, and AutoGen.
               </Heading>
               <p className="heroSubtitle">
-                Build scalable agent workflows with tools, memory, streaming, APIs, and
-                clients on top of one runtime. Start with a working agent fast, then grow
-                into stateful, production-ready systems without rewriting the foundation.
+                Typed graphs, durable threads, a REST and SSE server, and a typed
+                TypeScript client. Ship a working agent fast, then scale to
+                production without rewriting the foundation.
               </p>
               <div className="heroActions">
-                <Link className="button button--primary button--lg" to="/docs/get-started">
-                  Start building
+                <Link
+                  className="button button--primary button--lg"
+                  to="/docs/get-started"
+                  onClick={() => trackEvent('cta_start_building', {location: 'hero'})}>
+                  Start building &nbsp;→
                 </Link>
-                <Link className="button button--secondary button--lg" to="/docs/tutorials">
-                  Browse tutorials
+                <Link
+                  className="button button--secondary button--lg"
+                  to="https://github.com/10xHub/Agentflow"
+                  onClick={() => trackEvent('cta_github', {location: 'hero'})}>
+                  <svg
+                    role="img"
+                    viewBox="0 0 24 24"
+                    width={16}
+                    height={16}
+                    aria-hidden="true"
+                    style={{fill: 'currentColor'}}>
+                    <path d={brandIcons.github.path} />
+                  </svg>
+                  &nbsp; GitHub
                 </Link>
               </div>
-              <div className="trustBar">
-                <span>Beginner path</span>
-                <span>Concepts</span>
-                <span>Tutorials</span>
-                <span>Reference</span>
-              </div>
+              <TerminalBlock
+                filename="bash"
+                code="pip install 10xscale-agentflow 10xscale-agentflow-cli"
+                language="bash"
+                compact
+              />
             </div>
             <div className="heroVisual">
-              <div className="codeCard" aria-label="AgentFlow quickstart code sample">
-                <div className="codeCardHeader">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                  <strong>react_sync.py</strong>
-                </div>
-                <pre>
-                  <code>{quickstart}</code>
-                </pre>
-              </div>
-              <div className="stackCard" aria-label="AgentFlow package map">
-                <p className="stackCardLabel">Connected stack</p>
-                {stackItems.map(([name, body]) => (
-                  <div className="stackCardRow" key={name}>
-                    <strong>{name}</strong>
-                    <span>{body}</span>
-                  </div>
-                ))}
-              </div>
+              <TerminalBlock
+                filename="agent.py"
+                code={heroQuickstart}
+                language="python"
+              />
             </div>
           </div>
         </section>
 
+        {/* STATS */}
+        <StatsBar />
+
+        {/* LOGO WALL */}
+        <LogoWall />
+
+        {/* FEATURE PILLARS */}
         <HomepageFeatures />
 
+        {/* SAME AGENT, EVERY FRAMEWORK */}
+        <section className="section section--switcher">
+          <div className="container">
+            <div className="sectionHeader sectionHeader--center">
+              <p className="eyebrow">
+                <Icon name="GitCompare" size={12} /> &nbsp;Same agent, every framework
+              </p>
+              <Heading as="h2">A familiar mental model, without the glue.</Heading>
+              <p>
+                The same ReAct agent in five different frameworks. AgentFlow
+                keeps the graph explicit and ships the production stack with it.
+              </p>
+            </div>
+            <CodeSwitcher samples={samples} />
+          </div>
+        </section>
+
+        {/* TRACKS */}
         <section className="section section--tracks">
           <div className="container">
             <div className="sectionHeader sectionHeader--center">
               <p className="eyebrow">Documentation tracks</p>
               <Heading as="h2">Pick the next useful page fast.</Heading>
-              <p>
-                The main docs now separate learning, architecture, and production work
-                so readers can move forward without scanning the whole sidebar.
-              </p>
             </div>
             <div className="trackGrid">
               {docTracks.map((track) => (
-                <Link className="trackCard" to={track.href} key={track.title}>
+                <Link
+                  className="trackCard"
+                  to={track.href}
+                  key={track.title}
+                  onClick={() =>
+                    trackEvent('cta_doc_track', {track: track.title, href: track.href})
+                  }>
                   <span>{track.eyebrow}</span>
                   <Heading as="h3">{track.title}</Heading>
                   <p>{track.body}</p>
@@ -144,30 +285,70 @@ export default function Home() {
           </div>
         </section>
 
+        {/* PACKAGE MAP */}
+        <section className="section section--package-map">
+          <div className="container">
+            <div className="sectionHeader sectionHeader--center">
+              <p className="eyebrow">
+                <Icon name="Boxes" size={12} /> &nbsp;Connected stack
+              </p>
+              <Heading as="h2">One project, four packages, zero glue.</Heading>
+              <p>
+                The Python runtime, the API server, the TypeScript client, and
+                the hosted playground are designed together. Same types, same
+                threads, same primitives across the whole stack.
+              </p>
+            </div>
+            <PackageMap />
+          </div>
+        </section>
+
+        {/* JOURNEY */}
         <section className="section section--journey">
           <div className="container">
             <div className="sectionHeader">
               <p className="eyebrow">Beginner-friendly by design</p>
-              <Heading as="h2">A docs path that teaches the product, not just the API.</Heading>
+              <Heading as="h2">A docs path that teaches the product.</Heading>
               <p>
-                The new docs are organized around the real journey: install the library,
-                build one agent, add tools, add memory, expose it through the API, connect
-                a client, then deploy with confidence.
+                Install the library, build one agent, add tools and memory,
+                expose it through the API, connect a client, then deploy.
               </p>
             </div>
             <div className="journeyGrid">
-              {[
-                ['01', 'First agent', 'Create a small, working agent and understand the moving parts.'],
-                ['02', 'Tools and state', 'Give the agent capabilities and learn how state moves through a workflow.'],
-                ['03', 'Multi-agent flow', 'Compose agents into predictable handoffs and reusable workflows.'],
-                ['04', 'Production surface', 'Add persistence, APIs, streaming, clients, and deployment practices.'],
-              ].map(([step, title, body]) => (
-                <article className="journeyCard" key={step}>
-                  <span>{step}</span>
-                  <Heading as="h3">{title}</Heading>
-                  <p>{body}</p>
+              {journey.map((j) => (
+                <article className="journeyCard" key={j.step}>
+                  <span>{j.step}</span>
+                  <Heading as="h3">{j.title}</Heading>
+                  <p>{j.body}</p>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section className="section section--final-cta">
+          <div className="container">
+            <div className="finalCta">
+              <Heading as="h2">Ship a working agent in five minutes.</Heading>
+              <p>
+                Install, build a graph, expose an API, connect a TypeScript
+                client. Then keep going, without rewriting anything.
+              </p>
+              <div className="heroActions">
+                <Link
+                  className="button button--primary button--lg"
+                  to="/docs/get-started"
+                  onClick={() => trackEvent('cta_start_building', {location: 'footer'})}>
+                  Get started &nbsp;→
+                </Link>
+                <Link
+                  className="button button--secondary button--lg"
+                  to="/docs/compare"
+                  onClick={() => trackEvent('cta_compare_page', {location: 'footer'})}>
+                  Compare frameworks
+                </Link>
+              </div>
             </div>
           </div>
         </section>

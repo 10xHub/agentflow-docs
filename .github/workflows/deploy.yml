@@ -37,11 +37,14 @@ jobs:
       - name: Build site
         run: npm run build
         env:
-          SITE_URL: https://${{ github.repository_owner }}.github.io
-          BASE_URL: /${{ github.event.repository.name }}/
+          SITE_URL: https://agentflow.10xscale.ai
+          BASE_URL: /
+          GOOGLE_ANALYTICS_ID: ${{ secrets.GOOGLE_ANALYTICS_ID }}
+          MICROSOFT_CLARITY_ID: ${{ secrets.MICROSOFT_CLARITY_ID }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
+          cname: agentflow.10xscale.ai

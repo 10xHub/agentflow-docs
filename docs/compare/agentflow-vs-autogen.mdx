@@ -1,0 +1,253 @@
+---
+title: "AgentFlow vs Microsoft AutoGen: Python Compared"
+sidebar_label: vs Microsoft AutoGen
+description: AgentFlow vs Microsoft AutoGen compared. Typed state graphs, checkpointing, and a REST API + TypeScript client vs AutoGen's conversational agents.
+keywords:
+  - autogen alternative
+  - microsoft autogen alternative
+  - agentflow vs autogen
+  - autogen vs agentflow
+  - python ai agent framework
+  - multi-agent conversation
+sidebar_position: 4
+---
+
+# AgentFlow vs Microsoft AutoGen: typed graphs vs conversational agents
+
+<VsBanner
+  competitor="Microsoft AutoGen"
+  tagline="Deterministic graph routing instead of LLM-driven group-chat selectors. Production server included."
+/>
+
+**Microsoft AutoGen** pioneered the *conversational multi-agent* pattern. Agents talk to each other in chat rooms, often with a `UserProxyAgent` and one or more `AssistantAgent`s, and the framework drives the conversation forward. **AgentFlow** stays closer to a classical workflow runtime: a typed `StateGraph`, explicit nodes and edges, deterministic routing, and a production server.
+
+If you have prototyped multi-agent flows in AutoGen and want a more deterministic, easier-to-debug runtime, with serving and a TypeScript client included. This page compares the two.
+
+## TL;DR: AgentFlow vs AutoGen
+
+<CompareTable
+  competitorName="AutoGen"
+  caption="Both frameworks are open-source. AutoGen 0.4 split into core / agentchat / extensions; this comparison treats AutoGen AgentChat as the closest analogue."
+  rows={[
+    {dimension: 'Orchestration', agentflow: 'Typed StateGraph with explicit nodes and conditional edges', competitor: 'GroupChat / Selector + agent-to-agent messages'},
+    {dimension: 'Determinism', agentflow: 'Routing is a Python function. Easy to log, replay, and test', competitor: 'Selector-driven; behavior depends on the chat manager LLM', emphasis: 'agentflow'},
+    {dimension: 'State', agentflow: 'AgentState + Message stream you can serialize at any point', competitor: 'Per-agent message lists; aggregating state requires plumbing'},
+    {dimension: 'Persistence', agentflow: 'Built-in InMemoryCheckpointer / PgCheckpointer with thread IDs', competitor: 'BYO persistence; checkpoint hooks evolving in 0.4', emphasis: 'agentflow'},
+    {dimension: 'API serving', agentflow: 'Built-in `agentflow api` REST + SSE server', competitor: 'AutoGen Studio (UI tool); production server is BYO', emphasis: 'agentflow'},
+    {dimension: 'TypeScript client', agentflow: 'Typed `@10xscale/agentflow-client`', competitor: 'No first-party TS client'},
+    {dimension: 'Best for', agentflow: 'Production multi-agent products with web/mobile frontends', competitor: 'Research, exploration, and conversation-style automations'},
+    {dimension: 'License', agentflow: 'MIT', competitor: 'CC-BY-4.0 / MIT (varies by package)'},
+  ]}
+/>
+
+## Why teams choose AgentFlow over AutoGen for production
+
+1. **Deterministic routing.** AgentFlow's `add_conditional_edges(node, fn, mapping)` is just a function. Easy to unit test, easy to log, easy to reason about in incident review. AutoGen's group chat selector is itself an LLM in many configurations, which makes flows harder to debug under load.
+2. **One state, one history.** Every node sees the same `AgentState`. In AutoGen, each agent maintains its own message list, and reconstructing "what did the system actually do" is a glue exercise.
+3. **First-class persistence.** Threads, checkpoints, and resumability are wired into the runtime. AutoGen 0.4 is moving toward similar hooks, but production teams typically still write their own.
+4. **Ship the API, not just the agents.** `agentflow api` plus `@10xscale/agentflow-client` give you a REST + SSE backend and a typed frontend SDK in one repo. AutoGen Studio is a UI for exploration, not a production server.
+
+## Same workflow, both frameworks
+
+A two-agent **planner → coder** loop, first in AutoGen, then in AgentFlow.
+
+### AutoGen (AgentChat)
+
+```python
+import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import TextMentionTermination
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+
+async def main():
+    model = OpenAIChatCompletionClient(model="gpt-4o-mini")
+
+    planner = AssistantAgent(
+        "planner",
+        model_client=model,
+        system_message="Break the task into steps. End with the word DONE when the plan is complete.",
+    )
+    coder = AssistantAgent(
+        "coder",
+        model_client=model,
+        system_message="Implement the plan in Python. Print the code.",
+    )
+
+    team = RoundRobinGroupChat(
+        [planner, coder],
+        termination_condition=TextMentionTermination("DONE"),
+    )
+
+    await team.run_stream(task="Build a script that fetches today's weather for Tokyo.")
+
+asyncio.run(main())
+```
+
+### AgentFlow
+
+```python
+from agentflow.core.graph import Agent, StateGraph
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+planner = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Break the task into 3 numbered steps."}],
+)
+
+coder = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Use the plan in context to write Python code that implements it."}],
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("PLAN", planner)
+graph.add_node("CODE", coder)
+
+graph.set_entry_point("PLAN")
+graph.add_edge("PLAN", "CODE")
+graph.add_edge("CODE", END)
+
+app = graph.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("Build a script that fetches today's weather for Tokyo.")]},
+    config={"thread_id": "plan-code-1"},
+)
+print(result["messages"][-1].text())
+```
+
+In AgentFlow you state the order with edges. To turn this into a loop ("plan → code → review → re-plan if reviewer says no"), add a conditional edge from a `REVIEW` node back to `PLAN`. The control flow stays visible in the graph definition. No termination strings, no group-chat selector to second-guess.
+
+## When you actually need conversation
+
+AutoGen's strength is multi-agent *conversation*. Agents debating, critiquing, and refining. AgentFlow models that the same way with a single graph plus a router:
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.prebuilt.tools import create_handoff_tool
+
+# Critic + author with explicit handoffs
+author_tools = ToolNode([create_handoff_tool("critic", "Send draft to critic")])
+critic_tools = ToolNode([
+    create_handoff_tool("author", "Return to author with feedback"),
+    create_handoff_tool("done", "Approve the draft"),
+])
+
+author = Agent(model="gemini-2.5-flash", provider="google",
+    system_prompt=[{"role": "system", "content": "Draft and revise."}],
+    tool_node="AUTHOR_TOOLS",
+)
+critic = Agent(model="gemini-2.5-flash", provider="google",
+    system_prompt=[{"role": "system", "content": "Critique strictly."}],
+    tool_node="CRITIC_TOOLS",
+)
+```
+
+The handoff is an explicit tool call you can log, rate-limit, and recursion-cap. AutoGen's selector achieves a similar outcome but at the cost of an extra LLM call per turn and less observable routing.
+
+## Persistence and resumable threads
+
+AgentFlow checkpoints the whole graph after every node:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+app = graph.compile(checkpointer=PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+))
+
+# Resume the same thread later
+app.invoke(
+    {"messages": [Message.text_message("Continue from the last revision.")]},
+    config={"thread_id": "session-42"},
+)
+```
+
+AutoGen 0.4 is adding "memory" extensions, but a production team building a chat product or long-running automation usually still rolls its own thread storage and replay logic on AutoGen.
+
+## Serving as an API
+
+```bash
+pip install 10xscale-agentflow-cli
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+Endpoints out of the box:
+
+- `POST /v1/graph/invoke`. Run the graph and return final messages
+- `POST /v1/graph/stream`. Server-sent events for token-level streaming
+- `GET /v1/graph/threads/{thread_id}`. Fetch persisted state
+
+AutoGen Studio is a great exploration UI but not the production server you put behind a load balancer. With AgentFlow, the same binary you used in dev is what runs in production.
+
+## TypeScript client
+
+```typescript
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+
+for await (const chunk of client.stream(
+  [Message.text_message("Plan and write a Python script for fetching weather.")],
+  {config: {thread_id: "ts-stream-1"}},
+)) {
+  if (chunk.type === "message_chunk") process.stdout.write(chunk.content ?? "");
+}
+```
+
+## Migrating from AutoGen
+
+The mental model translation is the main work:
+
+1. Each `AssistantAgent` becomes an `agentflow.core.graph.Agent` with the same `system_message` content.
+2. `RoundRobinGroupChat` → a chain of `add_edge` calls.
+3. `SelectorGroupChat` → a router node with a deterministic Python function or an LLM router (your choice).
+4. `TextMentionTermination` and friends → either a conditional edge that returns `END` when a flag is set, or a `recursion_limit` in the invoke config.
+5. AutoGen tools → `ToolNode([fn, fn, ...])` with regular Python functions.
+6. AutoGen's per-agent message lists → AgentFlow's shared `AgentState.messages`.
+
+A typical 3-agent AutoGen example ports over in a single sitting.
+
+## When AutoGen is still the right pick
+
+- **Research and benchmarking.** AutoGen 0.4's actor model and extension system are excellent for academic experiments and novel multi-agent patterns.
+- **Microsoft / Azure ecosystem.** First-party Azure OpenAI integration and AutoGen Studio are nicely tuned for that stack.
+- **You want emergent conversation.** If your application *is* a multi-agent debate or critique session and you want the LLM-driven selector to surprise you, AutoGen leans into that.
+
+For most product teams shipping agents behind a real frontend with paying users, the deterministic-graph + persistent-thread + built-in-API combination of AgentFlow tends to win on operability.
+
+<FAQ items={[
+  {
+    q: "Is AutoGen 0.4 still actively developed?",
+    a: "Yes. AutoGen split into autogen-core, autogen-agentchat, and extensions in 0.4. Both AgentFlow and AutoGen are evolving frameworks; for the latest AutoGen surface, refer to Microsoft's GitHub."
+  },
+  {
+    q: "Can I get AutoGen-style 'agents that talk to each other' in AgentFlow?",
+    a: "Yes. Implement the conversation as a router + handoff tools. Each handoff is a tool call you can log and inspect, which is usually easier to operate than a chat manager LLM."
+  },
+  {
+    q: "Does AgentFlow support OpenAI, Azure OpenAI, and Anthropic like AutoGen does?",
+    a: "Yes. AgentFlow ships first-party providers for OpenAI, Anthropic, Google (Gemini and Vertex AI), and others. See the providers section of the docs."
+  },
+  {
+    q: "How does AgentFlow's API server compare to AutoGen Studio?",
+    a: "AutoGen Studio is a UI for visually building and chatting with agent setups. AgentFlow's CLI is a production server (REST + SSE) that exposes a compiled graph behind authenticated endpoints. Different products with different goals."
+  },
+  {
+    q: "Can AgentFlow handle human-in-the-loop reviews?",
+    a: "Yes. The graph supports interrupts and resumable threads. You can pause execution at a node, surface state to a human reviewer, and resume with their input on the same thread_id."
+  },
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'Install, build, expose, and connect a typed client.', intent: 'guide'},
+  {to: '/docs/how-to/python/handoff-between-agents', title: 'Handoff between agents', description: 'Explicit, debuggable agent-to-agent control flow.', intent: 'guide'},
+  {to: '/docs/concepts/streaming', title: 'Streaming and async patterns', description: 'How async streams work end-to-end.', intent: 'concept'},
+  {to: '/blog/multi-agent-orchestration-python-7-patterns', title: '7 multi-agent patterns', description: 'Sequential, parallel, router, handoff, supervisor, and human-in-the-loop.', intent: 'blog'},
+]} />

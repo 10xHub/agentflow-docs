@@ -75,6 +75,44 @@ const sidebars: SidebarsConfig = {
 
     {
       type: "category",
+      label: "Compare",
+      collapsed: false,
+      items: [
+        "compare/index",
+        "compare/agentflow-vs-langgraph",
+        "compare/agentflow-vs-crewai",
+        "compare/agentflow-vs-autogen",
+        "compare/agentflow-vs-llamaindex-agents",
+        "compare/agentflow-vs-google-adk",
+        "compare/best-python-agent-framework-2026",
+      ],
+    },
+    {
+      type: "category",
+      label: "Use Cases",
+      collapsed: true,
+      items: [
+        "use-cases/index",
+        "use-cases/customer-support-agent",
+        "use-cases/data-extraction-agent",
+        "use-cases/coding-agent",
+        "use-cases/research-agent",
+        "use-cases/rag-agent",
+      ],
+    },
+    {
+      type: "category",
+      label: "Integrations",
+      collapsed: true,
+      items: [
+        "integrations/index",
+        "integrations/agentflow-with-fastapi",
+        "integrations/agentflow-with-nextjs",
+        "integrations/agentflow-with-postgres",
+      ],
+    },
+    {
+      type: "category",
       label: "Providers",
       collapsed: true,
       items: [

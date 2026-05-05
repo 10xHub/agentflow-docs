@@ -1,7 +1,16 @@
 ---
-title: "Error Patterns Guide"
-description: "Map common symptoms and failure modes to error codes and resolution strategies."
+title: Error Patterns Guide — AgentFlow Python AI Agent Framework
+sidebar_label: Error Patterns Guide
+description: Map common symptoms and failure modes to error codes and resolution strategies. Part of the AgentFlow agentflow troubleshooting guide for production-ready.
+keywords:
+  - agentflow troubleshooting
+  - agent debugging
+  - ai agent errors
+  - agentflow
+  - python ai agent framework
+  - error patterns guide
 ---
+
 
 # Error Patterns Guide
 

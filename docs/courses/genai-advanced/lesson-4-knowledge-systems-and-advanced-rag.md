@@ -1,7 +1,16 @@
 ---
 title: "Lesson 4: Knowledge Systems and Advanced RAG"
-description: Choose between retrieval architectures based on quality, cost, and latency requirements.
+sidebar_label: Lesson 4
+description: Choose between retrieval architectures based on quality, cost, and latency requirements. Part of the AgentFlow genai course guide for production-ready Python.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - lesson 4 knowledge systems and advanced rag
 ---
+
 
 # Lesson 4: Knowledge Systems and Advanced RAG
 

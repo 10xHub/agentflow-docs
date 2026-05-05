@@ -1,7 +1,16 @@
 ---
-title: Mental Model
-description: Understand the four core concepts in AgentFlow before writing any code.
+title: Mental Model — AgentFlow Python AI Agent Framework
+sidebar_label: Mental Model
+description: Understand the four core concepts in AgentFlow before writing any code. Part of the AgentFlow ai agents for beginners guide for production-ready Python AI.
+keywords:
+  - ai agents for beginners
+  - first ai agent python
+  - agentflow tutorial
+  - agentflow
+  - python ai agent framework
+  - mental model
 ---
+
 
 # Mental model
 

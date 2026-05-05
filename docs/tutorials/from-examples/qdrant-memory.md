@@ -1,8 +1,16 @@
 ---
-title: "Qdrant Memory"
-sidebar_label: "Qdrant Memory"
-description: "Build an advanced personalized AgentFlow graph with Mem0, Qdrant, session-aware state, user profiles, and long-term memory operations."
+title: Qdrant Memory — AgentFlow Python AI Agent Framework
+sidebar_label: Qdrant Memory
+description: Build an advanced personalized AgentFlow graph with Mem0, Qdrant, session-aware state, user profiles, and long-term memory operations.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - qdrant memory
 ---
+
 
 # Qdrant Memory
 

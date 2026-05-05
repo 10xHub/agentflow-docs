@@ -1,8 +1,16 @@
 ---
-title: "Skills"
-sidebar_label: "Skills"
-description: "Build an AgentFlow graph that loads SKILL.md instructions dynamically and combines them with normal tools."
+title: Skills — AgentFlow Python AI Agent Framework
+sidebar_label: Skills
+description: Build an AgentFlow graph that loads SKILL.md instructions dynamically and combines them with normal tools.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - skills
 ---
+
 
 # Skills
 

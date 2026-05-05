@@ -1,7 +1,16 @@
 ---
 title: "Lesson 6: Multimodal and Client/Server Integration"
-description: Connect your agent to frontends, handle files, and build full-stack GenAI applications.
+sidebar_label: Lesson 6
+description: Connect your agent to frontends, handle files, and build full-stack GenAI applications. Part of the AgentFlow genai course guide for production-ready Python AI.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - lesson 6 multimodal and client/server integration
 ---
+
 
 # Lesson 6: Multimodal and Client/Server Integration
 

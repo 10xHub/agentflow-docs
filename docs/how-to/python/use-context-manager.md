@@ -1,7 +1,16 @@
 ---
 title: Manage conversation context
-description: How to keep the message history within your LLM's context window using BaseContextManager and MessageContextManager.
+sidebar_label: Manage conversation context
+description: "How to keep the message history within your LLM's context window using BaseContextManager and MessageContextManager."
+keywords:
+  - agentflow python
+  - python ai agent guide
+  - multi-agent python
+  - agentflow
+  - python ai agent framework
+  - manage conversation context
 ---
+
 
 # Manage conversation context
 

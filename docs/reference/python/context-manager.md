@@ -1,8 +1,17 @@
 ---
-title: Context Manager
-description: BaseContextManager and MessageContextManager — trim and bound the agent's message history before each LLM call.
+title: Context Manager — AgentFlow Python AI Agent Framework
+sidebar_label: Context Manager
+description: "BaseContextManager and MessageContextManager — trim and bound the agent's message history before each LLM call."
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - context manager
 sidebar_position: 13
 ---
+
 
 # Context Manager
 

@@ -1,8 +1,17 @@
 ---
-title: Register remote tools
+title: How to register remote tools
+sidebar_label: How to register remote tools
 description: Step-by-step guide to registering browser-side tool handlers that the agent can call during graph execution.
+keywords:
+  - agentflow typescript client
+  - ai agent client
+  - agent sdk
+  - agentflow
+  - python ai agent framework
+  - how to register remote tools
 sidebar_position: 7
 ---
+
 
 # How to register remote tools
 

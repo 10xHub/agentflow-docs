@@ -373,6 +373,6 @@ for chunk in graph.stream(input_data, config=config):
 
 ## See Also
 
-- [Streaming](streaming.md) — Overview of streaming chunks and `ResponseGranularity`
+- [Streaming](../../concepts/streaming.md) — Overview of streaming chunks and `ResponseGranularity`
 - [Tools](tools.md) — Defining and registering tools with `ToolNode`
-- [Dependency Injection](dependency-injection.md) — How `emit`, `tool_call_id`, `state`, and other parameters are injected into tools
+- [Dependency Injection](../../concepts/dependency-injection.md) — How `emit`, `tool_call_id`, `state`, and other parameters are injected into tools

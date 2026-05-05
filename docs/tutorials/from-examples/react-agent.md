@@ -1,8 +1,16 @@
 ---
-title: "ReAct Agent"
-sidebar_label: "ReAct Agent"
-description: "Build a persistent ReAct agent with an InMemoryCheckpointer, injectable tool parameters, and custom state."
+title: ReAct Agent — AgentFlow Python AI Agent Framework
+sidebar_label: ReAct Agent
+description: Build a persistent ReAct agent with an InMemoryCheckpointer, injectable tool parameters, and custom state.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - react agent
 ---
+
 
 # ReAct Agent
 

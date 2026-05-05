@@ -1,8 +1,16 @@
 ---
-title: "Multimodal"
-sidebar_label: "Multimodal"
-description: "Send images, audio, video, and documents to AgentFlow using media blocks, MediaRef, a media store, and multimodal model configuration."
+title: Multimodal — AgentFlow Python AI Agent Framework
+sidebar_label: Multimodal
+description: Send images, audio, video, and documents to AgentFlow using media blocks, MediaRef, a media store, and multimodal model configuration.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - multimodal
 ---
+
 
 # Multimodal
 

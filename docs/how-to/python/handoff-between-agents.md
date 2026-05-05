@@ -1,7 +1,16 @@
 ---
 title: Route between agents with handoff
+sidebar_label: Route between agents with handoff
 description: How to use create_handoff_tool and Command to transfer control between agents in a multi-agent graph.
+keywords:
+  - agentflow python
+  - python ai agent guide
+  - multi-agent python
+  - agentflow
+  - python ai agent framework
+  - route between agents with handoff
 ---
+
 
 # Route between agents with handoff
 

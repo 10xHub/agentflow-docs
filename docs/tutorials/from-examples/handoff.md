@@ -1,8 +1,16 @@
 ---
-title: "Handoff"
-sidebar_label: "Handoff"
-description: "Build a multi-agent AgentFlow graph where specialized agents transfer control to each other using handoff tools."
+title: Handoff — AgentFlow Python AI Agent Framework
+sidebar_label: Handoff
+description: Build a multi-agent AgentFlow graph where specialized agents transfer control to each other using handoff tools.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - handoff
 ---
+
 
 # Handoff
 
