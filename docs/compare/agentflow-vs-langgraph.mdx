@@ -13,6 +13,11 @@ sidebar_position: 2
 
 # AgentFlow vs LangGraph: a production-ready alternative for Python agents
 
+<VsBanner
+  competitor="LangGraph"
+  tagline="Same graph mental model. Production server, durable threads, and a typed TypeScript client out of the box."
+/>
+
 If you are evaluating **LangGraph** for a multi-agent system in Python, **AgentFlow** is the closest drop-in alternative — a graph-based runtime with the same mental model, plus an opinionated API, CLI, and TypeScript client out of the box.
 
 This page shows what changes when you migrate, what stays the same, and where AgentFlow gives you a stronger production foundation than LangGraph alone.
@@ -227,7 +232,9 @@ For everyone else — especially teams who want a Python backend plus a TypeScri
 
 ## Next steps
 
-- [Get started with AgentFlow](/docs/get-started) — install, build a first agent, expose an API, connect from TypeScript
-- [State graph concept guide](/docs/concepts/state-graph) — how nodes, edges, and routing work
-- [Add memory and checkpointing](/docs/beginner/add-memory) — same patterns LangGraph uses, with AgentFlow's persistence layer
-- [Compare AgentFlow against other frameworks](/docs/compare) — CrewAI, AutoGen, LlamaIndex Agents, Google ADK
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'Install, build a first agent, expose an API, connect from TypeScript.', intent: 'guide'},
+  {to: '/docs/concepts/state-graph', title: 'State graphs', description: 'How nodes, edges, and routing work in AgentFlow.', intent: 'concept'},
+  {to: '/docs/beginner/add-memory', title: 'Add memory and checkpointing', description: 'Same patterns LangGraph uses, with AgentFlow\'s persistence layer.', intent: 'tutorial'},
+  {to: '/blog/langgraph-to-agentflow-migration', title: 'LangGraph → AgentFlow migration walkthrough', description: 'A diff-style port of a real ReAct agent + tool, then multi-agent handoff.', intent: 'blog'},
+]} />

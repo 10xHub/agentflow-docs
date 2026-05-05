@@ -13,6 +13,11 @@ sidebar_position: 3
 
 # AgentFlow vs CrewAI: graphs and runtimes vs role-based crews
 
+<VsBanner
+  competitor="CrewAI"
+  tagline="Typed graphs and durable threads instead of declarative role-based crews."
+/>
+
 **CrewAI** popularized the *role-based crew* pattern — declare agents with names and goals, give each a tool kit, and let a process orchestrate them. **AgentFlow** takes a different stance: model the workflow as a typed graph with explicit state, conditional edges, and a runtime built for production deployment.
 
 If you started with CrewAI for the prototype-friendly DSL but hit limits on debuggability, persistence, or API serving, this page shows what AgentFlow gives you and how the migration looks.
@@ -238,7 +243,9 @@ For everyone else, especially teams shipping a product surface (web app, mobile 
 
 ## Next steps
 
-- [Get started with AgentFlow](/docs/get-started) — first agent in a few minutes
-- [Multi-agent handoff patterns](/docs/how-to/python/handoff-between-agents) — direct mapping of CrewAI hierarchical flows
-- [Persistence and threads](/docs/concepts/checkpointing-and-threads) — how state survives across calls
-- [Compare AgentFlow against other frameworks](/docs/compare)
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'First agent in a few minutes.', intent: 'guide'},
+  {to: '/docs/how-to/python/handoff-between-agents', title: 'Multi-agent handoff patterns', description: 'Direct mapping of CrewAI hierarchical flows.', intent: 'guide'},
+  {to: '/docs/concepts/checkpointing-and-threads', title: 'Persistence and threads', description: 'How state survives across calls.', intent: 'concept'},
+  {to: '/blog/multi-agent-orchestration-python-7-patterns', title: '7 multi-agent patterns', description: 'Sequential, parallel, router, handoff, supervisor, and human-in-the-loop.', intent: 'blog'},
+]} />

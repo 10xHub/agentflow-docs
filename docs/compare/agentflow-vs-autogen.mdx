@@ -13,6 +13,11 @@ sidebar_position: 4
 
 # AgentFlow vs Microsoft AutoGen: typed graphs vs conversational agents
 
+<VsBanner
+  competitor="Microsoft AutoGen"
+  tagline="Deterministic graph routing instead of LLM-driven group-chat selectors. Production server included."
+/>
+
 **Microsoft AutoGen** pioneered the *conversational multi-agent* pattern — agents talk to each other in chat rooms, often with a `UserProxyAgent` and one or more `AssistantAgent`s, and the framework drives the conversation forward. **AgentFlow** stays closer to a classical workflow runtime: a typed `StateGraph`, explicit nodes and edges, deterministic routing, and a production server.
 
 If you have prototyped multi-agent flows in AutoGen and want a more deterministic, easier-to-debug runtime — with serving and a TypeScript client included — this page compares the two.
@@ -239,7 +244,9 @@ For most product teams shipping agents behind a real frontend with paying users,
 
 ## Next steps
 
-- [Get started with AgentFlow](/docs/get-started)
-- [Handoff between agents](/docs/how-to/python/handoff-between-agents) — explicit, debuggable agent-to-agent control flow
-- [Streaming and async patterns](/docs/concepts/streaming)
-- [Compare AgentFlow against other frameworks](/docs/compare)
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'Install, build, expose, and connect a typed client.', intent: 'guide'},
+  {to: '/docs/how-to/python/handoff-between-agents', title: 'Handoff between agents', description: 'Explicit, debuggable agent-to-agent control flow.', intent: 'guide'},
+  {to: '/docs/concepts/streaming', title: 'Streaming and async patterns', description: 'How async streams work end-to-end.', intent: 'concept'},
+  {to: '/blog/multi-agent-orchestration-python-7-patterns', title: '7 multi-agent patterns', description: 'Sequential, parallel, router, handoff, supervisor, and human-in-the-loop.', intent: 'blog'},
+]} />

@@ -5,6 +5,8 @@ import FAQ from '@site/src/components/FAQ';
 import BlogStructuredData from '@site/src/components/BlogStructuredData';
 import TerminalBlock from '@site/src/components/TerminalBlock';
 import Icon from '@site/src/components/Icon';
+import Callout from '@site/src/components/Callout';
+import VsBanner from '@site/src/components/VsBanner';
 
 export default {
   ...MDXComponents,
@@ -14,4 +16,6 @@ export default {
   BlogStructuredData,
   TerminalBlock,
   Icon,
+  Callout,
+  VsBanner,
 };

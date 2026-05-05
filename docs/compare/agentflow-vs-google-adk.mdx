@@ -13,6 +13,12 @@ sidebar_position: 6
 
 # AgentFlow vs Google ADK: an open-source, provider-neutral alternative
 
+<VsBanner
+  competitor="Google ADK"
+  competitorIcon="googleCloud"
+  tagline="Provider-neutral, MIT-licensed runtime with first-party Gemini and Vertex AI support."
+/>
+
 **Google's Agent Development Kit (ADK)** is Google's official Python framework for building agents that run on Gemini and Vertex AI. It is opinionated, well-integrated with the Google stack, and a strong choice if you are committed to Vertex. **AgentFlow** is an independent, MIT-licensed runtime that supports Gemini and Vertex AI as first-class providers — alongside OpenAI, Anthropic, and others — without tying your codebase to a single cloud.
 
 If you like ADK's mental model but need provider neutrality, MIT licensing, or a built-in API + TypeScript client, this page shows what AgentFlow gives you.
@@ -221,7 +227,9 @@ For everyone else — multi-provider teams, MIT-license requirements, or anyone 
 
 ## Next steps
 
-- [Get started with AgentFlow](/docs/get-started)
-- [Google provider configuration](/docs/providers/google) — Gemini API and Vertex AI
-- [Deployment guide](/docs/how-to/production/deployment) — running AgentFlow in production
-- [Compare AgentFlow against other frameworks](/docs/compare)
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'First agent in a few minutes.', intent: 'guide'},
+  {to: '/docs/providers/google', title: 'Google provider configuration', description: 'Gemini API and Vertex AI.', intent: 'reference'},
+  {to: '/docs/how-to/production/deployment', title: 'Deployment guide', description: 'Run AgentFlow in production on AWS, GCP, or anywhere.', intent: 'guide'},
+  {to: '/blog/deploy-ai-agent-docker-aws', title: 'Deploy an AI agent (Docker + AWS)', description: 'End-to-end deployment walkthrough.', intent: 'blog'},
+]} />

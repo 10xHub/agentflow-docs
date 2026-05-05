@@ -1,0 +1,77 @@
+.callout {
+  --callout-accent: var(--af-blue-hi);
+  --callout-bg: rgba(59, 130, 246, 0.08);
+  --callout-border: rgba(59, 130, 246, 0.32);
+
+  display: flex;
+  gap: 0.85rem;
+  margin: 1.25rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--callout-border);
+  border-left: 3px solid var(--callout-accent);
+  border-radius: var(--af-radius-md);
+  background: var(--callout-bg);
+  color: var(--af-text);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  padding-top: 0.05rem;
+  color: var(--callout-accent);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 0.35rem;
+  color: var(--callout-accent);
+  font-family: var(--af-font-sans);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.content {
+  color: var(--af-text);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+.content > :first-child { margin-top: 0; }
+.content > :last-child  { margin-bottom: 0; }
+
+.callout-info {
+  --callout-accent: #60a5fa;
+  --callout-bg: rgba(59, 130, 246, 0.08);
+  --callout-border: rgba(59, 130, 246, 0.32);
+}
+
+.callout-tip {
+  --callout-accent: #34d399;
+  --callout-bg: rgba(16, 185, 129, 0.10);
+  --callout-border: rgba(16, 185, 129, 0.35);
+}
+
+.callout-warning {
+  --callout-accent: #fbbf24;
+  --callout-bg: rgba(245, 158, 11, 0.10);
+  --callout-border: rgba(245, 158, 11, 0.38);
+}
+
+.callout-danger {
+  --callout-accent: #f87171;
+  --callout-bg: rgba(239, 68, 68, 0.10);
+  --callout-border: rgba(239, 68, 68, 0.35);
+}
+
+.callout-note {
+  --callout-accent: #cbd5e1;
+  --callout-bg: rgba(148, 163, 184, 0.07);
+  --callout-border: rgba(148, 163, 184, 0.25);
+}

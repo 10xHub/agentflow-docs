@@ -13,6 +13,11 @@ sidebar_position: 5
 
 # AgentFlow vs LlamaIndex Agents: runtime-first vs RAG-first
 
+<VsBanner
+  competitor="LlamaIndex Agents"
+  tagline="A runtime-first framework. Pair with LlamaIndex for retrieval; let AgentFlow drive the graph and the API."
+/>
+
 **LlamaIndex** built its identity around retrieval-augmented generation — indexes, query engines, and tools that wrap them. Its **agent layer** (`AgentRunner`, `FunctionAgent`, `Workflow`, `ReActAgent`) builds on those primitives. **AgentFlow** comes from the other direction: a runtime built for orchestrating *any* agent or tool, with a typed graph, persistence, and an API server included.
 
 If your app is mostly a RAG pipeline with light agent behavior, LlamaIndex Agents is a fine choice. If you are building a stateful, multi-agent product where retrieval is one tool among many, this page shows what AgentFlow gives you.
@@ -228,7 +233,9 @@ For everyone else, the typical pattern is: **LlamaIndex for retrieval, AgentFlow
 
 ## Next steps
 
-- [Get started with AgentFlow](/docs/get-started)
-- [Add a tool](/docs/beginner/add-a-tool) — wrap any retriever as a tool the agent can call
-- [Memory and store](/docs/concepts/memory-and-store) — persistence patterns for agent state
-- [Compare AgentFlow against other frameworks](/docs/compare)
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'First agent in a few minutes.', intent: 'guide'},
+  {to: '/docs/beginner/add-a-tool', title: 'Add a tool', description: 'Wrap any retriever as a tool the agent can call.', intent: 'tutorial'},
+  {to: '/docs/concepts/memory-and-store', title: 'Memory and store', description: 'Persistence patterns for agent state.', intent: 'concept'},
+  {to: '/docs/use-cases/rag-agent', title: 'RAG agent reference architecture', description: 'Production-shaped agentic RAG with hybrid search and citations.', intent: 'guide'},
+]} />
