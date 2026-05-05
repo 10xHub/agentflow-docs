@@ -61,20 +61,23 @@ body {
   transform: translateY(-1px);
 }
 
-.button--secondary {
+/* Specificity bump: Infima's `.button.button--secondary` (0,2,0) sets
+ * color: var(--ifm-color-gray-900) which is near-black even in dark mode and
+ * makes our text invisible. Match its specificity by repeating `.button`. */
+.button.button--secondary {
   border-color: var(--af-border-hi);
   background: var(--af-bg-1);
   color: var(--af-text);
 }
 
-.button--secondary:hover {
+.button.button--secondary:hover {
   border-color: var(--af-blue-hi);
   background: var(--af-bg-2);
   color: var(--af-text-strong);
   transform: translateY(-1px);
 }
 
-[data-theme='light'] .button--secondary {
+[data-theme='light'] .button.button--secondary {
   background: rgba(255, 255, 255, 0.9);
   color: var(--af-text-strong);
 }
