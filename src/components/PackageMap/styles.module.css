@@ -1,0 +1,17 @@
+.wrap {
+  width: 100%;
+  margin: 1rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(139, 92, 246, 0.10), transparent 60%),
+    var(--af-bg-1);
+  box-shadow: var(--af-glow-soft);
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}

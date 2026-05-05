@@ -1,0 +1,118 @@
+/* AgentFlow design tokens — dark-first.
+ * Light theme is supported but not optimized; dark is canonical.
+ *
+ * Naming: --af-* are AgentFlow-owned tokens. --ifm-* are Docusaurus/Infima vars
+ * we map to so existing components pick up the palette without code changes.
+ */
+
+:root,
+[data-theme='dark'] {
+  /* Backgrounds — dark, layered. Matches Docusaurus's original dark scale so
+   * scrolling does not reveal a noticeably darker body behind content. */
+  --af-bg-0: #08111f;          /* page background */
+  --af-bg-1: #0c1727;          /* surface */
+  --af-bg-2: #131e33;          /* elevated surface */
+  --af-bg-3: #1a2741;          /* hover / pressed */
+
+  /* Borders */
+  --af-border: rgba(148, 163, 184, 0.14);
+  --af-border-hi: rgba(148, 163, 184, 0.28);
+  --af-border-glow: rgba(59, 130, 246, 0.4);
+
+  /* Text */
+  --af-text: #e2e8f0;
+  --af-text-strong: #f8fafc;
+  --af-text-dim: #94a3b8;
+  --af-text-faint: #64748b;
+  --af-text-on-blue: #ffffff;
+
+  /* Brand */
+  --af-blue: #2563eb;          /* primary — unchanged */
+  --af-blue-hi: #3b82f6;       /* hover / focus */
+  --af-blue-soft: rgba(37, 99, 235, 0.14);
+  --af-violet: #8b5cf6;        /* accent only */
+  --af-amber: #f59e0b;         /* warnings, "production" */
+  --af-green: #10b981;         /* success / tip */
+  --af-red: #ef4444;           /* danger */
+
+  /* Code block colors (Prism dark) */
+  --af-code-bg: #07101d;
+  --af-code-border: rgba(148, 163, 184, 0.14);
+  --af-code-text: #dbeafe;
+
+  /* Effects */
+  --af-glow-blue: 0 0 0 1px rgba(59, 130, 246, 0.32),
+                  0 12px 40px rgba(59, 130, 246, 0.18);
+  --af-glow-soft: 0 8px 32px rgba(2, 6, 23, 0.4);
+  --af-shadow-card: 0 1.5rem 4rem rgba(2, 6, 23, 0.32);
+
+  /* Radii */
+  --af-radius-sm: 0.5rem;
+  --af-radius-md: 0.85rem;
+  --af-radius-lg: 1.25rem;
+  --af-radius-xl: 1.6rem;
+  --af-radius-pill: 999px;
+
+  /* Type */
+  --af-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --af-font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
+    Menlo, monospace;
+
+  /* Map Infima vars to our palette so docs + existing components pick up dark theme */
+  --ifm-background-color: var(--af-bg-0);
+  --ifm-background-surface-color: var(--af-bg-1);
+  --ifm-navbar-background-color: rgba(13, 19, 32, 0.84);
+  --ifm-footer-background-color: #04070d;
+  --ifm-color-primary: var(--af-blue-hi);
+  --ifm-color-primary-dark: var(--af-blue);
+  --ifm-color-primary-darker: #1d4ed8;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #60a5fa;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  --ifm-font-family-base: var(--af-font-sans);
+  --ifm-font-family-monospace: var(--af-font-mono);
+  --ifm-heading-font-weight: 760;
+
+  /* Legacy --agentflow-* aliases kept so existing components keep working */
+  --agentflow-card: var(--af-bg-1);
+  --agentflow-border: var(--af-border);
+  --agentflow-muted: var(--af-text-dim);
+  --agentflow-soft: var(--af-blue-soft);
+  --agentflow-strong: var(--af-text-strong);
+  --agentflow-gradient: linear-gradient(135deg, var(--af-blue) 0%, var(--af-violet) 100%);
+  --agentflow-shadow: var(--af-shadow-card);
+}
+
+/* Light-theme overrides — kept readable, not optimized */
+[data-theme='light'] {
+  --af-bg-0: #ffffff;
+  --af-bg-1: #f8fafc;
+  --af-bg-2: #f1f5f9;
+  --af-bg-3: #e2e8f0;
+
+  --af-border: rgba(15, 23, 42, 0.1);
+  --af-border-hi: rgba(15, 23, 42, 0.18);
+
+  --af-text: #0f172a;
+  --af-text-strong: #020617;
+  --af-text-dim: #475569;
+  --af-text-faint: #64748b;
+
+  --af-code-bg: #0d1320;       /* keep code blocks dark in light mode */
+  --af-code-text: #dbeafe;
+
+  --af-glow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --af-shadow-card: 0 1rem 3rem rgba(15, 23, 42, 0.08);
+
+  --ifm-background-color: var(--af-bg-0);
+  --ifm-background-surface-color: var(--af-bg-1);
+  --ifm-navbar-background-color: rgba(255, 255, 255, 0.86);
+  --ifm-footer-background-color: #0f172a;
+  --ifm-color-primary: var(--af-blue);
+
+  --agentflow-card: rgba(255, 255, 255, 0.9);
+  --agentflow-soft: #eef4ff;
+  --agentflow-strong: var(--af-text-strong);
+}

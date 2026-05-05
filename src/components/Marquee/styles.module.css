@@ -1,0 +1,49 @@
+.marquee {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  /* Soft fade at the edges so logos don't snap in/out */
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll var(--marquee-duration, 40s) linear infinite;
+}
+
+.pauseHover .track:hover {
+  animation-play-state: paused;
+}
+
+.set {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 3rem;
+  padding: 0 1.5rem;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    animation: none;
+  }
+}

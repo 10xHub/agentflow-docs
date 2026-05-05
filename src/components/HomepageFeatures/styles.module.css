@@ -1,8 +1,5 @@
 .features {
   padding: 5rem 0 4rem;
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 30rem),
-    var(--ifm-background-color);
 }
 
 .grid {
@@ -11,42 +8,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.card {
-  min-height: 17rem;
-  padding: 2rem;
-  border: 1px solid var(--agentflow-border);
-  border-radius: 1.5rem;
-  background: var(--agentflow-card);
-  box-shadow: var(--agentflow-shadow);
-}
-
-.card h3 {
-  margin-top: 1.5rem;
-  font-size: 1.35rem;
-}
-
-.card p {
-  color: var(--agentflow-muted);
-  font-size: 1rem;
-  line-height: 1.75;
-}
-
-.icon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 1rem;
-  background:
-    linear-gradient(135deg, rgba(14, 165, 233, 0.9), rgba(124, 58, 237, 0.9)),
-    linear-gradient(180deg, #fff, #fff);
-  box-shadow: 0 1rem 2.5rem rgba(59, 130, 246, 0.35);
-}
-
 @media screen and (max-width: 996px) {
   .grid {
     grid-template-columns: 1fr;
-  }
-
-  .card {
-    min-height: auto;
   }
 }
