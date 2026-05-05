@@ -43,7 +43,7 @@ export default function PackageMap() {
           markerEnd="url(#pmArrow)"
         />
         <path
-          d="M 540 80 L 640 80"
+          d="M 540 80 L 600 80"
           stroke="url(#pmEdge)"
           strokeWidth="2"
           fill="none"
@@ -101,21 +101,22 @@ export default function PackageMap() {
           <text x="338" y="111" fill="#94a3b8" fontFamily="Inter, sans-serif" fontSize="11">/v1/graph/invoke · /stream</text>
         </g>
 
-        {/* Card 3 — TS client */}
+        {/* Card 3 — TS client. Width 160 so 'agentflow-client' (16 chars at
+            mono 13px ≈ 125px) fits inside the box border. */}
         <g>
           <rect
-            x="640"
+            x="600"
             y="36"
-            width="120"
+            width="160"
             height="92"
             rx="14"
             fill="url(#pmFill)"
             stroke="rgba(148,163,184,0.28)"
             strokeWidth="1"
           />
-          <text x="658" y="68" fill="#3b82f6" fontFamily="JetBrains Mono, monospace" fontSize="11" fontWeight="600">TYPESCRIPT</text>
-          <text x="658" y="92" fill="#f8fafc" fontFamily="JetBrains Mono, monospace" fontSize="13" fontWeight="700">agentflow-client</text>
-          <text x="658" y="111" fill="#94a3b8" fontFamily="Inter, sans-serif" fontSize="11">invoke · stream</text>
+          <text x="618" y="68" fill="#3b82f6" fontFamily="JetBrains Mono, monospace" fontSize="11" fontWeight="600">TYPESCRIPT</text>
+          <text x="618" y="92" fill="#f8fafc" fontFamily="JetBrains Mono, monospace" fontSize="13" fontWeight="700">agentflow-client</text>
+          <text x="618" y="111" fill="#94a3b8" fontFamily="Inter, sans-serif" fontSize="11">invoke · stream</text>
         </g>
 
         {/* Card 4 — Playground (below) */}
