@@ -181,7 +181,7 @@ Build a generator script (`scripts/generate-landing.mjs`) that reads `data/use-c
 
 ## Part E — Off-Page & Distribution (ongoing)
 
-- **GitHub README** at `10xscale/agentflow` — top of file should target "Python AI agent framework" with badges + a clear H1. README ranks for brand queries and pulls authority.
+- **GitHub README** at `10xHub/Agentflow` — top of file should target "Python AI agent framework" with badges + a clear H1. README ranks for brand queries and pulls authority.
 - **Submit to** awesome-lists: `awesome-langchain`, `awesome-llm`, `awesome-python`, `awesome-ai-agents`. Each is a high-DR backlink.
 - **Show HN / r/LocalLLaMA / r/LangChain launch posts** — only after Part A-C is shipped (else bounce rate kills traction).
 - **Dev.to / Hashnode cross-posts** of cornerstone blog articles with `canonical` pointing back to docs site.
