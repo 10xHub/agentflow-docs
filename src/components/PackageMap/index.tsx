@@ -9,7 +9,13 @@ export default function PackageMap() {
         viewBox="0 0 800 360"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-hidden="false">
+        aria-labelledby="package-map-title package-map-desc">
+        <title id="package-map-title">AgentFlow connected stack</title>
+        <desc id="package-map-desc">
+          Diagram of four AgentFlow packages: the Python library and the CLI/REST/SSE
+          server connect to a TypeScript client, with a hosted playground below the
+          server.
+        </desc>
         <defs>
           <linearGradient id="pmEdge" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.65" />

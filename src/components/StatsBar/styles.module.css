@@ -1,4 +1,6 @@
 .bar {
+  /* Reserve a baseline height to prevent CLS as icons mount */
+  min-height: 4rem;
   padding: 1.25rem 0;
   border-bottom: 1px solid var(--af-border);
   background: linear-gradient(180deg, var(--af-bg-0) 0%, var(--af-bg-1) 100%);

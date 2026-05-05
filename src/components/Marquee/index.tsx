@@ -18,7 +18,9 @@ export default function Marquee({children, durationSec = 40, pauseOnHover = true
       className={`${styles.marquee} ${pauseOnHover ? styles.pauseHover : ''}`}
       style={{['--marquee-duration' as never]: `${durationSec}s`}}>
       <div className={styles.track}>
-        <div className={styles.set} aria-hidden="false">{children}</div>
+        <div className={styles.set}>{children}</div>
+        {/* Duplicate set for the seamless loop — hidden from assistive tech to
+         * avoid double-reading the logo names. */}
         <div className={styles.set} aria-hidden="true">{children}</div>
       </div>
     </div>

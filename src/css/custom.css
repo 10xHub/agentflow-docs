@@ -531,6 +531,30 @@ body {
   }
 }
 
+/* ─── Focus rings — visible keyboard focus across marketing surfaces ─── */
+
+/* Use :focus-visible so mouse clicks don't show the ring, only keyboard nav. */
+.button:focus-visible,
+.trackCard:focus-visible,
+.heroActions a:focus-visible,
+.menu__link:focus-visible,
+.breadcrumbs__link:focus-visible,
+.table-of-contents__link:focus-visible,
+.pagination-nav__link:focus-visible {
+  outline: 2px solid var(--af-blue-hi);
+  outline-offset: 2px;
+  text-decoration: none;
+}
+
+/* For dark surfaces that already have a colored border, lift the ring outside */
+.trackCard:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────
+ * Users with prefers-reduced-motion get a near-instant transition pass and
+ * all decorative animations are paused (marquee + gradient hero glows).
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -538,5 +562,14 @@ body {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Defang transform-on-hover effects so they don't suddenly snap */
+  .trackCard:hover,
+  .button--primary:hover,
+  .button--secondary:hover,
+  .pagination-nav__link:hover {
+    transform: none !important;
   }
 }

@@ -1,8 +1,12 @@
 .wall {
+  /* Reserve fixed height so the marquee doesn't shift other content
+   * as logos load (CLS prevention). */
+  min-height: 9.5rem;
   padding: 3rem 0 2rem;
   border-top: 1px solid var(--af-border);
   border-bottom: 1px solid var(--af-border);
   background: var(--af-bg-1);
+  contain: layout paint;
 }
 
 .heading {

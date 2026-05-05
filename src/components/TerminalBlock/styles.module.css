@@ -7,9 +7,13 @@
   background: var(--af-code-bg);
   box-shadow: var(--af-shadow-card);
   font-family: var(--af-font-mono);
+  /* Reserve scaffold so the box doesn't pop into existence when JS hydrates */
+  min-height: 6rem;
+  contain: layout paint;
 }
 
 .terminal.compact {
+  min-height: 3rem;
   border-radius: var(--af-radius-md);
   box-shadow: none;
 }
