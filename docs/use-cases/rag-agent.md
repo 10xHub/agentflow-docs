@@ -1,5 +1,5 @@
 ---
-title: Build a RAG AI Agent in Python — Done Right
+title: "Build a RAG AI Agent in Python: Done Right"
 description: How to build a RAG AI agent in Python that scales beyond chat-with-your-PDFs. Hybrid retrieval, reranking, citations, and AgentFlow code.
 keywords:
   - rag ai agent python
@@ -10,7 +10,7 @@ keywords:
 sidebar_position: 6
 ---
 
-# Build a RAG AI agent in Python — done right
+# Build a RAG AI agent in Python: done right
 
 "Chat with my docs" is the most-prototyped, often-shipped, frequently-broken AI use case. Most teams ship a single retrieve-and-generate call, hit quality limits, and stall.
 
@@ -37,7 +37,7 @@ This page shows the production-shaped pattern: agentic RAG with hybrid retrieval
 [ Validator: citations present, low hallucination ]
 ```
 
-This is **agentic RAG** — the agent decides what to query, when to dig deeper, and when it has enough. It outperforms naive RAG on multi-hop questions and ambiguous queries.
+This is **agentic RAG**. The agent decides what to query, when to dig deeper, and when it has enough. It outperforms naive RAG on multi-hop questions and ambiguous queries.
 
 ## Why this shape, not naive RAG
 
@@ -50,9 +50,9 @@ response = llm.complete(f"Answer using context:\n{context}\n\nQ: {user_question}
 
 It works for "What does our pricing page say about enterprise?" It fails on:
 
-- "Compare our pricing to AcmeCorp's" — needs two retrievals
-- "What changed in our refund policy last quarter?" — needs filtering
-- "Does our docs explain how to set up SSO with Okta specifically?" — needs follow-up retrieval
+- "Compare our pricing to AcmeCorp's". Needs two retrievals
+- "What changed in our refund policy last quarter?". Needs filtering
+- "Does our docs explain how to set up SSO with Okta specifically?". Needs follow-up retrieval
 
 Agentic RAG handles all three.
 
@@ -139,10 +139,10 @@ If the agent searches and finds nothing relevant, do not let it freelance an ans
 
 ## Variants
 
-- **Internal knowledge base** — Confluence, Notion, Slack archives
-- **Customer-facing docs** — your public documentation site
-- **Support deflection** — old tickets + KB articles
-- **Research over a corpus** — papers, contracts, reports
+- **Internal knowledge base**. Confluence, Notion, Slack archives
+- **Customer-facing docs**. Your public documentation site
+- **Support deflection**. Old tickets + KB articles
+- **Research over a corpus**. Papers, contracts, reports
 
 Same shape. Different documents and different filters.
 
@@ -161,12 +161,12 @@ Same shape. Different documents and different filters.
 1. **One giant chunk.** Chunks > 1500 tokens lose specificity. Aim for 200–500 tokens with overlap.
 2. **No reranking.** Top-5 from hybrid search is usually OK; top-5 from dense alone misses too much.
 3. **No metadata filters.** Without `product`, `audience`, `tenant`, the index is a soup.
-4. **Skipping the validator.** Citations are the firewall against hallucination — enforce them.
+4. **Skipping the validator.** Citations are the firewall against hallucination. Enforce them.
 
 ## Further reading
 
 - [Memory and store](/docs/concepts/memory-and-store)
 - [Qdrant memory tutorial](/docs/tutorials/from-examples/qdrant-memory)
 - [AI agent memory and checkpointing](/blog/ai-agent-memory-checkpointing-python)
-- [Compare AgentFlow vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents) — when to pair them
+- [Compare AgentFlow vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents). When to pair them
 - [Get started](/docs/get-started)

@@ -1,6 +1,6 @@
 ---
 title: Build a Customer Support AI Agent in Python
-description: Reference architecture for a production customer support AI agent in Python — intent routing, ticket lookup, refund tools, and human handoff with AgentFlow.
+description: Reference architecture for a production customer support AI agent in Python. Intent routing, ticket lookup, refund tools, and human handoff with AgentFlow.
 keywords:
   - customer support ai agent
   - support automation python
@@ -38,7 +38,7 @@ This is a **hybrid workflow + agent** shape: a deterministic router up front, ag
 ## Why this shape
 
 - **Cheap routing.** A small classifier model picks the lane. The expensive specialist only runs when needed.
-- **Branch isolation.** Refund agent has no shipping tools — fewer ways for it to confuse itself.
+- **Branch isolation.** Refund agent has no shipping tools. Fewer ways for it to confuse itself.
 - **Audit trail.** Each branch is a graph node with explicit tool calls; every decision is loggable.
 - **Safe escalation.** Human handoff is a graph interrupt, durable across restarts.
 
@@ -96,7 +96,7 @@ refund_agent = Agent(
 Notes:
 
 - **Idempotency keys** on every refund call. See [the production post](/blog/production-ai-agents-observability-retries).
-- **Mixed model sizes** — small for routing, big for specialist work.
+- **Mixed model sizes**. Small for routing, big for specialist work.
 - **Explicit escalation rules** in the system prompt. Models follow rules better than they decide on their own.
 
 ## The graph

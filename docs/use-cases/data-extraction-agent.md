@@ -1,6 +1,6 @@
 ---
 title: Build a Data Extraction AI Agent in Python
-description: How to build a structured data extraction AI agent in Python — pull entities, fields, and relationships from unstructured text with AgentFlow + Pydantic.
+description: How to build a structured data extraction AI agent in Python. Pull entities, fields, and relationships from unstructured text with AgentFlow + Pydantic.
 keywords:
   - data extraction ai agent
   - structured output llm
@@ -12,7 +12,7 @@ sidebar_position: 3
 
 # Build a data extraction AI agent in Python
 
-Pulling structured data out of unstructured text — invoices, contracts, support tickets, scraped pages — is one of the highest-ROI uses of LLMs. The trick is making the output reliable enough to ship to a database.
+Pulling structured data out of unstructured text. Invoices, contracts, support tickets, scraped pages. Is one of the highest-ROI uses of LLMs. The trick is making the output reliable enough to ship to a database.
 
 Here is the production architecture.
 
@@ -113,7 +113,7 @@ graph.set_entry_point("MAIN")
 app = graph.compile()
 ```
 
-The agent submits, gets validated, fixes errors, resubmits — usually in 1 or 2 iterations. Cap iterations with `recursion_limit=5`.
+The agent submits, gets validated, fixes errors, resubmits. Usually in 1 or 2 iterations. Cap iterations with `recursion_limit=5`.
 
 ## Running it
 
@@ -134,10 +134,10 @@ result = app.invoke(
 
 ## Variants of this pattern
 
-- **Form filling** — extract user data from chat into a typed form
-- **Email triage** — extract sender, intent, urgency, action items
-- **Contract review** — extract terms, dates, parties from legal docs
-- **Web scraping cleanup** — turn scraped HTML into typed records
+- **Form filling**. Extract user data from chat into a typed form
+- **Email triage**. Extract sender, intent, urgency, action items
+- **Contract review**. Extract terms, dates, parties from legal docs
+- **Web scraping cleanup**. Turn scraped HTML into typed records
 
 The graph shape is the same. Only the schema changes.
 

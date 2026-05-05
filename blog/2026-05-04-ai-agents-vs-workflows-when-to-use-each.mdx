@@ -1,6 +1,6 @@
 ---
 slug: ai-agents-vs-workflows
-title: "AI Agents vs Workflows — When to Use Each (and How to Tell)"
+title: "AI Agents vs Workflows: When to Use Each (and How to Tell)"
 description: A practical guide to choosing between AI agents and deterministic workflows. Decision tree, hybrid patterns, and Python code for each in 2026.
 authors: [team]
 tags: [agents, workflows, architecture, decision-making, python]
@@ -14,14 +14,14 @@ keywords:
 image: /img/agentflow-social-card.png
 ---
 
-"Should this be an agent or a workflow?" gets asked in every architecture review of an AI system. The answer is rarely binary — most production systems are hybrids. But you should know which mode you are in for any given subsystem, because the operational cost is wildly different.
+"Should this be an agent or a workflow?" gets asked in every architecture review of an AI system. The answer is rarely binary. Most production systems are hybrids. But you should know which mode you are in for any given subsystem, because the operational cost is wildly different.
 
 Here is the practical decision framework.
 
 <!-- truncate -->
 
 <BlogStructuredData
-  headline="AI Agents vs Workflows — When to Use Each (and How to Tell)"
+  headline="AI Agents vs Workflows. When to Use Each (and How to Tell)"
   description="A practical guide to choosing between AI agents and deterministic workflows. Decision tree, hybrid patterns, and Python code for each in 2026."
   datePublished="2026-05-04"
   slug="ai-agents-vs-workflows"
@@ -91,7 +91,7 @@ Workflows are the right answer when:
 - **Latency matters.** No "the model is thinking" loops. Steps run sequentially with predictable timings.
 - **You need to test it.** Workflows are easy to unit-test; agent loops are not.
 
-A workflow with three LLM calls is a far simpler operational target than an agent that *might* make three calls — or seven, or none.
+A workflow with three LLM calls is a far simpler operational target than an agent that *might* make three calls, or seven, or none.
 
 ## When agents win
 
@@ -174,7 +174,7 @@ When in doubt, start with a workflow. It is easier to upgrade a workflow to an a
 | Observability | One trace per step | Full graph trace |
 | Recovery | Retry from failed step | Resume thread from checkpoint |
 
-Agents pay an "intelligence tax" — the freedom to decide costs you in token spend, latency variance, and operational complexity. Charge for that intelligence only when you need it.
+Agents pay an "intelligence tax". The freedom to decide costs you in token spend, latency variance, and operational complexity. Charge for that intelligence only when you need it.
 
 ## Same primitive, different uses
 
@@ -183,7 +183,7 @@ A graph runtime like AgentFlow or LangGraph supports both. The runtime is the sa
 - **Workflow:** edges are deterministic, conditional functions are pure Python
 - **Agent:** at least one node is an `Agent` whose tool choice drives an edge
 
-You can mix them in one graph — a workflow that calls into a small agent for one branch, then resumes deterministic processing.
+You can mix them in one graph. A workflow that calls into a small agent for one branch, then resumes deterministic processing.
 
 ```python
 graph = StateGraph(AgentState)
@@ -214,9 +214,9 @@ This is the production shape for most non-trivial AI systems.
 
 ## Further reading
 
-- [State graph concept](/docs/concepts/state-graph) — runtime shared by both shapes
+- [State graph concept](/docs/concepts/state-graph). Runtime shared by both shapes
 - [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
-- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis) — pure agent example
+- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis). Pure agent example
 - [Production AI agents (observability + retries)](/blog/production-ai-agents-observability-retries)
 
-If your system is mostly a workflow with one agent loop, [Get started](/docs/get-started) — the same runtime handles both, with the same primitives.
+If your system is mostly a workflow with one agent loop, [Get started](/docs/get-started). The same runtime handles both, with the same primitives.

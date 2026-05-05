@@ -1,6 +1,6 @@
 ---
-title: AgentFlow with Next.js — Build a Streaming Agent Frontend
-description: How to call an AgentFlow Python agent from a Next.js frontend with streaming, auth, and typed responses — server actions, route handlers, and AgentFlow.
+title: "AgentFlow with Next.js: Build a Streaming Agent Frontend"
+description: How to call an AgentFlow Python agent from a Next.js frontend with streaming, auth, and typed responses. Server actions, route handlers, and AgentFlow.
 keywords:
   - agentflow nextjs
   - nextjs ai agent
@@ -38,7 +38,7 @@ npm install @10xscale/agentflow-client
 
 ## Server-side proxy (recommended)
 
-Do not call the AgentFlow API directly from the browser — your API key would leak. Proxy through a Next.js Route Handler:
+Do not call the AgentFlow API directly from the browser. Your API key would leak. Proxy through a Next.js Route Handler:
 
 ```ts
 // app/api/agent/stream/route.ts
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-Note: this runs on the Node runtime, not the Edge — the Python backend connection benefits from Node's longer-lived sockets.
+Note: this runs on the Node runtime, not the Edge. The Python backend connection benefits from Node's longer-lived sockets.
 
 ## Client-side hook
 
@@ -221,7 +221,7 @@ See [Auth and authorization](/docs/how-to/production/auth-and-authorization).
 ## Common gotchas
 
 - **Edge runtime does not support long-lived streams** in some configurations. Default to `runtime = "nodejs"` for SSE.
-- **Vercel function timeouts.** The default is 10s. SSE streams need a longer timeout — use `maxDuration` in your route or move the agent to a long-running deployment.
+- **Vercel function timeouts.** The default is 10s. SSE streams need a longer timeout. Use `maxDuration` in your route or move the agent to a long-running deployment.
 - **CORS.** If you call AgentFlow from a different origin in dev, configure CORS on the AgentFlow side.
 - **Browser EventSource lacks header support.** Always use `fetch` + manual SSE parsing or `@microsoft/fetch-event-source`.
 

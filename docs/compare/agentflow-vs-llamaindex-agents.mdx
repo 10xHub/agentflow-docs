@@ -1,5 +1,5 @@
 ---
-title: AgentFlow vs LlamaIndex Agents — Runtime vs RAG
+title: "AgentFlow vs LlamaIndex Agents: Runtime vs RAG"
 description: AgentFlow vs LlamaIndex Agents compared. Where a typed state graph, threads, REST API, and TS client beat RAG-first agents for production multi-agent apps.
 keywords:
   - llamaindex agents alternative
@@ -18,23 +18,23 @@ sidebar_position: 5
   tagline="A runtime-first framework. Pair with LlamaIndex for retrieval; let AgentFlow drive the graph and the API."
 />
 
-**LlamaIndex** built its identity around retrieval-augmented generation — indexes, query engines, and tools that wrap them. Its **agent layer** (`AgentRunner`, `FunctionAgent`, `Workflow`, `ReActAgent`) builds on those primitives. **AgentFlow** comes from the other direction: a runtime built for orchestrating *any* agent or tool, with a typed graph, persistence, and an API server included.
+**LlamaIndex** built its identity around retrieval-augmented generation. Indexes, query engines, and tools that wrap them. Its **agent layer** (`AgentRunner`, `FunctionAgent`, `Workflow`, `ReActAgent`) builds on those primitives. **AgentFlow** comes from the other direction: a runtime built for orchestrating *any* agent or tool, with a typed graph, persistence, and an API server included.
 
 If your app is mostly a RAG pipeline with light agent behavior, LlamaIndex Agents is a fine choice. If you are building a stateful, multi-agent product where retrieval is one tool among many, this page shows what AgentFlow gives you.
 
-## TL;DR — AgentFlow vs LlamaIndex Agents
+## TL;DR: AgentFlow vs LlamaIndex Agents
 
 <CompareTable
   competitorName="LlamaIndex Agents"
   caption="LlamaIndex's agent surface includes FunctionAgent, ReActAgent, and the newer Workflow API. This compares the production characteristics."
   rows={[
-    {dimension: 'Primary focus', agentflow: 'Multi-agent runtime — graphs, state, threads, API', competitor: 'RAG-first; agents wrap indexes and query engines'},
+    {dimension: 'Primary focus', agentflow: 'Multi-agent runtime. Graphs, state, threads, API', competitor: 'RAG-first; agents wrap indexes and query engines'},
     {dimension: 'Orchestration', agentflow: 'Typed StateGraph with conditional edges and sub-graphs', competitor: 'Workflow API (events + steps); plus prebuilt agent runners'},
     {dimension: 'State', agentflow: 'AgentState + Message stream shared by all nodes', competitor: 'Per-agent memory; Workflow uses event payloads'},
     {dimension: 'Persistence', agentflow: 'Built-in InMemoryCheckpointer / PgCheckpointer (Postgres + Redis)', competitor: 'Memory modules; persistence usually wired by the application'},
     {dimension: 'API serving', agentflow: 'Built-in `agentflow api` REST + SSE server', competitor: 'No bundled production server; LlamaCloud is a separate paid product', emphasis: 'agentflow'},
     {dimension: 'TypeScript client', agentflow: 'Typed `@10xscale/agentflow-client`', competitor: 'No first-party TS client'},
-    {dimension: 'RAG integration', agentflow: 'Use any vector store via tools; pair with LlamaIndex retrievers easily', competitor: 'Best-in-class — RAG is the framework\'s core'},
+    {dimension: 'RAG integration', agentflow: 'Use any vector store via tools; pair with LlamaIndex retrievers easily', competitor: 'Best-in-class. RAG is the framework\'s core'},
     {dimension: 'Best for', agentflow: 'Stateful multi-agent products with frontend + backend', competitor: 'Index-heavy apps, single-agent RAG, document chat'},
   ]}
 />
@@ -175,7 +175,7 @@ agentflow init
 agentflow api --host 0.0.0.0 --port 8000
 ```
 
-You get REST + SSE endpoints for invoke, stream, and thread state — all OSS, deployable on your own infrastructure. LlamaCloud is excellent if you want hosted indexing and parsing, but it does not replace the agent server tier you would otherwise build yourself.
+You get REST + SSE endpoints for invoke, stream, and thread state. All OSS, deployable on your own infrastructure. LlamaCloud is excellent if you want hosted indexing and parsing, but it does not replace the agent server tier you would otherwise build yourself.
 
 ## Calling from TypeScript
 
@@ -194,7 +194,7 @@ console.log(result.messages.at(-1)?.text());
 
 Common path:
 
-1. Keep your LlamaIndex indexes and retrievers — wrap them as Python functions and add to a `ToolNode`.
+1. Keep your LlamaIndex indexes and retrievers. Wrap them as Python functions and add to a `ToolNode`.
 2. Replace `FunctionAgent` / `ReActAgent` with an AgentFlow `Agent` plus a `ToolNode` and conditional edges.
 3. Replace `Workflow` events with explicit graph nodes and `add_conditional_edges`.
 4. Move chat memory from `ChatMemoryBuffer` to a checkpointer + `thread_id`.
@@ -215,7 +215,7 @@ For everyone else, the typical pattern is: **LlamaIndex for retrieval, AgentFlow
   },
   {
     q: "Does AgentFlow have its own retrieval / indexing?",
-    a: "AgentFlow does not bundle a retrieval framework. It is provider-agnostic — pair it with LlamaIndex, LangChain retrievers, raw vector clients (Qdrant, Pinecone, pgvector), or your own retriever. See the qdrant-memory tutorial for an example."
+    a: "AgentFlow does not bundle a retrieval framework. It is provider-agnostic. Pair it with LlamaIndex, LangChain retrievers, raw vector clients (Qdrant, Pinecone, pgvector), or your own retriever. See the qdrant-memory tutorial for an example."
   },
   {
     q: "How does memory in AgentFlow compare to LlamaIndex's ChatMemoryBuffer?",

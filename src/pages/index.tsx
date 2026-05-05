@@ -171,8 +171,8 @@ const journey = [
 export default function Home() {
   return (
     <Layout
-      title="AgentFlow — Open-Source Python Framework for Production AI Agents"
-      description="AgentFlow is an open-source Python framework for building production AI agents — multi-agent orchestration, memory, streaming, REST API, and TypeScript client out of the box. A modern alternative to LangGraph, CrewAI, and AutoGen.">
+      title="AgentFlow: Open-Source Python Framework for Production AI Agents"
+      description="An open-source Python framework for building production AI agents. Multi-agent orchestration, memory, streaming, REST API, and TypeScript client included. A modern alternative to LangGraph, CrewAI, and AutoGen.">
       <main>
         {/* HERO */}
         <section className="hero hero--agentflow">
@@ -182,16 +182,16 @@ export default function Home() {
                 <Icon name="Sparkles" size={12} /> &nbsp;v1.0 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.10+
               </p>
               <Heading as="h1" className="heroTitle">
-                Build production-ready AI agents in Python — in minutes, not weeks.
+                Production AI agents in Python. Ship in minutes.
               </Heading>
               <Heading as="h2" className="heroSubheadline">
                 A batteries-included framework for multi-agent orchestration,
-                memory, and streaming APIs — a modern alternative to LangGraph,
+                memory, and streaming APIs. A modern alternative to LangGraph,
                 CrewAI, and AutoGen.
               </Heading>
               <p className="heroSubtitle">
-                Typed graphs, durable threads, a REST + SSE server, and a typed
-                TypeScript client. Ship a working agent fast and scale to
+                Typed graphs, durable threads, a REST and SSE server, and a typed
+                TypeScript client. Ship a working agent fast, then scale to
                 production without rewriting the foundation.
               </p>
               <div className="heroActions">
@@ -250,11 +250,10 @@ export default function Home() {
               <p className="eyebrow">
                 <Icon name="GitCompare" size={12} /> &nbsp;Same agent, every framework
               </p>
-              <Heading as="h2">A familiar mental model — without the glue.</Heading>
+              <Heading as="h2">A familiar mental model, without the glue.</Heading>
               <p>
-                Click through the tabs to see the same ReAct agent in five
-                different frameworks. AgentFlow keeps the graph explicit and
-                ships the production stack with it.
+                The same ReAct agent in five different frameworks. AgentFlow
+                keeps the graph explicit and ships the production stack with it.
               </p>
             </div>
             <CodeSwitcher samples={samples} />
@@ -296,8 +295,8 @@ export default function Home() {
               <Heading as="h2">One project, four packages, zero glue.</Heading>
               <p>
                 The Python runtime, the API server, the TypeScript client, and
-                the hosted playground are designed together. Same types,
-                same threads, same primitives — across the whole stack.
+                the hosted playground are designed together. Same types, same
+                threads, same primitives across the whole stack.
               </p>
             </div>
             <PackageMap />
@@ -334,7 +333,7 @@ export default function Home() {
               <Heading as="h2">Ship a working agent in five minutes.</Heading>
               <p>
                 Install, build a graph, expose an API, connect a TypeScript
-                client. Then keep going — without rewriting anything.
+                client. Then keep going, without rewriting anything.
               </p>
               <div className="heroActions">
                 <Link

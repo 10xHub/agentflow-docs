@@ -1,5 +1,5 @@
 ---
-title: AgentFlow with FastAPI — Embed an Agent in Your App
+title: "AgentFlow with FastAPI: Embed an Agent in Your App"
 description: How to embed an AgentFlow agent in your existing FastAPI service. Mount the runtime, add custom routes, share auth, and stream responses.
 keywords:
   - agentflow fastapi
@@ -21,7 +21,7 @@ sidebar_position: 2
 
 For most production teams, option 1 is the default. Option 2 makes sense when you have shared business logic.
 
-## Option 1 — `agentflow api` as a sidecar
+## Option 1: `agentflow api` as a sidecar
 
 Run AgentFlow as its own process behind the same load balancer:
 
@@ -69,7 +69,7 @@ async def proxy_stream(req: Request):
 
 Add auth, rate limiting, and validation in the proxy layer; let AgentFlow handle agent execution.
 
-## Option 2 — Embed the graph directly
+## Option 2: Embed the graph directly
 
 Import your compiled graph and call it from a FastAPI route:
 
@@ -201,7 +201,7 @@ Default to sidecar; embed when you have a real reason.
 
 ## Further reading
 
-- [Run with API](/docs/beginner/run-with-api) — `agentflow api` standalone
+- [Run with API](/docs/beginner/run-with-api).`agentflow api` standalone
 - [Streaming agent responses with SSE](/blog/streaming-agent-responses-fastapi-sse)
 - [Deployment guide](/docs/how-to/production/deployment)
 - [Get started](/docs/get-started)

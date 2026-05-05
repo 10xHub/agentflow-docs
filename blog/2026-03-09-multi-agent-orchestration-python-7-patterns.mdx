@@ -1,7 +1,7 @@
 ---
 slug: multi-agent-orchestration-python-7-patterns
-title: "Multi-Agent Orchestration in Python — 7 Patterns That Actually Work"
-description: Seven multi-agent orchestration patterns in Python — sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code.
+title: "Multi-Agent Orchestration in Python: 7 Patterns That Actually Work"
+description: Seven multi-agent orchestration patterns in Python. Sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code.
 authors: [team]
 tags: [python, multi-agent, orchestration, patterns, architecture]
 date: 2026-03-09
@@ -16,13 +16,13 @@ image: /img/agentflow-social-card.png
 
 Most "multi-agent" demos collapse into a `for` loop calling two LLMs. That works for a blog post and not much else. Real multi-agent systems need explicit control flow, shared state, and a way to debug when one specialist agent goes off the rails.
 
-Here are seven orchestration patterns we see ship in production Python codebases — and when each one is the right tool.
+Here are seven orchestration patterns we see ship in production Python codebases, and when each one is the right tool.
 
 <!-- truncate -->
 
 <BlogStructuredData
   headline="Multi-Agent Orchestration in Python — 7 Patterns That Actually Work"
-  description="Seven multi-agent orchestration patterns in Python — sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code."
+  description="Seven multi-agent orchestration patterns in Python. Sequential, parallel, router, handoff, supervisor, hierarchical, and human-in-the-loop. With AgentFlow code."
   datePublished="2026-03-09"
   slug="multi-agent-orchestration-python-7-patterns"
   keywords={["multi-agent orchestration", "python multi-agent", "agent patterns", "supervisor agent"]}
@@ -34,7 +34,7 @@ A graph-based runtime models multi-agent flows as **nodes** (agents or tools) co
 
 We use [AgentFlow](/docs/get-started)'s `StateGraph` for the examples; the patterns translate to LangGraph, AutoGen, or CrewAI with minor syntax changes.
 
-## Pattern 1 — Sequential pipeline
+## Pattern 1: Sequential pipeline
 
 The simplest case: agent A → agent B → agent C, in order.
 
@@ -63,7 +63,7 @@ graph.add_edge("EDIT", END)
 
 **Use when:** the order is fixed and each step depends on the previous output. Content pipelines, ETL with LLM enrichment, document synthesis.
 
-## Pattern 2 — Parallel fan-out + fan-in
+## Pattern 2: Parallel fan-out + fan-in
 
 Run multiple specialists in parallel, then combine.
 
@@ -84,7 +84,7 @@ graph.add_edge("MERGE", END)
 
 **Use when:** independent perspectives or independent work units (multi-source research, ensemble reasoning). The fan-in node sees both outputs in shared state.
 
-## Pattern 3 — Router (deterministic dispatch)
+## Pattern 3: Router (deterministic dispatch)
 
 A non-LLM router decides which specialist runs next based on a Python function. Cheap, fast, debuggable.
 
@@ -110,7 +110,7 @@ graph.add_conditional_edges(
 
 **Use when:** the routing decision is deterministic. Saves an LLM call, reduces latency, makes routing trivially testable.
 
-## Pattern 4 — LLM router (semantic dispatch)
+## Pattern 4: LLM router (semantic dispatch)
 
 When the routing logic itself needs natural-language understanding, the router becomes a small LLM that picks a downstream node by name.
 
@@ -131,9 +131,9 @@ router = Agent(
 )
 ```
 
-**Use when:** intent is ambiguous (multilingual, domain-specific phrasing). Use a small fast model to keep cost down — the router does not need to be the same model that handles the response.
+**Use when:** intent is ambiguous (multilingual, domain-specific phrasing). Use a small fast model to keep cost down. The router does not need to be the same model that handles the response.
 
-## Pattern 5 — Handoff (specialists pass control)
+## Pattern 5: Handoff (specialists pass control)
 
 Specialists can hand off to each other directly, not just back to a central router. This gives you free-form conversations between agents while keeping every transition explicit.
 
@@ -150,7 +150,7 @@ writer_tools = ToolNode([
 
 **Use when:** the workflow is collaborative and the path is data-dependent. Critic ↔ author loops, debate, hierarchical task decomposition. See the [handoff how-to](/docs/how-to/python/handoff-between-agents) for the full pattern.
 
-## Pattern 6 — Supervisor (manager + workers)
+## Pattern 6: Supervisor (manager + workers)
 
 A supervisor agent decides who works on what, monitors progress, and stops when the goal is met.
 
@@ -169,7 +169,7 @@ supervisor = Agent(
 
 Set `recursion_limit` in your invoke config to cap runaway loops.
 
-## Pattern 7 — Human-in-the-loop interrupt
+## Pattern 7: Human-in-the-loop interrupt
 
 The graph pauses at a node, surfaces state to a human, and resumes when the human approves or edits.
 
@@ -188,7 +188,7 @@ app.invoke(
 )
 ```
 
-**Use when:** decisions exceed the agent's authority — payments, customer-facing emails, destructive operations. Pair with a checkpointer so the pause is durable across restarts.
+**Use when:** decisions exceed the agent's authority. Payments, customer-facing emails, destructive operations. Pair with a checkpointer so the pause is durable across restarts.
 
 ## How to pick
 
@@ -202,7 +202,7 @@ app.invoke(
 | Variable-count subtasks | Supervisor |
 | Risky or revenue actions | Human-in-the-loop |
 
-You can mix patterns in one graph — a supervisor for top-level dispatch, sequential pipelines per subtask, human-in-the-loop on the final step. The graph syntax is the same.
+You can mix patterns in one graph. A supervisor for top-level dispatch, sequential pipelines per subtask, human-in-the-loop on the final step. The graph syntax is the same.
 
 ## Production gotchas
 
@@ -214,9 +214,9 @@ You can mix patterns in one graph — a supervisor for top-level dispatch, seque
 
 ## Further reading
 
-- [State graph concept](/docs/concepts/state-graph) — how nodes, edges, and routing work
-- [Handoff between agents](/docs/how-to/python/handoff-between-agents) — full handoff pattern
-- [Multi-agent tutorial](/docs/tutorials/from-examples/multiagent) — runnable example
-- [Compare AgentFlow vs LangGraph / CrewAI / AutoGen](/docs/compare) — same patterns in other frameworks
+- [State graph concept](/docs/concepts/state-graph). How nodes, edges, and routing work
+- [Handoff between agents](/docs/how-to/python/handoff-between-agents). Full handoff pattern
+- [Multi-agent tutorial](/docs/tutorials/from-examples/multiagent). Runnable example
+- [Compare AgentFlow vs LangGraph / CrewAI / AutoGen](/docs/compare). Same patterns in other frameworks
 
 Once you have the right pattern, the rest is implementation. [Get started](/docs/get-started) and ship the first version this week.

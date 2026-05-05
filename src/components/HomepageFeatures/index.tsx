@@ -7,19 +7,19 @@ const features = [
     icon: 'Network' as const,
     title: 'Graph orchestration',
     description:
-      'Typed StateGraph with conditional edges, sub-graphs, recursion limits, and explicit routing — agents you can read, log, and replay.',
+      'Typed StateGraph with conditional edges, sub-graphs, recursion limits, and explicit routing. Agents you can read, log, and replay.',
   },
   {
     icon: 'DatabaseZap' as const,
     title: 'Production persistence',
     description:
-      'InMemoryCheckpointer for dev, PgCheckpointer (Postgres + Redis) for prod. Threads survive restarts; resume the same conversation across replicas.',
+      'InMemoryCheckpointer for dev, PgCheckpointer (Postgres + Redis) for prod. Threads survive restarts and resume across replicas.',
   },
   {
     icon: 'Unplug' as const,
     title: 'Backend to frontend',
     description:
-      'Built-in REST + SSE server, typed TypeScript client, and a hosted playground — one project, full stack, no glue.',
+      'Built-in REST and SSE server, a typed TypeScript client, and a hosted playground. One project, full stack, no glue.',
   },
 ];
 
@@ -32,7 +32,7 @@ export default function HomepageFeatures() {
           <Heading as="h2">Everything a serious agent app needs.</Heading>
           <p>
             One Python project. Typed graphs, durable threads, a production
-            server, and a typed TypeScript client — without the glue tax.
+            server, and a typed TypeScript client. Without the glue tax.
           </p>
         </div>
         <div className={styles.grid}>

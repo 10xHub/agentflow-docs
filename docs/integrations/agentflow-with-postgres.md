@@ -1,5 +1,5 @@
 ---
-title: AgentFlow with Postgres — Durable Agent Threads
+title: "AgentFlow with Postgres: Durable Agent Threads"
 description: How to wire AgentFlow's PgCheckpointer to a Postgres + Redis backend for durable agent threads. Setup, schema, sizing, and operational patterns.
 keywords:
   - agentflow postgres
@@ -35,7 +35,7 @@ pip install "agentflow[postgres,redis]"
 
 ## Run Postgres + Redis locally
 
-Quickest path — Docker Compose:
+Quickest path. Docker Compose:
 
 ```yaml
 # docker-compose.yml
@@ -94,15 +94,15 @@ app.invoke(
 )
 ```
 
-Process restarts, replica swaps, blue-green deploys — none of them lose the thread.
+Process restarts, replica swaps, blue-green deploys. None of them lose the thread.
 
 ## Schema
 
 `PgCheckpointer` creates a small set of tables. The shapes (subject to AgentFlow version):
 
-- `agentflow_threads` — one row per thread (thread_id, created_at, updated_at, metadata)
-- `agentflow_checkpoints` — graph state snapshots, one row per node boundary
-- `agentflow_messages` — message history per thread
+- `agentflow_threads`. One row per thread (thread_id, created_at, updated_at, metadata)
+- `agentflow_checkpoints`. Graph state snapshots, one row per node boundary
+- `agentflow_messages`. Message history per thread
 
 For exact DDL and migration guidance, see [the production checkpointing guide](/docs/how-to/production/checkpointing).
 
@@ -160,8 +160,8 @@ Or partition Postgres by tenant if you have huge tenants. For most apps, prefixe
 
 ## Backups and disaster recovery
 
-- **Postgres** — daily automated backups via your managed service. Point-in-time recovery for the last 7 days minimum.
-- **Redis** — ephemeral by design. If Redis goes down, the next reads fall through to Postgres. No backup needed.
+- **Postgres**. Daily automated backups via your managed service. Point-in-time recovery for the last 7 days minimum.
+- **Redis**. Ephemeral by design. If Redis goes down, the next reads fall through to Postgres. No backup needed.
 
 If you lose Postgres, you lose threads. That is what makes it the durable layer.
 
@@ -181,7 +181,7 @@ Or run a periodic vacuum job. For tenant offboarding, delete by `thread_id LIKE 
 1. **Forgot Redis.** `PgCheckpointer` requires it. Without Redis, you'll see lock contention and slow reads.
 2. **Connection pool too small.** Shows up as queue latency under load.
 3. **No `thread_id`** in invoke config. Then surprised when it does not remember. Always pass `thread_id`.
-4. **Long messages bloat rows.** Trim before storing — see [state and messages](/docs/concepts/state-and-messages).
+4. **Long messages bloat rows.** Trim before storing. See [state and messages](/docs/concepts/state-and-messages).
 5. **Treating Redis as the source of truth.** Redis can lose data. Postgres is canonical.
 
 ## Further reading

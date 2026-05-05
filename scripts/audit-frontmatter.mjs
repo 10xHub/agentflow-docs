@@ -42,7 +42,7 @@ function parseFrontMatter(src) {
   if (end === -1) return null;
   const block = src.slice(3, end).trim();
   const fm = {};
-  const lines = block.split('\n');
+  const lines = block.split(/\r?\n/);
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];

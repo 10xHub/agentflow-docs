@@ -1,7 +1,7 @@
 ---
 slug: production-ai-agents-observability-retries
-title: "Production AI Agents — Observability, Retries, and Graceful Shutdown"
-description: How to ship AI agents that survive production — observability, retry policies, idempotency, graceful shutdown, and the operational patterns Python teams ship.
+title: "Production AI Agents: Observability, Retries, and Graceful Shutdown"
+description: How to ship AI agents that survive production. Observability, retry policies, idempotency, graceful shutdown, and the operational patterns Python teams ship.
 authors: [team]
 tags: [production, observability, retries, python, ai-agents, ops]
 date: 2026-04-06
@@ -16,13 +16,13 @@ image: /img/agentflow-social-card.png
 
 The "hello world" agent works on day one. The "we have paying customers and a pager" agent works on day 200. The gap is operational: observability, retries, idempotency, graceful shutdown.
 
-These are the patterns we see in production Python agent codebases — and the failure modes they prevent.
+These are the patterns we see in production Python agent codebases, and the failure modes they prevent.
 
 <!-- truncate -->
 
 <BlogStructuredData
-  headline="Production AI Agents — Observability, Retries, and Graceful Shutdown"
-  description="How to ship AI agents that survive production — observability, retry policies, idempotency, graceful shutdown, and the operational patterns Python teams ship."
+  headline="Production AI Agents. Observability, Retries, and Graceful Shutdown"
+  description="How to ship AI agents that survive production. Observability, retry policies, idempotency, graceful shutdown, and the operational patterns Python teams ship."
   datePublished="2026-04-06"
   slug="production-ai-agents-observability-retries"
   keywords={["production agents", "observability", "retries", "graceful shutdown"]}
@@ -65,7 +65,7 @@ def log_node(state, node):
     )
 ```
 
-JSON logs go to your platform of choice (Loki, Datadog, OpenSearch). Avoid pretty-printed logs in production — they cost CPU and lose searchability.
+JSON logs go to your platform of choice (Loki, Datadog, OpenSearch). Avoid pretty-printed logs in production. They cost CPU and lose searchability.
 
 ### Tracing with OpenTelemetry
 
@@ -104,13 +104,13 @@ logger.info("agent.cost",
 )
 ```
 
-A daily SQL query against this gives you cost per user, per feature, per model — invaluable when finance asks why the bill jumped.
+A daily SQL query against this gives you cost per user, per feature, per model. Invaluable when finance asks why the bill jumped.
 
 ## Retries: where to put them
 
 LLM calls and tool calls fail. There are three failure layers, each with different retry rules:
 
-### Layer 1 — provider transient errors
+### Layer 1: provider transient errors
 
 Rate limits (429), gateway timeouts (502/504), connection resets. Always retry with exponential backoff:
 
@@ -129,7 +129,7 @@ def call_llm(...):
 
 Most provider SDKs (OpenAI, Anthropic, Google) have built-in retry; configure it once.
 
-### Layer 2 — tool failures
+### Layer 2: tool failures
 
 Your tool calls a real API. The API returns 500. What do you do?
 
@@ -148,7 +148,7 @@ def get_weather(location: str) -> str:
 
 The agent, seeing the error, can retry the tool, ask the user, or move on. This is far more robust than swallowing errors.
 
-### Layer 3 — graph-level retries
+### Layer 3: graph-level retries
 
 For a critical action (a payment, an email send), wrap the node in an idempotency-aware retry:
 
@@ -164,7 +164,7 @@ Every external write needs an idempotency key. Without it, retries become double
 
 Two rules:
 
-1. **Reads are free to retry.** Search, look-up, fetch — retry as much as you want.
+1. **Reads are free to retry.** Search, look-up, fetch. Retry as much as you want.
 2. **Writes need an idempotency key.** Charges, emails, ticket creation, file uploads.
 
 The key is usually `thread_id + node_name + attempt_count`. Provide it to the upstream API; if the API does not support keys, use a small dedup table:
@@ -177,7 +177,7 @@ CREATE TABLE agent_idempotency (
 );
 ```
 
-`INSERT ... ON CONFLICT DO NOTHING RETURNING result` — if the key existed, return the previous result without re-doing the action.
+`INSERT ... ON CONFLICT DO NOTHING RETURNING result`. If the key existed, return the previous result without re-doing the action.
 
 ## Graceful shutdown
 
@@ -188,7 +188,7 @@ When your container gets a SIGTERM (deploy, autoscale-down, spot reclaim), you h
 3. **Close the database pool.**
 4. **Flush logs and traces.**
 
-AgentFlow's CLI handles 1, 3, and 4. For 2 — letting in-flight runs finish — the checkpointer is your friend: even if the request is killed, the graph state is durable, and a new replica can resume the thread.
+AgentFlow's CLI handles 1, 3, and 4. For 2. Letting in-flight runs finish. The checkpointer is your friend: even if the request is killed, the graph state is durable, and a new replica can resume the thread.
 
 The pattern:
 
@@ -213,19 +213,19 @@ For a runnable example, see the [graceful shutdown tutorial](/docs/tutorials/fro
 
 For an agent service, the useful SLOs are:
 
-- **TTFB (time-to-first-byte) p95 < 1.5 s** — first token latency the user feels
-- **Stream-success rate ≥ 99.5%** — streams that complete without error
-- **Tool-error rate < 2%** — tool failures bubbling up to user
-- **Cost per request p95 < $X** — pick a number for your model mix
+- **TTFB (time-to-first-byte) p95 < 1.5 s**. First token latency the user feels
+- **Stream-success rate ≥ 99.5%**. Streams that complete without error
+- **Tool-error rate < 2%**. Tool failures bubbling up to user
+- **Cost per request p95 < $X**. Pick a number for your model mix
 
-Latency to *completion* is less useful for streaming agents — users care about first token, not total time.
+Latency to *completion* is less useful for streaming agents. Users care about first token, not total time.
 
 ## Failure modes you will hit
 
 1. **Recursion runaway.** Always set `recursion_limit` (10–25 for most workflows).
 2. **Token blowout.** A long thread + verbose tool output can blow past the model's context. Trim aggressively.
 3. **Provider outage.** Have a fallback model; provider abstractions make this a config change.
-4. **Vector store unavailable.** If long-term memory is down, degrade gracefully — note in the logs and continue without it.
+4. **Vector store unavailable.** If long-term memory is down, degrade gracefully. Note in the logs and continue without it.
 5. **Database lock contention.** `PgCheckpointer` writes per node; under load, you need a connection pool sized appropriately.
 
 ## A quick checklist before you go live
@@ -251,4 +251,4 @@ This is the boring stuff that keeps the pager quiet.
 - [Deployment guide](/docs/how-to/production/deployment)
 - [Graceful shutdown example](/docs/tutorials/from-examples/graceful-shutdown)
 
-If you are starting from a prototype and shipping to prod, [Get started](/docs/get-started) — the runtime gives you most of this checklist for free.
+If you are starting from a prototype and shipping to prod, [Get started](/docs/get-started). The runtime gives you most of this checklist for free.

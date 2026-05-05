@@ -1,7 +1,7 @@
 ---
 slug: langgraph-to-agentflow-migration
-title: "From LangGraph to AgentFlow — A Complete Migration Walkthrough"
-description: A step-by-step LangGraph to AgentFlow migration walkthrough — graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code.
+title: "From LangGraph to AgentFlow: A Complete Migration Walkthrough"
+description: A step-by-step LangGraph to AgentFlow migration walkthrough. Graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code.
 authors: [team]
 tags: [langgraph, migration, agentflow, python, walkthrough]
 date: 2026-04-27
@@ -14,15 +14,15 @@ keywords:
 image: /img/agentflow-social-card.png
 ---
 
-If you have a LangGraph agent in production and want to move to AgentFlow, this is the playbook. The graph mental model is the same, so the port is mostly mechanical — most teams complete it in an afternoon.
+If you have a LangGraph agent in production and want to move to AgentFlow, this is the playbook. The graph mental model is the same, so the port is mostly mechanical. Most teams complete it in an afternoon.
 
 We will walk a real, two-agent example end-to-end: imports, state, nodes, edges, checkpointing, API serving, and the TypeScript client.
 
 <!-- truncate -->
 
 <BlogStructuredData
-  headline="From LangGraph to AgentFlow — A Complete Migration Walkthrough"
-  description="A step-by-step LangGraph to AgentFlow migration walkthrough — graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code."
+  headline="From LangGraph to AgentFlow. A Complete Migration Walkthrough"
+  description="A step-by-step LangGraph to AgentFlow migration walkthrough. Graph state, nodes, edges, checkpointers, API serving, and the TypeScript client. With diff-style code."
   datePublished="2026-04-27"
   slug="langgraph-to-agentflow-migration"
   keywords={["langgraph migration", "agentflow", "port langgraph"]}
@@ -47,7 +47,7 @@ The shape is identical. The names and types are different.
 
 ## The example: ReAct agent + tool
 
-Our starting point — a LangGraph ReAct agent that calls a `get_weather` tool.
+Our starting point. A LangGraph ReAct agent that calls a `get_weather` tool.
 
 ### Before (LangGraph)
 
@@ -166,7 +166,7 @@ Wrap them in `ToolNode([fn1, fn2, ...])`.
 
 ### 3. Replace `create_react_agent` with explicit graph
 
-This is the biggest mechanical change. LangGraph's prebuilt hides the graph; AgentFlow asks you to define it. Use the snippet above as the template — it is the same for any ReAct agent.
+This is the biggest mechanical change. LangGraph's prebuilt hides the graph; AgentFlow asks you to define it. Use the snippet above as the template. It is the same for any ReAct agent.
 
 If you have many ReAct agents, factor the graph construction into a helper:
 
@@ -293,7 +293,7 @@ See the [handoff tutorial](/docs/how-to/python/handoff-between-agents) for the f
 You do not have to rewrite:
 
 - **Tool implementations.** Plain Python functions move over as-is.
-- **External integrations.** Vector stores, databases, custom retrievers — all unchanged.
+- **External integrations.** Vector stores, databases, custom retrievers. All unchanged.
 - **System prompts.** Copy them across.
 - **Evals and tests.** Most of them only care about the input/output of the agent, which stays the same.
 
@@ -303,11 +303,11 @@ What changes is the orchestration layer in the middle.
 
 Once the port is done, you usually want to:
 
-1. **Add streaming** — use `app.stream()` / `app.astream()` and the SSE endpoint
-2. **Move to `PgCheckpointer`** — production durability
-3. **Add the TypeScript client** — kill the hand-rolled fetcher
-4. **Set `recursion_limit`** — explicitly cap loops
-5. **Add OpenTelemetry traces** — see [production observability](/blog/production-ai-agents-observability-retries)
+1. **Add streaming**. Use `app.stream()` / `app.astream()` and the SSE endpoint
+2. **Move to `PgCheckpointer`**. Production durability
+3. **Add the TypeScript client**. Kill the hand-rolled fetcher
+4. **Set `recursion_limit`**. Explicitly cap loops
+5. **Add OpenTelemetry traces**. See [production observability](/blog/production-ai-agents-observability-retries)
 
 These are all optional but each saves real time downstream.
 
@@ -321,9 +321,9 @@ These are all optional but each saves real time downstream.
 
 ## Further reading
 
-- [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph) — head-to-head
+- [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph). Head-to-head
 - [State graph concept](/docs/concepts/state-graph)
-- [Add memory](/docs/beginner/add-memory) — checkpointer setup
+- [Add memory](/docs/beginner/add-memory). Checkpointer setup
 - [Handoff between agents](/docs/how-to/python/handoff-between-agents)
 - [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
 

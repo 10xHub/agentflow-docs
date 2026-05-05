@@ -1,5 +1,5 @@
 ---
-title: AgentFlow vs CrewAI — Graphs vs Role-Based Crews
+title: "AgentFlow vs CrewAI: Graphs vs Role-Based Crews"
 description: AgentFlow vs CrewAI compared. See where typed graphs, persistent threads, and a built-in REST API beat role-based crews for production multi-agent Python.
 keywords:
   - crewai alternative
@@ -18,11 +18,11 @@ sidebar_position: 3
   tagline="Typed graphs and durable threads instead of declarative role-based crews."
 />
 
-**CrewAI** popularized the *role-based crew* pattern — declare agents with names and goals, give each a tool kit, and let a process orchestrate them. **AgentFlow** takes a different stance: model the workflow as a typed graph with explicit state, conditional edges, and a runtime built for production deployment.
+**CrewAI** popularized the *role-based crew* pattern. Declare agents with names and goals, give each a tool kit, and let a process orchestrate them. **AgentFlow** takes a different stance: model the workflow as a typed graph with explicit state, conditional edges, and a runtime built for production deployment.
 
 If you started with CrewAI for the prototype-friendly DSL but hit limits on debuggability, persistence, or API serving, this page shows what AgentFlow gives you and how the migration looks.
 
-## TL;DR — AgentFlow vs CrewAI
+## TL;DR: AgentFlow vs CrewAI
 
 <CompareTable
   competitorName="CrewAI"
@@ -48,7 +48,7 @@ If you started with CrewAI for the prototype-friendly DSL but hit limits on debu
 
 ## Same agent, both frameworks
 
-A small **research-then-write** flow with two agents — first in CrewAI, then in AgentFlow.
+A small **research-then-write** flow with two agents. First in CrewAI, then in AgentFlow.
 
 ### CrewAI
 
@@ -131,7 +131,7 @@ result = app.invoke(
 print(result["messages"][-1].text())
 ```
 
-The shape is similar — two specialists, a deterministic order — but in AgentFlow the orchestration is a graph you can extend with conditional edges, retries, or human-in-the-loop interrupts later.
+The shape is similar. Two specialists, a deterministic order, but in AgentFlow the orchestration is a graph you can extend with conditional edges, retries, or human-in-the-loop interrupts later.
 
 ## Hierarchical / delegated patterns
 
@@ -196,7 +196,7 @@ agentflow api --host 0.0.0.0 --port 8000
 {"agent": "graph.research_write:app"}
 ```
 
-You get `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), thread state endpoints, and graceful shutdown — all OSS, all yours to deploy in Docker, Kubernetes, or a single VM.
+You get `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), thread state endpoints, and graceful shutdown. All OSS, all yours to deploy in Docker, Kubernetes, or a single VM.
 
 ## Migrating from CrewAI to AgentFlow
 
@@ -213,7 +213,7 @@ A typical 3-agent crew migrates in an afternoon.
 ## When CrewAI is still the right pick
 
 - **Quick role-based prototypes.** If you want to spin up "Researcher → Writer → Editor" in 20 lines and ship it as a CLI script, CrewAI's DSL is hard to beat.
-- **You want managed infrastructure.** CrewAI Enterprise offers hosted execution and observability dashboards — useful if you do not want to run your own service.
+- **You want managed infrastructure.** CrewAI Enterprise offers hosted execution and observability dashboards. Useful if you do not want to run your own service.
 - **Non-graph mental model.** Some teams find roles + tasks more natural than nodes + edges. That is a real preference.
 
 For everyone else, especially teams shipping a product surface (web app, mobile app, internal tool) on top of agents, AgentFlow's runtime + API + client trio is a closer fit.
@@ -221,7 +221,7 @@ For everyone else, especially teams shipping a product surface (web app, mobile 
 <FAQ items={[
   {
     q: "Can I run CrewAI tools inside an AgentFlow graph?",
-    a: "Yes — any callable that can be wrapped as a Python tool will work inside ToolNode. You typically rewrite the tool definition rather than re-using CrewAI's tool decorators directly."
+    a: "Yes. Any callable that can be wrapped as a Python tool will work inside ToolNode. You typically rewrite the tool definition rather than re-using CrewAI's tool decorators directly."
   },
   {
     q: "Does AgentFlow support hierarchical agents like CrewAI's Process.hierarchical?",
@@ -229,11 +229,11 @@ For everyone else, especially teams shipping a product surface (web app, mobile 
   },
   {
     q: "How does AgentFlow handle long-term memory compared to CrewAI?",
-    a: "AgentFlow's checkpointer persists the full graph state per thread_id, so chat history and intermediate state are durable. For semantic recall (retrieve relevant past info), pair the checkpointer with a vector store accessed through a tool — the same pattern CrewAI's long-term memory uses internally."
+    a: "AgentFlow's checkpointer persists the full graph state per thread_id, so chat history and intermediate state are durable. For semantic recall (retrieve relevant past info), pair the checkpointer with a vector store accessed through a tool. The same pattern CrewAI's long-term memory uses internally."
   },
   {
     q: "Is AgentFlow good for non-chat workflows like research pipelines?",
-    a: "Yes. The graph runtime does not assume a chat surface — it works for batch pipelines, scheduled jobs, and event-triggered flows. You can run a compiled graph from any Python entry point, not just the API."
+    a: "Yes. The graph runtime does not assume a chat surface. It works for batch pipelines, scheduled jobs, and event-triggered flows. You can run a compiled graph from any Python entry point, not just the API."
   },
   {
     q: "Is AgentFlow free for commercial use?",

@@ -1,5 +1,5 @@
 ---
-title: AgentFlow Integrations — FastAPI, Next.js, Postgres
+title: "AgentFlow Integrations: FastAPI, Next.js, Postgres"
 description: AgentFlow integrations with FastAPI, Next.js, and Postgres. Reference patterns for embedding agents in your existing stack with minimal glue.
 keywords:
   - agentflow integrations
@@ -16,6 +16,6 @@ Reference patterns for plugging AgentFlow into the stacks teams already run.
 
 ## Pick an integration
 
-- [**AgentFlow with FastAPI**](/docs/integrations/agentflow-with-fastapi) — embed an AgentFlow graph in your existing FastAPI service
-- [**AgentFlow with Next.js**](/docs/integrations/agentflow-with-nextjs) — call your agent from a Next.js frontend with streaming
-- [**AgentFlow with Postgres**](/docs/integrations/agentflow-with-postgres) — durable threads with `PgCheckpointer`
+- [**AgentFlow with FastAPI**](/docs/integrations/agentflow-with-fastapi). Embed an AgentFlow graph in your existing FastAPI service
+- [**AgentFlow with Next.js**](/docs/integrations/agentflow-with-nextjs). Call your agent from a Next.js frontend with streaming
+- [**AgentFlow with Postgres**](/docs/integrations/agentflow-with-postgres). Durable threads with `PgCheckpointer`

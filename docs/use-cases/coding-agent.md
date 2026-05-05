@@ -1,6 +1,6 @@
 ---
 title: Build a Coding AI Agent in Python
-description: How to build a coding AI agent in Python — code generation, file editing, test running, and the real-world tools production coding agents need.
+description: How to build a coding AI agent in Python. Code generation, file editing, test running, and the real-world tools production coding agents need.
 keywords:
   - coding ai agent
   - ai code generation
@@ -125,10 +125,10 @@ The system prompt is doing real work: it enforces the plan-first pattern and the
 
 ## Variants
 
-- **Code review agent** — read PR diff + tests, comment with suggestions
-- **Migration agent** — apply mechanical refactors across many files
-- **Bug-fix agent** — given a failing test, find and fix the cause
-- **Documentation agent** — read code, generate or update docs
+- **Code review agent**. Read PR diff + tests, comment with suggestions
+- **Migration agent**. Apply mechanical refactors across many files
+- **Bug-fix agent**. Given a failing test, find and fix the cause
+- **Documentation agent**. Read code, generate or update docs
 
 Same graph shape; different system prompts and tool sets.
 
@@ -150,7 +150,7 @@ Same graph shape; different system prompts and tool sets.
 
 ## Further reading
 
-- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis) — tool design patterns
-- [Production AI agents](/blog/production-ai-agents-observability-retries) — observability and retries
+- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis). Tool design patterns
+- [Production AI agents](/blog/production-ai-agents-observability-retries). Observability and retries
 - [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
 - [Get started](/docs/get-started)

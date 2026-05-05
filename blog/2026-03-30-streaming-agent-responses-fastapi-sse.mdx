@@ -1,6 +1,6 @@
 ---
 slug: streaming-agent-responses-fastapi-sse
-title: "Streaming Agent Responses with FastAPI and SSE — A Practical Guide"
+title: "Streaming Agent Responses with FastAPI and SSE: A Practical Guide"
 description: How to stream AI agent responses to a frontend over Server-Sent Events from a Python FastAPI backend. Handles tool calls, errors, and reconnection.
 authors: [team]
 tags: [streaming, fastapi, sse, python, api, frontend]
@@ -14,14 +14,14 @@ keywords:
 image: /img/agentflow-social-card.png
 ---
 
-A blocking 30-second response is not a product. The first token in 200ms is. Server-Sent Events (SSE) is still the simplest way to stream agent output from a Python backend to a browser — and it composes well with auth, reconnection, and tool calls.
+A blocking 30-second response is not a product. The first token in 200ms is. Server-Sent Events (SSE) is still the simplest way to stream agent output from a Python backend to a browser, and it composes well with auth, reconnection, and tool calls.
 
 Here is the production-shaped pattern.
 
 <!-- truncate -->
 
 <BlogStructuredData
-  headline="Streaming Agent Responses with FastAPI and SSE — A Practical Guide"
+  headline="Streaming Agent Responses with FastAPI and SSE. A Practical Guide"
   description="How to stream AI agent responses to a frontend over Server-Sent Events from a Python FastAPI backend. Handles tool calls, errors, and reconnection."
   datePublished="2026-03-30"
   slug="streaming-agent-responses-fastapi-sse"
@@ -32,10 +32,10 @@ Here is the production-shaped pattern.
 
 For agent responses, SSE wins on the things that matter:
 
-- **HTTP/2 friendly** — works through every proxy and CDN
-- **Automatic reconnect** — browser does it for you
-- **One-way** — exactly the data shape you need
-- **Auth is just a header** — no special handshake
+- **HTTP/2 friendly**. Works through every proxy and CDN
+- **Automatic reconnect**. Browser does it for you
+- **One-way**. Exactly the data shape you need
+- **Auth is just a header**. No special handshake
 
 WebSockets win for full-duplex, low-latency interaction (collaborative editing, multiplayer). For chat / agent streaming, SSE is simpler and more reliable.
 
@@ -65,7 +65,7 @@ data: {"thread_id": "user-1", "tokens": 124}
 
 Your frontend parses each event and updates the UI accordingly: append text on `message_chunk`, show a "calling tool..." indicator on `tool_start`, hide it on `tool_end`.
 
-## Server side — AgentFlow's built-in API
+## Server side: AgentFlow's built-in API
 
 The fastest path: use `agentflow api`, which already serves SSE-correctly.
 
@@ -78,7 +78,7 @@ agentflow api --host 0.0.0.0 --port 8000
 
 If you need custom routing, auth, or pre-processing, mount AgentFlow inside your existing FastAPI app instead.
 
-## Server side — custom FastAPI integration
+## Server side: custom FastAPI integration
 
 Embedding AgentFlow's stream in a FastAPI route:
 
@@ -129,11 +129,11 @@ async def stream(body: Body):
 Notes:
 
 - **`X-Accel-Buffering: no`** prevents nginx from holding events in a buffer
-- **Trailing `\n\n`** ends an SSE event — required by the spec
+- **Trailing `\n\n`** ends an SSE event. Required by the spec
 - **`recursion_limit`** caps runaway loops at the API boundary
 - **Catch and emit `error` events** rather than crashing mid-stream
 
-## Frontend — vanilla browser
+## Frontend: vanilla browser
 
 Modern browsers ship `EventSource`, but it does not support custom headers (auth) for non-GET requests. For POST + auth, use `fetch` with a manual SSE parser or [`@microsoft/fetch-event-source`](https://www.npmjs.com/package/@microsoft/fetch-event-source).
 
@@ -148,7 +148,7 @@ es.addEventListener("message_chunk", (e) => {
 es.addEventListener("done", () => es.close());
 ```
 
-## Frontend — TypeScript with auth
+## Frontend: TypeScript with auth
 
 Use AgentFlow's typed client. It handles SSE parsing, reconnection, and Auth headers:
 
@@ -198,14 +198,14 @@ If the client is slow (mobile, bad network), and the agent is fast, the buffer f
 - **Drop intermediate token chunks** when the client is behind (acceptable for chat)
 - **Batch tokens** into 50–100ms windows (smooths jitter, costs ~1 frame of latency)
 
-AgentFlow's `ResponseGranularity` setting controls this — `LOW` for individual tokens, higher for batched chunks.
+AgentFlow's `ResponseGranularity` setting controls this.`LOW` for individual tokens, higher for batched chunks.
 
 ## Auth and rate limits
 
 A few rules of thumb:
 
 1. **Authenticate the request, not the SSE connection.** Pass a JWT in the body of the initial POST; the SSE response is implicitly authenticated.
-2. **Rate limit by user**, not by IP — agent users sit behind shared NATs.
+2. **Rate limit by user**, not by IP. Agent users sit behind shared NATs.
 3. **Cap `recursion_limit`** server-side. Do not trust the client to send a sane value.
 4. **Add a per-stream timeout** (60–180 s). Long stalls usually mean the model is stuck; better to fail than hang.
 
@@ -223,6 +223,6 @@ See [Auth and authorization](/docs/how-to/production/auth-and-authorization) for
 - [Streaming concept](/docs/concepts/streaming)
 - [Stream-sync tutorial](/docs/tutorials/from-examples/stream-sync)
 - [Production deployment](/docs/how-to/production/deployment)
-- [Stop a stream](/docs/tutorials/from-examples/stop-stream) — handling client cancellation
+- [Stop a stream](/docs/tutorials/from-examples/stop-stream). Handling client cancellation
 
 When you are ready, [Get started](/docs/get-started). The default `agentflow api` command serves correctly-formatted SSE out of the box.

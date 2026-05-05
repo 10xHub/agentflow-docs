@@ -1,7 +1,7 @@
 ---
 slug: ai-agent-memory-checkpointing-python
-title: "AI Agent Memory in Python — Short-Term, Long-Term, and Checkpointing"
-description: How to give a Python AI agent durable memory — short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code.
+title: "AI Agent Memory in Python: Short-Term, Long-Term, and Checkpointing"
+description: How to give a Python AI agent durable memory. Short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code.
 authors: [team]
 tags: [memory, checkpointing, python, ai-agents, persistence]
 date: 2026-03-23
@@ -21,8 +21,8 @@ Here is the practical taxonomy and how to wire each one in Python.
 <!-- truncate -->
 
 <BlogStructuredData
-  headline="AI Agent Memory in Python — Short-Term, Long-Term, and Checkpointing"
-  description="How to give a Python AI agent durable memory — short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code."
+  headline="AI Agent Memory in Python. Short-Term, Long-Term, and Checkpointing"
+  description="How to give a Python AI agent durable memory. Short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code."
   datePublished="2026-03-23"
   slug="ai-agent-memory-checkpointing-python"
   keywords={["ai agent memory", "checkpointing", "vector memory", "python agents"]}
@@ -38,7 +38,7 @@ Here is the practical taxonomy and how to wire each one in Python.
 
 Most teams need all three. Most "memory" libraries solve one and leave you to assemble the rest.
 
-## Short-term memory — threads and checkpointers
+## Short-term memory: threads and checkpointers
 
 A thread is a single conversation. AgentFlow snapshots the entire graph state after every node, keyed by `thread_id`:
 
@@ -74,7 +74,7 @@ Key properties:
 
 - **No code changes** when you swap the storage backend
 - **Same `thread_id`** = same conversation context
-- **Automatic** — you do not assemble the prompt yourself
+- **Automatic**. You do not assemble the prompt yourself
 
 ### Production storage
 
@@ -96,8 +96,8 @@ Postgres holds the durable history; Redis is used for fast hot-path access. See 
 
 Threads grow. At ~100 turns, you start paying for tokens you do not need. Two common patterns:
 
-1. **Sliding window** — keep last N turns, drop the rest
-2. **Summary head** — every 20 turns, replace the oldest 15 with a summary message
+1. **Sliding window**. Keep last N turns, drop the rest
+2. **Summary head**. Every 20 turns, replace the oldest 15 with a summary message
 
 ```python
 agent = Agent(
@@ -109,7 +109,7 @@ agent = Agent(
 
 For custom strategies, see [State and messages](/docs/concepts/state-and-messages).
 
-## Long-term memory — semantic recall
+## Long-term memory: semantic recall
 
 Threads cover "what did this user say earlier?" They do not cover "what did *any* user say about pricing in the last 90 days?" or "what did this user prefer 6 months ago?"
 
@@ -140,7 +140,7 @@ agent = Agent(
 )
 ```
 
-The agent decides when to recall and when to write. This is materially different from naively dumping the entire vector index into context — it scales and stays auditable.
+The agent decides when to recall and when to write. This is materially different from naively dumping the entire vector index into context. It scales and stays auditable.
 
 For a runnable example with Qdrant, see [the qdrant-memory tutorial](/docs/tutorials/from-examples/qdrant-memory).
 
@@ -149,12 +149,12 @@ For a runnable example with Qdrant, see [the qdrant-memory tutorial](/docs/tutor
 A useful default:
 
 - **Always query** at the start of a conversation if the user is identified
-- **Write** when the agent encounters a stable fact (preference, identity, decision) — not raw chat
+- **Write** when the agent encounters a stable fact (preference, identity, decision). Not raw chat
 - **Tag aggressively** so retrieval can filter by user, tenant, or topic
 
 This keeps the long-term store as a curated knowledge base, not a chat dump.
 
-## Resumable runs — checkpointing for interrupts and replays
+## Resumable runs: checkpointing for interrupts and replays
 
 The same checkpointer that powers thread history also powers two other features:
 
@@ -178,11 +178,11 @@ app.invoke(
 
 ### Time travel / replays
 
-Because every node-boundary state is snapshotted, you can replay a thread from any prior state — useful for debugging "why did the agent choose tool X here?" without rerunning the whole conversation.
+Because every node-boundary state is snapshotted, you can replay a thread from any prior state. Useful for debugging "why did the agent choose tool X here?" without rerunning the whole conversation.
 
 See the [interrupts-and-resume tutorial](/docs/concepts/checkpointing-and-threads) for the details.
 
-## Putting it together — a memory architecture
+## Putting it together: a memory architecture
 
 A production agent typically wires:
 
@@ -215,10 +215,10 @@ These are budgets, not guarantees. The checkpointer is on the hot path; the vect
 
 ## Further reading
 
-- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) — concept guide
-- [Memory and store](/docs/concepts/memory-and-store) — full memory architecture
-- [Add memory tutorial](/docs/beginner/add-memory) — beginner walkthrough
-- [Qdrant memory example](/docs/tutorials/from-examples/qdrant-memory) — long-term recall
-- [Production checkpointing](/docs/how-to/production/checkpointing) — Postgres + Redis tuning
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads). Concept guide
+- [Memory and store](/docs/concepts/memory-and-store). Full memory architecture
+- [Add memory tutorial](/docs/beginner/add-memory). Beginner walkthrough
+- [Qdrant memory example](/docs/tutorials/from-examples/qdrant-memory). Long-term recall
+- [Production checkpointing](/docs/how-to/production/checkpointing). Postgres + Redis tuning
 
 When you are ready, [Get started](/docs/get-started) and you will have working short-term memory in under five minutes.

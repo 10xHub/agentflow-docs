@@ -1,6 +1,6 @@
 ---
 title: Build a Research AI Agent in Python
-description: How to build a research AI agent in Python — web search, source verification, synthesis, and citations. With AgentFlow code and production guardrails.
+description: How to build a research AI agent in Python. Web search, source verification, synthesis, and citations. With AgentFlow code and production guardrails.
 keywords:
   - research ai agent
   - ai research assistant
@@ -12,7 +12,7 @@ sidebar_position: 5
 
 # Build a research AI agent in Python
 
-A research agent answers questions that need *external information* — current events, technical references, deep web searches. The hard part is not the search; it is getting the agent to cite sources and avoid making things up.
+A research agent answers questions that need *external information*. Current events, technical references, deep web searches. The hard part is not the search; it is getting the agent to cite sources and avoid making things up.
 
 Here is the production architecture.
 
@@ -44,7 +44,7 @@ This is an agent that loops on tool calls until satisfied, then runs a determini
 
 - **Subquery decomposition** beats one giant search. "Compare X and Y on dimension Z" → three searches.
 - **Forced citations** are the only reliable way to prevent hallucinated facts. The agent must include `[source-N]` markers; the validator strips out claims that don't have them.
-- **Validator separation.** Citation enforcement is deterministic — a regex, not an LLM call.
+- **Validator separation.** Citation enforcement is deterministic. A regex, not an LLM call.
 
 ## The tools
 
@@ -79,7 +79,7 @@ def search_internal_docs(query: str) -> str:
 
 Notes:
 
-- **Source IDs are part of the tool output.** `[source-1]`, `[doc-42]` — these are what the agent cites in the final answer.
+- **Source IDs are part of the tool output.** `[source-1]`, `[doc-42]`. These are what the agent cites in the final answer.
 - **Caps everywhere.** A 1 MB scraped page eats your context.
 - **`fetch_url` only after `web_search`.** Direct URL fetches without prior search are an attack vector.
 
@@ -131,10 +131,10 @@ If the answer fails validation, you can either retry the agent with feedback or 
 
 ## Variants
 
-- **Competitive research** — research a list of competitors against a fixed dimensions matrix
-- **Due diligence** — research a company across financials, news, and reviews
-- **Academic research** — search arXiv + Semantic Scholar + Google Scholar with citation graphs
-- **News briefing** — daily digest with citations
+- **Competitive research**. Research a list of competitors against a fixed dimensions matrix
+- **Due diligence**. Research a company across financials, news, and reviews
+- **Academic research**. Search arXiv + Semantic Scholar + Google Scholar with citation graphs
+- **News briefing**. Daily digest with citations
 
 Same shape; different search tools and validators.
 
@@ -158,6 +158,6 @@ Same shape; different search tools and validators.
 ## Further reading
 
 - [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
-- [AI agent memory](/blog/ai-agent-memory-checkpointing-python) — long-term recall for repeat research
+- [AI agent memory](/blog/ai-agent-memory-checkpointing-python). Long-term recall for repeat research
 - [ReAct agent with real APIs](/blog/react-agent-tools-real-apis)
 - [Get started](/docs/get-started)
