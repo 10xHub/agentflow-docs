@@ -53,6 +53,7 @@ const sidebars: SidebarsConfig = {
           items: [
             "how-to/python/use-context-manager",
             "how-to/python/protect-against-prompt-injection",
+            "how-to/python/emit-tool-progress",
             "how-to/python/run-background-tasks",
             "how-to/python/configure-id-generator",
             "how-to/python/handoff-between-agents",
@@ -296,6 +297,7 @@ const sidebars: SidebarsConfig = {
             "reference/python/state",
             "reference/python/messages",
             "reference/python/tools",
+            "reference/python/stream-emitter",
             "reference/python/checkpointers",
             "reference/python/memory-stores",
             "reference/python/media",
