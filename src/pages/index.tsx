@@ -8,7 +8,7 @@ import LogoWall from '../components/LogoWall';
 import CodeSwitcher, {type CodeSample} from '../components/CodeSwitcher';
 import PackageMap from '../components/PackageMap';
 import Icon from '../components/Icon';
-import {siGithub} from 'simple-icons';
+import {brandIcons} from '../lib/brand-icons';
 import {trackEvent} from '../lib/analytics';
 
 const docTracks = [
@@ -212,7 +212,7 @@ export default function Home() {
                     height={16}
                     aria-hidden="true"
                     style={{fill: 'currentColor'}}>
-                    <path d={siGithub.path} />
+                    <path d={brandIcons.github.path} />
                   </svg>
                   &nbsp; GitHub
                 </Link>
