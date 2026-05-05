@@ -162,7 +162,7 @@ When you call `client.invoke()` after registering tools and calling `setup()`, t
 
 You never have to write this loop yourself when using `client.invoke()`. It is handled transparently.
 
-For `client.stream()`, tool call handling is **not** automatic — you must detect `RemoteToolCallBlock` chunks and send results manually if needed.
+For `client.stream()`, the SDK also checks streamed messages for remote tool calls after each streamed graph iteration. It yields chunks to your UI as they arrive, executes registered remote tool handlers when needed, sends tool results back, and continues until no remote tool calls remain or `recursion_limit` is reached.
 
 ---
 
