@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/agentflow.svg)](https://pypi.org/project/agentflow/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Docs](https://img.shields.io/badge/docs-agentflow.10xscale.ai-blue)](https://agentflow.10xscale.ai)
-[![GitHub Stars](https://img.shields.io/github/stars/10xscale/agentflow?style=social)](https://github.com/10xscale/agentflow)
+[![GitHub Stars](https://img.shields.io/github/stars/10xHub/Agentflow?style=social)](https://github.com/10xHub/Agentflow)
 
 **AgentFlow** is a batteries-included framework for building AI agents in Python. It gives you a typed `StateGraph`, durable threads with `PgCheckpointer`, a REST + SSE API, and a typed TypeScript client — so you can ship a working agent fast and scale to production without rewriting the foundation.
 
@@ -116,8 +116,8 @@ Full guide: [agentflow.10xscale.ai/docs/get-started](https://agentflow.10xscale.
 
 ## 🤝 Community
 
-- [Discussions](https://github.com/10xscale/agentflow/discussions) — questions, ideas, show-and-tell
-- [Issues](https://github.com/10xscale/agentflow/issues) — bug reports and feature requests
+- [Discussions](https://github.com/10xHub/Agentflow/discussions) — questions, ideas, show-and-tell
+- [Issues](https://github.com/10xHub/Agentflow/issues) — bug reports and feature requests
 - [Documentation](https://agentflow.10xscale.ai)
 
 ## 📜 License

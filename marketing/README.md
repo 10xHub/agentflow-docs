@@ -6,7 +6,7 @@ Off-page distribution and measurement assets for AgentFlow. Pair with [`SEO_PLAN
 
 | File | Purpose |
 |---|---|
-| [`agentflow-readme-template.md`](agentflow-readme-template.md) | Polished README for the main `10xscale/agentflow` repo (SEO + conversion) |
+| [`agentflow-readme-template.md`](agentflow-readme-template.md) | Polished README for the main `10xHub/Agentflow` repo (SEO + conversion) |
 | [`hn-launch-post.md`](hn-launch-post.md) | Show HN draft |
 | [`reddit-r-localllama.md`](reddit-r-localllama.md) | r/LocalLLaMA launch post |
 | [`reddit-r-langchain.md`](reddit-r-langchain.md) | r/LangChain launch / migration post |

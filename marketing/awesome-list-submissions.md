@@ -24,7 +24,7 @@ Always read the contributing guidelines first. Most lists require:
 ## Standard entry (use as-is or adapt per list's format)
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Open-source Python framework for production AI agents with built-in REST API, durable threads, and a typed TypeScript client. MIT-licensed alternative to LangGraph.
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Open-source Python framework for production AI agents with built-in REST API, durable threads, and a typed TypeScript client. MIT-licensed alternative to LangGraph.
 ```
 
 ## Variants per list
@@ -34,7 +34,7 @@ Always read the contributing guidelines first. Most lists require:
 The list often groups by category — find "Tools" / "Alternatives to LangChain" / "Frameworks":
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Graph-based Python agent runtime with built-in REST + SSE server and a typed TypeScript client. Same mental model as LangGraph; no LangChain dependency.
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Graph-based Python agent runtime with built-in REST + SSE server and a typed TypeScript client. Same mental model as LangGraph; no LangChain dependency.
 ```
 
 ### awesome-llm
@@ -42,7 +42,7 @@ The list often groups by category — find "Tools" / "Alternatives to LangChain"
 Likely under "Open Source LLM Frameworks" or "Agents":
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Production-grade Python framework for building multi-agent AI systems with persistent threads, streaming, and a TypeScript client. [[docs](https://agentflow.10xscale.ai)]
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Production-grade Python framework for building multi-agent AI systems with persistent threads, streaming, and a TypeScript client. [[docs](https://agentflow.10xscale.ai)]
 ```
 
 ### awesome-python
@@ -50,7 +50,7 @@ Likely under "Open Source LLM Frameworks" or "Agents":
 Strict alphabetical, very picky about quality and stars. Under **Machine Learning** or **AI**:
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Python framework for building production AI agents with typed graphs, durable threads, and a built-in REST API.
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Python framework for building production AI agents with typed graphs, durable threads, and a built-in REST API.
 ```
 
 ### awesome-ai-agents
@@ -58,7 +58,7 @@ Strict alphabetical, very picky about quality and stars. Under **Machine Learnin
 Likely under "Multi-Agent Frameworks" or "Python Frameworks":
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Open-source Python framework for production-grade multi-agent systems. Typed StateGraph, Postgres-backed threads, REST + SSE server, TypeScript client. [[docs](https://agentflow.10xscale.ai)] [[compare](https://agentflow.10xscale.ai/docs/compare)]
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Open-source Python framework for production-grade multi-agent systems. Typed StateGraph, Postgres-backed threads, REST + SSE server, TypeScript client. [[docs](https://agentflow.10xscale.ai)] [[compare](https://agentflow.10xscale.ai/docs/compare)]
 ```
 
 ### awesome-llmops
@@ -66,7 +66,7 @@ Likely under "Multi-Agent Frameworks" or "Python Frameworks":
 Under "Frameworks" or "Production":
 
 ```markdown
-- [AgentFlow](https://github.com/10xscale/agentflow) - Python agent framework with built-in production server, durable Postgres-backed threads, and OpenTelemetry-friendly observability. MIT licensed.
+- [AgentFlow](https://github.com/10xHub/Agentflow) - Python agent framework with built-in production server, durable Postgres-backed threads, and OpenTelemetry-friendly observability. MIT licensed.
 ```
 
 ## PR description template
@@ -86,7 +86,7 @@ A new entry under **<section name>** for **AgentFlow**, an open-source MIT-licen
 
 ## Repo + Docs
 
-- Repo: https://github.com/10xscale/agentflow
+- Repo: https://github.com/10xHub/Agentflow
 - Docs: https://agentflow.10xscale.ai
 - License: MIT
 ```

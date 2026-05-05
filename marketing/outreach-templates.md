@@ -88,7 +88,7 @@ For someone who cited a competing framework in a paper.
 >
 > AgentFlow is open-source (MIT) and supports the [pattern they discussed] natively — `create_handoff_tool` + `recursion_limit` + Postgres checkpointing. If you're considering a follow-up paper or a benchmark, AgentFlow could be useful as an additional baseline.
 >
-> Repo: https://github.com/10xscale/agentflow. Happy to support reproducibility — environments, scripts, code review on benchmark setups.
+> Repo: https://github.com/10xHub/Agentflow. Happy to support reproducibility — environments, scripts, code review on benchmark setups.
 >
 > Best,
 > [Your name]

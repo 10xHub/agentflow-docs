@@ -49,7 +49,7 @@ Bigger and more general than r/LocalLLaMA. Many engineers who don't track the AI
 >
 > **Why share here**: the framework intentionally feels like writing normal Python. No DSLs, no magic strings, no surprise side effects. If you've built workflow systems with `asyncio` + Pydantic, the API will feel familiar.
 >
-> **Repo**: https://github.com/10xscale/agentflow
+> **Repo**: https://github.com/10xHub/Agentflow
 > **Docs**: https://agentflow.10xscale.ai
 > **Quickstart**: https://agentflow.10xscale.ai/docs/get-started
 >

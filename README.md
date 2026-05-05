@@ -1,6 +1,6 @@
 # AgentFlow Docs
 
-Documentation site for [**AgentFlow**](https://github.com/10xscale/agentflow) — the open-source Python framework for building production-grade multi-agent systems.
+Documentation site for [**AgentFlow**](https://github.com/10xHub/Agentflow) — the open-source Python framework for building production-grade multi-agent systems.
 
 Built with [Docusaurus 3](https://docusaurus.io). Deployed to **agentflow.10xscale.ai** via GitHub Pages.
 
@@ -83,7 +83,7 @@ For new doc pages, follow the front-matter pattern enforced by `scripts/audit-fr
 
 ## Related repos
 
-- [`10xscale/agentflow`](https://github.com/10xscale/agentflow) — the Python library
+- [`10xHub/Agentflow`](https://github.com/10xHub/Agentflow) — the Python library
 - [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client) — TypeScript client
 
 ## License

@@ -49,7 +49,7 @@
 > app = graph.compile()
 > ```
 >
-> **Repo**: https://github.com/10xscale/agentflow
+> **Repo**: https://github.com/10xHub/Agentflow
 > **Docs**: https://agentflow.10xscale.ai
 > **Quickstart**: https://agentflow.10xscale.ai/docs/get-started
 >

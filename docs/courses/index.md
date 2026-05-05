@@ -135,5 +135,5 @@ These courses teach you to:
 5. **Ship with testing, safety, and deployment discipline** — production-minded from day one
 
 :::note Draft
-This curriculum is actively being developed. Share feedback in the [AgentFlow GitHub repository](https://github.com/10xscale/agentflow).
+This curriculum is actively being developed. Share feedback in the [AgentFlow GitHub repository](https://github.com/10xHub/Agentflow).
 :::

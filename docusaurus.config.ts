@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'agentflow-docs';
-const orgName = process.env.GITHUB_REPOSITORY_OWNER ?? '10xscale';
+const orgName = process.env.GITHUB_REPOSITORY_OWNER ?? '10xHub';
 
 const siteUrl = process.env.SITE_URL ?? 'https://agentflow.10xscale.ai';
 const baseUrl = process.env.BASE_URL ?? '/';
@@ -100,7 +100,7 @@ const config: Config = {
     ],
     function structuredDataPlugin() {
       const canonical = siteUrl.replace(/\/$/, '');
-      const githubUrl = 'https://github.com/10xscale/agentflow';
+      const githubUrl = 'https://github.com/10xHub/Agentflow';
       const publisherUrl = 'https://10xscale.ai';
       const organization = {
         '@context': 'https://schema.org',
@@ -185,7 +185,7 @@ const config: Config = {
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
         {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/10xscale/agentflow',
+          href: 'https://github.com/10xHub/Agentflow',
           label: 'GitHub',
           position: 'right',
         },
@@ -213,7 +213,7 @@ const config: Config = {
         {
           title: 'Community',
           items: [
-            {label: 'GitHub', href: 'https://github.com/10xscale/agentflow'},
+            {label: 'GitHub', href: 'https://github.com/10xHub/Agentflow'},
           ],
         },
       ],
