@@ -2,6 +2,6 @@ team:
   name: AgentFlow Team
   title: Building production AI agents in Python
   url: https://github.com/10xHub/Agentflow
-  image_url: https://agentflow.10xscale.ai/img/agentflow-mark.svg
+  image_url: /img/agentflow-mark.svg
   socials:
     github: 10xHub

@@ -481,3 +481,53 @@ h4:hover .hash-link,
 .theme-edit-this-page:hover {
   color: var(--af-blue-hi) !important;
 }
+
+/* ─── Blog post page ────────────────────────────────────────────────── */
+
+/* Tighten the post title — Docusaurus default is 3rem which is too loud
+ * against our 720-weight sans heading scale. Match docs h1 sizing. */
+.blog-post-page header h1,
+.blog-list-page article h2 {
+  font-size: clamp(1.85rem, 3.4vw, 2.6rem);
+  font-weight: 720;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--af-text-strong);
+}
+
+/* Widen the main reading column. Default grid is sidebar(3) + main(7) + toc(2),
+ * leaving the post title cramped. Shift to sidebar(2) + main(8) + toc(2). */
+.blog-post-page .container > .row > aside[class*='blogSidebarColumn'],
+.blog-post-page .container > .row > .col--3 {
+  flex: 0 0 18%;
+  max-width: 18%;
+}
+
+.blog-post-page .container > .row > main.col--7 {
+  flex: 0 0 64%;
+  max-width: 64%;
+}
+
+.blog-post-page .container > .row > .col--2 {
+  flex: 0 0 18%;
+  max-width: 18%;
+}
+
+@media (max-width: 996px) {
+  .blog-post-page .container > .row > main.col--7,
+  .blog-post-page .container > .row > .col--2,
+  .blog-post-page .container > .row > .col--3 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Author avatar — fall back gracefully if the image 404s and tighten the
+ * frame so SVG marks don't render at 60px on a busy header. */
+.blog-post-page [class*='authorAvatar'] img,
+.blog-list-page [class*='authorAvatar'] img {
+  background: var(--af-bg-1);
+  border: 1px solid var(--af-border);
+  object-fit: contain;
+  padding: 4px;
+}
