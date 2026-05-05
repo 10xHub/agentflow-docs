@@ -102,7 +102,7 @@ Current hero shows raw `<pre><code>` text. New version:
 
 - Left column: keep H1 + H2 + lede + CTAs but tighten spacing
 - Right column: `<TerminalBlock>` rendering the quickstart in actual Prism syntax highlighting
-- Below the terminal: a small `<TerminalBlock>` titled `bash` showing `pip install agentflow 10xscale-agentflow-cli` with a copy button
+- Below the terminal: a small `<TerminalBlock>` titled `bash` showing `pip install 10xscale-agentflow 10xscale-agentflow-cli` with a copy button
 - No orbs, no grid background — replace with a single very subtle gradient mesh that respects the brand blue
 - Eyebrow becomes a real status pill: `▲ v1.0 · MIT · Python 3.10+`
 

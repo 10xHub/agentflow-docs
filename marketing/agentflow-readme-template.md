@@ -26,7 +26,7 @@ A modern alternative to LangGraph, CrewAI, AutoGen, LlamaIndex Agents, and Googl
 ## 🚀 Quick start
 
 ```bash
-pip install agentflow 10xscale-agentflow-cli
+pip install 10xscale-agentflow 10xscale-agentflow-cli
 ```
 
 ```python

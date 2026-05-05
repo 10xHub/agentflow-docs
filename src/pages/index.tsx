@@ -219,7 +219,7 @@ export default function Home() {
               </div>
               <TerminalBlock
                 filename="bash"
-                code="pip install agentflow 10xscale-agentflow-cli"
+                code="pip install 10xscale-agentflow 10xscale-agentflow-cli"
                 language="bash"
                 compact
               />
