@@ -160,6 +160,7 @@ const config: Config = {
       {name: 'twitter:card', content: 'summary_large_image'},
       {name: 'twitter:site', content: '@10xscale'},
       {name: 'twitter:creator', content: '@10xscale'},
+      {name: 'robots', content: 'index, follow'},
     ],
     colorMode: {
       defaultMode: 'dark',
