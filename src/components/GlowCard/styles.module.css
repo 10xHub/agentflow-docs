@@ -1,0 +1,78 @@
+.card {
+  position: relative;
+  display: block;
+  padding: 1.85rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background:
+    linear-gradient(180deg, var(--af-bg-1) 0%, var(--af-bg-0) 100%);
+  color: var(--af-text);
+  text-decoration: none;
+  overflow: hidden;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.55),
+    rgba(139, 92, 246, 0.35) 50%,
+    transparent 75%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.linkable:hover,
+.linkable:focus-visible {
+  border-color: var(--af-border-glow);
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: var(--af-glow-blue);
+}
+
+.linkable:hover::before,
+.linkable:focus-visible::before {
+  opacity: 1;
+}
+
+.iconTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--af-border-hi);
+  border-radius: var(--af-radius-md);
+  background:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(139, 92, 246, 0.18) 100%);
+  color: var(--af-blue-hi);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+              0 6px 20px rgba(59, 130, 246, 0.18);
+}
+
+.title {
+  margin: 0 0 0.55rem;
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--af-text-strong);
+}
+
+.body {
+  color: var(--af-text-dim);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}

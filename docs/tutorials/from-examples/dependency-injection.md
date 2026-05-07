@@ -1,8 +1,16 @@
 ---
-title: "Dependency Injection"
-sidebar_label: "Dependency Injection"
-description: "Use InjectQ with AgentFlow to inject shared services such as checkpointers, stores, callbacks, and app-specific dependencies into graph nodes and tools."
+title: Dependency Injection — AgentFlow Python AI Agent Framework
+sidebar_label: Dependency Injection
+description: Use InjectQ with AgentFlow to inject shared services such as checkpointers, stores, callbacks, and app-specific dependencies into graph nodes and tools.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - dependency injection
 ---
+
 
 # Dependency Injection
 

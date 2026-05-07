@@ -1,8 +1,16 @@
 ---
-title: "Multiagent"
-sidebar_label: "Multiagent"
-description: "Route work between multiple specialized nodes in a single AgentFlow graph using conditional edges and a coordinator-style main node."
+title: Multiagent — AgentFlow Python AI Agent Framework
+sidebar_label: Multiagent
+description: Route work between multiple specialized nodes in a single AgentFlow graph using conditional edges and a coordinator-style main node.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - multiagent
 ---
+
 
 # Multiagent
 

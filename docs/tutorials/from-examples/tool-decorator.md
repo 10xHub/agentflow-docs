@@ -1,8 +1,16 @@
 ---
-title: "Tool Decorator"
-sidebar_label: "Tool Decorator"
+title: Tool Decorator — AgentFlow Python AI Agent Framework
+sidebar_label: Tool Decorator
 description: "Use the @tool decorator to attach metadata, tags, and capabilities to Python functions before registering them with a ToolNode."
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - tool decorator
 ---
+
 
 # Tool Decorator
 

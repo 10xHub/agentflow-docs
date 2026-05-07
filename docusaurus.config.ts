@@ -3,15 +3,21 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'agentflow-docs';
-const orgName = process.env.GITHUB_REPOSITORY_OWNER ?? '10xscale';
+const orgName = process.env.GITHUB_REPOSITORY_OWNER ?? '10xHub';
+
+const siteUrl = process.env.SITE_URL ?? 'https://agentflow.10xscale.ai';
+const baseUrl = process.env.BASE_URL ?? '/';
+
+const googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID;
+const microsoftClarityId = process.env.MICROSOFT_CLARITY_ID;
 
 const config: Config = {
   title: 'AgentFlow',
   tagline: 'Build production-grade multi-agent systems without rebuilding orchestration, memory, and API plumbing.',
   favicon: 'img/agentflow-mark.svg',
 
-  url: process.env.SITE_URL ?? `https://${orgName}.github.io`,
-  baseUrl: process.env.BASE_URL ?? `/${repoName}/`,
+  url: siteUrl,
+  baseUrl,
 
   organizationName: orgName,
   projectName: repoName,
@@ -32,6 +38,10 @@ const config: Config = {
     locales: ['en'],
   },
 
+  customFields: {
+    microsoftClarityId,
+  },
+
   presets: [
     [
       'classic',
@@ -40,20 +50,117 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           routeBasePath: 'docs',
           showLastUpdateAuthor: false,
-          showLastUpdateTime: false,
+          showLastUpdateTime: true,
         },
-        blog: false,
+        blog: {
+          path: 'blog',
+          routeBasePath: 'blog',
+          showReadingTime: true,
+          blogSidebarTitle: 'Latest posts',
+          blogSidebarCount: 10,
+          postsPerPage: 10,
+          feedOptions: {
+            type: ['rss', 'atom'],
+            title: 'AgentFlow Blog — Building Production AI Agents in Python',
+            description:
+              'Deep dives, patterns, and migration guides for building production AI agents with AgentFlow.',
+            xslt: true,
+          },
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
+        sitemap: {
+          changefreq: 'weekly',
+          priority: 0.5,
+          filename: 'sitemap.xml',
+          ignorePatterns: ['/tags/**'],
+        },
+        gtag: googleAnalyticsId
+          ? {
+              trackingID: googleAnalyticsId,
+              anonymizeIP: true,
+            }
+          : undefined,
       } satisfies Preset.Options,
     ],
   ],
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          // Add entries when you rename or move pages, e.g.:
+          // {from: '/docs/old-slug', to: '/docs/new-slug'},
+        ],
+      },
+    ],
+    function structuredDataPlugin() {
+      const canonical = siteUrl.replace(/\/$/, '');
+      const githubUrl = 'https://github.com/10xHub/Agentflow';
+      const publisherUrl = 'https://10xscale.ai';
+      const organization = {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'AgentFlow',
+        url: canonical,
+        logo: `${canonical}/img/agentflow-mark.svg`,
+        sameAs: [githubUrl, publisherUrl],
+      };
+      const website = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'AgentFlow',
+        url: canonical,
+        inLanguage: 'en',
+      };
+      const softwareApplication = {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'AgentFlow',
+        description:
+          'Open-source Python framework for building production-grade multi-agent systems with built-in orchestration, state, memory, API, and TypeScript client.',
+        url: canonical,
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Cross-platform',
+        programmingLanguage: 'Python',
+        softwareRequirements: 'Python 3.10+',
+        license: 'https://opensource.org/licenses/MIT',
+        codeRepository: githubUrl,
+        offers: {'@type': 'Offer', price: '0', priceCurrency: 'USD'},
+      };
+      return {
+        name: 'agentflow-seo-structured-data',
+        injectHtmlTags() {
+          return {
+            headTags: [organization, website, softwareApplication].map((s) => ({
+              tagName: 'script',
+              attributes: {type: 'application/ld+json'},
+              innerHTML: JSON.stringify(s),
+            })),
+          };
+        },
+      };
+    },
+  ],
+
   themeConfig: {
-    image: 'img/agentflow-social-card.svg',
+    image: 'img/agentflow-social-card.png',
+    metadata: [
+      {name: 'keywords', content: 'agentflow, ai agent framework, python ai agents, multi-agent orchestration, langgraph alternative, crewai alternative, autogen alternative, llamaindex agents alternative, google adk alternative, agent state graph, agent memory, agent api, typescript agent client'},
+      {name: 'author', content: 'AgentFlow Contributors'},
+      {name: 'application-name', content: 'AgentFlow'},
+      {name: 'theme-color', content: '#0b1020'},
+      {property: 'og:type', content: 'website'},
+      {property: 'og:site_name', content: 'AgentFlow'},
+      {property: 'og:locale', content: 'en_US'},
+      {name: 'twitter:card', content: 'summary_large_image'},
+      {name: 'twitter:site', content: '@10xscale'},
+      {name: 'twitter:creator', content: '@10xscale'},
+    ],
     colorMode: {
       defaultMode: 'dark',
       disableSwitch: false,
@@ -72,12 +179,14 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
+        {to: '/docs/compare', label: 'Compare', position: 'left'},
         {to: '/docs/courses', label: 'Courses', position: 'left'},
         {to: '/docs/skills', label: 'Skills', position: 'left'},
         {to: '/docs/concepts/architecture', label: 'Concepts', position: 'left'},
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
+        {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/10xscale/agentflow',
+          href: 'https://github.com/10xHub/Agentflow',
           label: 'GitHub',
           position: 'right',
         },
@@ -105,7 +214,7 @@ const config: Config = {
         {
           title: 'Community',
           items: [
-            {label: 'GitHub', href: 'https://github.com/10xscale/agentflow'},
+            {label: 'GitHub', href: 'https://github.com/10xHub/Agentflow'},
           ],
         },
       ],

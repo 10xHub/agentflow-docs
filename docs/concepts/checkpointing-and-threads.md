@@ -1,8 +1,17 @@
 ---
 title: Checkpointing and Threads
-description: How checkpointers save and restore conversation state across calls using thread IDs.
+sidebar_label: Checkpointing and Threads
+description: How checkpointers save and restore conversation state across calls using thread IDs. Part of the AgentFlow agentflow concepts guide for production-ready Python.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - checkpointing and threads
 sidebar_position: 7
 ---
+
 
 # Checkpointing and threads
 

@@ -1,8 +1,16 @@
 ---
-title: "MCP Client"
-sidebar_label: "MCP Client"
-description: "Connect to MCP servers with FastMCP Client, list remote tools, inspect metadata, and invoke tools directly."
+title: MCP Client — AgentFlow Python AI Agent Framework
+sidebar_label: MCP Client
+description: Connect to MCP servers with FastMCP Client, list remote tools, inspect metadata, and invoke tools directly.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - mcp client
 ---
+
 
 # MCP Client
 

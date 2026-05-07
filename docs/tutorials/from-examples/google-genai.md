@@ -1,8 +1,16 @@
 ---
-title: "Google GenAI Adapter"
-sidebar_label: "Google GenAI Adapter"
+title: Google GenAI Adapter — AgentFlow Python AI Agent Framework
+sidebar_label: Google GenAI Adapter
 description: "Use the GoogleGenAIConverter to integrate raw google-genai SDK calls into AgentFlow's message format, including streaming."
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - google genai adapter
 ---
+
 
 # Google GenAI Adapter
 

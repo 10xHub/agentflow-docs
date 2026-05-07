@@ -1,8 +1,16 @@
 ---
-title: "Stop Stream"
-sidebar_label: "Stop Stream"
-description: "Gracefully stop a running AgentFlow stream from the caller by using app.stop(config)."
+title: Stop Stream — AgentFlow Python AI Agent Framework
+sidebar_label: Stop Stream
+description: Gracefully stop a running AgentFlow stream from the caller by using app.stop(config). Part of the AgentFlow ai agent tutorial guide for production-ready Python.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - stop stream
 ---
+
 
 # Stop Stream
 

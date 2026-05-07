@@ -1,8 +1,16 @@
 ---
-title: "MCP ReAct Agent"
-sidebar_label: "MCP ReAct Agent"
-description: "Connect AgentFlow ToolNode to MCP servers so a ReAct graph can call remote tools as part of normal agent execution."
+title: MCP ReAct Agent — AgentFlow Python AI Agent Framework
+sidebar_label: MCP ReAct Agent
+description: Connect AgentFlow ToolNode to MCP servers so a ReAct graph can call remote tools as part of normal agent execution.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - mcp react agent
 ---
+
 
 # MCP ReAct Agent
 

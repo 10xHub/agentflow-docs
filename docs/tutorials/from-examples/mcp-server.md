@@ -1,8 +1,16 @@
 ---
-title: "MCP Server"
-sidebar_label: "MCP Server"
-description: "Expose tools over Model Context Protocol using FastMCP so AgentFlow and other MCP clients can call them remotely."
+title: MCP Server — AgentFlow Python AI Agent Framework
+sidebar_label: MCP Server
+description: Expose tools over Model Context Protocol using FastMCP so AgentFlow and other MCP clients can call them remotely.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - mcp server
 ---
+
 
 # MCP Server
 

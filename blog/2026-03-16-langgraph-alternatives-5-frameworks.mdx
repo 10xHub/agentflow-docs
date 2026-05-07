@@ -1,0 +1,198 @@
+---
+slug: langgraph-alternatives-5-frameworks
+title: "LangGraph Alternatives: 5 Frameworks to Ship AI Agents Faster"
+description: Five LangGraph alternatives in 2026. AgentFlow, CrewAI, AutoGen, LlamaIndex Agents, and Google ADK. Compare runtimes, persistence, APIs, and when to pick each.
+authors: [team]
+tags: [langgraph, alternatives, comparison, python, agent-framework]
+date: 2026-03-16
+keywords:
+  - langgraph alternative
+  - langgraph alternatives
+  - alternatives to langgraph
+  - python agent framework
+  - best agent framework
+image: /img/agentflow-social-card.png
+---
+
+LangGraph put graph-based agent orchestration on the map. It is also a fairly opinionated piece of the LangChain ecosystem, and many teams hit limits. Operational, architectural, or licensing. That send them looking for alternatives.
+
+This is a survey of the five strongest LangGraph alternatives in 2026, what each one is good at, and how to decide.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="LangGraph Alternatives — 5 Frameworks to Ship AI Agents Faster"
+  description="Five LangGraph alternatives in 2026. AgentFlow, CrewAI, AutoGen, LlamaIndex Agents, and Google ADK. Compare runtimes, persistence, APIs, and when to pick each."
+  datePublished="2026-03-16"
+  slug="langgraph-alternatives-5-frameworks"
+  keywords={["langgraph alternative", "agent framework comparison", "python agent framework"]}
+/>
+
+## Why people look for alternatives
+
+The most common reasons we hear:
+
+1. **LangChain dependency tax.** LangGraph builds on LangChain core. If you do not need LangChain, you carry the dependencies anyway.
+2. **No built-in production server.** LangGraph is the runtime. Serving an agent over REST/SSE is BYO FastAPI or paid LangGraph Platform.
+3. **No first-party TypeScript client.** Most products have a JS frontend; you wrap fetch and parse SSE by hand.
+4. **Vendor gravity.** LangSmith and LangGraph Platform are good products and pull you toward a paid stack.
+
+If those tradeoffs work for you, stay with LangGraph. It is mature and well-supported. Otherwise, here are the five strongest alternatives.
+
+## 1. AgentFlow: the closest drop-in alternative
+
+AgentFlow is an MIT-licensed graph-based runtime with the same mental model as LangGraph (typed `StateGraph`, conditional edges, checkpointers) plus a built-in REST + SSE server (`agentflow api`) and a typed TypeScript client (`@10xscale/agentflow-client`).
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", ToolNode([get_weather]))
+# ... edges ...
+app = graph.compile()
+```
+
+**Strengths**
+
+- Graph mental model identical to LangGraph (one of the most mechanical migrations in the field)
+- Production server + TypeScript client included
+- No required SaaS account, MIT license
+- Multi-provider out of the box (OpenAI, Anthropic, Google, Vertex AI)
+
+**Weaknesses**
+
+- Smaller community than LangGraph today
+- No equivalent of LangSmith for tracing yet (use OpenTelemetry + your existing observability)
+
+**Pick it when:** you want a graph runtime plus the production stack in one project. → [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph)
+
+## 2. CrewAI: fastest path to a role-based crew
+
+CrewAI optimizes for declarative role + task DSL. Five lines for "researcher → writer → editor."
+
+```python
+from crewai import Agent, Task, Crew, Process
+
+researcher = Agent(role="Researcher", goal="...", backstory="...")
+writer = Agent(role="Writer", goal="...", backstory="...")
+crew = Crew(agents=[researcher, writer], tasks=[...], process=Process.sequential)
+crew.kickoff()
+```
+
+**Strengths**
+
+- Shortest distance from idea to working crew
+- Hierarchical processes for runtime-dispatched delegation
+- Clear conceptual model for non-engineers
+
+**Weaknesses**
+
+- Less explicit control flow than a graph
+- Production patterns (persistence, API serving) require more glue than LangGraph or AgentFlow
+- CrewAI Enterprise is the recommended production hosting
+
+**Pick it when:** the workflow really is "roles + tasks" and you want fast prototyping. → [AgentFlow vs CrewAI](/docs/compare/agentflow-vs-crewai)
+
+## 3. Microsoft AutoGen: research-grade multi-agent conversations
+
+AutoGen 0.4 split into core + agentchat + extensions, with strong primitives for multi-agent chat, group chats, and selectors.
+
+**Strengths**
+
+- Excellent for emergent multi-agent dynamics
+- Actor-style architecture in `autogen-core`
+- AutoGen Studio is a great UI for designing flows visually
+
+**Weaknesses**
+
+- LLM-driven selectors make routing harder to debug under load
+- Production server is BYO
+- API surface still evolving across 0.4.x
+
+**Pick it when:** you are exploring multi-agent dynamics, working in Microsoft / Azure, or want the visual designer. → [AgentFlow vs AutoGen](/docs/compare/agentflow-vs-autogen)
+
+## 4. LlamaIndex Agents: RAG-first agent layer
+
+LlamaIndex's `FunctionAgent`, `ReActAgent`, and `Workflow` build on top of best-in-class retrieval and indexing primitives. If your product is "chat with my documents," it is the natural starting point.
+
+**Strengths**
+
+- Best retrieval + parsing + indexing stack in Python
+- Tight integration between agents and query engines
+- LlamaCloud for managed parsing/indexing
+
+**Weaknesses**
+
+- Agent layer is thinner than the retrieval layer
+- Less explicit multi-agent orchestration
+- No bundled production server
+
+**Pick it when:** retrieval is the core feature, not just one tool. (Common pattern: LlamaIndex for retrieval, AgentFlow for the runtime.) → [AgentFlow vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents)
+
+## 5. Google ADK: Vertex AI native
+
+Google's Agent Development Kit (ADK) is the official Google framework with first-party Gemini and Vertex AI support, plus Vertex AI Agent Engine for hosted execution.
+
+**Strengths**
+
+- Best-in-class Gemini integration
+- Vertex AI Agent Engine for managed deployment
+- Apache-2.0 license, no required commercial tier
+
+**Weaknesses**
+
+- Provider-neutral by intent, but truly best on Vertex AI
+- No first-party TypeScript client
+- Smaller community outside the Google ecosystem
+
+**Pick it when:** you are committed to Vertex AI across data, models, and ops. → [AgentFlow vs Google ADK](/docs/compare/agentflow-vs-google-adk)
+
+## A decision tree
+
+| Your situation | Try first |
+|---|---|
+| Graph mental model + production stack in one project | **AgentFlow** |
+| Already deep in LangChain ecosystem | **LangGraph** (stay) |
+| Roles + tasks, fast prototype | **CrewAI** |
+| Research / Microsoft stack | **AutoGen** |
+| RAG is the product | **LlamaIndex Agents** |
+| All-in on Vertex AI | **Google ADK** |
+
+## When LangGraph is still the right pick
+
+We will not pretend LangGraph is wrong for everyone. It is the right answer when:
+
+- Your codebase already depends on LangChain runnables and retrievers
+- You use LangSmith for tracing and debugging
+- LangGraph Platform's hosted infrastructure works for your team
+- You want the largest community and the most third-party content
+
+The "alternatives" framing is about fit, not quality. All six frameworks here ship production agents in 2026.
+
+## How to evaluate without committing
+
+Pick a real, small use case (2 agents, 1 tool, persistent threads) and implement it in your top two candidates. Measure:
+
+- Cold-start time
+- p95 latency under your real load
+- Code size of the agent + the deployment surface
+- How long it takes a new engineer to read the flow
+
+The differences become obvious in a week. That signal is worth more than any roundup post, including this one.
+
+## Further reading
+
+- [Get started with AgentFlow](/docs/get-started)
+- [Best Python agent frameworks in 2026](/docs/compare/best-python-agent-framework-2026). Full roundup
+- [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph). Head-to-head
+- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
+
+If you are curious about migration mechanics, the [LangGraph → AgentFlow walkthrough](/blog/langgraph-to-agentflow-migration) covers a full port in one sitting.

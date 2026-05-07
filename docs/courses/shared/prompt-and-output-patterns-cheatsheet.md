@@ -1,7 +1,16 @@
 ---
 title: Prompt and Output Patterns Cheatsheet
+sidebar_label: Prompt and Output Patterns Cheatsheet
 description: A comprehensive quick-reference for prompting techniques, structured outputs, tool schemas, and reliable output handling for production GenAI systems.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - prompt and output patterns cheatsheet
 ---
+
 
 # Prompt and Output Patterns Cheatsheet
 

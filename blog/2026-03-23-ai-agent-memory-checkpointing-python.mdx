@@ -1,0 +1,224 @@
+---
+slug: ai-agent-memory-checkpointing-python
+title: "AI Agent Memory in Python: Short-Term, Long-Term, and Checkpointing"
+description: How to give a Python AI agent durable memory. Short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code.
+authors: [team]
+tags: [memory, checkpointing, python, ai-agents, persistence]
+date: 2026-03-23
+keywords:
+  - ai agent memory python
+  - agent checkpointing
+  - python agent memory
+  - thread persistence
+  - vector memory
+image: /img/agentflow-social-card.png
+---
+
+"Memory" is doing a lot of work in agent literature. It can mean: chat history within a session, long-term semantic recall across sessions, persistent state for resumable runs, or all three. They are different problems with different solutions.
+
+Here is the practical taxonomy and how to wire each one in Python.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="AI Agent Memory in Python. Short-Term, Long-Term, and Checkpointing"
+  description="How to give a Python AI agent durable memory. Short-term threads, long-term semantic recall, and checkpointing for resumable runs. With AgentFlow code."
+  datePublished="2026-03-23"
+  slug="ai-agent-memory-checkpointing-python"
+  keywords={["ai agent memory", "checkpointing", "vector memory", "python agents"]}
+/>
+
+## Three kinds of memory, three tools
+
+| Kind | Lifespan | Mechanism |
+|---|---|---|
+| **Short-term** (chat history) | Within one thread | Checkpointer + `thread_id` |
+| **Long-term** (semantic recall) | Across users / time | Vector store accessed as a tool |
+| **Resumable state** (interrupts, replays) | Until cleanup | Checkpointer snapshot per node |
+
+Most teams need all three. Most "memory" libraries solve one and leave you to assemble the rest.
+
+## Short-term memory: threads and checkpointers
+
+A thread is a single conversation. AgentFlow snapshots the entire graph state after every node, keyed by `thread_id`:
+
+```python
+from agentflow.core.graph import Agent, StateGraph
+from agentflow.core.state import AgentState, Message
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+from agentflow.utils import END
+
+agent = Agent(model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}])
+
+graph = StateGraph(AgentState)
+graph.add_node("assistant", agent)
+graph.set_entry_point("assistant")
+graph.add_edge("assistant", END)
+
+app = graph.compile(checkpointer=InMemoryCheckpointer())
+
+# Turn 1
+app.invoke(
+    {"messages": [Message.text_message("My name is Alex.")]},
+    config={"thread_id": "user-42"},
+)
+# Turn 2 — same thread_id pulls the prior history
+app.invoke(
+    {"messages": [Message.text_message("What's my name?")]},
+    config={"thread_id": "user-42"},
+)
+```
+
+Key properties:
+
+- **No code changes** when you swap the storage backend
+- **Same `thread_id`** = same conversation context
+- **Automatic**. You do not assemble the prompt yourself
+
+### Production storage
+
+`InMemoryCheckpointer` is for development. Switch to Postgres + Redis with one import:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+)
+app = graph.compile(checkpointer=checkpointer)
+```
+
+Postgres holds the durable history; Redis is used for fast hot-path access. See [checkpointing concept](/docs/concepts/checkpointing-and-threads) and the [production checkpointing guide](/docs/how-to/production/checkpointing) for tuning.
+
+### Trimming long threads
+
+Threads grow. At ~100 turns, you start paying for tokens you do not need. Two common patterns:
+
+1. **Sliding window**. Keep last N turns, drop the rest
+2. **Summary head**. Every 20 turns, replace the oldest 15 with a summary message
+
+```python
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
+    trim_context=True,  # AgentFlow's built-in trimming
+)
+```
+
+For custom strategies, see [State and messages](/docs/concepts/state-and-messages).
+
+## Long-term memory: semantic recall
+
+Threads cover "what did this user say earlier?" They do not cover "what did *any* user say about pricing in the last 90 days?" or "what did this user prefer 6 months ago?"
+
+For that, expose a vector store as a tool:
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+
+def remember(query: str) -> str:
+    """Search long-term memory for relevant past interactions."""
+    # qdrant / pgvector / pinecone / your choice
+    hits = vector_client.search(query, top_k=3)
+    return "\n".join(f"[{h.id}] {h.text}" for h in hits)
+
+def write_to_memory(text: str, tags: str) -> str:
+    """Store a notable fact for future recall."""
+    vector_client.upsert(text=text, metadata={"tags": tags})
+    return "Saved."
+
+tool_node = ToolNode([remember, write_to_memory])
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": (
+        "Use `remember` to recall past info and `write_to_memory` "
+        "to save important new facts. Cite memory IDs."
+    )}],
+    tool_node="TOOL",
+)
+```
+
+The agent decides when to recall and when to write. This is materially different from naively dumping the entire vector index into context. It scales and stays auditable.
+
+For a runnable example with Qdrant, see [the qdrant-memory tutorial](/docs/tutorials/from-examples/qdrant-memory).
+
+### When to write vs when to query
+
+A useful default:
+
+- **Always query** at the start of a conversation if the user is identified
+- **Write** when the agent encounters a stable fact (preference, identity, decision). Not raw chat
+- **Tag aggressively** so retrieval can filter by user, tenant, or topic
+
+This keeps the long-term store as a curated knowledge base, not a chat dump.
+
+## Resumable runs: checkpointing for interrupts and replays
+
+The same checkpointer that powers thread history also powers two other features:
+
+### Interrupt and resume
+
+Pause the graph mid-flow, get human approval, then resume:
+
+```python
+result = app.invoke(
+    {"messages": [Message.text_message("Refund order #123 for $400.")]},
+    config={"thread_id": "approval-1"},
+)
+# Graph paused at APPROVE node; surface state to a human
+
+# Later — same thread_id resumes from the checkpoint
+app.invoke(
+    {"approval": True},
+    config={"thread_id": "approval-1"},
+)
+```
+
+### Time travel / replays
+
+Because every node-boundary state is snapshotted, you can replay a thread from any prior state. Useful for debugging "why did the agent choose tool X here?" without rerunning the whole conversation.
+
+See the [interrupts-and-resume tutorial](/docs/concepts/checkpointing-and-threads) for the details.
+
+## Putting it together: a memory architecture
+
+A production agent typically wires:
+
+```
+┌──────────────────────────────────────────┐
+│  Agent (LLM)                              │
+│  ├── short-term: PgCheckpointer (thread)  │
+│  ├── long-term: vector tool (Qdrant)      │
+│  └── resumable: same PgCheckpointer       │
+└──────────────────────────────────────────┘
+```
+
+Each layer has a different SLA:
+
+| Layer | Latency budget | Storage |
+|---|---|---|
+| Short-term | < 50 ms | Redis (cached) + Postgres |
+| Long-term | < 200 ms | Vector DB (Qdrant / pgvector) |
+| Resumable | < 1 s | Postgres |
+
+These are budgets, not guarantees. The checkpointer is on the hot path; the vector store is opt-in per query. Treat them differently when you scale.
+
+## Common mistakes
+
+1. **Storing everything in the vector store.** It becomes noise. Curate.
+2. **Skipping `thread_id` in dev.** Then surprised it doesn't remember in prod. Always pass `thread_id` from day one.
+3. **One vector index per user.** Hard to maintain. Use one index with `user_id` metadata and filter at query time.
+4. **No expiry policy.** Memory is a feature; stale memory is a bug. Add TTL on long-term entries.
+5. **Treating chat history as long-term memory.** They are not the same. The full chat goes in the checkpointer; *facts* extracted from chat go in the vector store.
+
+## Further reading
+
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads). Concept guide
+- [Memory and store](/docs/concepts/memory-and-store). Full memory architecture
+- [Add memory tutorial](/docs/beginner/add-memory). Beginner walkthrough
+- [Qdrant memory example](/docs/tutorials/from-examples/qdrant-memory). Long-term recall
+- [Production checkpointing](/docs/how-to/production/checkpointing). Postgres + Redis tuning
+
+When you are ready, [Get started](/docs/get-started) and you will have working short-term memory in under five minutes.

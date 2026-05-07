@@ -1,7 +1,16 @@
 ---
-title: "Auth and Authorization"
-description: "Production guidance for securing an AgentFlow API with JWT auth, custom auth backends, and permission checks."
+title: Auth and Authorization — AgentFlow Python AI Agent Framework
+sidebar_label: Auth and Authorization
+description: Production guidance for securing an AgentFlow API with JWT auth, custom auth backends, and permission checks.
+keywords:
+  - production ai agents
+  - agent deployment
+  - agent observability
+  - agentflow
+  - python ai agent framework
+  - auth and authorization
 ---
+
 
 # Auth and authorization
 

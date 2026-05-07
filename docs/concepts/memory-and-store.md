@@ -1,8 +1,17 @@
 ---
-title: Memory and Store
+title: Memory and Store — AgentFlow Python AI Agent Framework
+sidebar_label: Memory and Store
 description: How long-term memory works in AgentFlow — memory_tool, retrieval modes, MemoryIntegration, and MemoryConfig.
+keywords:
+  - agentflow concepts
+  - agent architecture
+  - multi-agent orchestration
+  - agentflow
+  - python ai agent framework
+  - memory and store
 sidebar_position: 8
 ---
+
 
 # Memory and store
 

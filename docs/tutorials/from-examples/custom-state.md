@@ -1,8 +1,16 @@
 ---
-title: "Custom State"
-sidebar_label: "Custom State"
-description: "Extend AgentState with domain-specific fields and learn how partial state updates work at invoke time."
+title: Custom State — AgentFlow Python AI Agent Framework
+sidebar_label: Custom State
+description: Extend AgentState with domain-specific fields and learn how partial state updates work at invoke time.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - custom state
 ---
+
 
 # Custom State
 

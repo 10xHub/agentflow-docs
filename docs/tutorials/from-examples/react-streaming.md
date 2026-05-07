@@ -1,8 +1,16 @@
 ---
-title: "React Streaming"
-sidebar_label: "React Streaming"
-description: "Stream graph responses token-by-token using astream with ResponseGranularity, and understand the difference between invoke and stream."
+title: React Streaming — AgentFlow Python AI Agent Framework
+sidebar_label: React Streaming
+description: Stream graph responses token-by-token using astream with ResponseGranularity, and understand the difference between invoke and stream.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - react streaming
 ---
+
 
 # React Streaming
 

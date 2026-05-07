@@ -1,8 +1,17 @@
 ---
-title: Manage threads
+title: How to manage threads — AgentFlow Python AI Agent Framework
+sidebar_label: How to manage threads
 description: Step-by-step guide to listing, inspecting, updating, and deleting conversation threads and messages.
+keywords:
+  - agentflow typescript client
+  - ai agent client
+  - agent sdk
+  - agentflow
+  - python ai agent framework
+  - how to manage threads
 sidebar_position: 4
 ---
+
 
 # How to manage threads
 

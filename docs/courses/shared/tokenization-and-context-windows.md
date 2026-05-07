@@ -1,7 +1,16 @@
 ---
 title: Tokenization and Context Windows
+sidebar_label: Tokenization and Context Windows
 description: Master token budgeting, context window management, and cost optimization for production GenAI systems.
+keywords:
+  - genai course
+  - ai agent course
+  - agent engineering course
+  - agentflow
+  - python ai agent framework
+  - tokenization and context windows
 ---
+
 
 # Tokenization and Context Windows
 

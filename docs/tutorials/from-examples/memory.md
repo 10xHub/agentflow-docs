@@ -1,8 +1,16 @@
 ---
-title: "Memory"
-sidebar_label: "Memory"
-description: "Build a personalized AgentFlow graph with long-term memory retrieval and storage using Mem0."
+title: Memory — AgentFlow Python AI Agent Framework
+sidebar_label: Memory
+description: Build a personalized AgentFlow graph with long-term memory retrieval and storage using Mem0. Part of the AgentFlow ai agent tutorial guide for production-ready.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - memory
 ---
+
 
 # Memory
 

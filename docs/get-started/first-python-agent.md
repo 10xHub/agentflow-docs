@@ -1,7 +1,16 @@
 ---
-title: First Python Agent
-description: Build and run a minimal AgentFlow graph in Python.
+title: First Python Agent — AgentFlow Python AI Agent Framework
+sidebar_label: First Python Agent
+description: Build and run a minimal AgentFlow graph in Python. Part of the AgentFlow agentflow get started guide for production-ready Python AI agents.
+keywords:
+  - agentflow get started
+  - python ai agent setup
+  - agentflow installation
+  - agentflow
+  - python ai agent framework
+  - first python agent
 ---
+
 
 # First Python agent
 

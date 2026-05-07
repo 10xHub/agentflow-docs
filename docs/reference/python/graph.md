@@ -1,8 +1,17 @@
 ---
-title: Graph
-description: StateGraph, CompiledGraph, START, END — the core execution engine of the agentflow library.
+title: Graph — AgentFlow Python AI Agent Framework
+sidebar_label: Graph
+description: StateGraph, CompiledGraph, START, END — the core execution engine of the agentflow library. Part of the AgentFlow agentflow python reference guide for.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - graph
 sidebar_position: 1
 ---
+
 
 # Graph
 

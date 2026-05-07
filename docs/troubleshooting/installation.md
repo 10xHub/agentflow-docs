@@ -1,7 +1,16 @@
 ---
-title: "Installation Troubleshooting"
-description: "Symptoms, causes, and fixes for common AgentFlow installation and environment setup issues."
+title: Installation Troubleshooting
+sidebar_label: Installation Troubleshooting
+description: Symptoms, causes, and fixes for common AgentFlow installation and environment setup issues. Part of the AgentFlow agentflow troubleshooting guide for.
+keywords:
+  - agentflow troubleshooting
+  - agent debugging
+  - ai agent errors
+  - agentflow
+  - python ai agent framework
+  - installation troubleshooting
 ---
+
 
 # Installation troubleshooting
 

@@ -1,0 +1,263 @@
+---
+slug: react-agent-tools-real-apis
+title: "Build a ReAct Agent That Calls Real APIs: End-to-End in Python"
+description: A practical walkthrough of building a ReAct agent in Python that calls real external APIs. Tool design, error handling, retries, and structured outputs.
+authors: [team]
+tags: [react-agent, tools, python, api, tutorial]
+date: 2026-04-13
+keywords:
+  - react agent python
+  - python agent tool calling
+  - ai agent api integration
+  - llm function calling
+  - python react agent tutorial
+image: /img/agentflow-social-card.png
+---
+
+The ReAct pattern (Reason → Act → Observe → loop) is the workhorse of modern agents. It is also where most "hello world" tutorials end and real engineering begins. What does the loop look like when the tools actually call external APIs? When the API rate-limits? When it returns malformed JSON?
+
+Here is the end-to-end pattern, with the failure modes baked in.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="Build a ReAct Agent That Calls Real APIs. End-to-End in Python"
+  description="A practical walkthrough of building a ReAct agent in Python that calls real external APIs. Tool design, error handling, retries, and structured outputs."
+  datePublished="2026-04-13"
+  slug="react-agent-tools-real-apis"
+  keywords={["react agent", "tool calling", "api integration", "python"]}
+/>
+
+## What ReAct actually is
+
+ReAct is a loop:
+
+1. **Reason**. The model thinks about what to do
+2. **Act**. The model picks a tool and calls it with arguments
+3. **Observe**. The tool returns a result; the model reads it
+4. **Loop**. Back to Reason, until the model produces a final answer
+
+In a graph runtime, this is two nodes (`MAIN` and `TOOL`) with a conditional edge between them.
+
+## The shape of a real tool
+
+Let's build a tool that hits a real API. The [Open-Meteo](https://open-meteo.com) weather service (no auth required for testing).
+
+```python
+import httpx
+from dataclasses import dataclass
+
+@dataclass
+class WeatherResult:
+    location: str
+    temperature_c: float
+    description: str
+
+def get_weather(location: str) -> str:
+    """Get current weather for a city. Returns a one-line summary."""
+    try:
+        # Step 1 — geocode
+        geo = httpx.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": location, "count": 1},
+            timeout=5.0,
+        ).json()
+        if not geo.get("results"):
+            return f"Could not find a location named '{location}'. Ask the user to clarify."
+
+        latitude = geo["results"][0]["latitude"]
+        longitude = geo["results"][0]["longitude"]
+
+        # Step 2 — current weather
+        weather = httpx.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={"latitude": latitude, "longitude": longitude, "current_weather": True},
+            timeout=5.0,
+        ).json()
+        cw = weather["current_weather"]
+        return f"{location}: {cw['temperature']}°C, wind {cw['windspeed']} km/h."
+
+    except httpx.TimeoutException:
+        return f"Weather API timed out for {location}. Tell the user to try again later."
+    except httpx.HTTPError as e:
+        return f"Weather API error for {location}: {e}. Suggest a fallback or move on."
+```
+
+Key choices:
+
+- **Plain Python function with type hints and a docstring.** AgentFlow exposes this to the model automatically.
+- **Returns a string, not a dict.** The model reads strings best; structure goes in the wording, not the type.
+- **Errors become results, not exceptions.** The agent reads the error message and decides how to recover.
+- **Timeouts are explicit.** `5.0` seconds is a reasonable budget per tool call.
+
+## The agent
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+tool_node = ToolNode([get_weather])
+
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{
+        "role": "system",
+        "content": (
+            "You are a weather assistant. Use get_weather to answer questions. "
+            "If the tool returns an error, acknowledge the error and suggest the user try again or pick a different city. "
+            "Do not invent weather data."
+        ),
+    }],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+app = graph.compile()
+```
+
+The system prompt is doing important work. It tells the model *how* to handle tool errors. Without that instruction, models often hallucinate weather data when the tool fails.
+
+## Running it
+
+```python
+result = app.invoke(
+    {"messages": [Message.text_message("What's the weather in Tokyo and Bengaluru?")]},
+    config={"thread_id": "weather-1", "recursion_limit": 10},
+)
+print(result["messages"][-1].text())
+```
+
+The agent will call `get_weather` twice (once per city), then synthesize the answer. With `recursion_limit=10` we cap the loop in case the model decides to retry forever.
+
+## Tool design tips
+
+### Keep the surface small
+
+A tool with 8 optional parameters confuses the model. Two common patterns:
+
+- **One tool, one job.** `get_weather(location)`, not `query_weather(location, date, unit, fields)`.
+- **Multiple specific tools.** `get_current_weather`, `get_forecast`, `get_historical_weather`. Each does one thing.
+
+### Use string-typed parameters when you can
+
+Models pass strings reliably. They sometimes mangle complex types. If your underlying API takes a date, accept a date *string* in the tool:
+
+```python
+def get_forecast(location: str, date: str) -> str:
+    """Get weather forecast for a city on a specific date.
+
+    Args:
+        location: City name.
+        date: ISO date like 2026-04-15.
+    """
+    try:
+        d = datetime.date.fromisoformat(date)
+    except ValueError:
+        return f"Invalid date '{date}'. Use ISO format like 2026-04-15."
+    ...
+```
+
+Validate inside the tool. Don't trust the model to obey type hints.
+
+### Return useful, scannable results
+
+Models read tool results like a human reads a search result. A useful result has:
+
+- **A clear answer line** at the top
+- **Source / context** so the model can cite it
+- **An error explanation** when something goes wrong, with what to do next
+
+Bad: `{"data": {"temp": 22, "wind": 3.4}}`. The model has to interpret it.
+
+Good: `Tokyo: 22°C, wind 3.4 km/h. Source: open-meteo.com.` The model just reads it.
+
+### Bound the result size
+
+A tool that dumps 50 KB of API response into the context will blow your token budget on the next turn. Trim before returning:
+
+```python
+def search_internal_docs(query: str) -> str:
+    """Search internal documentation."""
+    hits = vector_client.search(query, top_k=3)
+    summary = "\n\n".join(
+        f"[{h.id}] {h.title}\n{h.text[:300]}..." for h in hits
+    )
+    return summary or "No matching docs found."
+```
+
+Three results × 300 chars = 1 KB. Plenty for the model, manageable cost.
+
+## Multi-tool, structured-output ReAct
+
+A common pattern: ReAct agent that needs to return a structured result, not free-form text. Use a final "submit answer" tool:
+
+```python
+from typing import TypedDict
+
+class WeatherSummary(TypedDict):
+    location: str
+    temperature_c: float
+    advice: str
+
+def submit_summary(summary: WeatherSummary) -> str:
+    """Call this when you have a final answer. Stores the structured summary."""
+    # Persist or return; AgentFlow surfaces this in state for the caller
+    return f"Stored summary for {summary['location']}."
+
+tool_node = ToolNode([get_weather, submit_summary])
+```
+
+The agent loops with `get_weather`, then calls `submit_summary` once it has all the data. You read the structured result from `state` after the run finishes.
+
+For a runnable structured-output example, see [react-agent-validation](/docs/tutorials/from-examples/react-agent-validation).
+
+## Persistence
+
+The agent above is single-shot. For a real assistant, add a checkpointer:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+app = graph.compile(checkpointer=PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+))
+
+# Same thread_id in subsequent calls reuses prior history
+app.invoke(..., config={"thread_id": "user-42"})
+```
+
+Now turn 2 of the conversation knows what was said in turn 1. See [add memory](/docs/beginner/add-memory) for the full pattern.
+
+## Common ReAct pitfalls
+
+1. **Forgetting `recursion_limit`.** Default it to 10–25; the model will sometimes loop on errors.
+2. **Letting tools throw.** Catch and return as a string. The agent should *read* the error.
+3. **Tools that block too long.** Set HTTP timeouts (3–10 s). A 30-second tool kills the user experience.
+4. **Tools with hidden side effects.** A tool that writes to a database needs an idempotency key. See [the production post](/blog/production-ai-agents-observability-retries).
+5. **Ambiguous tool names.** `lookup` vs `get_weather`. Be specific. Models choose tools by name and description.
+
+## Further reading
+
+- [Add a tool](/docs/beginner/add-a-tool). Beginner walkthrough
+- [Tool decorator tutorial](/docs/tutorials/from-examples/tool-decorator). Advanced patterns
+- [ReAct agent example](/docs/tutorials/from-examples/react-agent). Runnable code
+- [Streaming agent responses](/blog/streaming-agent-responses-fastapi-sse)
+- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
+
+To get a working ReAct agent in five minutes, [Get started](/docs/get-started). The quickstart walks the same pattern, end to end.

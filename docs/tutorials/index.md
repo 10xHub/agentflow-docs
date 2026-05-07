@@ -1,8 +1,16 @@
 ---
-title: "Tutorials"
-sidebar_label: "Overview"
-description: "Hands-on AgentFlow tutorials that turn example code into step-by-step guides."
+title: Tutorials — AgentFlow Python AI Agent Framework
+sidebar_label: Overview
+description: Hands-on AgentFlow tutorials that turn example code into step-by-step guides. Part of the AgentFlow ai agent tutorial guide for production-ready Python AI.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - tutorials
 ---
+
 
 # Tutorials
 

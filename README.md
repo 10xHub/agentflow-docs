@@ -1,17 +1,17 @@
 # AgentFlow Docs
 
-Professional documentation site for the AgentFlow ecosystem.
+Documentation site for [**AgentFlow**](https://github.com/10xHub/Agentflow) — the open-source Python framework for building production-grade multi-agent systems.
 
-This site is now built with **Docusaurus** so the documentation can support a product-quality landing page, beginner learning paths, MDX/React examples, and GitHub Pages deployment.
+Built with [Docusaurus 3](https://docusaurus.io). Deployed to **agentflow.10xscale.ai** via GitHub Pages.
 
-## Local Development
+## Local development
 
 ```bash
 npm install
 npm run start
 ```
 
-The dev server runs at `http://localhost:3000`.
+Dev server: `http://localhost:3000`.
 
 ## Build
 
@@ -20,53 +20,72 @@ npm run build
 npm run serve
 ```
 
-The static output is generated into `build/`.
+Static output in `build/`.
 
-## GitHub Pages
+> **Windows + Git Bash note:** if `npm run build` mangles `BASE_URL=/` (you'll see broken links resolving to `C:/Program Files/Git/...`), run from PowerShell with `$env:MSYS_NO_PATHCONV='1'`.
 
-The workflow at `.github/workflows/deploy.yml` builds the site and deploys it to GitHub Pages.
+## SEO scripts
 
-By default, it assumes a project page URL like:
-
-```text
-https://<owner>.github.io/<repo>/
+```bash
+npm run seo:audit       # lint per-page front matter (title, description, keywords)
+npm run seo:fix         # auto-fill missing/short SEO front matter (idempotent)
+npm run seo:og-image    # convert SVG social card to PNG (requires `sharp`)
 ```
 
-For a custom domain such as `https://docs.agentflow.ai`, set `SITE_URL` and `BASE_URL` in the workflow or repository variables:
+## Deploy
 
-```text
-SITE_URL=https://docs.agentflow.ai
-BASE_URL=/
-```
+`.github/workflows/deploy.yml` builds and deploys to GitHub Pages on push to `main`.
 
-## Structure
+Required GitHub repo secrets (optional but recommended):
+
+- `GOOGLE_ANALYTICS_ID` — e.g. `G-XXXXXXXXXX`
+- `MICROSOFT_CLARITY_ID` — for heatmaps / session replay
+
+The site is configured for the custom domain **agentflow.10xscale.ai** (CNAME in `static/`).
+
+## Repo layout
 
 ```text
 docs/
-  get-started/
-  concepts/
-  tutorials/
-  how-to/
-  production/
-  reference/
+  get-started/         # golden path, beginner-friendly
+  concepts/            # mental models
+  beginner/            # tutorial path
+  tutorials/           # from-examples deep dives
+  how-to/              # task-oriented guides
+  reference/           # API reference (Python, REST, TS client)
+  compare/             # framework comparisons (LangGraph, CrewAI, AutoGen, etc.)
+  use-cases/           # production reference architectures
+  integrations/        # FastAPI / Next.js / Postgres
+  providers/           # LLM provider configuration
+  troubleshooting/
+  courses/             # GenAI beginner + advanced curriculum
+
+blog/                  # 10 cornerstone posts, RSS at /blog/rss.xml
 src/
-  components/
-  css/
-  pages/
-static/
-  img/
+  components/          # CompareTable, FAQ, RelatedDocs, BlogStructuredData
+  pages/               # Homepage
+  theme/               # MDXComponents, Root swizzles
+static/                # CNAME, robots.txt, social card, favicon
+scripts/               # SEO automation (audit, fix, og-image)
+marketing/             # Launch kit (HN/Reddit/dev.to), measurement playbook
+SEO_PLAN.md            # Full SEO plan (Parts A–F)
 ```
 
-The previous MkDocs content is preserved under `docs-mkdocs-legacy/` so it can be mined during the rewrite.
+## Contributing
 
-## Legacy MkDocs
+PRs welcome. Before opening:
 
-The old MkDocs config files are still in the repo for reference:
+1. `npm run typecheck`
+2. `npm run build` (verify no broken links)
+3. `npm run seo:audit` (verify SEO front-matter)
 
-```text
-mkdocs.yml
-pyproject.toml
-uv.lock
-```
+For new doc pages, follow the front-matter pattern enforced by `scripts/audit-frontmatter.mjs` (title 25–60 chars, description 100–160 chars, keywords array).
 
-They are no longer the primary docs site.
+## Related repos
+
+- [`10xHub/Agentflow`](https://github.com/10xHub/Agentflow) — the Python library
+- [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client) — TypeScript client
+
+## License
+
+MIT.

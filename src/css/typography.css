@@ -1,0 +1,72 @@
+/* Self-hosted fonts — no Google Fonts request, no FOUT.
+ * Loaded via @fontsource. Only the weights we actually use are imported.
+ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
+
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+/* Type scale tuned for dark dev-tool aesthetic. Tighter line-height on display
+ * sizes; generous on body. Inter loves negative tracking; mono needs none.
+ */
+.af-display-xl {
+  font-family: var(--af-font-sans);
+  font-size: clamp(3rem, 6vw, 5.25rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.af-display-lg {
+  font-family: var(--af-font-sans);
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  font-weight: 760;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.af-display-md {
+  font-family: var(--af-font-sans);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.af-eyebrow {
+  display: inline-block;
+  margin: 0 0 0.85rem;
+  padding: 0.32rem 0.65rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-pill);
+  background: var(--af-bg-1);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+.af-eyebrow strong {
+  color: var(--af-blue-hi);
+  font-weight: 700;
+}
+
+.af-mono {
+  font-family: var(--af-font-mono);
+  font-feature-settings: "liga" 0;
+}
+
+.af-text-dim {
+  color: var(--af-text-dim);
+}
+
+.af-text-faint {
+  color: var(--af-text-faint);
+}

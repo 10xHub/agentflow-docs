@@ -1,8 +1,17 @@
 ---
 title: Create and configure the client
-description: Step-by-step guide to installing, instantiating, and verifying AgentFlowClient.
+sidebar_label: Create and configure the client
+description: Step-by-step guide to installing, instantiating, and verifying AgentFlowClient. Part of the AgentFlow agentflow typescript client guide for production-ready.
+keywords:
+  - agentflow typescript client
+  - ai agent client
+  - agent sdk
+  - agentflow
+  - python ai agent framework
+  - create and configure the client
 sidebar_position: 1
 ---
+
 
 # How to create and configure the client
 

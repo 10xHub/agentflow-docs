@@ -1,8 +1,17 @@
 ---
-title: AgentFlowClient
+title: "`AgentFlowClient` — Python AI Agent Framework Documentation"
+sidebar_label: "`AgentFlowClient`"
 description: Complete reference for the AgentFlowClient class — the main entry point for calling AgentFlow from TypeScript or JavaScript.
+keywords:
+  - typescript client reference
+  - agent client api
+  - agentflow client sdk
+  - agentflow
+  - python ai agent framework
+  - "`agentflowclient`"
 sidebar_position: 1
 ---
+
 
 # `AgentFlowClient`
 

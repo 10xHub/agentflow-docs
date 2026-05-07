@@ -1,8 +1,16 @@
 ---
-title: "GitHub MCP"
-sidebar_label: "GitHub MCP"
-description: "Use a remote GitHub MCP server from AgentFlow so an agent can query repositories and other GitHub data through MCP tools."
+title: GitHub MCP — AgentFlow Python AI Agent Framework
+sidebar_label: GitHub MCP
+description: Use a remote GitHub MCP server from AgentFlow so an agent can query repositories and other GitHub data through MCP tools.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - github mcp
 ---
+
 
 # GitHub MCP
 

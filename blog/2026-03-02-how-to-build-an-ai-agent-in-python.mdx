@@ -1,0 +1,240 @@
+---
+slug: how-to-build-an-ai-agent-in-python
+title: "How to Build an AI Agent in Python: A 2026 Guide"
+description: A practical 2026 guide to building an AI agent in Python. Graphs, tools, memory, streaming, and production deployment. With runnable code in AgentFlow.
+authors: [team]
+tags: [python, ai-agents, tutorial, getting-started]
+date: 2026-03-02
+keywords:
+  - how to build an ai agent in python
+  - python ai agent tutorial
+  - build ai agent python
+  - python agent framework
+  - ai agent guide 2026
+image: /img/agentflow-social-card.png
+---
+
+If you have a Python codebase and an LLM provider, you can ship a working AI agent today. The hard part is no longer "can the model use a tool?". It is "how do I keep this thing reliable in production, with memory, streaming, and a UI."
+
+This guide walks the full path: from a single-tool prototype to a deployed Python AI agent with persistent threads and a typed frontend client. Every snippet runs.
+
+<!-- truncate -->
+
+<BlogStructuredData
+  headline="How to Build an AI Agent in Python. A 2026 Guide"
+  description="A practical 2026 guide to building an AI agent in Python. Graphs, tools, memory, streaming, and production deployment. With runnable code in AgentFlow."
+  datePublished="2026-03-02"
+  slug="how-to-build-an-ai-agent-in-python"
+  keywords={["python ai agent", "build ai agent python", "agent framework", "tutorial"]}
+/>
+
+## What "AI agent" actually means in 2026
+
+The term has stretched. For this guide, an **AI agent** is a Python program that:
+
+1. Takes a goal or query from a user
+2. Decides which **tools** (functions) to call
+3. Calls them, possibly in a loop, and uses the results
+4. Returns an answer, or asks for clarification, or hands off to a human
+
+Concretely: a function that wraps an LLM, has access to tools, and runs in a controlled loop. Everything else (memory, streaming, multi-agent) is layered on top.
+
+## Step 1: Pick a runtime, not just an LLM library
+
+You can write an agent loop with raw provider SDKs. For a one-off script, that is fine. For anything you plan to run more than twice, you want a runtime that gives you:
+
+- **Graph-based control flow**. Explicit state and routing, not a `while` loop
+- **Persistent state**. A conversation that survives a process restart
+- **Streaming primitives**. Token-by-token responses to a frontend
+- **An API surface**.`POST /invoke` and `POST /stream` you can call from anywhere
+
+We use [AgentFlow](/docs/get-started) for the rest of this guide because it ships all of the above in one Python package. The patterns transfer to LangGraph, CrewAI, AutoGen, and others. See the [framework comparisons](/docs/compare) for the head-to-head.
+
+Install:
+
+```bash
+pip install 10xscale-agentflow 10xscale-agentflow-cli
+```
+
+## Step 2: Define a tool
+
+Tools are plain Python functions. AgentFlow reads the type hints and docstring to expose them to the model.
+
+```python
+def get_weather(location: str) -> str:
+    """Get current weather for a city."""
+    # Replace with a real API call
+    return f"It is sunny and 22°C in {location}."
+```
+
+If your function calls an external API, that is the only place network I/O should live. Keep tools pure: in → out, easy to test.
+
+## Step 3: Build the smallest working agent
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+tool_node = ToolNode([get_weather])
+
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant. Use tools when you need facts."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in Tokyo?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+This is a **ReAct agent**. Reason (decide which tool) → Act (call the tool) → Observe (read the result) → loop until the model is done. The `route` function is the key: it inspects the last message and decides whether to keep looping or finish.
+
+For the full conceptual model, see [Agents and tools](/docs/concepts/agents-and-tools).
+
+## Step 4: Add memory so the agent remembers
+
+A real assistant needs to remember earlier turns. AgentFlow handles this with a **checkpointer** keyed by `thread_id`:
+
+```python
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+
+checkpointer = InMemoryCheckpointer()
+app = graph.compile(checkpointer=checkpointer)
+
+# Turn 1
+app.invoke(
+    {"messages": [Message.text_message("My name is Alex and I'm in Bengaluru.")]},
+    config={"thread_id": "user-42"},
+)
+
+# Turn 2 — same thread_id reuses the entire conversation
+app.invoke(
+    {"messages": [Message.text_message("What's the weather in my city?")]},
+    config={"thread_id": "user-42"},
+)
+```
+
+`InMemoryCheckpointer` is good for development. For production, swap to `PgCheckpointer` (Postgres + Redis) without changing any agent code:
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+)
+```
+
+See [Add memory](/docs/beginner/add-memory) for the full pattern.
+
+## Step 5: Stream tokens to a frontend
+
+Users do not wait for a 30-second blocking response. Stream:
+
+```python
+from agentflow.utils import ResponseGranularity
+from agentflow.core.state.stream_chunks import StreamEvent
+
+for chunk in app.stream(
+    {"messages": [Message.text_message("Tell me a story about a Python agent.")]},
+    config={"thread_id": "story-1"},
+    response_granularity=ResponseGranularity.LOW,
+):
+    if chunk.event == StreamEvent.MESSAGE and chunk.message is not None:
+        print(chunk.message.text(), end="", flush=True)
+```
+
+For the async variant and how to forward chunks over an HTTP SSE connection, see [Streaming](/docs/concepts/streaming).
+
+## Step 6: Expose the agent as an API
+
+When you are ready to put this behind a real frontend or call it from another service:
+
+```bash
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+`agentflow.json` points the CLI at your compiled graph:
+
+```json
+{"agent": "graph.react:app"}
+```
+
+You now have:
+
+- `POST /v1/graph/invoke`. Request/response
+- `POST /v1/graph/stream`. Server-sent events
+- `GET /v1/graph/threads/{id}`. Fetch persisted state
+
+Production patterns like auth, environment variables, and Docker are covered in [Run with API](/docs/beginner/run-with-api) and [Deployment](/docs/how-to/production/deployment).
+
+## Step 7: Call it from TypeScript
+
+For a Next.js, React, or Node frontend:
+
+```typescript
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+
+const response = await client.invoke(
+  [Message.text_message("What's the weather in Tokyo?")],
+  {config: {thread_id: "ui-1"}},
+);
+console.log(response.messages.at(-1)?.text());
+```
+
+The TypeScript client is typed end-to-end. The same `Message` and `thread_id` you used in Python are the contract.
+
+## What you ship vs what you skip
+
+A complete production agent has:
+
+- ✅ A single tool (we built this)
+- ✅ Persistent threads (checkpointer)
+- ✅ Streaming (`app.stream`)
+- ✅ A REST API (`agentflow api`)
+- ✅ A typed client (`@10xscale/agentflow-client`)
+
+What you can skip on day one:
+
+- Multi-agent handoffs. Add when one agent is not enough
+- Custom state fields.`AgentState` covers most cases
+- Vector retrieval. Only when the model's context is not enough
+
+## Common mistakes that bite in week 2
+
+1. **Using `InMemoryCheckpointer` in production.** It loses everything on restart. Move to `PgCheckpointer` before you have real users.
+2. **Treating the LLM call as deterministic.** It is not. Always set `recursion_limit` in your invoke config and handle the case where the agent gives up.
+3. **Skipping streaming.** Adding it later means changing your API and frontend. Build streaming into the initial design.
+4. **Hard-coding the model.** Use `provider/model` strings (e.g., `"google/gemini-2.5-flash"`) so you can swap providers without rewriting the agent. See [providers](/docs/providers).
+
+## Where to go next
+
+- Beginner path: [Mental model](/docs/beginner/mental-model) → [Your first agent](/docs/beginner/your-first-agent) → [Add a tool](/docs/beginner/add-a-tool)
+- Concepts: [State graphs](/docs/concepts/state-graph), [Memory and store](/docs/concepts/memory-and-store)
+- Comparison: [AgentFlow vs LangGraph](/docs/compare/agentflow-vs-langgraph) and [other frameworks](/docs/compare)
+
+Or jump straight to [Get started](/docs/get-started) and have a working agent in five minutes.

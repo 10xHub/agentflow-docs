@@ -1,0 +1,241 @@
+---
+title: "AgentFlow vs LangGraph: Production Python Alternative"
+sidebar_label: vs LangGraph
+description: AgentFlow vs LangGraph head-to-head. State graphs, memory, streaming, REST API, and TypeScript client compared for production Python AI agents.
+keywords:
+  - langgraph alternative
+  - agentflow vs langgraph
+  - langgraph vs agentflow
+  - python ai agent framework
+  - state graph python
+  - multi-agent orchestration
+sidebar_position: 2
+---
+
+# AgentFlow vs LangGraph: a production-ready alternative for Python agents
+
+<VsBanner
+  competitor="LangGraph"
+  tagline="Same graph mental model. Production server, durable threads, and a typed TypeScript client included."
+/>
+
+If you are evaluating **LangGraph** for a multi-agent system in Python, **AgentFlow** is the closest drop-in alternative. A graph-based runtime with the same mental model, plus an opinionated API, CLI, and TypeScript client out of the box.
+
+This page shows what changes when you migrate, what stays the same, and where AgentFlow gives you a stronger production foundation than LangGraph alone.
+
+## TL;DR: AgentFlow vs LangGraph
+
+<CompareTable
+  competitorName="LangGraph"
+  caption="High-level comparison of architectural choices. Both frameworks are open-source and Python-first."
+  rows={[
+    {dimension: 'Programming model', agentflow: 'Typed StateGraph with nodes, conditional edges, and sub-graphs', competitor: 'StateGraph with TypedDict / Pydantic state and edges'},
+    {dimension: 'State and messages', agentflow: 'Built-in AgentState + Message types, multimodal aware', competitor: 'BYO TypedDict / annotated reducers'},
+    {dimension: 'Persistence', agentflow: 'InMemoryCheckpointer for dev, PgCheckpointer (Postgres + Redis) for prod', competitor: 'MemorySaver / PostgresSaver / SQLiteSaver via langgraph-checkpoint-*', emphasis: 'tie'},
+    {dimension: 'API serving', agentflow: 'Built-in: `agentflow api` serves any compiled graph as REST + SSE', competitor: 'LangGraph Platform (paid) or roll-your-own FastAPI', emphasis: 'agentflow'},
+    {dimension: 'Frontend client', agentflow: 'Typed TypeScript client (`@10xscale/agentflow-client`) with invoke + stream', competitor: 'No first-party TS client; use fetch / EventSource', emphasis: 'agentflow'},
+    {dimension: 'Hosted playground', agentflow: 'Bundled. Open in browser to chat with a deployed graph', competitor: 'LangGraph Studio (commercial)'},
+    {dimension: 'License', agentflow: 'MIT', competitor: 'MIT (LangGraph OSS). Platform/Studio are commercial', emphasis: 'tie'},
+    {dimension: 'Lock-in', agentflow: 'No required SaaS account; runs anywhere Python runs', competitor: 'OSS runs anywhere; LangSmith and LangGraph Platform pull you toward the LangChain stack'},
+  ]}
+/>
+
+## Why teams migrate from LangGraph to AgentFlow
+
+1. **One project for runtime, API, and client.** LangGraph gives you the graph engine, but you still wire FastAPI, SSE plumbing, and a frontend fetcher yourself. AgentFlow ships `agentflow api` (REST + SSE) and a typed TypeScript client in the same repo.
+2. **Smaller dependency surface.** AgentFlow does not depend on the LangChain core or LangSmith. You install `agentflow` and you are done.
+3. **Production patterns are the default.** Checkpointers, thread IDs, recursion limits, and graceful shutdown are wired into the API server. Not a recipe you copy from a blog post.
+4. **No SaaS gravity.** LangSmith and LangGraph Platform are excellent products but pull you toward a paid stack. AgentFlow has no required hosted dependency.
+
+## Same agent, both frameworks
+
+A minimal **ReAct agent with one tool**, written first in LangGraph, then in AgentFlow. Both frameworks compile to a graph that loops between a model node and a tool node.
+
+### LangGraph
+
+```python
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
+from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import create_react_agent
+
+@tool
+def get_weather(location: str) -> str:
+    """Get current weather for a location."""
+    return f"The weather in {location} is sunny and 22°C."
+
+app = create_react_agent("openai:gpt-4o-mini", tools=[get_weather])
+
+result = app.invoke({"messages": [HumanMessage("What is the weather in London?")]})
+print(result["messages"][-1].content)
+```
+
+### AgentFlow
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+
+def get_weather(location: str) -> str:
+    """Get current weather for a location."""
+    return f"The weather in {location} is sunny and 22°C."
+
+tool_node = ToolNode([get_weather])
+agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tool_node="TOOL",
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+
+def route(state):
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOL"
+    if last and last.role == "tool":
+        return "MAIN"
+    return END
+
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in London?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+The shape is the same. Graph, nodes, conditional edges, compile, invoke. AgentFlow uses its own `Message` and `AgentState` types so multimodal content and tool calls flow through the graph without adapter layers.
+
+## Persistence and threads
+
+LangGraph users who have already moved past the in-memory checkpointer will recognize the AgentFlow pattern.
+
+```python
+# AgentFlow — production
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+)
+
+app = graph.compile(checkpointer=checkpointer)
+```
+
+```python
+# LangGraph — production
+from langgraph.checkpoint.postgres import PostgresSaver
+
+with PostgresSaver.from_conn_string("postgresql://...") as checkpointer:
+    app = workflow.compile(checkpointer=checkpointer)
+```
+
+Both use thread IDs in `config={"thread_id": "..."}` to scope conversations. If you already store thread IDs in your app, the migration is mechanical.
+
+## Serving the graph
+
+This is where AgentFlow saves the most code.
+
+```bash
+# AgentFlow — one command, production-ready
+pip install 10xscale-agentflow-cli
+agentflow init
+agentflow api --host 0.0.0.0 --port 8000
+```
+
+The `agentflow.json` points the CLI at your compiled graph:
+
+```json
+{
+  "agent": "graph.react:app",
+  "checkpointer": "graph.dependencies:my_checkpointer",
+  "auth": "jwt"
+}
+```
+
+You get `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET /v1/graph/threads/{id}` for free, plus health checks and graceful shutdown.
+
+In LangGraph you would either run **LangGraph Platform** (commercial) or wire FastAPI yourself. Typically 100–200 lines of routing, SSE serialization, and checkpoint plumbing per project.
+
+## Calling from TypeScript
+
+```typescript
+import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+
+const result = await client.invoke(
+  [Message.text_message("What is the weather in Tokyo?")],
+  {config: {thread_id: "ts-demo"}},
+);
+console.log(result.messages.at(-1)?.text());
+```
+
+There is no equivalent first-party TypeScript client in LangGraph today. Most teams wrap fetch and parse SSE by hand.
+
+## Migrating from LangGraph to AgentFlow
+
+The conversion is largely mechanical for a single-graph app:
+
+1. Replace `from langgraph.graph import StateGraph` with `from agentflow.core.graph import StateGraph`.
+2. Replace `from langchain_core.messages import HumanMessage` (and friends) with `from agentflow.core.state import Message` and use `Message.text_message(...)`.
+3. Use `agentflow.core.graph.Agent` instead of `create_react_agent`. Pass `model`, `system_prompt`, and `tool_node`.
+4. Replace `MemorySaver` / `PostgresSaver` with `InMemoryCheckpointer` / `PgCheckpointer`.
+5. Drop FastAPI. Point `agentflow.json` at your compiled graph and run `agentflow api`.
+6. Replace your custom TypeScript fetcher with `@10xscale/agentflow-client`.
+
+For multi-agent systems with handoffs, AgentFlow exposes `create_handoff_tool` and the `Command` primitive. See [the handoff how-to](/docs/how-to/python/handoff-between-agents) for a full example.
+
+## When LangGraph is still the right pick
+
+We will not pretend AgentFlow is the right answer for every team:
+
+- **Heavy LangChain integration.** If your codebase is already deep into LangChain runnables, retrievers, and LangSmith tracing, staying on LangGraph keeps that ecosystem cohesive.
+- **LangGraph Platform features you depend on.** If you rely on LangGraph Studio's visual editor or LangGraph Platform's hosted infrastructure, AgentFlow does not currently match those products.
+- **Python-only stack.** If you have no JavaScript surface and no plan to add one, you will not feel the TypeScript-client win as strongly.
+
+For everyone else. Especially teams who want a Python backend plus a TypeScript frontend without rebuilding the API layer. AgentFlow ships closer to "deployable" out of the box.
+
+<FAQ items={[
+  {
+    q: "Is AgentFlow a fork of LangGraph?",
+    a: "No. AgentFlow is an independent open-source project with its own runtime, state types, and CLI. The two frameworks share a graph-based mental model that is common to most agent runtimes today."
+  },
+  {
+    q: "Can I migrate a LangGraph state schema to AgentFlow?",
+    a: "Yes. AgentFlow's AgentState supports a list of typed Message objects plus arbitrary fields. Most TypedDict-based LangGraph states map onto AgentState fields one-to-one. Multimodal content and tool calls migrate cleanly through the Message API."
+  },
+  {
+    q: "Does AgentFlow support the same model providers as LangGraph?",
+    a: "AgentFlow ships with first-party support for OpenAI, Anthropic, Google (Gemini and Vertex AI), and other major providers. You configure them by provider+model string on the Agent class. See the providers section of the docs."
+  },
+  {
+    q: "How does AgentFlow's API server compare to LangGraph Platform?",
+    a: "AgentFlow's CLI ships with a built-in REST + SSE server you can run anywhere. No SaaS account required. LangGraph Platform is a hosted product with extra features like managed checkpointers and Studio visualisation; AgentFlow is closer to the open-source LangGraph experience plus an opinionated server."
+  },
+  {
+    q: "Is AgentFlow free for commercial use?",
+    a: "Yes. AgentFlow is MIT-licensed, including the API/CLI and the TypeScript client. There is no required hosted service or paid tier."
+  },
+  {
+    q: "Does AgentFlow integrate with MCP (Model Context Protocol)?",
+    a: "Yes. AgentFlow has first-class MCP support. See the MCP tutorials under Tutorials → From examples for client and server patterns."
+  },
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/get-started', title: 'Get started with AgentFlow', description: 'Install, build a first agent, expose an API, connect from TypeScript.', intent: 'guide'},
+  {to: '/docs/concepts/state-graph', title: 'State graphs', description: 'How nodes, edges, and routing work in AgentFlow.', intent: 'concept'},
+  {to: '/docs/beginner/add-memory', title: 'Add memory and checkpointing', description: 'Same patterns LangGraph uses, with AgentFlow\'s persistence layer.', intent: 'tutorial'},
+  {to: '/blog/langgraph-to-agentflow-migration', title: 'LangGraph → AgentFlow migration walkthrough', description: 'A diff-style port of a real ReAct agent + tool, then multi-agent handoff.', intent: 'blog'},
+]} />

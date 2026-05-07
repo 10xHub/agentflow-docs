@@ -1,8 +1,17 @@
 ---
-title: Evaluation
+title: Evaluation — AgentFlow Python AI Agent Framework
+sidebar_label: Evaluation
 description: AgentEvaluator, EvalConfig, CriterionConfig, EvalSet, EvalCase, TrajectoryCollector — run repeatable, scored evaluations of your agents.
+keywords:
+  - agentflow python reference
+  - agent api reference
+  - python agent library
+  - agentflow
+  - python ai agent framework
+  - evaluation
 sidebar_position: 12
 ---
+
 
 # Evaluation
 

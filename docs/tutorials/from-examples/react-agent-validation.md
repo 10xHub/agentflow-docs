@@ -1,8 +1,16 @@
 ---
-title: "ReAct Agent with Validation"
-sidebar_label: "ReAct Agent with Validation"
-description: "Add input validators — prompt-injection guard, content safety, and custom business rules — to a ReAct agent using CallbackManager."
+title: ReAct Agent with Validation
+sidebar_label: ReAct Agent with Validation
+description: Add input validators — prompt-injection guard, content safety, and custom business rules — to a ReAct agent using CallbackManager.
+keywords:
+  - ai agent tutorial
+  - multi-agent tutorial
+  - agentflow examples
+  - agentflow
+  - python ai agent framework
+  - react agent with validation
 ---
+
 
 # ReAct Agent with Validation
 

@@ -1,7 +1,16 @@
 ---
-title: "Playground Troubleshooting"
-description: "Symptoms, causes, and fixes for hosted playground connection issues when using agentflow play."
+title: Playground Troubleshooting
+sidebar_label: Playground Troubleshooting
+description: Symptoms, causes, and fixes for hosted playground connection issues when using agentflow play. Part of the AgentFlow agentflow troubleshooting guide for.
+keywords:
+  - agentflow troubleshooting
+  - agent debugging
+  - ai agent errors
+  - agentflow
+  - python ai agent framework
+  - playground troubleshooting
 ---
+
 
 # Playground troubleshooting
 

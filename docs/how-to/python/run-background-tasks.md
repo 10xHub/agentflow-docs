@@ -1,7 +1,16 @@
 ---
 title: Run work in the background
+sidebar_label: Run work in the background
 description: How to fire-and-forget async tasks from inside a node without blocking the graph using BackgroundTaskManager.
+keywords:
+  - agentflow python
+  - python ai agent guide
+  - multi-agent python
+  - agentflow
+  - python ai agent framework
+  - run work in the background
 ---
+
 
 # Run work in the background
 

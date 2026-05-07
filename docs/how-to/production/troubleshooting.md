@@ -1,7 +1,16 @@
 ---
-title: "Production Troubleshooting"
-description: "A production-first troubleshooting guide for common AgentFlow deployment, runtime, and connectivity issues."
+title: Production Troubleshooting
+sidebar_label: Production Troubleshooting
+description: A production-first troubleshooting guide for common AgentFlow deployment, runtime, and connectivity issues.
+keywords:
+  - production ai agents
+  - agent deployment
+  - agent observability
+  - agentflow
+  - python ai agent framework
+  - production troubleshooting
 ---
+
 
 # Production troubleshooting
 

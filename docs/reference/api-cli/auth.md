@@ -1,7 +1,16 @@
 ---
-title: Authentication
-description: How to configure JWT auth or a custom auth backend for the AgentFlow API.
+title: Authentication — AgentFlow Python AI Agent Framework
+sidebar_label: Authentication
+description: How to configure JWT auth or a custom auth backend for the AgentFlow API. Part of the AgentFlow agentflow api reference guide for production-ready Python AI.
+keywords:
+  - agentflow api reference
+  - rest api documentation
+  - agent cli reference
+  - agentflow
+  - python ai agent framework
+  - authentication
 ---
+
 
 # Authentication
 
