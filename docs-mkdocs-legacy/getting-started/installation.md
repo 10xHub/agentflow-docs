@@ -6,14 +6,14 @@ Get AgentFlow running in under 5 minutes.
 
 ## Requirements
 
-- **Python 3.10+** — [Download here](https://www.python.org/downloads/) if you don't have it
+- **Python 3.12+** — [Download here](https://www.python.org/downloads/) if you don't have it
 - **An API key** from at least one LLM provider (Google, OpenAI, or Anthropic)
 - **pip** (comes with Python) or [uv](https://docs.astral.sh/uv/) for faster installs
 
 Check your Python version:
 
 ```bash
-python --version  # Need Python 3.10+
+python --version  # NeedPython 3.12+
 ```
 
 ---

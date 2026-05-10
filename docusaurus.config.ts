@@ -127,7 +127,7 @@ const config: Config = {
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
         programmingLanguage: 'Python',
-        softwareRequirements: 'Python 3.10+',
+        softwareRequirements: 'Python 3.12+',
         license: 'https://opensource.org/licenses/MIT',
         codeRepository: githubUrl,
         offers: {'@type': 'Offer', price: '0', priceCurrency: 'USD'},

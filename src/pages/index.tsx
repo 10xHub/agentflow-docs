@@ -179,7 +179,7 @@ export default function Home() {
           <div className="container heroGrid">
             <div className="heroCopy">
               <p className="eyebrow">
-                <Icon name="Sparkles" size={12} /> &nbsp;v1.0 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.10+
+                <Icon name="Sparkles" size={12} /> &nbsp;v1.0 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
               </p>
               <Heading as="h1" className="heroTitle">
                 Production AI agents in Python. Ship in minutes.
