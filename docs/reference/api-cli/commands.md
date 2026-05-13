@@ -245,6 +245,116 @@ agentflow skills --agent github --force
 
 ---
 
+## agentflow test
+
+Run the project's test suite with pytest.
+
+```bash
+agentflow test [PATH] [OPTIONS] [-- PYTEST_ARGS]
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `PATH` | — | Path to a tests directory or file. When omitted, pytest auto-discovers tests across the whole project. |
+| `--coverage`, `-C` | `false` | Run with coverage (`--cov=. --cov-report=term-missing --cov-report=html:htmlcov`) |
+| `--html` | `false` | Open the HTML coverage report in a browser after the run (requires `--coverage`) |
+| `-k EXPR` | — | Only run tests whose name matches the given expression (forwarded to pytest) |
+| `--verbose`, `-v` | `false` | Enable verbose output |
+| `--quiet`, `-q` | `false` | Suppress output except errors |
+
+Any arguments after `--` are forwarded verbatim to pytest.
+
+When `PATH` is omitted, no path argument is passed to pytest and pytest's own discovery rules apply (it searches `testpaths` from `pytest.ini`/`pyproject.toml`, or the current directory if none are configured). Supplying `PATH` restricts the run to that directory or file only.
+
+The command also reads the optional `test` section from `agentflow.json` for project-level defaults. CLI flags take precedence over config file values. If `path` is set in `agentflow.json`, it is used only when no `PATH` argument is given on the CLI.
+
+**Example:**
+
+```bash
+# Run tests/ with verbose output (default)
+agentflow test
+
+# Run with coverage
+agentflow test --coverage
+
+# Run with coverage and open the HTML report
+agentflow test --coverage --html
+
+# Target a specific path
+agentflow test tests/unit
+
+# Run only tests matching a keyword
+agentflow test -k "weather"
+
+# Pass raw pytest arguments after --
+agentflow test -- --no-header -q --tb=short
+
+# Combine: coverage + keyword filter + extra args
+agentflow test --coverage -k "agent" -- --tb=long
+```
+
+---
+
+## agentflow eval
+
+Run agent evaluations from an `evals/` directory (or a specific file/folder). Always generates HTML and JSON reports unless `--no-report` is set.
+
+```bash
+agentflow eval [TARGET] [OPTIONS]
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `TARGET` | `evals/` | File or directory to evaluate. When omitted, uses `evaluation.directory` from `agentflow.json`, or `evals/` if not set. |
+| `--output`, `-o` | `eval_reports` | Directory for generated report files |
+| `--no-report` | `false` | Skip file report generation (console summary only) |
+| `--threshold`, `-t` | — | Fail if overall pass rate is below this value (0.0–1.0) |
+| `--open` | `false` | Open the HTML report in the default browser after the run |
+| `--verbose`, `-v` | `false` | Enable verbose output |
+| `--quiet`, `-q` | `false` | Suppress output except errors |
+
+Each eval file must expose one of the following:
+
+| Symbol | Description |
+| --- | --- |
+| `get_eval_set()` | Required minimum. CLI loads agent, applies default criteria, runs evaluation, writes reports. |
+| `get_eval_config()` or `EVAL_CONFIG` | Optional. Override criteria/thresholds for this file. Used alongside `get_eval_set()`. |
+| `run()` | Full control. Module handles agent loading and evaluation. Returns an `EvalReport`. |
+
+Files not matching any protocol are skipped with a warning.
+
+**Reports generated per run (unless `--no-report`):**
+
+- `eval_reports/eval_<timestamp>.html` — visual dashboard
+- `eval_reports/eval_<timestamp>.json` — machine-readable results
+
+**Example:**
+
+```bash
+# Auto-discover evals/ and generate reports
+agentflow eval
+
+# Run a specific file
+agentflow eval evals/weather_agents_eval.py
+
+# Run all evals in a subdirectory
+agentflow eval evals/regression/
+
+# Custom output directory
+agentflow eval --output reports/
+
+# Fail if pass rate is below 80 %
+agentflow eval --threshold 0.8
+
+# Skip file output (console only)
+agentflow eval --no-report
+
+# Open the HTML report when done
+agentflow eval --open
+```
+
+---
+
 ## agentflow version
 
 Print the CLI and library versions.

@@ -199,6 +199,74 @@ interface see [Rate Limiting](./rate-limiting.md).
 
 ---
 
+### `test`
+
+Default settings for `agentflow test`. All fields are optional. CLI flags always take precedence.
+
+```json
+"test": {
+  "path": "tests",
+  "coverage": true,
+  "coverage_threshold": 70
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | string | — | Default path passed to pytest when no `PATH` argument is given on the CLI. Omit to let pytest auto-discover tests. |
+| `coverage` | boolean | `false` | Enable coverage collection by default (equivalent to `--coverage` flag) |
+| `coverage_threshold` | integer | — | Minimum coverage percentage required for a passing run. Adds `--cov-fail-under=N` to the pytest command. Omit to skip threshold enforcement. |
+
+**Example — enforce 80 % coverage on every run:**
+
+```json
+{
+  "agent": "graph.react:app",
+  "test": {
+    "path": "tests",
+    "coverage": true,
+    "coverage_threshold": 80
+  }
+}
+```
+
+---
+
+### `evaluation`
+
+Default settings for `agentflow eval`. All fields are optional. CLI flags always take precedence.
+
+```json
+"evaluation": {
+  "directory": "evals",
+  "output_dir": "eval_reports",
+  "threshold": 0.75,
+  "timestamp_files": true
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `directory` | string | `"evals"` | Directory scanned for eval files when no `TARGET` argument is given |
+| `output_dir` | string | `"eval_reports"` | Directory where HTML and JSON report files are written |
+| `threshold` | float | — | Minimum pass rate (0.0–1.0) required for a passing run. Omit to skip threshold enforcement. |
+| `timestamp_files` | boolean | `true` | Append a timestamp to report filenames so runs do not overwrite each other |
+
+**Example — enforce 75 % pass rate and write reports to `ci/reports/`:**
+
+```json
+{
+  "agent": "graph.react:app",
+  "evaluation": {
+    "directory": "evals",
+    "output_dir": "ci/reports",
+    "threshold": 0.75
+  }
+}
+```
+
+---
+
 ## Loading order
 
 When the CLI starts:

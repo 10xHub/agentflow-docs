@@ -72,6 +72,8 @@ const sidebars: SidebarsConfig = {
             "how-to/api-cli/add-auth",
             "how-to/api-cli/configure-rate-limiting",
             "how-to/api-cli/generate-docker-files",
+            "how-to/api-cli/run-tests",
+            "how-to/api-cli/run-evals",
           ],
         },
         {
