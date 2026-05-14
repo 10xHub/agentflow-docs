@@ -97,3 +97,32 @@
 .faqAnswer p:last-child {
   margin-bottom: 0;
 }
+
+@media (max-width: 640px) {
+  .faq {
+    margin: 2rem 0;
+  }
+
+  .faqHeading {
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .faqQuestion {
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    gap: 0.6rem;
+  }
+
+  .faqQuestion::before {
+    width: 1.15rem;
+    height: 1.15rem;
+    font-size: 0.85rem;
+  }
+
+  .faqAnswer {
+    padding: 0.2rem 1rem 1rem 2.6rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+}

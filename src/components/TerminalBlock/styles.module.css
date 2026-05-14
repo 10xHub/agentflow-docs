@@ -1,6 +1,10 @@
 .terminal {
   position: relative;
   overflow: hidden;
+  /* min-width: 0 lets the terminal shrink inside the heroGrid cell on mobile
+   * so the inner <pre> can scroll horizontally instead of pushing the page
+   * wider than the viewport. */
+  min-width: 0;
   margin: 1rem 0;
   border: 1px solid var(--af-border);
   border-radius: var(--af-radius-xl);
@@ -107,4 +111,32 @@
   background: var(--af-bg-1);
   color: var(--af-text-dim);
   font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .terminal {
+    border-radius: var(--af-radius-md);
+    min-height: 4.5rem;
+  }
+
+  .header {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.74rem;
+  }
+
+  .pre {
+    padding: 0.85rem 1rem;
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .compact .pre {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.76rem;
+  }
+
+  .footer {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.76rem;
+  }
 }

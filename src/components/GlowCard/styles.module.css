@@ -76,3 +76,24 @@
   font-size: 0.96rem;
   line-height: 1.65;
 }
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1.25rem;
+  }
+
+  .iconTile {
+    width: 2.4rem;
+    height: 2.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+
+  .body {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+}
