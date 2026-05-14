@@ -63,6 +63,48 @@ body {
   font-weight: 500;
 }
 
+/* ─── Mobile hamburger ────────────────────────────────────────────────
+ * Docusaurus default is a tiny 24×24 button — looks anemic next to our
+ * bold brand. Bump tap target to 40×40, restyle the shipped SVG with a
+ * thicker stroke + `currentColor`, and add a real hover/active surface.
+ */
+.navbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 0.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--af-radius-md);
+  background: transparent;
+  color: var(--af-text-strong);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.navbar__toggle:hover,
+.navbar__toggle:focus-visible {
+  border-color: var(--af-border-hi);
+  background: var(--af-bg-2);
+  color: var(--af-text-strong);
+}
+
+.navbar__toggle:active {
+  background: var(--af-bg-3);
+  transform: scale(0.97);
+}
+
+.navbar__toggle svg {
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+  /* Docusaurus's <path stroke="currentColor"> picks this up. */
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 /* Buttons — reskinned, slightly tighter radius for dev-tool feel */
 .button {
   border-radius: var(--af-radius-pill);
