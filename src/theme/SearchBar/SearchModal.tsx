@@ -191,7 +191,9 @@ export default function SearchModal({ open, onClose }: Props) {
               <span>close</span>
             </span>
           </div>
-          <span>{hits.length > 0 ? `${hits.length} results` : ''}</span>
+          <span className={styles.footerCount}>
+            {hits.length > 0 ? `${hits.length} ${hits.length === 1 ? 'result' : 'results'}` : ''}
+          </span>
         </div>
       </div>
     </div>
@@ -286,22 +288,22 @@ function ResultRow({
         onClick()
       }}
     >
-      <div className={styles.resultBody}>
+      <div className={styles.resultHead}>
         <span className={styles.resultTitle}>{hit.title}</span>
-        {hit.breadcrumb.length > 0 && (
-          <span className={styles.resultBreadcrumb}>
-            {hit.breadcrumb.join(' › ')}
-          </span>
-        )}
-        {hit.snippet && (
-          <span
-            className={styles.resultSnippet}
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{ __html: hit.snippet }}
-          />
-        )}
+        <span className={styles.resultChip}>{chip}</span>
       </div>
-      <span className={styles.resultChip}>{chip}</span>
+      {hit.breadcrumb.length > 0 && (
+        <span className={styles.resultBreadcrumb}>
+          {hit.breadcrumb.join(' › ')}
+        </span>
+      )}
+      {hit.snippet && (
+        <span
+          className={styles.resultSnippet}
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: hit.snippet }}
+        />
+      )}
     </a>
   )
 }
