@@ -106,3 +106,27 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media screen and (max-width: 640px) {
+  .related {
+    margin: 2rem 0 0;
+    padding: 1.25rem;
+  }
+
+  .relatedHeading {
+    font-size: 1.05rem;
+    margin-bottom: 1rem;
+  }
+
+  .relatedLink {
+    padding: 0.85rem 0.95rem;
+  }
+
+  .relatedTitle {
+    font-size: 0.94rem;
+  }
+
+  .relatedDescription {
+    font-size: 0.86rem;
+  }
+}

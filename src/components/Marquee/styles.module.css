@@ -47,3 +47,10 @@
     animation: none;
   }
 }
+
+@media (max-width: 640px) {
+  .set {
+    gap: 1.75rem;
+    padding: 0 1rem;
+  }
+}

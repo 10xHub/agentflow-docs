@@ -4,12 +4,38 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 html,
 body {
   background: var(--af-bg-0);
   color: var(--af-text);
+}
+
+/* Mobile hygiene — defensive horizontal-overflow guard, tap highlight off */
+body {
+  overflow-x: hidden;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent iOS Safari from zooming into form fields on focus.
+ * Only applies under the mobile breakpoint so desktop typography is unaffected. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Safe-area inset on the sticky navbar — keeps content clear of the
+ * iPhone notch when the site is installed as a PWA. */
+.navbar {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
 }
 
 /* Docusaurus's main wrapper — make sure it fills the viewport so scrolling
@@ -35,6 +61,48 @@ body {
 
 .navbar__link {
   font-weight: 500;
+}
+
+/* ─── Mobile hamburger ────────────────────────────────────────────────
+ * Docusaurus default is a tiny 24×24 button — looks anemic next to our
+ * bold brand. Bump tap target to 40×40, restyle the shipped SVG with a
+ * thicker stroke + `currentColor`, and add a real hover/active surface.
+ */
+.navbar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 0.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--af-radius-md);
+  background: transparent;
+  color: var(--af-text-strong);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.navbar__toggle:hover,
+.navbar__toggle:focus-visible {
+  border-color: var(--af-border-hi);
+  background: var(--af-bg-2);
+  color: var(--af-text-strong);
+}
+
+.navbar__toggle:active {
+  background: var(--af-bg-3);
+  transform: scale(0.97);
+}
+
+.navbar__toggle svg {
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+  /* Docusaurus's <path stroke="currentColor"> picks this up. */
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 /* Buttons — reskinned, slightly tighter radius for dev-tool feel */
@@ -519,10 +587,25 @@ body {
     padding: 4rem 0 3rem;
   }
 
+  /* minmax(0, 1fr) lets the column shrink below the intrinsic content size.
+   * Plain `1fr` is `minmax(auto, 1fr)` and `auto` floor = min-content of
+   * the widest child — long code strings inside <pre> would otherwise push
+   * the column wider than the viewport (and the H1 wouldn't wrap because
+   * its parent is already oversized). */
   .heroGrid,
   .trackGrid,
   .journeyGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Same reason — grid items default to min-width: auto. Force them to
+   * allow their children to overflow internally (the <pre> scrolls)
+   * instead of stretching the page. */
+  .heroCopy,
+  .heroVisual,
+  .trackCard,
+  .journeyCard {
+    min-width: 0;
   }
 
   .heroTitle {
@@ -532,6 +615,170 @@ body {
   .stackCard {
     width: auto;
     margin: 1rem 0 0;
+  }
+}
+
+/* ─── Mobile (≤640px) ─────────────────────────────────────────────────
+ * Retunes typography, padding and component density for phones. Builds
+ * on top of the 996px block above (which collapses grids to 1 col).
+ */
+@media screen and (max-width: 640px) {
+  /* Container — tighter gutters so 16 px is real margin, not generic gutter */
+  .container {
+    padding-inline: 1rem;
+  }
+
+  /* Sections — pull vertical rhythm in dramatically */
+  .section {
+    padding: 2.5rem 0;
+  }
+
+  .section--final-cta {
+    padding: 3rem 0 3.5rem;
+  }
+
+  .hero--agentflow {
+    padding: 2.75rem 0 2rem;
+  }
+
+  /* Hero typography — let the title actually fit at 360px */
+  .heroTitle {
+    max-width: unset;
+    font-size: clamp(1.65rem, 8vw, 2.4rem);
+    line-height: 1.08;
+  }
+
+  .heroSubheadline {
+    font-size: clamp(0.98rem, 4vw, 1.15rem);
+    line-height: 1.45;
+  }
+
+  .heroSubtitle {
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .eyebrow {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.66rem;
+  }
+
+  /* Hero / Final CTA actions — stack edge-to-edge instead of wrapping */
+  .heroActions {
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+  }
+
+  .heroActions > a,
+  .heroActions > .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Section headers — pull H2 floor down */
+  .sectionHeader {
+    margin-bottom: 1.75rem;
+  }
+
+  .sectionHeader h2 {
+    font-size: clamp(1.4rem, 5.5vw, 2rem);
+    line-height: 1.2;
+  }
+
+  .sectionHeader p:not(.eyebrow) {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  /* Track cards — kill the decorative orb that overflows + shrink padding */
+  .trackCard {
+    min-height: auto;
+    padding: 1.25rem;
+  }
+
+  .trackCard::after {
+    display: none;
+  }
+
+  .trackCard h3 {
+    max-width: unset;
+    font-size: 1.15rem;
+  }
+
+  .trackCard span {
+    margin-bottom: 1.25rem;
+  }
+
+  .trackCard p {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  /* Journey cards — compress padding */
+  .journeyCard {
+    padding: 1.1rem;
+  }
+
+  .journeyCard span {
+    margin-bottom: 0.9rem;
+  }
+
+  /* Final CTA card — much tighter padding */
+  .finalCta {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .finalCta h2 {
+    font-size: clamp(1.35rem, 5vw, 1.8rem);
+  }
+
+  .finalCta p {
+    font-size: 0.95rem;
+  }
+
+  /* ── Doc pages — typography + table overflow ── */
+  .theme-doc-markdown {
+    line-height: 1.7;
+  }
+
+  .theme-doc-markdown h1 {
+    font-size: clamp(1.5rem, 6.5vw, 2.25rem);
+    line-height: 1.15;
+  }
+
+  .theme-doc-markdown h2 {
+    margin-top: 2rem;
+    font-size: clamp(1.25rem, 5vw, 1.6rem);
+    line-height: 1.2;
+  }
+
+  .theme-doc-markdown h3 {
+    font-size: 1.05rem;
+  }
+
+  /* Wide tables: switch from display:table (clips) to scrollable block */
+  .theme-doc-markdown table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .theme-doc-markdown th,
+  .theme-doc-markdown td {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.88rem;
+  }
+
+  .theme-doc-markdown .theme-admonition {
+    padding: 0.85rem 0.95rem;
+  }
+
+  /* Prism code fences — smaller mono on tiny screens so a single line fits */
+  .theme-doc-markdown .prism-code,
+  .theme-doc-markdown pre {
+    font-size: 0.78rem;
+    line-height: 1.55;
   }
 }
 

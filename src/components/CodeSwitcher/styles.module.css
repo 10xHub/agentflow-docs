@@ -54,3 +54,28 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+
+@media (max-width: 640px) {
+  /* Swap the wrap-and-stack tab layout for a horizontal-scroll strip
+   * so users can swipe through 5 frameworks instead of seeing them
+   * stack into 5 fat rows of pills. */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.85rem;
+  }
+}

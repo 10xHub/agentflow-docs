@@ -15,3 +15,18 @@
   height: auto;
   display: block;
 }
+
+@media (max-width: 640px) {
+  /* Let the SVG retain a legible 32rem minimum and scroll horizontally
+   * inside the framed wrap, instead of shrinking to 360px (which makes
+   * the in-svg labels unreadable). */
+  .wrap {
+    padding: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .svg {
+    min-width: 32rem;
+  }
+}

@@ -86,7 +86,27 @@ const config: Config = {
     ],
   ],
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    [
+      // Generates a static lunr index at `npm run build` over docs + blog +
+      // custom pages. The default `SearchBar` UI it ships is overridden by
+      // our swizzle at `src/theme/SearchBar/` — we only consume the index +
+      // search engine, not the bundled modal.
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: true,
+        indexPages: true,
+        language: ['en'],
+        docsRouteBasePath: '/docs',
+        blogRouteBasePath: '/blog',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+      },
+    ],
+  ],
 
   plugins: [
     [
@@ -186,6 +206,14 @@ const config: Config = {
         {to: '/docs/courses', label: 'Courses', position: 'left'},
 
         // {to: '/blog', label: 'Blog', position: 'left'},
+        // Explicit `search` slot — without this, Docusaurus appends the
+        // SearchBar at the very end of the right cluster (after GitHub +
+        // the color-mode toggle). Putting it first on the right places
+        // it to the LEFT of both, which is what we want visually.
+        {
+          type: 'search',
+          position: 'right',
+        },
         {
           href: 'https://github.com/10xHub/Agentflow',
           label: 'GitHub',
