@@ -117,6 +117,34 @@ const sidebars: SidebarsConfig = {
 
     {
       type: "category",
+      label: "Testing & QA",
+      collapsed: true,
+      items: [
+        "qa/index",
+        {
+          type: "category",
+          label: "Unit Testing",
+          items: [
+            "qa/unit-test/index",
+          ],
+        },
+        {
+          type: "category",
+          label: "Evaluation",
+          items: [
+            "qa/evaluation/index",
+            "qa/evaluation/eval-set",
+            "qa/evaluation/criteria",
+            "qa/evaluation/presets",
+            "qa/evaluation/reports",
+            "qa/evaluation/user-simulation",
+          ],
+        },
+      ],
+    },
+
+    {
+      type: "category",
       label: "Compare",
       collapsed: false,
       items: [
