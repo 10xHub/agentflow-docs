@@ -13,3 +13,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media screen and (max-width: 640px) {
+  .features {
+    padding: 2.5rem 0 2rem;
+  }
+
+  .grid {
+    gap: 0.85rem;
+  }
+}

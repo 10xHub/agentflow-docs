@@ -531,3 +531,28 @@ h4:hover .hash-link,
   object-fit: contain;
   padding: 4px;
 }
+
+/* ─── Mobile (≤640px) — blog density and reading column ─── */
+@media (max-width: 640px) {
+  .blog-post-page header h1,
+  .blog-list-page article h2 {
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    line-height: 1.15;
+  }
+
+  /* Use the full available width — Docusaurus's nested .row > .col padding
+   * adds extra inset on top of the global container. Trim it back. */
+  .blog-post-page .container > .row > main.col--7 {
+    padding-inline: 0;
+  }
+
+  .blog-post-page article {
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+
+  /* Tighten the author-row + meta footer so they don't dominate the screen */
+  .blog-post-page [class*='blogPostFooter'] {
+    margin-top: 1.5rem;
+  }
+}

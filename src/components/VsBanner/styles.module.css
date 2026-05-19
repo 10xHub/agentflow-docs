@@ -69,3 +69,32 @@
   line-height: 1.6;
   text-align: center;
 }
+
+@media (max-width: 640px) {
+  .banner {
+    padding: 1rem 1.1rem;
+    margin: 1.25rem 0 1.75rem;
+  }
+
+  .row {
+    gap: 0.75rem 1rem;
+  }
+
+  .brand {
+    padding: 0.4rem 0.75rem;
+  }
+
+  .brandText {
+    font-size: 0.92rem;
+  }
+
+  .vs {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.72rem;
+  }
+
+  .tagline {
+    font-size: 0.9rem;
+  }
+}
