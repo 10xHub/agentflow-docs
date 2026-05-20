@@ -8,6 +8,8 @@ keywords:
   - unit test
   - pytest agent
   - agentflow qa
+  - user simulator
+  - parallel evaluation
   - python ai agent framework
 ---
 
@@ -39,14 +41,24 @@ The unit-testing layer lets you test the graph logic of your agent without makin
 
 ## Evaluation
 
-The evaluation layer runs your real (or a staging) agent against a set of test cases and scores the results across multiple criteria:
+The evaluation layer runs your real (or staging) agent against test cases and scores results across multiple criteria. It supports two modes of testing:
+
+**Fixed test cases** — you define the query and expected output:
 
 - **`EvalSetBuilder`** — fluent API for defining test cases with expected responses and tool sequences.
-- **`EvalConfig` / `EvalPresets`** — configure which criteria to use and at what thresholds.
-- **Criteria** — eight built-in criteria covering tool accuracy, response quality, hallucination, factual accuracy, safety, and custom rubrics.
-- **`AgentEvaluator`** — orchestrates execution and scoring.
+- **`EvalConfig` / `EvalPresets`** — configure which criteria to use and at what thresholds. `EvalPresets` provides one-line ready-made configs.
+- **Criteria** — ten built-in criteria covering tool accuracy, response quality, hallucination, factual accuracy, safety, and custom rubrics.
+- **`AgentEvaluator`** — orchestrates execution and scoring. Supports sequential and parallel case runs.
 - **Reports** — HTML dashboard, JSON, and JUnit XML output.
-- **`agentflow eval`** — CLI that auto-discovers eval files, runs them, and always writes reports.
+
+**User simulation** — an LLM plays the user and drives real conversations:
+
+- **`ConversationScenario`** — define goals and a conversation plan. The simulator generates realistic user messages turn by turn.
+- **`UserSimulator`** — LLM-powered user agent. Stops when all goals are achieved or `max_turns` is reached.
+- **`BatchSimulator`** — runs multiple scenarios concurrently.
+- **`SimulationGoalsCriterion`** — scores the full conversation transcript against stated goals.
+
+**`agentflow eval`** — CLI that auto-discovers eval files, runs all cases from all files in a flat parallel pool, and always writes reports.
 
 [Read the evaluation guide](evaluation/index.md)
 
@@ -59,11 +71,17 @@ agentflow test
 # Run with coverage
 agentflow test --coverage --html
 
-# Run evaluations
+# Run evaluations (sequential)
 agentflow eval
 
-# Evaluate a specific file
+# Run evaluations in parallel across all cases and files
+agentflow eval --parallel --max-concurrency 8
+
+# Evaluate a specific file and open the report
 agentflow eval evals/my_agent_eval.py --open
+
+# Enforce a pass-rate threshold (useful in CI)
+agentflow eval --threshold 0.8
 ```
 
 See also:
