@@ -236,7 +236,7 @@ const config: Config = {
           title: 'Golden path',
           items: [
             {label: 'Installation', to: '/docs/get-started/installation'},
-            {label: 'Expose with API', to: '/docs/get-started/expose-with-api'},
+            {label: 'Your First Agent', to: '/docs/get-started/first-agent'},
             {label: 'Open playground', to: '/docs/get-started/open-playground'},
           ],
         },

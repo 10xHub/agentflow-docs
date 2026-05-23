@@ -192,8 +192,7 @@ The first local example does not call an LLM, so you can verify the framework be
 | Step | Page | Outcome |
 |---|---|---|
 | 1 | [Installation](./installation.md) | Install the Python library and CLI |
-| 2 | [First Python Agent](./first-python-agent.md) | Run a graph locally |
-| 3 | [Expose with API](./expose-with-api.md) | Serve the graph with `agentflow api` |
+| 2 | [Your First Agent](./first-agent.md) | Build an agent, serve it, and test it |
 | 4 | [Connect Client](./connect-client.md) | Call the API from TypeScript |
 | 5 | [Open Playground](./open-playground.md) | Chat with the agent in the hosted playground |
 

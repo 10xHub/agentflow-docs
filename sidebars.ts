@@ -9,10 +9,8 @@ const sidebars: SidebarsConfig = {
       items: [
         "get-started/index",
         "get-started/installation",
-        "get-started/first-python-agent",
-        "get-started/expose-with-api",
+        "get-started/first-agent",
         "get-started/connect-client",
-        "get-started/open-playground",
       ],
     },
     {
