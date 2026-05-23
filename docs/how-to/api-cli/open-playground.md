@@ -208,7 +208,7 @@ The agent runs on your server, so make sure authentication is properly configure
 | **Server** | Same FastAPI server | Same FastAPI server |
 | **Browser** | Opens playground automatically | You open your own client |
 | **Use case** | Quick interactive testing | Server-only (CI/CD, production, programmatic clients) |
-| **Default host** | 127.0.0.1 (localhost) | 0.0.0.0 (all interfaces) |
+| **Default host** | 127.0.0.1 (localhost) | 127.0.0.1 (localhost) |
 
 Both start an identical server. The only difference is whether a browser is automatically opened to the playground UI.
 

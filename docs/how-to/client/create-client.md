@@ -69,19 +69,63 @@ If this succeeds the client is ready to use.
 
 ## Step 4: Add authentication
 
-If your server is configured with JWT auth, pass the token using the `auth` field:
+The `auth` field accepts three strategies. Use the factory helpers (`bearerAuth`, `basicAuth`, `headerAuth`) exported from the package, or pass the object literal directly.
+
+### Bearer token (JWT)
+
+The most common strategy. Sends `Authorization: Bearer <token>` on every request.
 
 ```ts
+import { AgentFlowClient, bearerAuth } from '@10xscale/agentflow-client';
+
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
-  auth: {
-    type: 'bearer',
-    token: process.env.API_TOKEN!,
-  },
+  auth: bearerAuth(process.env.API_TOKEN!),
+  // or equivalently:
+  // auth: { type: 'bearer', token: process.env.API_TOKEN! },
 });
 ```
 
-For other auth strategies (API key header, HTTP Basic) see [`reference/client/auth`](../../reference/client/auth.md).
+### HTTP Basic auth
+
+Sends `Authorization: Basic <base64(username:password)>`.
+
+```ts
+import { basicAuth } from '@10xscale/agentflow-client';
+
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000',
+  auth: basicAuth('admin', process.env.BASIC_PASSWORD!),
+  // or: auth: { type: 'basic', username: 'admin', password: '...' }
+});
+```
+
+### Custom header
+
+Useful for API keys sent in a custom header (e.g. `X-API-Key`), or when the server uses a non-standard scheme.
+
+```ts
+import { headerAuth } from '@10xscale/agentflow-client';
+
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000',
+  // Sends: X-API-Key: my-api-key
+  auth: headerAuth('X-API-Key', process.env.API_KEY!),
+
+  // Or with a prefix — sends: ApiKey my-api-key
+  // auth: headerAuth('Authorization', process.env.API_KEY!, 'ApiKey'),
+});
+```
+
+### Auth helpers reference
+
+| Helper | Sends | Type |
+|---|---|---|
+| `bearerAuth(token)` | `Authorization: Bearer <token>` | `AgentFlowBearerAuth` |
+| `basicAuth(user, pass)` | `Authorization: Basic <b64>` | `AgentFlowBasicAuth` |
+| `headerAuth(name, value, prefix?)` | `<name>: [<prefix> ]<value>` | `AgentFlowHeaderAuth` |
+
+If multiple headers match the same name (case-insensitive), the last one wins. Auth is applied after any headers set via `headers: {...}` on the config.
 
 ---
 
@@ -119,20 +163,31 @@ A successful response confirms the server started, loaded `agentflow.json`, comp
 ## Complete configuration reference
 
 ```ts
-import { AgentFlowClient, AgentFlowConfig } from '@10xscale/agentflow-client';
+import {
+  AgentFlowClient,
+  AgentFlowConfig,
+  bearerAuth,
+  basicAuth,
+  headerAuth,
+} from '@10xscale/agentflow-client';
 
 const config: AgentFlowConfig = {
   baseUrl: 'http://localhost:8000',   // Required. No trailing slash.
-  auth: {                              // Optional. Choose one auth strategy.
-    type: 'bearer',
-    token: process.env.API_TOKEN!,
-  },
+
+  // auth — pick one strategy (or omit for no auth):
+  auth: bearerAuth(process.env.API_TOKEN!),
+  // auth: basicAuth('user', 'pass'),
+  // auth: headerAuth('X-API-Key', process.env.API_KEY!),
+  // auth: { type: 'bearer', token: '...' },  // object literal also accepted
+
+  authToken: undefined,               // Legacy: shorthand for bearerAuth(token). Use auth instead.
+
   headers: {                           // Optional. Extra headers on every request.
     'X-App-Version': '2.1.0',
   },
   credentials: 'include',             // Optional. For cookie-based sessions in browsers.
-  timeout: 300_000,                   // Optional. Milliseconds. Default: 5 mins.
-  debug: false,                       // Optional. Default: false.
+  timeout: 300_000,                   // Optional. Milliseconds. Default: 5 mins (300000).
+  debug: false,                       // Optional. Default: false. Logs requests to console.debug.
 };
 
 const client = new AgentFlowClient(config);

@@ -236,6 +236,47 @@ async function streamToResult(messages: Message[]) {
 
 ---
 
+## Step 9: WebSocket streaming with wsStream()
+
+`client.wsStream()` is a drop-in replacement for `client.stream()` that uses a persistent WebSocket instead of repeated HTTP requests. The API is identical — same options, same chunk format — but the transport differs.
+
+```ts
+const stream = client.wsStream(
+  [Message.text_message('Explain quantum computing.')],
+  {
+    config: { configurable: { thread_id: 'ws-session-001' } },
+    response_granularity: 'low',
+  }
+);
+
+for await (const chunk of stream) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message?.delta) {
+    const text = chunk.message.content
+      .filter(b => b.type === 'text')
+      .map(b => (b as any).text as string)
+      .join('');
+    process.stdout.write(text);
+  }
+}
+```
+
+### When to use wsStream() vs stream()
+
+| | `stream()` | `wsStream()` |
+|---|---|---|
+| Transport | HTTP SSE (one request per tool-call iteration) | WebSocket (single connection for the full call) |
+| Tool call handling | Opens a new HTTP request per iteration | Sends resume messages over the same socket |
+| Browser auth | `Authorization` header | `?token=` query parameter (sent at connect time) |
+| Best for | Simple chat without remote tools | Remote-tool-heavy graphs, lower overhead per iteration |
+
+Both methods produce identical `StreamChunk` sequences. The only difference is connection reuse. If your graph makes no remote tool calls, the two methods behave identically. If your graph loops through many tool calls, `wsStream()` avoids the overhead of re-establishing an HTTP connection on each iteration.
+
+### Auth note
+
+Because browsers cannot set custom headers on WebSocket connections, `wsStream()` passes the bearer token as a `?token=` query parameter when connecting. The server extracts it the same way it would from an `Authorization` header.
+
+---
+
 ## Verification
 
 Expected terminal output for `Write a haiku about mountains`:

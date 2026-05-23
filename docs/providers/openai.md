@@ -52,52 +52,43 @@ agent = Agent(
 ```python
 from dotenv import load_dotenv
 
-from agentflow.core import Agent, StateGraph, ToolNode
 from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from agentflow.prebuilt.agent import ReactAgent
 
 load_dotenv()
 
 
-def get_weather(location: str) -> str:
-    """Get the current weather for a location."""
-    return f"The weather in {location} is sunny"
+def get_weather(
+    location: str,
+    tool_call_id: str | None = None,
+    state: AgentState | None = None,
+) -> str:
+    return f"The weather in {location} is sunny."
 
 
-tool_node = ToolNode([get_weather])
-
-agent = Agent(
+react_agent = ReactAgent(
     model="gpt-4o",
     provider="openai",
-    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
-    tool_node=tool_node,
+    system_prompt=[
+        {
+            "role": "system",
+            "content": "You are a helpful assistant. Use tools when they help answer the user.",
+        }
+    ],
+    tools=[get_weather],
+    trim_context=True,
 )
 
-
-def should_use_tools(state: AgentState) -> str:
-    last = state.context[-1] if state.context else None
-    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
-        return "TOOL"
-    if last and last.role == "tool":
-        return "MAIN"
-    return END
-
-
-graph = StateGraph()
-graph.add_node("MAIN", agent)
-graph.add_node("TOOL", tool_node)
-graph.add_conditional_edges("MAIN", should_use_tools, {"TOOL": "TOOL", END: END})
-graph.add_edge("TOOL", "MAIN")
-graph.set_entry_point("MAIN")
-
-app = graph.compile(checkpointer=InMemoryCheckpointer())
-
 if __name__ == "__main__":
-    inp = {"messages": [Message.text_message("What is the weather in New York City?")]}
-    res = app.invoke(inp, config={"thread_id": "demo", "recursion_limit": 10})
-    for msg in res["messages"]:
-        print(f"[{msg.role}] {msg}")
+    app = react_agent.compile()
+
+    result = app.invoke(
+        {"messages": [Message.text_message("What is the weather in New York City?")]},
+        config={"thread_id": "openai-demo", "recursion_limit": 10},
+    )
+
+    for message in result["messages"]:
+        print(message.role, message)
 ```
 
 ---

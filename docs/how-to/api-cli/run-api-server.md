@@ -147,75 +147,21 @@ agentflow api --host 127.0.0.1 --port 8000 --no-reload
 
 ## Production mode
 
-For a production deployment, disable auto-reload and use a process supervisor:
+`agentflow api` is a **development server**. It uses Uvicorn single-worker, file-watching mode and is not designed for production traffic.
+
+For production, use Docker. Generate the container files with:
 
 ```bash
-MODE=production agentflow api --no-reload --host 0.0.0.0 --port 8000
+agentflow build --docker-compose
 ```
 
-### What this does:
-
-- `MODE=production` — Sets the environment to production mode (disables verbose output, enables certain optimizations).
-- `--no-reload` — Disables file-watching, which is expensive and unreliable in production.
-- `--host 0.0.0.0` — Binds to all network interfaces so the server is accessible from outside the host.
-
-### Process management
-
-Use one of:
-
-**systemd:**
-
-```ini
-[Unit]
-Description=AgentFlow API
-After=network.target
-
-[Service]
-Type=simple
-User=agentflow
-WorkingDirectory=/opt/agentflow
-ExecStart=/usr/bin/agentflow api --no-reload
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
+Then build and run:
 
 ```bash
-sudo systemctl enable agentflow
-sudo systemctl start agentflow
-sudo systemctl status agentflow
+docker compose up --build
 ```
 
-**Docker:** See [Generate Docker Files](./generate-docker-files.md).
-
-**PM2** (Node process manager, works with Python via shell):
-
-```bash
-npm install -g pm2
-pm2 start "agentflow api --no-reload" --name "agentflow-api"
-pm2 save  # Save to auto-start on reboot
-```
-
-## Multi-worker deployment
-
-For high throughput, run multiple API instances behind a load balancer:
-
-```bash
-# Terminal 1
-agentflow api --port 8001 --no-reload
-
-# Terminal 2
-agentflow api --port 8002 --no-reload
-
-# Terminal 3
-agentflow api --port 8003 --no-reload
-```
-
-Use a reverse proxy (nginx, HAProxy) or Docker Compose to load-balance across these ports. **Important:** Ensure all instances use the same checkpointer (e.g., `PgCheckpointer` backed by a shared database) so state is consistent.
+See [Generate Docker Files](./generate-docker-files.md) for the full guide.
 
 ## Verbose logging
 

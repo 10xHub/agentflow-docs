@@ -187,7 +187,6 @@ import {
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: process.env.API_TOKEN! },
-  response_granularity: 'low',
 });
 
 async function ask(question: string, threadId: string): Promise<string> {

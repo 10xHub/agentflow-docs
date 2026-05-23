@@ -212,6 +212,31 @@ Using consistent types makes retrieval more accurate — `searchMemory` can filt
 
 ---
 
+## Choosing a distance metric
+
+The `distance_metric` option on `searchMemory()` controls how vector similarity is computed. It is passed to the store backend; support depends on the backend in use.
+
+| Metric | When to use |
+|---|---|
+| `COSINE` | Default. Best for text/embeddings where direction matters more than magnitude. |
+| `EUCLIDEAN` | Use when absolute vector distances are meaningful. |
+| `DOT_PRODUCT` | Useful with normalised vectors; fastest for high-dimensional spaces. |
+| `MANHATTAN` | L1 distance. Less common but supported for completeness. |
+
+```ts
+import { RetrievalStrategy, DistanceMetric } from '@10xscale/agentflow-client';
+
+const results = await client.searchMemory({
+  query: 'user preferences',
+  retrieval_strategy: RetrievalStrategy.SIMILARITY,
+  distance_metric: DistanceMetric.COSINE,   // explicit; same as default
+  limit: 5,
+  max_tokens: 2000,  // Cap total tokens across all results
+});
+```
+
+---
+
 ## Complete example: memory-aware chat
 
 ```ts

@@ -1,238 +1,218 @@
 ---
 title: Environment Variables — AgentFlow Python AI Agent Framework
 sidebar_label: Environment Variables
-description: How to manage AgentFlow environment variables safely across development, staging, and production deployments.
+description: Complete reference for all environment variables read by the AgentFlow server. Covers auth, CORS, logging, security headers, Snowflake IDs, OpenTelemetry, and media storage.
 keywords:
-  - production ai agents
-  - agent deployment
-  - agent observability
-  - agentflow
+  - agentflow environment variables
+  - agentflow configuration
+  - agentflow production
   - python ai agent framework
-  - environment variables
 ---
-
 
 # Environment variables
 
-This guide explains which environment variables matter in production, how to set them safely, and how to distinguish local development defaults from production-ready values.
+This is the complete reference for every environment variable read by the AgentFlow server. Variables are read via `pydantic-settings` at startup. All are optional unless marked required.
 
-For the complete variable reference, see [Environment Variables](/docs/reference/api-cli/environment).
+Environment variables take precedence over defaults. The `.env` file pointed to by `agentflow.json`'s `env` field is loaded before the graph module is imported, so variables are available during graph initialization.
 
-## What this page covers
+---
 
-You will learn how to:
+## Application
 
-- decide which variables belong in `.env` versus the process environment
-- keep development defaults out of production
-- set secure values for auth, CORS, API docs, and runtime behavior
-- verify that your deployment is using the values you expect
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `APP_NAME` | `string` | `"MyApp"` | Application name shown in Swagger UI and logs. |
+| `APP_VERSION` | `string` | `"0.1.0"` | Application version shown in Swagger UI. |
+| `MODE` | `string` | `"development"` | Runtime mode. Set to `"production"` to enable security warnings and disable debug features. Normalized to lowercase. |
+| `LOG_LEVEL` | `string` | `"INFO"` | Python logging level: `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"`. |
+| `IS_DEBUG` | `bool` | `true` | Enables FastAPI debug mode. Set to `false` in production. |
+| `SUMMARY` | `string` | `"Agentflow Backend"` | One-line summary shown in Swagger UI. |
 
-## Configuration flow
-
-```mermaid
-flowchart TD
-    A[agentflow.json] -->|env field| B[.env file in development]
-    A --> C[Process environment in staging/production]
-    B --> D[Server startup]
-    C --> D
-    D --> E[Graph import]
-    D --> F[FastAPI app settings]
-    D --> G[Auth and security behavior]
-```
-
-## Development vs production
-
-The most important production rule is simple:
-
-- use `.env` files for local development convenience
-- use real process or container environment variables in production
-
-### Development pattern
-
-```json
-{
-  "agent": "graph.react:app",
-  "env": ".env"
-}
-```
-
-```bash
-GOOGLE_API_KEY=...
-JWT_SECRET_KEY=dev-only-secret
-MODE=development
-```
-
-This is convenient because the CLI loads `.env` before importing your graph.
-
-### Production pattern
-
-```bash
-export MODE=production
-export JWT_SECRET_KEY='long-random-secret'
-export JWT_ALGORITHM=HS256
-export ORIGINS=https://app.example.com
-export DOCS_PATH=
-export REDOCS_PATH=
-agentflow api --no-reload --host 0.0.0.0 --port 8000
-```
-
-In production, secrets should come from:
-
-- container environment settings
-- platform secret managers
-- Kubernetes Secrets
-- cloud runtime configuration
-
-## High-priority variables
-
-These are the variables most teams should review before production launch.
-
-| Variable | Development default / common value | Production recommendation |
-|---|---|---|
-| `MODE` | `development` | Set `production` |
-| `LOG_LEVEL` | `INFO` or `DEBUG` | Usually `INFO` or `WARNING` |
-| `IS_DEBUG` | `true` | Disable debug output |
-| `ORIGINS` | `*` during local testing | Restrict to known domains |
-| `JWT_SECRET_KEY` | simple local secret | long random secret from secret manager |
-| `JWT_ALGORITHM` | `HS256` | explicit value, usually `HS256` |
-| `DOCS_PATH` | `/docs` | empty or internal-only |
-| `REDOCS_PATH` | `/redoc` or `/redocs` | empty or internal-only |
-| `ROOT_PATH` | `/` | set when serving behind a reverse proxy subpath |
-
-## Security-related environment variables
-
-### `MODE`
-
-Use:
+**Production checklist:**
 
 ```bash
 MODE=production
+IS_DEBUG=false
+LOG_LEVEL=INFO
 ```
 
-Why it matters:
+---
 
-- signals that the server is no longer running in a development context
-- pairs naturally with `--no-reload`
-- helps teams avoid accidentally keeping insecure defaults
+## CORS
 
-### `ORIGINS`
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ORIGINS` | `string` | `"*"` | Allowed CORS origins, comma-separated. The server logs a warning if this is `"*"` when `MODE=production`. |
+| `ALLOWED_HOST` | `string` | `"*"` | Allowed host header values. The server logs a warning if this is `"*"` when `MODE=production`. |
 
-Development often uses:
-
-```bash
-ORIGINS=*
-```
-
-Production should not.
-
-Use:
+**Production values:**
 
 ```bash
 ORIGINS=https://app.example.com,https://admin.example.com
+ALLOWED_HOST=app.example.com
 ```
 
-If you leave `ORIGINS=*` in production, any website can attempt browser-based requests to your API.
+---
 
-### `DOCS_PATH` and `REDOCS_PATH`
+## API paths
 
-Development:
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ROOT_PATH` | `string` | `"/"` | ASGI root path. Set when the server is mounted at a sub-path behind a reverse proxy (e.g. `"/api/v1"`). |
+| `DOCS_PATH` | `string` | `"/docs"` | Path for Swagger UI. Set to empty string `""` to disable. |
+| `REDOCS_PATH` | `string` | `"/redocs"` | Path for ReDoc UI. Set to empty string `""` to disable. |
 
-```bash
-DOCS_PATH=/docs
-REDOCS_PATH=/redoc
-```
-
-Production recommendation:
+**Disabling docs in production:**
 
 ```bash
 DOCS_PATH=
 REDOCS_PATH=
 ```
 
-That disables public interactive API documentation unless you intentionally expose it.
+---
 
-### `JWT_SECRET_KEY` and `JWT_ALGORITHM`
+## Request limits
 
-Only required when `auth` is set to `"jwt"` in `agentflow.json`.
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `MAX_REQUEST_SIZE` | `int` | `10485760` | Maximum request body size in bytes (default 10 MB). Requests exceeding this size are rejected with 413. |
 
-Use explicit values:
+---
+
+## Security headers
+
+These variables control the `SecurityHeadersMiddleware` that is applied to every response.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `SECURITY_HEADERS_ENABLED` | `bool` | `true` | Toggle all security headers on or off. |
+| `HSTS_ENABLED` | `bool` | `true` | Add `Strict-Transport-Security` header. |
+| `HSTS_MAX_AGE` | `int` | `31536000` | HSTS max-age in seconds (default 1 year). |
+| `HSTS_INCLUDE_SUBDOMAINS` | `bool` | `true` | Add `includeSubDomains` to HSTS header. |
+| `HSTS_PRELOAD` | `bool` | `false` | Add `preload` directive to HSTS header. Enable only after submitting to the HSTS preload list. |
+| `FRAME_OPTIONS` | `string` | `"DENY"` | `X-Frame-Options` value: `"DENY"`, `"SAMEORIGIN"`, or `"ALLOW-FROM <uri>"`. |
+| `CONTENT_TYPE_OPTIONS` | `string` | `"nosniff"` | `X-Content-Type-Options` value. |
+| `XSS_PROTECTION` | `string` | `"1; mode=block"` | `X-XSS-Protection` value. |
+| `REFERRER_POLICY` | `string` | `"strict-origin-when-cross-origin"` | `Referrer-Policy` value. |
+| `PERMISSIONS_POLICY` | `string \| null` | `null` | `Permissions-Policy` header value. Uses a secure default when `null`. |
+| `CSP_POLICY` | `string \| null` | `null` | `Content-Security-Policy` header value. Uses a secure default when `null`. |
+
+---
+
+## Redis
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `REDIS_URL` | `string \| null` | `null` | Redis connection URL. Used by components that need Redis if not set elsewhere. Example: `redis://localhost:6379/0`. |
+
+---
+
+## Authentication (JWT)
+
+Required when `"auth": "jwt"` is set in `agentflow.json`.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `JWT_SECRET_KEY` | `string \| null` | `null` | **Required for JWT auth.** Secret used to verify token signatures. Use a random 32+ character string in production. |
+| `JWT_ALGORITHM` | `string` | `"HS256"` | JWT signing algorithm. Supports any algorithm accepted by PyJWT (`"HS256"`, `"HS384"`, `"HS512"`, `"RS256"`, etc.). |
+
+The server raises `ValueError` at startup if `JWT_SECRET_KEY` or `JWT_ALGORITHM` is missing when JWT auth is configured.
+
+---
+
+## Snowflake ID generation
+
+Snowflake IDs are used by the server to generate distributed, time-ordered thread and message identifiers.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `SNOWFLAKE_EPOCH` | `int` | `1609459200000` | Custom epoch in milliseconds (default: 2021-01-01 00:00:00 UTC). |
+| `SNOWFLAKE_NODE_ID` | `int` | `1` | Node (datacenter) identifier. Change per datacenter in multi-datacenter deployments. |
+| `SNOWFLAKE_WORKER_ID` | `int` | `2` | Worker identifier. Change per server instance to avoid ID collisions in multi-instance deployments. |
+| `SNOWFLAKE_TIME_BITS` | `int` | `39` | Number of bits used for timestamp. |
+| `SNOWFLAKE_NODE_BITS` | `int` | `5` | Number of bits used for node ID. |
+| `SNOWFLAKE_WORKER_BITS` | `int` | `8` | Number of bits used for worker ID. |
+
+In a multi-instance deployment behind a load balancer, set unique `SNOWFLAKE_NODE_ID` and `SNOWFLAKE_WORKER_ID` values per instance to prevent ID collisions.
+
+---
+
+## OpenTelemetry
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `OTEL_ENABLED` | `bool` | `false` | Enable OpenTelemetry tracing. |
+| `OTEL_SERVICE_NAME` | `string` | `"agentflow-api"` | Service name reported in traces. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `string \| null` | `null` | OTLP gRPC or HTTP endpoint for trace export (e.g. `http://otel-collector:4318`). |
+| `OTEL_LEVEL` | `string` | `"standard"` | Tracing granularity: `"spans"` (coarse), `"standard"` (recommended), `"full"` (verbose). |
+
+---
+
+## Media / file storage
+
+These variables configure the media storage backend for file uploads (`/v1/files/...`).
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `MEDIA_STORAGE_TYPE` | `string` | `"local"` | Where files are stored: `"memory"` (no persistence), `"local"` (disk), `"cloud"` (S3/GCS), `"pg"` (PostgreSQL). |
+| `MEDIA_STORAGE_PATH` | `string` | `"./uploads"` | Local directory path when `MEDIA_STORAGE_TYPE=local`. |
+| `MEDIA_MAX_SIZE_MB` | `float` | `25.0` | Maximum upload size in MB. Uploads exceeding this return 413. |
+| `DOCUMENT_HANDLING` | `string` | `"extract_text"` | How uploaded documents are processed: `"extract_text"` (extract for graph context), `"pass_raw"` (store raw), `"skip"` (store but do not process). |
+
+### Cloud storage (S3 / GCS)
+
+Used when `MEDIA_STORAGE_TYPE=cloud`.
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `MEDIA_CLOUD_PROVIDER` | `string` | `"aws"` | Cloud provider: `"aws"` (S3) or `"gcp"` (GCS). |
+| `MEDIA_CLOUD_BUCKET` | `string` | `""` | Bucket name. Required when using cloud storage. |
+| `MEDIA_CLOUD_REGION` | `string` | `"us-east-1"` | AWS region or GCP region. |
+| `MEDIA_CLOUD_PREFIX` | `string` | `"agentflow-media"` | Object key prefix within the bucket. |
+| `MEDIA_CLOUD_ACCESS_KEY_ID` | `string \| null` | `null` | AWS access key ID. Omit to use instance role / environment credentials. |
+| `MEDIA_CLOUD_SECRET_ACCESS_KEY` | `string \| null` | `null` | AWS secret access key. |
+| `MEDIA_CLOUD_SESSION_TOKEN` | `string \| null` | `null` | AWS STS session token for temporary credentials. |
+| `MEDIA_CLOUD_PROJECT_ID` | `string \| null` | `null` | GCP project ID. |
+| `MEDIA_CLOUD_CREDENTIALS_JSON` | `string \| null` | `null` | GCP service account credentials JSON (as a string). |
+| `MEDIA_SIGNED_URL_TTL_SECONDS` | `int` | `3600` | Pre-signed URL lifetime in seconds for cloud storage. |
+| `MEDIA_SIGNED_URL_REFRESH_BUFFER_SECONDS` | `int` | `60` | Seconds before expiry at which URLs are refreshed. |
+
+---
+
+## Error monitoring
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `SENTRY_DSN` | `string \| null` | `null` | Sentry DSN for error tracking. When set, Sentry captures unhandled exceptions. |
+
+---
+
+## Production checklist
+
+Minimum variables to set before a public deployment:
 
 ```bash
-JWT_SECRET_KEY=replace-with-a-long-random-secret
-JWT_ALGORITHM=HS256
-```
-
-Do not:
-
-- commit these values to git
-- embed them into Dockerfiles
-- reuse weak development keys in production
-
-## Runtime and routing variables
-
-### `ROOT_PATH`
-
-Use this when your app is mounted under a subpath such as `/agentflow` behind a reverse proxy.
-
-```bash
-ROOT_PATH=/agentflow
-```
-
-Without the correct `ROOT_PATH`, generated docs links and some proxied request handling may behave incorrectly.
-
-### `LOG_LEVEL`
-
-Good defaults:
-
-- development: `DEBUG` or `INFO`
-- production: `INFO` or `WARNING`
-
-Too much debug logging in production can expose sensitive request details and add noise when you need logs for real incidents.
-
-## Example production environment file
-
-This is a deploy-time example, not something to commit:
-
-```bash
+# Runtime
 MODE=production
-LOG_LEVEL=INFO
 IS_DEBUG=false
-ORIGINS=https://app.example.com
-ALLOWED_HOST=api.example.com
-JWT_SECRET_KEY=replace-with-secret-manager-value
-JWT_ALGORITHM=HS256
+
+# Security
+JWT_SECRET_KEY=<random-32+-char-string>   # only if using JWT auth
+ORIGINS=https://yourapp.com
+ALLOWED_HOST=yourapp.com
+
+# Disable docs (optional but recommended)
 DOCS_PATH=
 REDOCS_PATH=
-ROOT_PATH=/
+
+# Distributed IDs — set unique values per instance
+SNOWFLAKE_NODE_ID=1
+SNOWFLAKE_WORKER_ID=1
+
+# Media storage (for file uploads)
+MEDIA_STORAGE_TYPE=local          # or cloud
+MEDIA_STORAGE_PATH=/data/uploads  # writable directory in your container
+
+# Redis (if using Redis rate limiting or Redis-backed checkpointer)
+REDIS_URL=redis://redis:6379/0
 ```
-
-## Verification checklist
-
-After deployment, verify:
-
-1. `GET /ping` succeeds
-2. browser requests from allowed origins work
-3. browser requests from disallowed origins fail
-4. `/docs` and `/redoc` are disabled if intended
-5. JWT-protected endpoints reject missing or invalid tokens
-6. logs do not show debug-only noise or secrets
-
-## Common mistakes
-
-- Shipping `.env` files inside container images.
-- Leaving `ORIGINS=*` in production.
-- Forgetting to disable docs endpoints on public deployments.
-- Setting `MODE=production` but still running `agentflow api --reload`.
-- Mixing local secrets and production secrets in the same config file.
-
-## Related docs
-
-- [Environment Variables Reference](/docs/reference/api-cli/environment)
-- [Deployment](/docs/how-to/production/deployment)
-- [Auth and Authorization](/docs/how-to/production/auth-and-authorization)
-
-## What you learned
-
-- Which environment variables have the biggest production impact.
-- How to separate development convenience from production safety.
-- How to verify that deployed environment settings are actually in effect.

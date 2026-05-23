@@ -35,7 +35,7 @@ npm install @10xscale/agentflow-client
 ```
 
 ```typescript
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamRequest } from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -143,13 +143,13 @@ sequenceDiagram
 ```
 
 ```typescript
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamRequest } from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
 // 1. Register tool with a local execution handler
 const request: StreamRequest = {
-  messages: [{ role: 'user', content: 'What is on my clipboard?' }],
+  messages: [Message.text_message('What is on my clipboard?')],
   tools: [
     {
       name: 'read_clipboard',
@@ -179,16 +179,12 @@ No server changes needed. The server sees the tool schema and calls it; the clie
 Upload a file first, then reference the returned ID in a message:
 
 ```typescript
+import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
+
 const uploaded = await client.uploadFile(file, { purpose: 'vision' });
 
 await client.invoke({
-  messages: [{
-    role: 'user',
-    content: [
-      { type: 'text', text: 'What is in this image?' },
-      { type: 'image', file_id: uploaded.file_id },
-    ],
-  }],
+  messages: [Message.withFile('What is in this image?', uploaded.file_id, 'image/jpeg')],
 });
 ```
 
@@ -220,41 +216,6 @@ const results = await client.searchMemory({ user_id: 'u1', query: 'UI preference
 
 await client.forgetMemories({ user_id: 'u1', topic: 'preferences' });
 ```
-
----
-
-## React hooks (a2ui)
-
-For React apps, `@10xscale/agentflow-client/a2ui` exposes hooks that manage the WebSocket connection, agent status, message lists, and thinking steps:
-
-```tsx
-import {
-  useA2UIClient,
-  useAgentStatus,
-  useAgentMessages,
-  useAgentCommunication,
-} from '@10xscale/agentflow-client/a2ui';
-
-function Chat() {
-  const { client, isConnected } = useA2UIClient({
-    baseUrl: 'http://localhost:8000',
-    threadId: 'thread-abc',
-  });
-  const status  = useAgentStatus(client);
-  const { messages } = useAgentMessages(client);
-
-  return (
-    <>
-      <p>Status: {status}</p>
-      {messages.map((m) => <div key={m.id}>{m.content}</div>)}
-    </>
-  );
-}
-```
-
-Available hooks: `useA2UIClient`, `useAgentStatus`, `useAgentMessages`, `useAgentThinking`, `useAgentCommunication`, `useA2UIMessage`.
-
-For a full drop-in UI with sidebar, thread list, and streaming chat, see `@10xscale/agentflow-ui` — it builds on the same client and hooks.
 
 ---
 

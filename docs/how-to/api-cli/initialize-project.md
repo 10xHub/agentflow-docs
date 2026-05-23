@@ -11,215 +11,236 @@ keywords:
   - initialize a project
 ---
 
-
 # Initialize a project
 
-`agentflow init` scaffolds the minimum files needed to run an agent behind the API: a configuration file, a graph module, and optional project structure files.
+`agentflow init` scaffolds the minimum files needed to run an agent behind the API. It is fully interactive — it prompts for your preferences and generates a project tailored to your answers.
 
 ## Prerequisites
 
-You need AgentFlow CLI and Python 3.11 or later.
+Install the CLI:
 
 ```bash
 pip install 10xscale-agentflow-cli
-python --version  # Verify Python 3.11+
-```
-
-If you want to use the starter agent with Gemini, also install the client:
-
-```bash
-pip install google-generativeai
-```
-
-## Create a project directory
-
-Create and navigate to your agent project directory:
-
-```bash
-mkdir my-agent-project
-cd my-agent-project
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 ```
 
 ## Run init
 
-Initialize the project scaffolding:
+Navigate to an empty directory and run:
 
 ```bash
 agentflow init
 ```
 
-This creates:
-
-```
-agentflow.json
-graph/
-  __init__.py
-  react.py
-skills/
-  agent-skills/
-    SKILL.md
-    references/
-      skill-concepts.md
-      agentflow.md
-      claude.md
-      codex.md
-      github.md
-.env
-```
-
-To initialize in a different directory without changing folders:
+To scaffold in a specific directory without changing into it first:
 
 ```bash
 agentflow init --path ./my-agent-project
 ```
 
+## Interactive prompts
+
+`agentflow init` asks a series of questions:
+
+### 1. Agent name
+
+```
+What is your agent name? (MyAgent)
+```
+
+Enter a name for your agent (e.g. `WeatherBot`). This is used in display strings and to derive the package slug (e.g. `weather-bot`).
+
+### 2. Setup type
+
+```
+Quick Start or Production setup?
+  > Quick Start
+    Production
+```
+
+**Quick Start** generates a minimal project — a graph module, config file, and env template. Choose this when you want to get something running immediately.
+
+**Production** generates a full project structure with tests, evaluations, a `pyproject.toml`, optional authentication, and optional rate limiting. Choose this for projects you will deploy or share with a team.
+
+### 3. Authentication (Production only)
+
+```
+Authentication type?
+  > None
+    JWT
+    Custom
+```
+
+- **None** — No authentication. All endpoints are open.
+- **JWT** — Bearer token auth using `JWT_SECRET_KEY`. Set `JWT_SECRET_KEY` in `.env` before starting the server.
+- **Custom** — Generates an `auth/agent_auth.py` stub where you implement your own `BaseAuth` subclass.
+
+### 4. Rate limiting (Production only)
+
+```
+Rate limiting?
+  > None
+    Memory Based
+    Redis Based
+```
+
+If you choose **Memory Based** or **Redis Based**, the CLI prompts for:
+
+- Max requests per window (default: `100`)
+- Window size in seconds (default: `60`)
+- Limit by IP or globally
+- Whether to read the real IP from forwarded headers (for reverse-proxy setups)
+
+**Redis Based** requires `REDIS_URL` in `.env`.
+
+## Files created
+
+### Quick Start
+
+```
+agentflow.json
+.env.example
+graph/
+  __init__.py
+  agent.py
+```
+
+### Production
+
+```
+agentflow.json
+.env.example
+.python-version
+pyproject.toml
+graph/
+  __init__.py
+  agent.py
+  thread_name_generator.py
+  validators/
+    __init__.py
+    lifecyle.py
+    manager.py
+evals/
+  __init__.py
+  confeval.py
+  weather_agents_eval.py
+  user_simulator_eval.py
+tests/
+  __init__.py
+  conftest.py
+  test_graph_nodes.py
+  test_catalog_tools.py
+  test_agent_eval.py
+auth/                  # only when Custom auth is selected
+  __init__.py
+  agent_auth.py
+```
+
+The `agentflow.json` is generated from your answers, not copied verbatim from the template.
+
 ## What each file does
 
 ### agentflow.json
 
-This is the core server configuration file. The default content:
+The core server configuration. Minimal Quick Start example:
 
 ```json
 {
-  "agent": "graph.react:app",
-  "thread_name_generator": null,
+  "agent": "graph.agent:app",
   "env": ".env",
-  "auth": null
+  "auth": null,
+  "thread_name_generator": null
+}
+```
+
+Production example with JWT auth and memory rate limiting:
+
+```json
+{
+  "agent": "graph.agent:app",
+  "env": ".env",
+  "auth": {"method": "jwt"},
+  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "injectq": "graph.agent:container",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": false,
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  }
 }
 ```
 
 **Field explanation:**
 
-- `agent` (required) — the import path to your compiled graph, expressed as `module:attribute`. The loader imports the module and retrieves the attribute (usually a `CompiledGraph` instance). In this case, it imports the `graph.react` module and retrieves the `app` variable.
-- `env` (optional) — path to a `.env` file containing environment variables. These are loaded with `python-dotenv` before the graph module is imported, so you can reference them in your graph initialization.
-- `thread_name_generator` (optional) — import path to a thread name generator. When set, the API uses it to create human-readable thread names (e.g., `thoughtful-dialogue`) automatically when threads are created.
-- `auth` (optional) — authentication configuration. Set to `null` for no auth, `"jwt"` for JWT bearer tokens, or a custom auth backend configuration.
+- `agent` (required) — import path to your compiled graph, expressed as `module:attribute`. The server imports the module and retrieves the attribute (a compiled `StateGraph`).
+- `env` — path to a `.env` file. Loaded with `python-dotenv` before the graph module is imported.
+- `auth` — `null` for no auth, `{"method": "jwt"}` for JWT bearer tokens, or `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` for a custom backend.
+- `thread_name_generator` — import path to a thread name generator. When set, the API generates human-readable thread names automatically.
+- `injectq` — import path to your dependency-injection container (Production only).
+- `rate_limit` — rate limiting configuration. `backend` can be `memory` or `redis`.
 
-### graph/react.py
+### graph/agent.py
 
-A starter ReAct (Reasoning and Acting) agent. This is a reference implementation using Google's Gemini model. The example shows:
+A starter ReAct agent. Replace the graph logic with your own while keeping the `app` variable defined — the server imports it by name.
 
-- How to define a simple state type with message history
-- How to create a graph with a single agent node
-- How to compile the graph (which enables checkpointing and real-time updates)
-- How to prepare the graph as a FastAPI route (via `graph.invoke()` and `graph.stream()`)
-- How to discover the generated `skills/` directory and expose a `set_skill` tool
+### .env.example
 
-You must keep an `app` variable defined that holds the compiled graph. Replace the graph logic with your own while preserving this export.
-
-### skills/
-
-Starter agent skill library for Claude, AgentFlow agents, Codex, and GitHub workflows. It follows a compact main-file plus references structure:
-
-- `skills/agent-skills/SKILL.md` — main skill entry point and reference map
-- `skills/agent-skills/references/skill-concepts.md` — skill layout, frontmatter, resources, and validation
-- `skills/agent-skills/references/agentflow.md` — AgentFlow graph and `SkillConfig` patterns
-- `skills/agent-skills/references/claude.md` — Claude-facing repository guidance
-- `skills/agent-skills/references/codex.md` — Codex skill authoring workflow
-- `skills/agent-skills/references/github.md` — GitHub MCP and repository automation workflow
-
-The generated `graph/react.py` discovers this folder and adds a `set_skill` tool so the model can load `agent-skills` and request exact reference files during a run.
-
-### .env
-
-Stored environment variables for local development. The default is empty. Add API keys and connection strings here:
+A template for your local `.env` file. Copy it and fill in your API keys:
 
 ```bash
-# Example
-GOOGLE_API_KEY=your_key_here
-REDIS_URL=redis://localhost:6379/0
+cp .env.example .env
 ```
 
-The `agentflow.json` field `env` tells the server which `.env` file to load.
+### pyproject.toml (Production only)
+
+Python package definition. Allows `pip install -e .` for editable installs and integrates with tools like `ruff` and `mypy`.
+
+### evals/ (Production only)
+
+Starter evaluation files. Run them with `agentflow eval`.
+
+### tests/ (Production only)
+
+Starter pytest tests. Run them with `agentflow test`.
 
 ## Overwrite existing files
 
-If you have already initialized a project and want to regenerate the starter files:
+If you want to regenerate files in an already-initialized project:
 
 ```bash
 agentflow init --force
 ```
 
-This overwrites `agentflow.json`, `graph/__init__.py`, `graph/react.py`, and generated files under `skills/`. Use `--force` carefully—it will replace existing code and skill instructions.
+This overwrites all files without prompting. Use carefully — it replaces your existing graph code and configuration.
 
-## Initialize a production project
+## Options reference
 
-The `--prod` flag scaffolds additional files for a professional project layout:
-
-```bash
-agentflow init --prod
-```
-
-This creates:
-
-- `pyproject.toml` — Python package definition (allows `pip install -e .`)
-- `.pre-commit-config.yaml` — Git hooks for code quality checks (linting, formatting)
-- Standard project structure with `src/`, `tests/`, and `docs/` directories
-
-Use `--prod` when you are setting up a project that will be deployed or shared with a team.
-
-## Verify the initialization
-
-After running `init`, verify the files were created:
-
-```bash
-ls -la
-cat agentflow.json
-cat graph/react.py
-```
-
-You should see valid Python and JSON files with no syntax errors.
-
-## Test the starter agent
-
-Before modifying the starter agent, test that it runs:
-
-```bash
-# Set a Gemini API key if you want to test the starter
-export GOOGLE_API_KEY=your_key_here
-
-# Start the server
-agentflow api --host 127.0.0.1 --port 8000
-```
-
-In another terminal, test the agent:
-
-```bash
-curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "What is 2+2?"}],
-    "config": {"thread_id": "test-1"}
-  }'
-```
-
-Expected response: A JSON object with messages, including the agent's response.
-
-If this fails, check:
-- Is the server running? (`curl http://127.0.0.1:8000/ping` should return `{"success": true, "data": "pong"}`)
-- Is `GOOGLE_API_KEY` set? (The starter example requires it)
-- Are there errors in the server logs?
+| Option | Short | Default | Description |
+| --- | --- | --- | --- |
+| `--path` | `-p` | `.` | Directory to scaffold the project in |
+| `--force` | `-f` | off | Overwrite existing files |
+| `--verbose` | `-v` | off | Enable verbose logging |
+| `--quiet` | `-q` | off | Suppress all output except errors |
 
 ## Next steps
 
-1. **Replace the agent** — Edit `graph/react.py` with your custom graph logic. See [concepts](../../concepts/state-graph.md) for how graphs work.
-2. **Add tools** — Give your agent callable functions via `ToolNode`. See [add a tool](../../beginner/add-a-tool.md) guide.
-3. **Add persistence** — Configure a checkpointer in `agentflow.json` so conversations persist across server restarts. See [configure agentflow.json](./configure-agentflow-json.md).
-4. **Start the server** — Run `agentflow api` to expose your agent over HTTP.
-5. **Test with the playground** — Use `agentflow play` to test interactively in a browser.
+After `agentflow init`:
+
+1. Run `agentflow skills` to install coding-agent skills for your AI assistant.
+2. Copy `.env.example` to `.env` and add your API keys.
+3. Run `agentflow play` to start the server and open the playground.
 
 ## Troubleshooting
 
-**Error: "ModuleNotFoundError: No module named 'agentflow_cli'"**
+**"ModuleNotFoundError: No module named 'agentflow_cli'"**
 - Install the CLI: `pip install 10xscale-agentflow-cli`
 
-**Error: "No such file or directory: agentflow.json"**
-- Make sure you run `agentflow init` from the project root, or use `--path` to specify the directory.
+**"File already exists" error**
+- Pass `--force` to overwrite: `agentflow init --force`
 
-**Error: "Overwrite existing files?" but you did not pass `--force`**
-- The CLI prompts interactively. Type `yes` or pass `--force` to skip the prompt.
-
-**The generated `graph/react.py` has syntax errors**
-- This is unusual. Try deleting the directory and re-running `agentflow init` from scratch.
+**Server fails to start after init**
+- Check that the `agent` field in `agentflow.json` matches the actual module path.
+- Verify your graph module can be imported: `python -c "from graph.agent import app; print(app)"`

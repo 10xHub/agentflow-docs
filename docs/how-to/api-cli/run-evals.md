@@ -19,7 +19,7 @@ The `agentflow eval` command discovers evaluation files in your project, runs al
 
 ## Prerequisites
 
-Your project must have been initialised with `agentflow init`. Eval files live in the `evals/` directory created by `agentflow init --prod`.
+Your project must have been initialised with `agentflow init`. Eval files live in the `evals/` directory, which is generated when you choose the **Production** setup during `agentflow init`.
 
 ## Quick start
 
@@ -163,6 +163,7 @@ An eval file is any `*_eval.py` or `eval_*.py` file. The CLI auto-detects which 
 | `EvalPresets` | Recommended: one-line preset configs |
 | Annotated functions `-> EvalSet` | Pytest-style discovery, multiple sets per file |
 | `get_scenarios()` / `SCENARIOS` | User simulator: dynamic multi-turn conversations |
+| `confeval.py` | Global criteria applied to all files that have no per-file config |
 
 ---
 
@@ -267,6 +268,47 @@ from agentflow.qa.evaluation.config.presets import EvalPresets
 
 EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 ```
+
+---
+
+### `confeval.py` — global eval config
+
+Place a file named exactly `confeval.py` in your project root (next to `agentflow.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence and `confeval.py` is ignored for that file.
+
+The file must expose either a module-level `EVAL_CONFIG` variable or a callable `get_eval_config()` that returns an `EvalConfig`.
+
+```python
+# confeval.py  (project root, next to agentflow.json)
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+
+
+EVAL_CONFIG = EvalConfig(
+    criteria=CriteriaConfig(
+        tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+        # response_match=CriterionConfig.response_match(threshold=0.8),
+        # hallucinations=CriterionConfig.hallucination(threshold=0.8),
+        rouge_match=CriterionConfig.rouge_match(threshold=0.5),
+    )
+)
+```
+
+Or as a function:
+
+```python
+# confeval.py
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+
+
+def get_eval_config() -> EvalConfig:
+    return EvalConfig(
+        criteria=CriteriaConfig(
+            tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+            rouge_match=CriterionConfig.rouge_match(threshold=0.5),
+        )
+    )
+```
+
+If `confeval.py` is absent and a file has no per-file config, the built-in defaults apply (all criteria at 0.6 threshold).
 
 ---
 
@@ -382,8 +424,9 @@ When multiple sources configure the same setting, this priority applies (highest
 ```
 1. CLI flags          (--parallel, --max-concurrency, --threshold, --output)
 2. agentflow.json     "evaluation" section
-3. Per-file config    get_eval_config() / EVAL_CONFIG
-4. Built-in defaults  (all criteria at 0.6 threshold)
+3. Per-file config    get_eval_config() / EVAL_CONFIG  (inside each eval file)
+4. confeval.py        get_eval_config() / EVAL_CONFIG  (project-root global fallback)
+5. Built-in defaults  (all criteria at 0.6 threshold)
 ```
 
 ---

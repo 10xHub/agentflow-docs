@@ -198,34 +198,6 @@ curl -X GET http://localhost:8000/v1/threads
 
 If the database is unreachable, you get a 500 error.
 
-## Memory: Store
-
-A store is for long-term semantic memory (embeddings, facts). It is separate from the checkpointer (which holds conversation history).
-
-### Adding a store
-
-Example using Qdrant for vector search:
-
-```python
-# graph/dependencies.py
-from agentflow.storage.store import create_cloud_qdrant_store
-
-my_store = create_cloud_qdrant_store(
-    url="https://your-qdrant-cloud-instance.com",
-    api_key="your-qdrant-api-key",
-    collection="agent-memories",
-)
-```
-
-```json
-{
-  "agent": "graph.react:app",
-  "store": "graph.dependencies:my_store"
-}
-```
-
-Your graph can then retrieve and store semantic information (via embeddings) that persists across conversations.
-
 ## Thread name generation
 
 When a new conversation thread is created, generate a human-readable name instead of a raw UUID:
@@ -351,6 +323,134 @@ class MyAuthorizationBackend:
   "authorization": "graph.auth:MyAuthorizationBackend"
 }
 ```
+
+## Testing
+
+The optional `"test"` section configures the `agentflow test` command, which is a thin wrapper around pytest.
+
+### Minimal example
+
+```json
+{
+  "agent": "graph.react:app",
+  "test": {
+    "path": "tests/"
+  }
+}
+```
+
+### Full example with coverage
+
+```json
+{
+  "agent": "graph.react:app",
+  "test": {
+    "path": "tests/",
+    "coverage": true,
+    "coverage_threshold": 80
+  }
+}
+```
+
+### Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | null (pytest auto-discovery) | Directory or file to pass to pytest |
+| `coverage` | boolean | `false` | Enable `--cov` and generate an HTML coverage report in `htmlcov/` |
+| `coverage_threshold` | integer | null | Fail the run if coverage falls below this percentage (`--cov-fail-under`) |
+
+### How fields interact with CLI flags
+
+CLI flags always win. The `agentflow.json` values are fallbacks used when the flag is not provided:
+
+```bash
+# Uses path/coverage from agentflow.json
+agentflow test
+
+# Overrides path; coverage still comes from agentflow.json
+agentflow test --path tests/unit/
+
+# Overrides coverage; path still comes from agentflow.json
+agentflow test --coverage
+```
+
+## Evaluation
+
+The optional `"evaluation"` section configures the `agentflow eval` command. It controls where eval files are discovered, where reports are written, and the default pass-rate threshold. **It does not control evaluation criteria** — those come from `confeval.py` inside your evals directory.
+
+### Minimal example
+
+```json
+{
+  "agent": "graph.react:app",
+  "evaluation": {
+    "directory": "evals"
+  }
+}
+```
+
+### Full example
+
+```json
+{
+  "agent": "graph.react:app",
+  "evaluation": {
+    "directory": "evals",
+    "output_dir": "eval_reports",
+    "threshold": 0.9,
+    "parallel": true,
+    "max_concurrency": 8
+  }
+}
+```
+
+### Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `directory` | string | `"evals"` | Directory to scan for eval files (files matching `*_eval.py` or `eval_*.py`) |
+| `output_dir` | string | `"eval_reports"` | Directory where HTML and JSON reports are written |
+| `threshold` | float | null | Minimum pass rate (0.0–1.0). The command exits with code 1 if the pass rate is below this value |
+| `parallel` | boolean | `false` | Run eval cases concurrently instead of sequentially |
+| `max_concurrency` | integer | `4` | Maximum number of cases running at the same time (only applies when `parallel` is `true`) |
+
+### How fields interact with CLI flags
+
+CLI flags take priority over `agentflow.json`. JSON values are fallbacks:
+
+```bash
+# Uses all settings from agentflow.json
+agentflow eval
+
+# Overrides output_dir; other settings still come from agentflow.json
+agentflow eval --output-dir ci_reports/
+
+# Overrides threshold; directory still comes from agentflow.json
+agentflow eval --threshold 0.95
+
+# Overrides parallel and concurrency
+agentflow eval --parallel --max-concurrency 16
+```
+
+### Criteria configuration
+
+Evaluation criteria (thresholds per criterion, judge model, match type) are **not** set in `agentflow.json`. They live in `confeval.py` inside your evals directory:
+
+```python
+# evals/confeval.py
+from agentflow.qa.evaluation import EvalConfig, CriteriaConfig, CriterionConfig
+
+EVAL_CONFIG = EvalConfig(
+    criteria=CriteriaConfig(
+        tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+        rouge_match=CriterionConfig.rouge_match(threshold=0.5),
+        node_order=CriterionConfig.node_order(threshold=0.8),
+    )
+)
+```
+
+If no `confeval.py` is found, the built-in defaults are used.
 
 ## Environment-specific configs
 
