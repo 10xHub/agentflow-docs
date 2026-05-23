@@ -9,9 +9,13 @@ keywords:
   - agentflow
   - python ai agent framework
   - google
-sidebar_position: 3
+  - google gemini configuration
+  - context caching
+  - gemini caching
+  - thinking models
+  - vertex ai
+sidebar_position: 1
 ---
-
 
 # Google
 
@@ -107,19 +111,210 @@ if __name__ == "__main__":
         print(f"[{msg.role}] {msg}")
 ```
 
-## Thinking models
+---
 
-Gemini 2.5 models support extended thinking. Configure the budget explicitly:
+## Context Caching
+
+Gemini offers two caching modes. Both reduce input token costs and latency for prompts
+that repeat the same large prefix across requests.
+
+### Implicit Caching (Gemini 2.5+)
+
+Enabled automatically on all Gemini 2.5 and later models. No code changes required.
+Google detects matching prefixes on their infrastructure and passes on the savings.
+
+Cache hit counts are read from `usage_metadata.cached_content_token_count` and logged at
+`DEBUG` level by AgentFlow after every non-streaming response.
 
 ```python
+from agentflow.core.graph import Agent
+
+# Implicit caching fires automatically — nothing to configure
 agent = Agent(
-    model="gemini-2.5-pro",
-    provider="google",
-    reasoning_config={"thinking_budget": 8000},
+    model="gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": long_system_prompt}],
 )
 ```
 
-Pass `reasoning_config=True` to enable with defaults or `False` to disable.
+For implicit caching to hit consistently, the prompt prefix must be **stable across
+requests**. In practice this means:
+- `system_prompt` is set at Agent init time and does not change per request.
+- Dynamic per-request context (user name, current date, state data) is kept out of the
+  system prompt and injected into the conversation messages instead.
+
+### Explicit Caching
+
+For guaranteed savings on very large static content (multi-page PDFs, long codebases,
+reference documents), create a cache explicitly using the Google SDK and pass the cache
+name to the Agent via `cached_content`.
+
+**Step 1 — create the cache outside the Agent:**
+
+```python
+import asyncio
+from google import genai
+from google.genai import types
+
+client = genai.Client(api_key="...")
+
+async def create_cache():
+    cache = await client.aio.caches.create(
+        config=types.CreateCachedContentConfig(
+            model="gemini-2.5-flash",
+            display_name="legal-docs-v1",
+            system_instruction="You are a legal analyst...",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=large_document_text)],
+                )
+            ],
+            ttl="7200s",  # 2 hours; default is 3600s
+        )
+    )
+    return cache.name  # e.g. "cachedContents/abc123"
+
+cache_name = asyncio.run(create_cache())
+```
+
+**Step 2 — pass the cache name to the Agent:**
+
+```python
+agent = Agent(
+    model="gemini-2.5-flash",
+    system_prompt=[],         # static instruction is already inside the cache
+    cached_content=cache_name,  # forwarded through llm_kwargs
+)
+```
+
+**Minimum token requirements:**
+
+| Model | Minimum cached tokens |
+|---|---|
+| Gemini 2.5 Flash | 1,024 |
+| Gemini 2.5 Pro | 4,096 |
+| Gemini 3 Pro Preview | 4,096 |
+
+**What can be cached:** system instructions, plain text, PDF documents, video files (via
+GCS URIs). The cache is stored server-side; you reference it by name.
+
+**Cache lifecycle:** TTL defaults to 1 hour. Only TTL and expiration time can be updated
+after creation. Deletion is manual or automatic on expiry. AgentFlow does not manage
+cache lifecycle — create, refresh, and delete caches via the Google SDK directly.
+
+### Mixing Static and Dynamic System Instructions
+
+When using explicit caching, the Google SDK does not allow sending `system_instruction`
+in `GenerateContentConfig` alongside `cached_content` — the static instruction already
+lives inside the cache.
+
+AgentFlow handles this automatically:
+
+- If `cached_content` is set, `system_instruction` is **excluded** from the config.
+- Any dynamic additions to the system prompt — from memory injections, skill prompts, or
+  per-request state — are **preserved** by prepending them as a leading user message in
+  `contents` before the conversation history.
+
+The recommended pattern:
+
+```python
+# Static instruction — goes into the cache at creation time
+static_instruction = "You are a legal analyst. Reference the attached documents..."
+
+agent = Agent(
+    model="gemini-2.5-flash",
+    system_prompt=[
+        # Dynamic context injected per-request by memory/skill systems
+        # e.g. {"role": "system", "content": "User preference: formal tone"}
+    ],
+    cached_content=cache_name,
+)
+```
+
+### SummaryContextManager with explicit caching
+
+`call_llm` (used internally by `SummaryContextManager`) accepts `cached_content` via
+`**llm_kwargs`. When set, the same exclusion logic applies.
+
+```python
+from agentflow.core.state import SummaryContextManager
+from agentflow.core.llm.caller import call_llm
+
+text, inp, out, cache = await call_llm(
+    "gemini-2.5-flash",
+    prompt,
+    cached_content=cache_name,
+)
+
+# SummaryContextManager does not yet accept cached_content directly.
+# Implicit cache on Gemini 2.5+ already benefits the summariser
+# when its system prompt prefix is stable across calls.
+manager = SummaryContextManager(
+    model="gemini-2.5-flash",
+    token_budget=8000,
+)
+```
+
+### Evaluation judge with caching
+
+The evaluation judge calls `call_llm` via `LLMCallerMixin`. Implicit caching on Gemini
+2.5+ fires automatically when the judge prompt prefix (rubric + instructions) is stable.
+Explicit cache support is not yet wired through `CriterionConfig`.
+
+```python
+from agentflow.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
+
+config = EvalConfig(
+    criteria=CriteriaConfig(
+        llm_judge=CriterionConfig.llm_judge(
+            judge_model="gemini-2.5-flash",   # implicit cache fires automatically
+        )
+    )
+)
+```
+
+---
+
+## Thinking Models
+
+Gemini 2.5 and Gemini 3 models support extended thinking. Control it via
+`reasoning_config`.
+
+```python
+# Enable with defaults
+agent = Agent(model="gemini-2.5-pro", reasoning_config=True)
+
+# Set token budget explicitly (Gemini 2.5 style)
+agent = Agent(
+    model="gemini-2.5-pro",
+    reasoning_config={"thinking_budget": 8000},  # tokens to spend on reasoning
+)
+
+# Set thinking level (Gemini 3 style)
+agent = Agent(
+    model="gemini-3-pro",
+    reasoning_config={"thinking_level": "high"},  # "minimal"|"low"|"medium"|"high"
+)
+
+# Map from effort string (works on both generations)
+agent = Agent(
+    model="gemini-2.5-flash",
+    reasoning_config={"effort": "medium"},  # "low" | "medium" | "high"
+)
+
+# Disable
+agent = Agent(model="gemini-2.5-flash", reasoning_config=False)
+```
+
+Effort-to-budget mapping used internally:
+
+| effort | thinking_budget |
+|---|---|
+| `"low"` | 512 |
+| `"medium"` | 8192 |
+| `"high"` | 24576 |
+
+---
 
 ## Using Vertex AI
 
@@ -129,6 +324,8 @@ Vertex AI runs the same Gemini models on Google Cloud, but authenticates with Ap
 - Regional data residency (EU, Asia, etc.)
 - GCP audit logging or VPC Service Controls
 - To reuse the service account already attached to your GCP workload
+
+All other configuration options (caching, thinking, structured output) work identically on both backends.
 
 ### 1. Set up GCP credentials
 
@@ -146,8 +343,6 @@ Vertex AI runs the same Gemini models on Google Cloud, but authenticates with Ap
 
 ### 2. Enable Vertex AI
 
-You can switch the Google provider to Vertex AI in two ways. Pick whichever fits your workflow — they behave identically.
-
 **Option A — pass `use_vertex_ai=True` on the agent:**
 
 ```python
@@ -156,7 +351,7 @@ agent = Agent(
     provider="google",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
     tool_node=tool_node,
-    use_vertex_ai=True,  # Enable Vertex AI provider
+    use_vertex_ai=True,
 )
 ```
 
@@ -170,7 +365,46 @@ With this set, every Google agent in your process uses Vertex AI without changin
 
 If both are set, the explicit `use_vertex_ai=True` argument wins.
 
-## Environment variables
+---
+
+## Structured Output
+
+Force the model to return a specific JSON schema by passing `output_schema`. Google does
+not support combining structured output with tool calls in the same request.
+
+```python
+from pydantic import BaseModel
+
+class ExtractedData(BaseModel):
+    name: str
+    amount: float
+    currency: str
+
+agent = Agent(
+    model="gemini-2.5-flash",
+    output_schema=ExtractedData,
+    system_prompt=[...],
+)
+```
+
+---
+
+## `llm_kwargs` Reference
+
+All unrecognised keyword arguments passed to `Agent(...)` land in `self.llm_kwargs` and
+are forwarded to `GenerateContentConfig` (after provider-level extraction).
+
+| kwarg | Type | Notes |
+|---|---|---|
+| `cached_content` | `str` | Name of an explicit Gemini cache (e.g. `"cachedContents/abc123"`). Mutually exclusive with `system_instruction` in the config — AgentFlow handles this automatically. |
+| `temperature` | `float` | Sampling temperature. |
+| `max_tokens` / `max_output_tokens` | `int` | Maximum output tokens. Both aliases are accepted. |
+| `top_p` | `float` | Nucleus sampling. |
+| `top_k` | `int` | Top-K sampling. |
+
+---
+
+## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
@@ -181,7 +415,7 @@ If both are set, the explicit `use_vertex_ai=True` argument wins.
 | `GOOGLE_CLOUD_LOCATION` | — | Region for Vertex AI calls (default `us-central1`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to a service-account JSON key. Not required on GCP workloads with an attached service account |
 
-## Common errors
+## Common Errors
 
 | Error | Fix |
 |---|---|

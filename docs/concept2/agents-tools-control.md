@@ -264,7 +264,9 @@ class MyHook(GraphLifecycleHook):
         # Return modified state to continue with, or None.
         return None
 
-compiled = graph.compile(lifecycle_hook=MyHook())
+cb = CallbackManager()
+cb.register_lifecycle_hook(MyHook())
+compiled = graph.compile(callback_manager=cb)
 ```
 
 ---
@@ -370,6 +372,42 @@ await compiled.aclose()
 ```
 
 Skipping `aclose()` on a server with a `PgCheckpointer` can cause the last state write to be lost.
+
+---
+
+## Streaming
+
+Streaming is how you interact with a compiled graph in real time. It is independent of memory — chunks arrive while state is being built and checkpointed in the background.
+
+### Execution methods compared
+
+| Method | Returns | Use when |
+|---|---|---|
+| `compiled.invoke(input, config)` | Final `AgentState` | You only need the end result |
+| `compiled.stream(input, config)` | Sync generator of `StreamChunk` | Sync context, real-time display |
+| `compiled.astream(input, config)` | Async generator of `StreamChunk` | Async context (FastAPI, WebSocket) |
+| `compiled.ainvoke(input, config)` | Awaitable `AgentState` | Async context, no streaming needed |
+
+Always use `ainvoke` / `astream` inside an async context. `invoke` and `stream` are sync wrappers over `asyncio.run()`.
+
+### StreamChunk fields
+
+| Field | Type | Description |
+|---|---|---|
+| `event` | `StreamEvent` | `MESSAGE`, `STATE`, `ERROR`, `UPDATES` |
+| `delta` | `bool` | Indicates if this chunk is an incremental text fragment (only on `MESSAGE` events) |
+| `message` | `Message \| None` | The new message produced in this chunk |
+| `state` | `AgentState \| None` | Full state snapshot (only on `STATE` events) |
+| `data` | `dict \| None` | Event-specific metadata |
+| `thread_id` | `str` | The thread this chunk belongs to |
+| `run_id` | `str` | The run this chunk belongs to |
+| `timestamp` | `datetime` | When the chunk was emitted |
+
+```python
+async for chunk in compiled.astream({"messages": [...]}, {"thread_id": "abc"}):
+    if chunk.event == StreamEvent.MESSAGE and chunk.delta:
+        print(chunk.delta, end="", flush=True)
+```
 
 ---
 

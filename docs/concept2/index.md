@@ -190,11 +190,11 @@ from agentflow.utils import START, END
 # route_fn receives state and returns "tool" or "done"
 def route_fn(state: MyState) -> str:
     last = state.context[-1] if state.context else None
-    if last and last.has_tool_calls():
+    if last and last.tools_calls:   # tools_calls is the real attribute name
         return "tool"
     return "done"
 
-graph = StateGraph(state=MyState())
+graph = StateGraph()
 graph.add_node("MAIN", agent)        # agent defined above
 graph.add_node("TOOL", tool_node)    # tool_node defined above
 graph.add_edge(START, "MAIN")        # START → first node
@@ -204,12 +204,12 @@ graph.add_edge("TOOL", "MAIN")       # tool results loop back to agent
 compiled = graph.compile()
 ```
 
-Execution — pass `context` (the state field) as the initial message list:
+Execution — pass `messages` as the initial message list:
 
 ```python
 from agentflow.core.state import Message
 
-input_state = {"context": [Message.text_message("What is the weather in Paris?", role="user")]}
+input_state = {"messages": [Message.text_message("What is the weather in Paris?", role="user")]}
 config      = {"thread_id": "abc"}
 
 # sync
@@ -236,7 +236,7 @@ from agentflow.prebuilt.agent import ReactAgent
 
 # compile() returns a CompiledGraph — same API as the manual graph above
 compiled = ReactAgent(
-    agent=Agent(model="gpt-4o"),
+    model="gpt-4o",
     tools=[search, calculator],   # your tool functions
 ).compile()
 ```

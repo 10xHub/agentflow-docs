@@ -166,7 +166,6 @@ const sidebars: SidebarsConfig = {
       label: "Providers",
       collapsed: true,
       items: [
-        "providers/index",
         "providers/openai",
         "providers/google",
       ],

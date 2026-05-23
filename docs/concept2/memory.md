@@ -73,10 +73,11 @@ To write your own strategy extend `BaseContextManager`:
 from agentflow.core.state import BaseContextManager
 
 class PriorityContextManager(BaseContextManager):
-    def trim_context(self, messages, max_tokens):   # sync
+    def trim_context(self, state: AgentState) -> AgentState:   # sync
         ...
-    async def atrim_context(self, messages, max_tokens):   # async
-        ...
+        return state
+    async def atrim_context(self, state: AgentState) -> AgentState:   # async
+        return self.trim_context(state)
 ```
 
 ---
@@ -98,7 +99,7 @@ compiled = graph.compile(checkpointer=InMemoryCheckpointer())
 # production — state survives restarts and load-balanced workers
 compiled = graph.compile(
     checkpointer=PgCheckpointer(
-        postgres_url="postgresql+asyncpg://...",
+        postgres_dsn="postgresql+asyncpg://...",
         redis_url="redis://...",   # optional hot cache
     )
 )
@@ -181,8 +182,8 @@ class MyCheckpointer(BaseCheckpointer[MyState]):
 The `memory_tool` is injected into the agent's tool list when you configure `MemoryConfig`. The LLM decides when to call it:
 
 ```python
-from agentflow.storage.store.memory_config import MemoryConfig, RetrievalMode
-from agentflow.storage.store import QdrantStore
+from agentflow.storage.store.memory_config import MemoryConfig
+from agentflow.storage.store import QdrantStore, ReadMode
 from agentflow.storage.store.embedding import OpenAIEmbedding
 
 store = QdrantStore(
@@ -195,7 +196,7 @@ agent = Agent(
     model="gpt-4o",
     memory=MemoryConfig(
         store=store,
-        retrieval_mode=RetrievalMode.PRELOAD,  # inject relevant memories before each LLM call
+        retrieval_mode=ReadMode.PRELOAD,  # inject relevant memories before each LLM call
     ),
 )
 ```
@@ -206,9 +207,9 @@ The LLM calls `memory_tool(action="store", content="...")` to write facts and `m
 
 | Mode | Behaviour |
 |---|---|
-| `no_retrieval` | LLM must explicitly call `memory_tool(action="search")` |
-| `preload` | Framework searches and injects relevant memories into the system prompt before each LLM call |
-| `postload` | Framework retrieves memories after the LLM call and appends them for the next turn |
+| `ReadMode.NO_RETRIEVAL` | LLM must explicitly call `memory_tool(action="search")` |
+| `ReadMode.PRELOAD` | Framework searches and injects relevant memories into the system prompt before each LLM call |
+| `ReadMode.POSTLOAD` | Framework retrieves memories after the LLM call and appends them for the next turn |
 
 ### Backends
 
@@ -232,41 +233,6 @@ class MyEmbedding(BaseEmbedding):
     async def aembed(self, text) -> list[float]: ...
     async def aembed_batch(self, texts) -> list[list[float]]: ...
     dimension: int = 1536
-```
-
----
-
-## Streaming
-
-Streaming and memory work together — chunks arrive while state is being built and checkpointed.
-
-### Execution methods compared
-
-| Method | Returns | Use when |
-|---|---|---|
-| `compiled.invoke(input, config)` | Final `AgentState` | You only need the end result |
-| `compiled.stream(input, config)` | Sync generator of `StreamChunk` | Sync context, real-time display |
-| `compiled.astream(input, config)` | Async generator of `StreamChunk` | Async context (FastAPI, WebSocket) |
-| `compiled.ainvoke(input, config)` | Awaitable `AgentState` | Async context, no streaming needed |
-
-Always use `ainvoke` / `astream` inside an async context. `invoke` and `stream` are sync wrappers over `asyncio.run()`.
-
-### StreamChunk fields
-
-| Field | Type | Description |
-|---|---|---|
-| `event` | `StreamEvent` | `MESSAGE`, `STATE`, `ERROR`, `UPDATES` |
-| `message` | `Message \| None` | The new message produced in this chunk |
-| `state` | `AgentState \| None` | Full state snapshot (only on `STATE` events) |
-| `data` | `dict \| None` | Event-specific metadata |
-| `thread_id` | `str` | The thread this chunk belongs to |
-| `run_id` | `str` | The run this chunk belongs to |
-| `timestamp` | `datetime` | When the chunk was emitted |
-
-```python
-async for chunk in compiled.astream({"messages": [...]}, {"thread_id": "abc"}):
-    if chunk.event == StreamEvent.MESSAGE and chunk.message:
-        print(chunk.message.content, end="", flush=True)
 ```
 
 ---

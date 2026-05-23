@@ -78,7 +78,7 @@ flowchart TB
 | Router | Prefix | Key endpoints |
 |---|---|---|
 | Graph | `/v1/graph` | `POST /invoke`, `POST /stream`, `WebSocket /ws`, `POST /stop`, `GET /` |
-| Checkpointer | `/v1/checkpointer` | Thread state CRUD, message CRUD |
+| Checkpointer | `/v1/threads` | Thread state CRUD, message CRUD |
 | Store | `/v1/store` | Memory store, search, get, update, delete, list, forget |
 | Media | `/v1/media` | File upload / download |
 | A2A | `/a2a` | Agent-to-Agent protocol |
@@ -430,7 +430,6 @@ compiled = graph.compile(...)
 
 | Level | What it includes |
 |---|---|
-| `SPANS` | Timing and structure only — no I/O data |
 | `STANDARD` | Token counts, model name, request params, finish reason *(default)* |
 | `FULL` | All of STANDARD + prompt messages, completions, tool I/O — may contain PII |
 

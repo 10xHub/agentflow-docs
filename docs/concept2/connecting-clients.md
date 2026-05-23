@@ -39,8 +39,8 @@ import { AgentFlowClient } from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
-  apiKey: 'your-api-key',      // sent as Authorization: Bearer
-  timeout: 30_000,              // ms; default 30 s
+  authToken: 'your-api-key',   // sent as Authorization: Bearer
+  timeout: 30_000,              // ms; default 5 min
   debug: false,
 });
 ```
@@ -51,44 +51,40 @@ const client = new AgentFlowClient({
 
 | Method | Transport | Returns | Use when |
 |---|---|---|---|
-| `client.invoke(request)` | HTTP POST | `Promise<InvokeResponse>` | You only need the final response |
-| `client.stream(request, callbacks)` | SSE | void; fires callbacks per chunk | Real-time text display in browser |
-| `client.wsStream(request, callbacks)` | WebSocket | void; fires callbacks per chunk | Low-latency or bidirectional use |
+| `client.invoke(messages, options?)` | HTTP POST | `Promise<InvokeResult>` | You only need the final response |
+| `client.stream(messages, options?)` | SSE | `AsyncGenerator<StreamChunk>` | Real-time token-by-token display |
+| `client.wsStream(messages, options?)` | WebSocket | `AsyncGenerator<StreamChunk>` | Low-latency or bidirectional use |
 
 ```typescript
-// Invoke — wait for full response
-const response = await client.invoke({
-  messages: [{ role: 'user', content: 'What is the capital of France?' }],
-  thread_id: 'thread-abc',
-});
-console.log(response.messages.at(-1)?.content);
+import { Message, StreamEventType } from '@10xscale/agentflow-client';
 
-// Stream — receive chunks as they arrive
-await client.stream(
-  {
-    messages: [{ role: 'user', content: 'Tell me a story.' }],
-    thread_id: 'thread-abc',
-  },
-  {
-    onTextDelta: (text) => process.stdout.write(text),
-    onDone: (response) => console.log('\nDone'),
-    onError: (err) => console.error(err),
-  },
+// Invoke — wait for full response
+const result = await client.invoke(
+  [Message.text_message('What is the capital of France?')],
+  { config: { thread_id: 'thread-abc' } }
 );
+console.log(result.messages.at(-1)?.text());
+
+// Stream — async-iterate over chunks as they arrive
+const stream = client.stream(
+  [Message.text_message('Tell me a story.')],
+  { config: { thread_id: 'thread-abc' } }
+);
+
+for await (const chunk of stream) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
+  }
+}
 ```
 
-### Stream event callbacks
+### StreamChunk event types
 
-| Callback | Fires when |
+| `StreamEventType` | When it fires |
 |---|---|
-| `onTextDelta(text)` | A new text fragment arrives (`text_delta` event) |
-| `onToolCall(toolCall)` | The LLM requested a tool call |
-| `onToolResult(result)` | A tool result was returned |
-| `onStateUpdate(state)` | Full state snapshot emitted |
-| `onThinking(text)` | Reasoning token from a thinking model |
-| `onMetadata(meta)` | Run/thread metadata (ids, timestamps) |
-| `onError(error)` | Stream error |
-| `onDone(response)` | Stream complete; final response |
+| `MESSAGE` | A new `Message` was produced (assistant turn or tool result) |
+| `UPDATES` | A full state snapshot was emitted |
+| `ERROR` | An error occurred during streaming |
 
 ---
 
@@ -100,10 +96,16 @@ Pass the same `thread_id` on every call to resume a conversation. The server res
 const THREAD = 'user-123-support';
 
 // Turn 1
-await client.invoke({ messages: [{ role: 'user', content: 'My order is late.' }], thread_id: THREAD });
+await client.invoke(
+  [Message.text_message('My order is late.')],
+  { config: { thread_id: THREAD } }
+);
 
 // Turn 2 — full history is available to the agent
-await client.invoke({ messages: [{ role: 'user', content: 'Can you check the status?' }], thread_id: THREAD });
+await client.invoke(
+  [Message.text_message('Can you check the status?')],
+  { config: { thread_id: THREAD } }
+);
 ```
 
 ### Thread management
@@ -198,11 +200,11 @@ await client.invoke({
 // Bearer token (JWT or opaque)
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
-  apiKey: 'eyJhbGci...',
+  authToken: 'eyJhbGci...',
 });
 
-// Refresh the token at runtime (e.g. after Firebase refresh)
-client.setApiKey(newToken);
+// To rotate the token, create a new client instance with the refreshed value.
+// AgentFlowClient has no mutable setApiKey() method.
 ```
 
 The token is sent as `Authorization: Bearer <token>` on every request. The server validates it via the configured `BaseAuth` backend. See [Serving Agents](./serving-agents.md) for the server-side auth setup.
@@ -223,25 +225,34 @@ await client.forgetMemories({ user_id: 'u1', topic: 'preferences' });
 
 ## React hooks (a2ui)
 
-For React apps, `@10xscale/agentflow-client/a2ui` exposes hooks that manage connection, streaming state, and message lists:
+For React apps, `@10xscale/agentflow-client/a2ui` exposes hooks that manage the WebSocket connection, agent status, message lists, and thinking steps:
 
 ```tsx
-import { useAgent, useChat } from '@10xscale/agentflow-client/a2ui';
+import {
+  useA2UIClient,
+  useAgentStatus,
+  useAgentMessages,
+  useAgentCommunication,
+} from '@10xscale/agentflow-client/a2ui';
 
 function Chat() {
-  const { messages, send, isStreaming } = useChat({
+  const { client, isConnected } = useA2UIClient({
     baseUrl: 'http://localhost:8000',
     threadId: 'thread-abc',
   });
+  const status  = useAgentStatus(client);
+  const { messages } = useAgentMessages(client);
 
   return (
     <>
+      <p>Status: {status}</p>
       {messages.map((m) => <div key={m.id}>{m.content}</div>)}
-      <button onClick={() => send('Hello')} disabled={isStreaming}>Send</button>
     </>
   );
 }
 ```
+
+Available hooks: `useA2UIClient`, `useAgentStatus`, `useAgentMessages`, `useAgentThinking`, `useAgentCommunication`, `useA2UIMessage`.
 
 For a full drop-in UI with sidebar, thread list, and streaming chat, see `@10xscale/agentflow-ui` — it builds on the same client and hooks.
 
