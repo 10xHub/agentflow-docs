@@ -18,26 +18,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Beginner Path",
-      collapsed: true,
-      items: [
-        "beginner/index",
-        "beginner/mental-model",
-        "beginner/your-first-agent",
-        "beginner/add-a-tool",
-        "beginner/add-memory",
-        "beginner/run-with-api",
-        "beginner/test-with-playground",
-        "beginner/call-from-typescript",
-      ],
-    },
-    {
-      type: "category",
       label: "Concepts",
-      collapsed: true,
+      collapsed: false,
       items: [
         "concepts/architecture",
-        "concepts/state-graph",        
+        "concepts/state-graph",
         "concepts/agents-and-tools",
         "concepts/state-and-messages",
         "concepts/streaming",
@@ -46,7 +31,6 @@ const sidebars: SidebarsConfig = {
         "concepts/media-and-files",
         "concepts/callbacks-and-command",
         "concepts/security-and-validators",
-        "concepts/prebuilt-agents-and-tools",
         "concepts/remote-tools",
         "concepts/dependency-injection",
         "concepts/context-id-background",
@@ -54,6 +38,14 @@ const sidebars: SidebarsConfig = {
         "concepts/publishers-and-runtime-protocols",
         "concepts/testing-and-evaluation",
         "concepts/production-runtime",
+      ],
+    },
+    {
+      type: "category",
+      label: "Prebuilt",
+      collapsed: false,
+      items: [
+        "concepts/prebuilt-agents-and-tools",
       ],
     },
     {
