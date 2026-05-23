@@ -8,69 +8,135 @@ A peer-to-peer multi-agent pattern where agents hand off control to each other d
 
 ## Concept
 
-In a supervisor pattern, a single coordinator routes all work. In a swarm, any agent can decide to hand off to any other agent it knows about. This produces a flexible, decentralized flow:
+In a supervisor pattern a single coordinator routes all work. In a swarm, any agent can decide to hand off to any other agent it knows about. This produces a flexible, decentralized flow with no bottleneck at the center.
 
+### Full graph — three-member example
+
+```mermaid
+flowchart TD
+    START([START]) --> TRIAGE
+
+    TRIAGE["TRIAGE\n(LLM)"]
+    RESEARCHER["RESEARCHER\n(LLM + tools)"]
+    RESEARCHER_TOOL["RESEARCHER_TOOL\n(ToolNode)"]
+    WRITER["WRITER\n(LLM)"]
+    END_NODE([END])
+
+    TRIAGE -- "transfer_to_researcher" --> RESEARCHER
+    TRIAGE -- "transfer_to_writer" --> WRITER
+    TRIAGE -- "no handoff" --> END_NODE
+
+    RESEARCHER -- "transfer_to_writer" --> WRITER
+    RESEARCHER -- "regular tool call" --> RESEARCHER_TOOL
+    RESEARCHER -- "no tool calls" --> END_NODE
+    RESEARCHER_TOOL --> RESEARCHER
+
+    WRITER -- "no handoff" --> END_NODE
 ```
-TRIAGE ──[transfer_to_researcher]──> RESEARCHER ──[transfer_to_writer]──> WRITER ──> END
-       ──[transfer_to_writer]──────> WRITER ──────────────────────────────────────> END
+
+### Per-member routing logic
+
+Each member node gets its own routing function. After every LLM call it inspects `state.context[-1].tools_calls` and picks a branch in priority order:
+
+```mermaid
+flowchart LR
+    MEMBER["MEMBER\n(LLM)"]
+    TOOL["MEMBER_TOOL\n(ToolNode)"]
+    TARGET["TARGET MEMBER"]
+    END_NODE([END])
+
+    MEMBER -- "1. handoff tool call\n(transfer_to_X)" --> TARGET
+    MEMBER -- "2. regular tool call" --> TOOL
+    MEMBER -- "3. no tool calls" --> END_NODE
+    TOOL --> MEMBER
 ```
 
-Each member:
-1. Runs its own LLM call (with its own tools, model, memory, skills, etc.)
-2. Either produces a final answer (routing to END) or calls `transfer_to_<name>` to hand off
+```python
+for tc in last.tools_calls:
+    is_handoff, target = is_handoff_tool(tc["name"])   # "transfer_to_X" → target = "x"
+    if is_handoff and target.upper() in allowed_set:
+        return target.upper()                           # route to that member
 
-`SwarmAgent` automatically:
-- Generates `transfer_to_<name>` handoff tools for each member based on `can_handoff_to`
-- Injects those tools into each member's `ToolNode`
-- Wires per-member conditional edges that detect handoff tool calls via the `transfer_to_` naming convention
+if tool_node_name is not None:
+    return tool_node_name                              # run regular tools
 
-The graph routing layer intercepts handoff tool calls — the tool body never executes — so there are no spurious tool-result messages in the conversation.
+return END
+```
+
+### Handoff tools are never executed
+
+`SwarmAgent` auto-generates `transfer_to_<name>` functions and injects them into each member's `ToolNode`. When the LLM calls one, the routing function intercepts it and navigates the graph — the tool body never runs. No spurious `tool` role messages appear in the conversation history.
+
+### Mini ReAct loop per member
+
+A member with regular tools gets a dedicated `<NAME>_TOOL` node and a `<NAME>_TOOL → NAME` edge. This gives each member its own tool loop before it decides to hand off or stop.
+
+### `can_handoff_to` semantics
+
+| Value | Behaviour |
+|---|---|
+| `None` | Can hand off to all other members |
+| `["A", "B"]` | Can hand off only to A and B |
+| `[]` | Terminal — no handoffs; always routes to END |
+
+### Per-member independence
+
+Each member is a fully configured `Agent` instance. Members can use different models, tools, memory, skills, retry config, or multimodal settings. `SwarmAgent` only wires the graph and injects handoff tools; it does not constrain per-member configuration.
 
 ---
 
-## Code Explanation
+## `SwarmMemberConfig` fields
 
-### `SwarmMemberConfig`
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `agent` | `BaseAgent` | required | Pre-built agent instance — do not add handoff tools manually |
+| `can_handoff_to` | `list[str] \| None` | `None` | Allowed targets; `None` = all other members |
+| `description` | `str` | `""` | Injected into other members' handoff tool docstrings so the LLM knows when to route here |
 
-```python
-@dataclass
-class SwarmMemberConfig:
-    agent: BaseAgent          # fully configured Agent instance
-    can_handoff_to: list[str] | None = None  # None = all other members
-    description: str = ""     # injected into other members' handoff tool descriptions
-```
+---
 
-Each member is a **pre-built** `Agent`, so you configure models, tools, memory, and skills per-member independently.
+## `SwarmAgent` Constructor Parameters
 
-### Handoff tool injection
+| Parameter | Type | Description |
+|---|---|---|
+| `members` | `dict[str, SwarmMemberConfig]` | Mapping of node names to member configs (UPPER-CASE recommended) |
+| `entry` | `str` | Name of the member that receives the first message |
+| `state` | `AgentState \| None` | Optional custom state subclass |
+| `context_manager` | `BaseContextManager \| None` | Optional custom context-trimming manager |
+| `publisher` | `BasePublisher \| None` | Optional event publisher for streaming |
+| `id_generator` | `BaseIDGenerator` | ID generation strategy |
+| `container` | `InjectQ \| None` | Dependency injection container |
 
-For each member, `SwarmAgent`:
-1. Resolves the target list from `can_handoff_to` (or all other members if `None`)
-2. Calls `create_handoff_tool(agent_name=target.lower(), description=target_cfg.description)` for each target
-3. Injects the resulting callables into the member's existing `ToolNode` (or creates a new one)
+---
 
-This happens inside `_configure_graph()`, which is called by `compile()`.
+## `compile()` Parameters
 
-### Per-member routing
-
-For each member node, `_make_member_route` returns a routing function that:
-1. If the last assistant message contains a `transfer_to_<target>` call and the target is in the allowed set → routes to that target node
-2. If it contains regular tool calls → routes to `<NAME>_TOOL` for execution
-3. Otherwise → END
-
-### Tool loop per member
-
-Each member that has regular tools gets a mini react-loop: `NAME → NAME_TOOL → NAME`. This runs before handoff detection.
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `checkpointer` | `BaseCheckpointer` | `None` | Persist and restore conversation state |
+| `store` | `BaseStore` | `None` | Long-term cross-thread storage |
+| `interrupt_before` | `list[str]` | `None` | Pause before the named nodes |
+| `interrupt_after` | `list[str]` | `None` | Pause after the named nodes |
+| `callback_manager` | `CallbackManager` | default | Lifecycle hooks |
+| `media_store` | `BaseMediaStore` | `None` | Binary/media file storage |
+| `shutdown_timeout` | `float` | `30.0` | Seconds to wait for clean shutdown |
 
 ---
 
 ## Full Code
 
+### Three-member research swarm
+
 ```python
+import asyncio
+from dotenv import load_dotenv
 from agentflow.core.graph import Agent, ToolNode
 from agentflow.prebuilt.agent import SwarmAgent
 from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
 from agentflow.prebuilt.tools import fetch_url, google_web_search
+from agentflow.core.state import Message
+
+load_dotenv()
 
 
 def draft_report(topic: str, facts: str) -> str:
@@ -80,17 +146,19 @@ def draft_report(topic: str, facts: str) -> str:
 
 triage_agent = Agent(
     model="gpt-4o-mini",
+    provider="openai",
     system_prompt=[{
         "role": "system",
         "content": (
-            "You are a triage agent. Decide whether the task needs research or can go "
-            "directly to the writer. Route accordingly."
+            "You are a triage agent. Decide whether the task needs research "
+            "or can go directly to the writer. Route accordingly."
         ),
     }],
 )
 
 researcher_agent = Agent(
     model="gpt-4o",
+    provider="openai",
     tool_node=ToolNode([fetch_url, google_web_search]),
     system_prompt=[{
         "role": "system",
@@ -100,6 +168,7 @@ researcher_agent = Agent(
 
 writer_agent = Agent(
     model="gpt-4o-mini",
+    provider="openai",
     tool_node=ToolNode([draft_report]),
     system_prompt=[{
         "role": "system",
@@ -117,7 +186,7 @@ swarm = SwarmAgent(
         "RESEARCHER": SwarmMemberConfig(
             agent=researcher_agent,
             can_handoff_to=["WRITER"],
-            description="Gathers facts from the web. Use after TRIAGE for research tasks.",
+            description="Gathers facts from the web. Use for research tasks.",
         ),
         "WRITER": SwarmMemberConfig(
             agent=writer_agent,
@@ -130,11 +199,150 @@ swarm = SwarmAgent(
 
 app = swarm.compile()
 
-result = await app.ainvoke(
-    {"message": "Write a brief report on quantum computing progress in 2024."},
-    config={"thread_id": "swarm-1"},
+
+async def main():
+    result = await app.ainvoke(
+        {"messages": [Message.text_message(
+            "Write a brief report on quantum computing progress in 2024."
+        )]},
+        config={"thread_id": "swarm-1"},
+    )
+    print(result["context"][-1].text())
+
+
+asyncio.run(main())
+```
+
+### Two-member swarm (no triage)
+
+When every member can hand off to every other, omit `can_handoff_to` (defaults to `None` = all others):
+
+```python
+import asyncio
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.prebuilt.agent import SwarmAgent
+from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
+from agentflow.prebuilt.tools import google_web_search, safe_calculator
+from agentflow.core.state import Message
+
+researcher = Agent(
+    model="gpt-4o-mini",
+    provider="openai",
+    tool_node=ToolNode([google_web_search]),
+    system_prompt=[{"role": "system", "content": "Research topics and hand off to analyst when done."}],
 )
-print(result["context"][-1].text())
+
+analyst = Agent(
+    model="gpt-4o-mini",
+    provider="openai",
+    tool_node=ToolNode([safe_calculator]),
+    system_prompt=[{"role": "system", "content": "Analyse data and produce a final answer."}],
+)
+
+swarm = SwarmAgent(
+    members={
+        "RESEARCHER": SwarmMemberConfig(
+            agent=researcher,
+            description="Searches the web for facts.",
+        ),
+        "ANALYST": SwarmMemberConfig(
+            agent=analyst,
+            description="Runs calculations and produces the final answer.",
+        ),
+    },
+    entry="RESEARCHER",
+)
+
+app = swarm.compile()
+
+
+async def main():
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("What is the GDP of Germany in USD? Convert at today's rate.")]},
+        config={"thread_id": "two-member-1"},
+    )
+    print(result["context"][-1].text())
+
+
+asyncio.run(main())
+```
+
+### With a checkpointer (persistent conversations)
+
+```python
+import asyncio
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.prebuilt.agent import SwarmAgent
+from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
+from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.prebuilt.tools import google_web_search
+from agentflow.core.state import Message
+
+triage = Agent(model="gpt-4o-mini", provider="openai",
+               system_prompt=[{"role": "system", "content": "Route requests."}])
+researcher = Agent(model="gpt-4o-mini", provider="openai",
+                   tool_node=ToolNode([google_web_search]),
+                   system_prompt=[{"role": "system", "content": "Research and answer."}])
+
+swarm = SwarmAgent(
+    members={
+        "TRIAGE": SwarmMemberConfig(triage, can_handoff_to=["RESEARCHER"],
+                                    description="Routes requests."),
+        "RESEARCHER": SwarmMemberConfig(researcher, description="Researches the topic."),
+    },
+    entry="TRIAGE",
+)
+
+checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+app = swarm.compile(checkpointer=checkpointer)
+
+
+async def main():
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("Who won the 2024 Nobel Prize in Physics?")]},
+        config={"thread_id": "user-99-session-1"},
+    )
+    print(result["context"][-1].text())
+
+
+asyncio.run(main())
+```
+
+### Google Gemini members
+
+Each member can use a different provider independently:
+
+```python
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.prebuilt.agent import SwarmAgent
+from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
+from agentflow.prebuilt.tools import google_web_search
+
+researcher = Agent(
+    model="google/gemini-2.5-flash",
+    provider="google",
+    tool_node=ToolNode([google_web_search]),
+    system_prompt=[{"role": "system", "content": "Research and hand off to writer."}],
+    trim_context=True,
+)
+
+writer = Agent(
+    model="gpt-4o-mini",
+    provider="openai",
+    system_prompt=[{"role": "system", "content": "Write the final answer."}],
+)
+
+swarm = SwarmAgent(
+    members={
+        "RESEARCHER": SwarmMemberConfig(researcher, can_handoff_to=["WRITER"],
+                                        description="Researches the topic."),
+        "WRITER": SwarmMemberConfig(writer, can_handoff_to=[],
+                                    description="Writes the final document."),
+    },
+    entry="RESEARCHER",
+)
+
+app = swarm.compile()
 ```
 
 ---
@@ -149,18 +357,20 @@ from agentflow.prebuilt.agent import SwarmAgent
 from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
 from agentflow.prebuilt.tools import google_web_search
 
-
 triage = Agent(
     model="gpt-4o-mini",
+    provider="openai",
     system_prompt=[{"role": "system", "content": "Route requests to researcher or writer."}],
 )
 researcher = Agent(
     model="gpt-4o-mini",
+    provider="openai",
     tool_node=ToolNode([google_web_search]),
     system_prompt=[{"role": "system", "content": "Research the topic and hand off to writer."}],
 )
 writer = Agent(
     model="gpt-4o-mini",
+    provider="openai",
     system_prompt=[{"role": "system", "content": "Write the final answer."}],
 )
 
@@ -170,7 +380,8 @@ swarm = SwarmAgent(
                                     description="Routes the task."),
         "RESEARCHER": SwarmMemberConfig(researcher, can_handoff_to=["WRITER"],
                                         description="Researches the topic."),
-        "WRITER": SwarmMemberConfig(writer, description="Writes the final answer."),
+        "WRITER": SwarmMemberConfig(writer, can_handoff_to=[],
+                                    description="Writes the final answer."),
     },
     entry="TRIAGE",
 )
@@ -196,23 +407,3 @@ app = swarm.compile()
 ```bash
 agentflow play
 ```
-
----
-
-## Key Parameters
-
-| Parameter | Type | Description |
-|---|---|---|
-| `members` | `dict[str, SwarmMemberConfig]` | Mapping of node names to member configs |
-| `entry` | `str` | Name of the member that receives the first message |
-| `state` | `AgentState \| None` | Optional custom state subclass |
-| `publisher` | `BasePublisher \| None` | Optional event publisher for streaming |
-| `container` | `InjectQ \| None` | Dependency injection container |
-
-### `SwarmMemberConfig` fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `agent` | `BaseAgent` | required | Pre-built agent instance |
-| `can_handoff_to` | `list[str] \| None` | `None` | Allowed targets; `None` = all other members |
-| `description` | `str` | `""` | Used in handoff tool descriptions for other members |
