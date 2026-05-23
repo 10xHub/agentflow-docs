@@ -140,4 +140,4 @@ This launches a hosted UI where you can chat with your agent, inspect state, rep
 
 ## Next step
 
-[First Python Agent](./first-python-agent.md) — run your scaffolded agent locally and understand how the graph executes.
+[First Agent](./first-agent.md) — run your scaffolded agent locally and understand how the graph executes.

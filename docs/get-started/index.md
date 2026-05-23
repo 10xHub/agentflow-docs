@@ -14,186 +14,212 @@ slug: /get-started
 
 # Get started
 
-AgentFlow is a production-ready Python framework for building AI agents. It handles everything outside your agent logic — serving, threading, memory, streaming, checkpointing, observability, authentication, and deployment — so you can focus entirely on writing agent behavior.
+You write the agent logic. One command later, you have a production HTTP server — REST, streaming, WebSockets, auth, rate limiting, checkpointing, observability, and a TypeScript client — all running.
 
-You write the logic. AgentFlow handles the rest.
+That is the deal AgentFlow makes with you.
+
+## Write an agent
+
+Define a tool. Point a prebuilt agent at it. Compile.
+
+```python
+from agentflow.prebuilt import ReactAgent
+
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
+    return f"The weather in {location} is sunny and 24°C."
+
+app = ReactAgent(
+    model="gemini-2.0-flash",
+    provider="google",
+    tools=[get_weather],
+).compile()
+```
+
+That is the entire agent. Now tell AgentFlow where to find it:
+
+```json title="agentflow.json"
+{
+  "agent": "graph.agent:app",
+  "env": ".env"
+}
+```
 
 ## Deploy in one command
-
-Once your agent is defined, a single command wraps it in a production-grade HTTP server:
 
 ```bash
 agentflow api
 ```
 
-To containerize for any cloud environment:
+Your agent is now a production HTTP server on port 8000. Here is what that single command just gave you, without any additional configuration:
+
+| What you get | How it works |
+|---|---|
+| **REST endpoint** | `POST /v1/graph/invoke` — synchronous request-response |
+| **SSE streaming** | `POST /v1/graph/stream` — token-by-token output to any client |
+| **WebSocket** | `WS /v1/graph/ws` — bidirectional, full-duplex for remote tool calls and live updates |
+| **Thread management** | `/v1/threads/` — read and write conversation history across sessions |
+| **Memory store** | `/v1/store/` — search and retrieve long-term memories per user or globally |
+| **Interactive docs** | `http://localhost:8000/docs` — Swagger UI, live in the browser, try every endpoint now |
+| **Checkpointing** | Graph state persisted after every step — Redis for active sessions, Postgres for permanent history |
+| **Rate limiting** | Per-route and per-user limits out of the box, no code required |
+| **Auth middleware** | JWT or bring your own `BaseAuth` subclass — one line in `agentflow.json` |
+| **RBAC** | Role-based access control on routes and individual agent actions |
+| **OpenTelemetry** | Traces, metrics, and logs on every request — wire to Grafana, Datadog, or any OTLP collector |
+| **Sentry** | Error tracking and performance profiling via `SENTRY_DSN` |
+
+None of this required code. You wrote an agent. AgentFlow wrapped it.
+
+## Test it immediately
+
+Open the interactive docs in your browser — `http://localhost:8000/docs` — and send your first message without writing a line of client code.
+
+Or use the playground:
 
 ```bash
-agentflow docker
+agentflow play
 ```
 
-This generates a production Dockerfile — multi-stage build, non-root user, health check included. No DevOps configuration required.
+This opens a hosted chat UI connected to your running server. Send messages, inspect thread state, replay conversations, and iterate on your agent logic — before touching the TypeScript client.
 
-## Two ways to build — start simple, go deeper when you need to
+Or hit it directly with curl:
 
-### Prebuilt agents
-
-Drop-in agents for the most common patterns. No graph wiring required.
-
-```python
-from agentflow.prebuilt import ReactAgent
-
-app = ReactAgent(
-    model="gpt-4o",
-    tools=[search, calculator],
-).compile()
+```bash
+curl -X POST "http://localhost:8000/v1/graph/invoke" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Weather in London?"}]}],
+    "config": {"thread_id": "test-001"}
+  }'
 ```
 
-Available prebuilt agents: `ReactAgent`, `RAGAgent`, `RouterAgent`, `SupervisorTeam`, `Swarm`, `PlanActReflect`.
+## Call it from TypeScript
 
-### Agent class and StateGraph
+Install the client:
 
-When you need custom state, routing, or multi-agent orchestration — use `Agent` and `StateGraph` directly.
+```bash
+npm install @10xscale/agentflow-client
+```
+
+Invoke the agent:
+
+```typescript
+import { AgentFlowClient, Message } from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
+
+const result = await client.invoke(
+  [Message.text_message("What is the weather in London?")],
+  { config: { thread_id: "my-thread" } }
+);
+
+console.log(result.messages.at(-1)?.text());
+```
+
+Stream token by token:
+
+```typescript
+import { StreamEventType } from "@10xscale/agentflow-client";
+
+for await (const chunk of client.stream([Message.text_message("Tell me more.")])) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
+  }
+}
+```
+
+## Containerize for any cloud
+
+```bash
+agentflow build
+```
+
+Generates a production Dockerfile — multi-stage build, non-root user, health check. Add `--docker-compose` for a complete `docker-compose.yml`. No DevOps work required.
+
+## Build your way
+
+### Start with a prebuilt agent
+
+Six ready-made architectures cover the most common patterns. No graph wiring.
+
+| Agent | Pattern |
+|---|---|
+| `ReactAgent` | Reason-Act loop — the standard tool-calling agent |
+| `RAGAgent` | Retrieval-augmented generation with your vector store |
+| `SupervisorTeamAgent` | A supervisor that routes tasks to specialist sub-agents |
+| `SwarmAgent` | Peer agents that hand off to each other based on context |
+| `PlanActReflectAgent` | Plan, execute, reflect, and revise until the goal is met |
+| `StructuredOutputAgent` | Agent that guarantees a typed, validated response schema |
+
+All six accept `model`, `provider`, and `tools`. All six compile to a graph you can serve immediately.
+
+### Go deeper with StateGraph
+
+When a prebuilt is too rigid — custom state, non-linear routing, mixing agents at different abstraction levels — build the graph yourself:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
+from agentflow.core import Agent, StateGraph, ToolNode
 from agentflow.core.state import AgentState
+from agentflow.utils.constants import END
+
+tool_node = ToolNode([get_weather])
+agent = Agent(
+    model="gemini-2.0-flash",
+    provider="google",
+    tool_node=tool_node,
+)
+
+def route(state: AgentState) -> str:
+    last = state.context[-1] if state.context else None
+    if last and hasattr(last, "tools_calls") and last.tools_calls:
+        return "TOOL"
+    return END
 
 graph = StateGraph(AgentState)
-graph.add_node("agent", Agent(model="gpt-4o", tools=[search]))
-graph.add_node("tools", ToolNode([search]))
-graph.add_conditional_edges("agent", route_tools)
-graph.add_edge("tools", "agent")
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
 
 app = graph.compile()
 ```
 
-Every prebuilt agent is built on this layer. Subclass `BaseAgent` to swap in your own LLM call, validation logic, or execution strategy.
+Every prebuilt is built on this layer. Subclass `BaseAgent` to replace the LLM call, add custom validation, or wire in a different execution strategy. The graph is yours.
 
-### First-class MCP support
+### MCP tools, parallel by default
 
-Connect any MCP server as a tool source. AgentFlow's `ToolNode` integrates directly with the Model Context Protocol — list, filter by tag, and invoke MCP tools alongside your local tools with no extra wiring.
+AgentFlow's `ToolNode` integrates directly with the Model Context Protocol — connect any MCP server as a tool source, filter by tag, mix with local functions. When the LLM returns multiple tool calls, they execute concurrently via `asyncio.gather`. No configuration needed; results come back in the original call order.
 
-### Parallel tool calling by default
+## What you do not build
 
-When an LLM returns multiple tool calls in a single response, AgentFlow executes them concurrently using `asyncio.gather`. Your tools run in parallel automatically — no configuration needed, results are returned in the original order.
+A production AI agent system normally requires:
 
-## What the runtime provides
+- An HTTP server with REST, streaming, and WebSocket support
+- Thread and session management with persistent state
+- A checkpointing layer that survives restarts and scales across replicas
+- Auth middleware and role-based access control
+- Rate limiting per user and per route
+- Distributed tracing and error tracking
+- A typed client SDK for frontend teams
+- A Dockerfile and container configuration
+- A playground for iterating before client code exists
 
-The infrastructure that would otherwise take weeks to build is already in place.
-
-### Resilience
-
-| Feature | What it does |
-|---|---|
-| **Injector** | Resolves dependencies — models, tools, services — at graph startup so nodes stay pure and testable |
-| **Checkpointing** | Persists graph state after every step. Redis for in-flight session data; Postgres for permanent history. Pluggable — bring your own backend |
-| **ID generation** | Deterministic, collision-safe thread and run IDs across distributed deployments |
-| **Lifecycle & callbacks** | Hook into `on_start`, `on_end`, `on_error`, and `on_step` events across any node — for logging, tracing, or side effects |
-| **Retry & fallback** | Per-node retry policies with exponential backoff and configurable fallback nodes |
-
-### Observability and event streaming
-
-| Publisher | Use case |
-|---|---|
-| **Kafka** | High-throughput event pipelines and audit logs |
-| **RabbitMQ** | Task queues and async workflows |
-| **Redis** | Lightweight pub/sub and live dashboards |
-| **OpenTelemetry** | Distributed tracing across your entire stack |
-
-### Long-term memory
-
-Connect Postgres, Qdrant, or Mem0 to give agents persistent, retrievable memory across sessions. Memory is scoped per user, per thread, or globally — your choice.
-
-### Skill loading
-
-Agents can dynamically load and invoke named skills at runtime. Skills are versioned, discoverable, and composable — they let you extend agent behavior without redeploying.
-
-## What the API server provides
-
-`agentflow api` is a production HTTP server, not a development shortcut.
-
-### Protocols
-
-The server exposes three transport options for every agent — choose what fits your client:
-
-| Protocol | Endpoint | Use case |
-|---|---|---|
-| **REST** | `POST /v1/graph/invoke` | Request-response, batch jobs |
-| **SSE streaming** | `POST /v1/graph/stream` | Token-by-token output to web clients |
-| **WebSocket** | `WS /v1/graph/ws` | Full-duplex, bidirectional — remote tool calls, live updates |
-
-### Three API layers
-
-The API is structured around the three layers of agent state, each independently accessible:
-
-| Layer | Base path | What it controls |
-|---|---|---|
-| **Graph** | `/v1/graph/` | Run, stream, stop, and resume agent execution |
-| **Checkpointer** | `/v1/threads/` | Read and write thread state and message history |
-| **Memory (Store)** | `/v1/store/` | Store, search, update, and delete long-term memories |
-
-### Observability and reliability
-
-| Capability | Detail |
-|---|---|
-| **OpenTelemetry** | Traces, metrics, and logs exported from every request — wire to Grafana, Datadog, or any OTLP collector |
-| **Sentry** | Error tracking and performance profiling with FastAPI integration. Configure via `SENTRY_DSN` |
-| **Rate limiting** | Per-route, per-user, and global limits — no code changes required |
-| **Authentication** | API key auth included. Plug in custom middleware for OAuth, JWT, or internal SSO |
-| **Authorization** | Role-based access control on routes and agent actions |
-
-### TypeScript client
-
-The `@10xscale/agentflow-client` package provides a typed TypeScript client that covers all three API layers:
-
-```typescript
-import { AgentFlowClient } from "@10xscale/agentflow-client";
-
-const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
-
-// Graph layer
-await client.invoke({ input: "Hello" });
-await client.stream({ input: "Hello" }, onChunk);
-client.wsStream({ input: "Hello" }, handlers);        // WebSocket
-
-// Checkpointer layer
-await client.threadMessages({ threadId });
-await client.updateThreadState({ threadId, state });
-
-// Memory layer
-await client.storeMemory({ content: "User prefers concise answers" });
-await client.searchMemory({ query: "user preferences" });
-```
-
-### Coming soon — A2UI protocol
-
-A2UI (Agent-to-UI) is a WebSocket-based protocol for pushing live agent events directly into UI components. It ships with a TypeScript client and React hooks (`useA2UIClient`, `useAgentStatus`) for real-time status, thinking steps, tool calls, and completions — no polling required.
-
-## Scalability built in
-
-AgentFlow is designed to run at scale without re-architecture:
-
-- **Stateless API layer** — scale horizontally behind any load balancer
-- **Redis checkpointer** — shared ephemeral state across replicas
-- **Postgres checkpointer** — durable state that survives restarts
-- **Event publishers** — decouple agent outputs from downstream consumers
-- **OTEL instrumentation** — full visibility into latency, errors, and throughput at every layer
+AgentFlow ships all of it. You write agent logic.
 
 ## Prerequisites
 
 - Python 3.12 or newer
-- An LLM provider API key (OpenAI or Google) — only needed when making actual LLM calls
+- An LLM provider API key — OpenAI (`OPENAI_API_KEY`) or Google Gemini (`GEMINI_API_KEY`)
 
-The first local example does not call an LLM, so you can verify the framework before adding credentials.
+The first example in [Your First Agent](./first-agent.md) does not require a real LLM call, so you can verify the framework is working before adding credentials.
 
 ## Golden path
 
-| Step | Page | Outcome |
+| Step | Page | What you will have at the end |
 |---|---|---|
-| 1 | [Installation](./installation.md) | Install the Python library and CLI |
-| 2 | [Your First Agent](./first-agent.md) | Build an agent, serve it, and test it |
-| 4 | [Connect Client](./connect-client.md) | Call the API from TypeScript |
-| 5 | [Open Playground](./open-playground.md) | Chat with the agent in the hosted playground |
+| 1 | [Installation](./installation.md) | Python library, CLI, and a scaffolded project |
+| 2 | [Your First Agent](./first-agent.md) | A running agent served as a production API |
+| 3 | [Connect Client](./connect-client.md) | TypeScript code calling your agent with invoke and streaming |
 
 Start with [Installation](./installation.md).

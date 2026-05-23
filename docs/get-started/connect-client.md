@@ -99,4 +99,4 @@ The client covers three API layers — explore the how-to guides for full usage:
 
 ## Next step
 
-[Open Playground](./open-playground.md) — test your agent interactively without writing client code.
+Run `agentflow play` to open the hosted playground and chat with your agent interactively.
