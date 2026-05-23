@@ -47,34 +47,44 @@ Every chunk yielded by `astream()` is a `StreamChunk`:
 from agentflow.core.state.stream_chunks import StreamChunk
 
 class StreamChunk:
-    content: str | None        # text token (delta), None for non-text events
-    messages: list[Message]    # complete messages emitted so far (LOW granularity)
-    state: dict | None         # partial state snapshot (PARTIAL/FULL granularity)
-    node_name: str | None      # which graph node emitted this chunk
-    event_type: str | None     # e.g. "message", "update", "tool_call"
-    metadata: dict             # run_id, thread_id, timestamp, etc.
+    event: StreamEvent = StreamEvent.MESSAGE
+    # data holders for different chunk types
+    message: Message | None = None
+    state: AgentState | None = None
+    # Placeholder for other chunk types
+    data: dict | None = None
+
+    # Optional identifiers
+    thread_id: str | None = None
+    run_id: str | None = None
+    # Optional metadata
+    metadata: dict | None = None
+    timestamp: float = Field(
+        default_factory=datetime.now().timestamp,
+        description="UNIX timestamp of when chunk was created",
+    )
 ```
 
-For a basic streaming chat UI you only need `chunk.content` for the token text.
+For a basic streaming chat UI you usually only need `chunk.message` for the emitted message payload or `chunk.data` for event-specific data.
 
 ---
 
 ## Step 3: Differentiate tokens from complete messages
 
-The stream emits many small chunks with `content` set (partial tokens) followed by chunks where `content` is `None` but `messages` contains the full completed message.
+The stream emits `message.delta` for partial updates. When `delta` is present, treat the chunk as an in-progress message; when `delta` is absent, treat it as the complete message.
 
 ```python
 buffer = ""
 
 async for chunk in app.astream({"messages": [Message.text_message("Explain gravity.")]},
                                 config={"thread_id": "t1"}):
-    if chunk.content:
-        # Partial token — append to the live display
-        buffer += chunk.content
+    if chunk.message and getattr(chunk.message, "delta", None):
+        # Partial message — append the delta to the live display
+        buffer += chunk.message.delta
         update_ui_streaming(buffer)
-    elif chunk.messages:
+    elif chunk.message:
         # Complete message — replace the streaming placeholder
-        final_msg = chunk.messages[-1]
+        final_msg = chunk.message
         buffer = ""
         show_final_message(final_msg)
 ```
@@ -257,7 +267,7 @@ asyncio.run(main())
 ## What you learned
 
 - `app.astream()` is an async generator; iterate it with `async for`.
-- `chunk.content` carries text tokens; `chunk.messages` carries complete messages.
+- `chunk.message.delta` carries partial message updates; a message without `delta` is complete.
 - `ResponseGranularity.LOW` (default) is the lowest overhead option.
 - Break out of the loop and call `app.astop()` to cancel execution early.
 - `interrupt_before` / `interrupt_after` pause execution for human-in-the-loop workflows.

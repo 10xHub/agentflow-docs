@@ -158,14 +158,37 @@ asyncio.run(main())
 
 ### Config keys
 
+Use `config` for runtime metadata. For most cases, you only need these keys:
+
 | Key | Default | Notes |
 |---|---|---|
-| `thread_id` | auto (UUID) | Identifies the conversation thread for the checkpointer. |
-| `user_id` | `"test-user-id"` | Passed to tools and publisher events. |
-| `run_id` | auto (UUID) | Unique identifier for this specific execution run. |
+| `thread_id` | auto (UUID) | Conversation/thread identifier used by the checkpointer. |
+| `user_id` | `"test-user-id"` | Passed to tools and publisher events. If not provided, it is set automatically. |
 | `recursion_limit` | 25 | Maximum node-execution steps before `GraphRecursionError`. |
-| `is_stream` | `False` | Set internally by `astream()`; do not set manually. |
-| `timestamp` | `datetime.now().isoformat()` | Set automatically. |
+
+Other reserved keys are auto-populated by the runtime and should not be set manually:
+
+- `run_id`
+- `is_stream`
+- `timestamp`
+
+When API authentication is enabled, two values are injected into config automatically:
+
+- `user_id`
+- `user` (whatever object/value your auth layer returns)
+
+These are reserved keys; beyond them, you can add any custom keys you want in `config`.
+
+For partial state updates, return a dictionary with only the fields you want to change.
+State is available inside `input_data`, which is the first dictionary passed into node functions.
+
+```python
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in Paris?")], "state": {"location": "Paris"}},
+    config={"thread_id": "session-1", "user_id": "user-42"},
+)
+
+```
 
 ---
 

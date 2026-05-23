@@ -100,8 +100,8 @@
   --af-text-dim: #475569;
   --af-text-faint: #64748b;
 
-  --af-code-bg: #0d1320;       /* keep code blocks dark in light mode */
-  --af-code-text: #dbeafe;
+  --af-code-bg: #f6f8fa;
+  --af-code-text: #1e293b;
 
   --af-glow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
   --af-shadow-card: 0 1rem 3rem rgba(15, 23, 42, 0.08);

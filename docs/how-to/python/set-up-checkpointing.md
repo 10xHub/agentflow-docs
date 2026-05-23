@@ -166,24 +166,37 @@ asyncio.run(main())
 
 ## Environment variable configuration
 
-When using `agentflow api` (the CLI server), configure the checkpointer in `agentflow.json` rather than in code. The server handles `setup()` automatically on startup.
+When you construct `PgCheckpointer` in Python, read the values from `os.environ` and pass them into the constructor.
 
-```json
-{
-  "agent": "graph:app",
-  "checkpointer": {
-    "type": "pg_checkpoint",
-    "postgres_dsn": "${DATABASE_URL}",
-    "redis_url": "${REDIS_URL}"
-  }
-}
+```python
+import os
+
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn=os.environ["DATABASE_URL"],
+    redis_url=os.environ["REDIS_URL"],
+)
 ```
 
-Set the environment variables:
+Set the environment variables before starting your app:
 
 ```bash
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mydb
 REDIS_URL=redis://localhost:6379/0
+```
+
+When using `agentflow api` (the CLI server), configure the checkpointer in `agentflow.json` rather than in code. The server handles `setup()` automatically on startup.
+
+```json
+{
+    "agent": "graph:app",
+    "checkpointer": {
+        "type": "pg_checkpoint",
+        "postgres_dsn": "${DATABASE_URL}",
+        "redis_url": "${REDIS_URL}"
+    }
+}
 ```
 
 ---
