@@ -228,8 +228,8 @@ const config: Config = {
           title: 'Learn',
           items: [
             {label: 'Start here', to: '/docs/get-started'},
-            {label: 'What is AgentFlow?', to: '/docs/get-started/what-is-agentflow'},
-            {label: 'First Python agent', to: '/docs/get-started/first-python-agent'},
+            {label: 'What is AgentFlow?', to: '/docs/get-started'},
+            {label: 'First Python agent', to: '/docs/get-started/first-agent'},
           ],
         },
         {
@@ -237,7 +237,7 @@ const config: Config = {
           items: [
             {label: 'Installation', to: '/docs/get-started/installation'},
             {label: 'Your First Agent', to: '/docs/get-started/first-agent'},
-            {label: 'Open playground', to: '/docs/get-started/open-playground'},
+            {label: 'Open playground', to: '/docs/how-to/api-cli/open-playground'},
           ],
         },
         {

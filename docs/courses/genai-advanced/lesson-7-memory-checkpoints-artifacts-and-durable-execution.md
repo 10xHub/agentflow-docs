@@ -496,5 +496,5 @@ Continue to [Lesson 8: Observability, testing, security, and deployment](./lesso
 
 ### Or Explore
 
-- [Checkpointers Reference](/docs/reference/python/checkpointers.md) — Implementation
-- [Memory Tutorial](/docs/tutorials/from-examples/memory.md) — Memory patterns
+- [Checkpointers Reference](/docs/reference/python/checkpointers) — Implementation
+- [Memory Tutorial](/docs/tutorials/from-examples/memory) — Memory patterns

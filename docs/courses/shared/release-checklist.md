@@ -209,7 +209,7 @@ Before shipping, verify:
 
 ## Related Checklists
 
-- [Design checklists](/docs/courses/shared/design-checklists.md) — Design-time decisions
-- [Evaluation worksheet](/docs/courses/shared/evaluation-worksheet.md) — How to build evaluations
-- [Beginner Lesson 7](/docs/courses/genai-beginner/lesson-7-evals-safety-cost-and-release.md) — Lesson on release practices
-- [Advanced Lesson 8](/docs/courses/genai-advanced/lesson-8-observability-testing-security-and-deployment.md) — Production readiness
+- [Design checklists](/docs/courses/shared/design-checklists) — Design-time decisions
+- [Evaluation worksheet](/docs/courses/shared/evaluation-worksheet) — How to build evaluations
+- [Beginner Lesson 7](/docs/courses/genai-beginner/lesson-7-evals-safety-cost-and-release) — Lesson on release practices
+- [Advanced Lesson 8](/docs/courses/genai-advanced/lesson-8-observability-testing-security-and-deployment) — Production readiness

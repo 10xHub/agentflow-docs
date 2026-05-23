@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Lesson 5: State and memory
-- [Streaming concepts](/docs/concepts/streaming.md)
+- [Streaming concepts](/docs/concepts/streaming)
 
 ---
 
@@ -441,5 +441,5 @@ Continue to [Lesson 7: Evals, safety, cost, and release](./lesson-7-evals-safety
 
 ### Or Explore
 
-- [Connect Client Tutorial](/docs/get-started/connect-client.md) — Full client integration
-- [Playground Tutorial](/docs/get-started/open-playground.md) — Using the playground
+- [Connect Client Tutorial](/docs/get-started/connect-client) — Full client integration
+- [Playground Tutorial](/docs/how-to/api-cli/open-playground) — Using the playground

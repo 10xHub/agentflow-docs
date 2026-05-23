@@ -25,7 +25,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Lesson 7: Durable execution
-- [Production guides](/docs/how-to/production/deployment.md)
+- [Production guides](/docs/how-to/production/deployment)
 
 ---
 
@@ -413,5 +413,5 @@ Complete the [Architecture Review Exercise](./architecture-review-exercise.md) t
 
 ### Or Explore
 
-- [Deployment guide](/docs/how-to/production/deployment.md) — Deployment patterns
-- [Auth and authorization](/docs/how-to/production/auth-and-authorization.md) — Security implementation
+- [Deployment guide](/docs/how-to/production/deployment) — Deployment patterns
+- [Auth and authorization](/docs/how-to/production/auth-and-authorization) — Security implementation

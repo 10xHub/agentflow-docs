@@ -396,7 +396,7 @@ Eval and testing tell you whether your agent is correct in controlled conditions
 
 | Guide | Link |
 |---|---|
-| Write your first eval | [How-To: Evaluation](/how-to/evaluation) |
+| Write your first eval | [How-To: Evaluation](/docs/how-to/api-cli/run-evals) |
 | Custom evaluation criteria | [Extensibility](./extensibility.md) |
 | Lifecycle hooks and callbacks | [Agents, Tools & Control](./agents-tools-control.md) |
 | Publisher backends | [Serving Agents](./serving-agents.md) |

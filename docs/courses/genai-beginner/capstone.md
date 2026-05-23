@@ -317,6 +317,6 @@ You built a complete GenAI application with:
 
 After completing this capstone:
 
-1. **Deploy to production** — Follow the [Deployment guide](/docs/how-to/production/deployment.md)
+1. **Deploy to production** — Follow the [Deployment guide](/docs/how-to/production/deployment)
 2. **Add more features** — Implement additional tools, more complex retrieval
-3. **Take the Advanced course** — [Start with Lesson 1](/docs/courses/genai-advanced/lesson-1-agentic-product-fit-and-system-bounded-autonomy.md)
+3. **Take the Advanced course** — [Start with Lesson 1](/docs/courses/genai-advanced/lesson-1-agentic-product-fit-and-system-bounded-autonomy)

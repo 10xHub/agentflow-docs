@@ -25,8 +25,8 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Lesson 2: Prompting and structured outputs
-- [Agents and Tools concepts](/docs/concepts/agents-and-tools.md)
-- [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet.md)
+- [Agents and Tools concepts](/docs/concepts/agents-and-tools)
+- [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet)
 
 ---
 
@@ -611,6 +611,6 @@ Continue to [Lesson 4: Retrieval, grounding, and citations](./lesson-4-retrieval
 
 ### Or Explore
 
-- [MCP Client Tutorial](/docs/tutorials/from-examples/mcp-client.md) — Using MCP in AgentFlow
-- [Media and Files concepts](/docs/concepts/media-and-files.md) — File handling in depth
-- [Tools Reference](/docs/reference/python/tools.md) — Complete tool API reference
+- [MCP Client Tutorial](/docs/tutorials/from-examples/mcp-client) — Using MCP in AgentFlow
+- [Media and Files concepts](/docs/concepts/media-and-files) — File handling in depth
+- [Tools Reference](/docs/reference/python/tools) — Complete tool API reference

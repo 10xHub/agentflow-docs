@@ -24,9 +24,9 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- Read [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers.md) for failure mode context
-- Read [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet.md) for pattern reference
-- Read [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows.md) for context management
+- Read [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers) for failure mode context
+- Read [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet) for pattern reference
+- Read [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows) for context management
 
 ---
 
@@ -632,6 +632,6 @@ Continue to [Lesson 3: Tools, files, and MCP basics](./lesson-3-tools-files-and-
 
 ### Or Explore
 
-- [Tools Reference](/docs/reference/python/tools.md) — AgentFlow tool patterns
-- [Agents and Tools concepts](/docs/concepts/agents-and-tools.md) — Tool design principles
-- [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet.md) — Pattern reference
+- [Tools Reference](/docs/reference/python/tools) — AgentFlow tool patterns
+- [Agents and Tools concepts](/docs/concepts/agents-and-tools) — Tool design principles
+- [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet) — Pattern reference

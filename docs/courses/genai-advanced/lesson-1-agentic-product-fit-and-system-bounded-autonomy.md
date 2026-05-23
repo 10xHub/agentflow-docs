@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Completed Beginner Course or equivalent
-- [Design checklists](/docs/courses/shared/design-checklists.md)
+- [Design checklists](/docs/courses/shared/design-checklists)
 
 ---
 
@@ -287,5 +287,5 @@ Continue to [Lesson 2: Single-agent runtime and bounded autonomy](./lesson-2-sin
 
 ### Or Explore
 
-- [StateGraph concepts](/docs/concepts/state-graph.md) — Graph-based agent design
-- [Architecture concepts](/docs/concepts/architecture.md) — System architecture patterns
+- [StateGraph concepts](/docs/concepts/state-graph) — Graph-based agent design
+- [Architecture concepts](/docs/concepts/architecture) — System architecture patterns

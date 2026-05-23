@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- Read [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers.md) for foundational context
+- Read [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers) for foundational context
 
 ---
 
@@ -480,6 +480,6 @@ Continue to [Lesson 2: Prompting, context engineering, and structured outputs](.
 
 ### Or Explore
 
-- [AgentFlow Architecture](/docs/concepts/architecture.md) — How AgentFlow packages fit together
-- [StateGraph concepts](/docs/concepts/state-graph.md) — The core graph structure
-- [First Python Agent tutorial](/docs/get-started/first-python-agent.md) — Hands-on implementation
+- [AgentFlow Architecture](/docs/concepts/architecture) — How AgentFlow packages fit together
+- [StateGraph concepts](/docs/concepts/state-graph) — The core graph structure
+- [First Python Agent tutorial](/docs/get-started/first-agent) — Hands-on implementation

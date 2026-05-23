@@ -102,7 +102,7 @@ Most tutorials assume:
 
 ## Related docs
 
-- [First Python Agent](/docs/get-started/first-python-agent)
+- [First Python Agent](/docs/get-started/first-agent)
 - [State Graph](/docs/concepts/state-graph)
 - [Agents and Tools](/docs/concepts/agents-and-tools)
 - [Streaming](/docs/concepts/streaming)

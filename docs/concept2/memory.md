@@ -258,7 +258,7 @@ flowchart TB
 
 | Guide | Link |
 |---|---|
-| Add per-thread checkpointing | [How-To: Checkpointing](/how-to/checkpointing) |
-| Add long-term memory to an agent | [How-To: Memory Store](/how-to/memory-store) |
+| Add per-thread checkpointing | [How-To: Checkpointing](/docs/how-to/production/checkpointing) |
+| Add long-term memory to an agent | [How-To: Memory Store](/docs/how-to/python/use-memory-store) |
 | Custom storage backends | [Extensibility](./extensibility.md) |
 | Thread management via API | [Serving Agents](./serving-agents.md) |

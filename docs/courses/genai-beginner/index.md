@@ -91,13 +91,13 @@ flowchart TB
 
 | Concept | Where It's Used |
 |---------|----------------|
-| [StateGraph](/docs/concepts/state-graph.md) | Lesson 1+ |
-| [Tools and validation](/docs/concepts/agents-and-tools.md) | Lesson 3 |
-| [Structured outputs](/docs/reference/python/agent.md) | Lesson 2, 7 |
-| [Memory and stores](/docs/concepts/memory-and-store.md) | Lesson 4, 5 |
-| [Checkpointing](/docs/concepts/checkpointing-and-threads.md) | Lesson 5 |
-| [Streaming](/docs/concepts/streaming.md) | Lesson 5, 6 |
-| [Client integration](/docs/get-started/connect-client.md) | Lesson 6 |
+| [StateGraph](/docs/concepts/state-graph) | Lesson 1+ |
+| [Tools and validation](/docs/concepts/agents-and-tools) | Lesson 3 |
+| [Structured outputs](/docs/reference/python/agent) | Lesson 2, 7 |
+| [Memory and stores](/docs/concepts/memory-and-store) | Lesson 4, 5 |
+| [Checkpointing](/docs/concepts/checkpointing-and-threads) | Lesson 5 |
+| [Streaming](/docs/concepts/streaming) | Lesson 5, 6 |
+| [Client integration](/docs/get-started/connect-client) | Lesson 6 |
 
 ## Your Learning Path
 
@@ -105,9 +105,9 @@ flowchart TB
 
 If you're new to AgentFlow, start with these shared foundations:
 
-1. [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers.md) — What LLMs are
-2. [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows.md) — Why tokens matter
-3. [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet.md) — Reliable prompting
+1. [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers) — What LLMs are
+2. [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows) — Why tokens matter
+3. [Prompt patterns cheatsheet](/docs/courses/shared/prompt-and-output-patterns-cheatsheet) — Reliable prompting
 
 ### Then Continue With Lessons
 
@@ -117,12 +117,12 @@ Start with [Lesson 1: Use cases, models, and the LLM app lifecycle](./lesson-1-u
 
 After completing this course, you'll be ready for:
 
-- **Advanced Course**: [Agentic product fit and system boundaries](/docs/courses/genai-advanced/lesson-1-agentic-product-fit-and-system-bounded-autonomy.md)
-- **Production deployment**: [How-to guides](/docs/how-to/api-cli/initialize-project.md)
+- **Advanced Course**: [Agentic product fit and system boundaries](/docs/courses/genai-advanced/lesson-1-agentic-product-fit-and-system-bounded-autonomy)
+- **Production deployment**: [How-to guides](/docs/how-to/api-cli/initialize-project)
 - **Real projects**: Build your own GenAI applications
 
 :::note Coming from the Beginner Path?
-If you've already completed the [Beginner Path](/docs/beginner/index.md), this course goes deeper into the "why" and "when" of GenAI system design. The lessons will feel familiar but with more context.
+If you've already completed the [Beginner Path](/docs/beginner), this course goes deeper into the "why" and "when" of GenAI system design. The lessons will feel familiar but with more context.
 :::
 
 ---

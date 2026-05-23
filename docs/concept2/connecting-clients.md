@@ -231,7 +231,7 @@ const ok = await client.ping();   // returns true if API is reachable
 
 | Guide | Link |
 |---|---|
-| Build a chat UI with React | [agentflow-ui docs](/packages/agentflow-ui) |
+| Build a chat UI with React | [React agent tutorial](/docs/tutorials/from-examples/react-agent) |
 | Server-side auth setup | [Serving Agents](./serving-agents.md) |
 | Register remote tools on the server | [Agents, Tools & Control](./agents-tools-control.md) |
-| Full client API reference | [API Reference](/api/client) |
+| Full client API reference | [API Reference](/docs/reference/client/agentflow-client) |

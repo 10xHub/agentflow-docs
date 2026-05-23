@@ -409,5 +409,5 @@ Continue to [Lesson 6: Handoffs, human review, and control surfaces](./lesson-6-
 
 ### Or Explore
 
-- [Multi-agent Tutorial](/docs/tutorials/from-examples/multiagent.md) — Implementation
-- [Handoff Tutorial](/docs/tutorials/from-examples/handoff.md) — Agent transitions
+- [Multi-agent Tutorial](/docs/tutorials/from-examples/multiagent) — Implementation
+- [Handoff Tutorial](/docs/tutorials/from-examples/handoff) — Agent transitions

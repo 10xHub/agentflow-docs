@@ -276,4 +276,4 @@ For quick validation, start with these 10 cases:
 
 - [Beginner Lesson 7: Evals, safety, cost, and release](../genai-beginner/lesson-7-evals-safety-cost-and-release.md)
 - [Advanced Lesson 8: Observability, testing, security, and deployment](../genai-advanced/lesson-8-observability-testing-security-and-deployment.md)
-- [AgentFlow Evaluation Reference](/docs/reference/python/evaluation.md)
+- [AgentFlow Evaluation Reference](/docs/reference/python/evaluation)

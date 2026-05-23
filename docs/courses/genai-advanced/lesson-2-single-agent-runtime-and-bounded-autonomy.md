@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Lesson 1: Architecture decisions
-- [StateGraph concepts](/docs/concepts/state-graph.md)
+- [StateGraph concepts](/docs/concepts/state-graph)
 
 ---
 
@@ -352,5 +352,5 @@ Continue to [Lesson 3: Context engineering, long context, and caching](./lesson-
 
 ### Or Explore
 
-- [React Agent Tutorial](/docs/tutorials/from-examples/react-agent.md) — ReAct implementation
-- [Testing Reference](/docs/reference/python/testing.md) — Testing bounded agents
+- [React Agent Tutorial](/docs/tutorials/from-examples/react-agent) — ReAct implementation
+- [Testing Reference](/docs/reference/python/testing) — Testing bounded agents

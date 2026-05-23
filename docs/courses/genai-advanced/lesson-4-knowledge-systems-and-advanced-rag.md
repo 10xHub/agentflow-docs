@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- [Chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives.md)
+- [Chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives)
 - Lesson 3: Context engineering
 
 ---
@@ -438,5 +438,5 @@ Continue to [Lesson 5: Router, manager, and specialist patterns](./lesson-5-rout
 
 ### Or Explore
 
-- [Memory and Store concepts](/docs/concepts/memory-and-store.md) — Storage architecture
-- [Multi-agent Tutorial](/docs/tutorials/from-examples/multiagent.md) — Implementation patterns
+- [Memory and Store concepts](/docs/concepts/memory-and-store) — Storage architecture
+- [Multi-agent Tutorial](/docs/tutorials/from-examples/multiagent) — Implementation patterns

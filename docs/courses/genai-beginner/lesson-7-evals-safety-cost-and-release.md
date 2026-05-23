@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- [Evaluation Reference](/docs/reference/python/evaluation.md)
+- [Evaluation Reference](/docs/reference/python/evaluation)
 
 ---
 
@@ -433,5 +433,5 @@ Complete the [Capstone Project](./capstone.md) to build your complete GenAI appl
 
 ### Or Explore
 
-- [Evaluation Reference](/docs/reference/python/evaluation.md) — AgentFlow eval tools
-- [Production Deployment](/docs/how-to/production/deployment.md) — Going to production
+- [Evaluation Reference](/docs/reference/python/evaluation) — AgentFlow eval tools
+- [Production Deployment](/docs/how-to/production/deployment) — Going to production

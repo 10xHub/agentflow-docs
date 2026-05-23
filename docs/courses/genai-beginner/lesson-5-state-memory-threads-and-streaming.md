@@ -23,8 +23,8 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- Read [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows.md)
-- [Checkpointing and threads concepts](/docs/concepts/checkpointing-and-threads.md)
+- Read [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows)
+- [Checkpointing and threads concepts](/docs/concepts/checkpointing-and-threads)
 
 ---
 
@@ -390,5 +390,5 @@ Continue to [Lesson 6: Multimodal and client/server integration](./lesson-6-mult
 
 ### Or Explore
 
-- [Streaming concepts](/docs/concepts/streaming.md) — Streaming architecture
-- [React Streaming Tutorial](/docs/tutorials/from-examples/react-streaming.md) — Frontend integration
+- [Streaming concepts](/docs/concepts/streaming) — Streaming architecture
+- [React Streaming Tutorial](/docs/tutorials/from-examples/react-streaming) — Frontend integration

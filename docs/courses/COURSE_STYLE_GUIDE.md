@@ -194,8 +194,8 @@ Continue to the next lesson to learn about [next topic].
 
 ### Or Explore
 
-- [Related concepts](/docs/courses/shared/glossary.md)
-- [Beginner course](/docs/courses/genai-beginner/index.md)
+- [Related concepts](/docs/courses/shared/glossary)
+- [Beginner course](/docs/courses/genai-beginner)
 ```
 
 ## Formatting Conventions
@@ -250,8 +250,8 @@ This is a warning.
 
 ```markdown
 - [Lesson 1](./lesson-1.md)
-- [Shared: Tokenization](/docs/courses/shared/tokenization-and-context-windows.md)
-- [AgentFlow Architecture](/docs/concepts/architecture.md)
+- [Shared: Tokenization](/docs/courses/shared/tokenization-and-context-windows)
+- [AgentFlow Architecture](/docs/concepts/architecture)
 ```
 
 ### External Links

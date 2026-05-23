@@ -91,10 +91,10 @@ flowchart TB
 
 If you need a refresher:
 
-- [LLM basics](/docs/courses/shared/llm-basics-for-engineers.md)
-- [Tokenization](/docs/courses/shared/tokenization-and-context-windows.md)
-- [Embeddings](/docs/courses/shared/embeddings-vectorization-and-similarity.md)
-- [Design checklists](/docs/courses/shared/design-checklists.md)
+- [LLM basics](/docs/courses/shared/llm-basics-for-engineers)
+- [Tokenization](/docs/courses/shared/tokenization-and-context-windows)
+- [Embeddings](/docs/courses/shared/embeddings-vectorization-and-similarity)
+- [Design checklists](/docs/courses/shared/design-checklists)
 
 ### Then Continue With Lessons
 

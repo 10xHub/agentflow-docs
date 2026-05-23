@@ -25,7 +25,7 @@ By the end of this lesson, you will be able to:
 ## Prerequisites
 
 - Lesson 5: Multi-agent patterns
-- [Checkpointing concepts](/docs/concepts/checkpointing-and-threads.md)
+- [Checkpointing concepts](/docs/concepts/checkpointing-and-threads)
 
 ---
 
@@ -472,5 +472,5 @@ Continue to [Lesson 7: Memory, checkpoints, artifacts, and durable execution](./
 
 ### Or Explore
 
-- [Handoff Tutorial](/docs/tutorials/from-examples/handoff.md) — Implementation
-- [Background Tasks Reference](/docs/reference/python/background-tasks.md) — Long-running tasks
+- [Handoff Tutorial](/docs/tutorials/from-examples/handoff) — Implementation
+- [Background Tasks Reference](/docs/reference/python/background-tasks) — Long-running tasks

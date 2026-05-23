@@ -24,8 +24,8 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- Read [Embeddings and similarity](/docs/courses/shared/embeddings-vectorization-and-similarity.md)
-- Read [Chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives.md)
+- Read [Embeddings and similarity](/docs/courses/shared/embeddings-vectorization-and-similarity)
+- Read [Chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives)
 
 ---
 
@@ -357,5 +357,5 @@ Continue to [Lesson 5: State, memory, threads, and streaming](./lesson-5-state-m
 
 ### Or Explore
 
-- [Qdrant Memory Tutorial](/docs/tutorials/from-examples/qdrant-memory.md) — Vector store setup
-- [Memory and Store concepts](/docs/concepts/memory-and-store.md) — Memory architecture
+- [Qdrant Memory Tutorial](/docs/tutorials/from-examples/qdrant-memory) — Vector store setup
+- [Memory and Store concepts](/docs/concepts/memory-and-store) — Memory architecture

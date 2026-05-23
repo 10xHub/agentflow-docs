@@ -24,7 +24,7 @@ By the end of this lesson, you will be able to:
 
 ## Prerequisites
 
-- [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows.md)
+- [Tokenization and context windows](/docs/courses/shared/tokenization-and-context-windows)
 - Lesson 2: Bounded autonomy
 
 ---
@@ -406,5 +406,5 @@ Continue to [Lesson 4: Knowledge systems and advanced RAG](./lesson-4-knowledge-
 
 ### Or Explore
 
-- [State and Messages concepts](/docs/concepts/state-and-messages.md) — State management
-- [Streaming concepts](/docs/concepts/streaming.md) — Streaming for latency
+- [State and Messages concepts](/docs/concepts/state-and-messages) — State management
+- [Streaming concepts](/docs/concepts/streaming) — Streaming for latency

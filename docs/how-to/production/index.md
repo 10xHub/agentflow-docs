@@ -48,7 +48,7 @@ Guide: [Auth and Authorization](./auth-and-authorization.md)
 
 Configured under the `rate_limit` key in `agentflow.json`. Three backends: `memory` (dev), `redis` (production), `custom`.
 
-Guide: [Rate limiting](./configure-rate-limiting.md)
+Guide: [Rate limiting](./agentflow-json.md)
 
 ## Checkpointing
 
