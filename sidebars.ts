@@ -39,6 +39,20 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Concepts (New)",
+      collapsed: false,
+      items: [
+        "concept2/index",
+        "concept2/agents-tools-control",
+        "concept2/memory",
+        "concept2/serving-agents",
+        "concept2/connecting-clients",
+        "concept2/extensibility",
+        "concept2/qa",
+      ],
+    },
+    {
+      type: "category",
       label: "Prebuilt",
       collapsed: false,
       items: [
