@@ -13,34 +13,10 @@ const sidebars: SidebarsConfig = {
         "get-started/connect-client",
       ],
     },
-    // {
-    //   type: "category",
-    //   label: "Concepts",
-    //   collapsed: false,
-    //   items: [
-    //     "concepts/architecture",
-    //     "concepts/state-graph",
-    //     "concepts/agents-and-tools",
-    //     "concepts/state-and-messages",
-    //     "concepts/streaming",
-    //     "concepts/checkpointing-and-threads",
-    //     "concepts/memory-and-store",
-    //     "concepts/media-and-files",
-    //     "concepts/callbacks-and-command",
-    //     "concepts/security-and-validators",
-    //     "concepts/remote-tools",
-    //     "concepts/dependency-injection",
-    //     "concepts/context-id-background",
-    //     "concepts/providers-and-adapters",
-    //     "concepts/publishers-and-runtime-protocols",
-    //     "concepts/testing-and-evaluation",
-    //     "concepts/production-runtime",
-    //   ],
-    // },
     {
       type: "category",
       label: "Concepts (New)",
-      collapsed: false,
+      collapsed: true,
       items: [
         "concept2/index",
         "concept2/agents-tools-control",
@@ -54,12 +30,11 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Prebuilt",
-      collapsed: false,
+      collapsed: true,
       items: [
         {
           type: "category",
           label: "Agents",
-          collapsed: false,
           items: [
             "prebuild/agents/react-agent",
             "prebuild/agents/plan-act-reflect-agent",
@@ -72,7 +47,6 @@ const sidebars: SidebarsConfig = {
         {
           type: "category",
           label: "Tools",
-          collapsed: false,
           items: [
             "prebuild/tools/web-tools",
             "prebuild/tools/file-tools",
@@ -194,7 +168,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Compare",
-      collapsed: false,
+      collapsed: true,
       items: [
         "compare/index",
         "compare/agentflow-vs-langgraph",
@@ -289,7 +263,7 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "GenAI Courses",
-      collapsed: false,
+      collapsed: true,
       items: [
         "courses/index",
         {
