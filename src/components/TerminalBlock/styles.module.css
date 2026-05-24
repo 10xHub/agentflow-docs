@@ -113,6 +113,42 @@
   font-size: 0.8rem;
 }
 
+/* ── Light-mode override — keep terminal dark regardless of page theme ── */
+/* The vsDark syntax token colors are designed for a dark background.
+ * Without this, light-mode sets --af-code-bg to near-white and the
+ * token inline styles become unreadable. */
+:global([data-theme='light']) .terminal {
+  background: #1e1e1e;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+}
+
+:global([data-theme='light']) .header {
+  background: #252526;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+}
+
+:global([data-theme='light']) .filename {
+  color: #9ca3af;
+}
+
+:global([data-theme='light']) .copyBtn {
+  color: #9ca3af;
+}
+
+:global([data-theme='light']) .copyBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #e5e7eb;
+}
+
+:global([data-theme='light']) .footer {
+  background: #252526;
+  border-top-color: rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+}
+
 @media (max-width: 640px) {
   .terminal {
     border-radius: var(--af-radius-md);
