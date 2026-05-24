@@ -19,14 +19,22 @@ Built-in bindings (registered by the framework after `compile()`):
 
 | Binding | Type |
 |---|---|
+| `CompiledGraph` | `CompiledGraph` |
+| `StateGraph` | `StateGraph` |
 | Checkpointer | `BaseCheckpointer` |
 | Store | `BaseStore` |
+| Media store | `BaseMediaStore` |
 | Publisher | `BasePublisher` |
 | Context manager | `BaseContextManager` |
 | Callback manager | `CallbackManager` |
 | ID generator | `BaseIDGenerator` |
 | Background task manager | `BackgroundTaskManager` |
+| `get_node` | factory that returns `self.nodes[name]` |
+| `get_entry_point_node` | factory that returns the entry-point node |
+| `generated_id_type` | the current ID type from the ID generator |
 | `generated_id` | `str` — a freshly generated ID on each call |
+
+These bindings are available automatically to node functions and tools. You can also register your own bindings alongside them.
 
 ---
 

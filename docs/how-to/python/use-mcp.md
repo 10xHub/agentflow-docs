@@ -156,9 +156,10 @@ tool_node = ToolNode(
 
 # On the MCP server:
 # @mcp.tool()
-# async def my_tool(query: str, ctx: Context) -> str:
-#     user_info = ctx.request_context.meta.get("user", {})
-#     user_id = user_info.get("id")
+# async def my_tool(query: str, user: dict) -> str:
+#     user_info = user or {}
+#     user_id = user_info.get("user_id")
+#     user_roles = user_info.get("roles", [])
 #     ...
 ```
 
@@ -173,6 +174,7 @@ result = app.invoke(
     },
 )
 ```
+Note: If you setup authentication for your graph, then the authenticated user info is automatically included in the `user` dict, so you can use this feature to forward authenticated user context to your MCP server.
 
 ---
 

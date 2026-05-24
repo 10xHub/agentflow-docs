@@ -99,6 +99,8 @@ const sidebars: SidebarsConfig = {
             "how-to/python/use-custom-state",
             "how-to/python/set-up-checkpointing",
             "how-to/python/stream-graph",
+            "how-to/python/use-custom-nodes",
+            "how-to/python/choose-the-right-abstraction",
             "how-to/python/use-memory-store",
             "how-to/python/use-prebuilt-agents",
             "how-to/python/use-prebuilt-tools",

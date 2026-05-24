@@ -30,6 +30,7 @@ from agentflow.core import StateGraph
 from agentflow.core.state import AgentState, Message
 from agentflow.utils import END
 from agentflow.utils.background_task_manager import BackgroundTaskManager
+from injectq import Inject
 
 
 async def send_notification(user_id: str, text: str) -> None:
@@ -41,7 +42,7 @@ async def send_notification(user_id: str, text: str) -> None:
 async def my_node(
     state: AgentState,
     config: dict,
-    task_manager: BackgroundTaskManager,   # auto-injected
+    task_manager: Inject[BackgroundTaskManager,  
 ) -> AgentState:
     # Do main work and return immediately
     reply = Message.text_message("Your report is being processed in the background.")
