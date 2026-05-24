@@ -87,8 +87,8 @@ export default function StatsBar({stats}: Props) {
     },
     {
       icon: 'BadgeCheck',
-      label: 'test coverage',
-      value: '78%',
+      label: '',
+      value: '82% (Codecov)',
     },
     {
       icon: 'Scale',

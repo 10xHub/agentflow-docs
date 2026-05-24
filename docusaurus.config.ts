@@ -12,8 +12,8 @@ const googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID;
 const microsoftClarityId = process.env.MICROSOFT_CLARITY_ID;
 
 const config: Config = {
-  title: 'AgentFlow',
-  tagline: 'Build production-grade multi-agent systems without rebuilding orchestration, memory, and API plumbing.',
+  title: 'AgentFlow by 10xScale',
+  tagline: 'The open-source Python framework powering all 10xScale AI products. Build multi-agent systems with typed graphs, durable memory, streaming, and a full-stack API — without rebuilding the plumbing.',
   favicon: 'img/agentflow-mark.svg',
 
   url: siteUrl,
@@ -125,31 +125,47 @@ const config: Config = {
       const organization = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: 'AgentFlow',
-        url: canonical,
+        name: '10xScale',
+        url: publisherUrl,
         logo: `${canonical}/img/agentflow-mark.svg`,
-        sameAs: [githubUrl, publisherUrl],
+        sameAs: [githubUrl, canonical],
+        contactPoint: {
+          '@type': 'ContactPoint',
+          email: 'contact@10xscale.ai',
+          contactType: 'technical support',
+        },
       };
       const website = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'AgentFlow',
+        name: 'AgentFlow by 10xScale',
         url: canonical,
         inLanguage: 'en',
+        publisher: {
+          '@type': 'Organization',
+          name: '10xScale',
+          url: publisherUrl,
+        },
       };
       const softwareApplication = {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         name: 'AgentFlow',
+        alternateName: '10xscale-agentflow',
         description:
-          'Open-source Python framework for building production-grade multi-agent systems with built-in orchestration, state, memory, API, and TypeScript client.',
+          'Open-source Python framework built by 10xScale for production-grade multi-agent AI systems. Powers all 10xScale products. Includes typed StateGraph orchestration, Redis + Postgres persistence, REST and SSE API server, and a typed TypeScript client.',
         url: canonical,
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Cross-platform',
-        programmingLanguage: 'Python',
+        programmingLanguage: ['Python', 'TypeScript'],
         softwareRequirements: 'Python 3.12+',
         license: 'https://opensource.org/licenses/MIT',
         codeRepository: githubUrl,
+        author: {
+          '@type': 'Organization',
+          name: '10xScale',
+          url: publisherUrl,
+        },
         offers: {'@type': 'Offer', price: '0', priceCurrency: 'USD'},
       };
       return {
@@ -170,8 +186,8 @@ const config: Config = {
   themeConfig: {
     image: 'img/agentflow-social-card.png',
     metadata: [
-      {name: 'keywords', content: 'agentflow, ai agent framework, python ai agents, multi-agent orchestration, langgraph alternative, crewai alternative, autogen alternative, llamaindex agents alternative, google adk alternative, agent state graph, agent memory, agent api, typescript agent client'},
-      {name: 'author', content: 'AgentFlow Contributors'},
+      {name: 'keywords', content: 'agentflow, 10xscale agentflow, 10xscale, ai agent framework, python ai agents, production ai agents, multi-agent orchestration, agent state graph, langgraph alternative, crewai alternative, autogen alternative, google adk alternative, llamaindex agents alternative, agent memory, agent api, typescript agent client, agentflow python, open source ai framework, python multi-agent, ai agent production, stateful ai agents, streaming ai agents, sse ai agents, agentflow 10xscale'},
+      {name: 'author', content: '10xScale'},
       {name: 'application-name', content: 'AgentFlow'},
       {name: 'theme-color', content: '#0b1020'},
       {property: 'og:type', content: 'website'},
@@ -200,7 +216,8 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-        {to: '/docs/concepts/architecture', label: 'Concepts', position: 'left'},
+        {to: '/docs/concept2', label: 'Concepts', position: 'left'},
+        {to: '/docs/how-to/python/build-a-graph', label: 'How to Guide', position: 'left'},
         {to: '/docs/skills', label: 'Skills', position: 'left'},
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
         {to: '/docs/courses', label: 'Courses', position: 'left'},
@@ -246,8 +263,15 @@ const config: Config = {
             {label: 'GitHub', href: 'https://github.com/10xHub/Agentflow'},
           ],
         },
+        {
+          title: '10xScale',
+          items: [
+            {label: '10xscale.ai', href: 'https://10xscale.ai'},
+            {label: 'contact@10xscale.ai', href: 'mailto:contact@10xscale.ai'},
+          ],
+        },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} AgentFlow Contributors.`,
+      copyright: `Copyright © ${new Date().getFullYear()} <a href="https://10xscale.ai" target="_blank" rel="noopener noreferrer">10xScale</a>. AgentFlow is open source under the MIT license.`,
     },
     prism: {
       theme: prismThemes.github,

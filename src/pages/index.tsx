@@ -7,6 +7,7 @@ import StatsBar from '../components/StatsBar';
 import LogoWall from '../components/LogoWall';
 import CodeSwitcher, {type CodeSample} from '../components/CodeSwitcher';
 import PackageMap from '../components/PackageMap';
+import FAQ, {type FAQEntry} from '../components/FAQ';
 import Icon from '../components/Icon';
 import {brandIcons} from '../lib/brand-icons';
 import {trackEvent} from '../lib/analytics';
@@ -32,28 +33,28 @@ const docTracks = [
   },
 ];
 
-const heroQuickstart = `from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+const heroQuickstart = `from agentflow.core.state import AgentState, Message
+from agentflow.prebuilt.agent import ReactAgent
 
-def get_weather(location: str) -> str:
-    """Get current weather for a city."""
+def get_weather(
+    location: str,
+) -> str:
     return f"The weather in {location} is sunny."
 
-agent = Agent(
+react_agent = ReactAgent(
     model="google/gemini-2.5-flash",
-    system_prompt=[{"role": "system", "content": "Helpful assistant."}],
-    tool_node="TOOL",
+    system_prompt=[{
+        "role": "system",
+        "content": "You are a helpful assistant. Use tools when they help answer the user.",
+    }],
+    tools=[get_weather],
 )
 
-graph = StateGraph(AgentState)
-graph.add_node("MAIN", agent)
-graph.add_node("TOOL", ToolNode([get_weather]))
-graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
-graph.add_edge("TOOL", "MAIN")
-graph.set_entry_point("MAIN")
-
-app = graph.compile()`;
+app = react_agent.compile()
+result = app.invoke(
+    {"messages": [Message.text_message("Weather in Tokyo?")]},
+    config={"thread_id": "demo", "recursion_limit": 10},
+)`;
 
 const samples: CodeSample[] = [
   {
@@ -61,21 +62,25 @@ const samples: CodeSample[] = [
     badge: 'recommended',
     filename: 'agent.py',
     language: 'python',
-    code: `from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
+    code: `from agentflow.core.state import AgentState, Message
+from agentflow.prebuilt.agent import ReactAgent
 
-agent = Agent(
+def get_weather(
+    location: str,
+    tool_call_id: str | None = None,
+    state: AgentState | None = None,
+) -> str:
+    return f"The weather in {location} is sunny."
+
+react_agent = ReactAgent(
     model="google/gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": "Helpful assistant."}],
-    tool_node="TOOL",
+    tools=[get_weather],
+    trim_context=True,
 )
 
-graph = StateGraph(AgentState)
-graph.add_node("MAIN", agent)
-graph.add_node("TOOL", ToolNode([get_weather]))
-# ... add edges + compile + invoke
-app = graph.compile()`,
-    footer: 'Same graph mental model. No LangChain dependency. Built-in API + TS client.',
+app = react_agent.compile()`,
+    footer: 'Prebuilt ReactAgent — no graph wiring, no LangChain dependency. Built-in API + TS client.',
   },
   {
     label: 'LangGraph',
@@ -168,31 +173,84 @@ const journey = [
   {step: '04', title: 'Production surface', body: 'Add persistence, APIs, streaming, clients, and deployment.'},
 ];
 
+const tenxFeatures = [
+  {icon: 'ShieldCheck' as const, text: 'Used in production at 10xScale across all products'},
+  {icon: 'GitBranch' as const, text: 'Typed StateGraph — explicit, readable, replayable'},
+  {icon: 'DatabaseZap' as const, text: 'Redis + Postgres dual-layer persistence'},
+  {icon: 'Zap' as const, text: 'Multi-model: OpenAI, Gemini, Anthropic, and custom'},
+  {icon: 'Globe' as const, text: 'REST + SSE server included — zero extra config'},
+  {icon: 'Code2' as const, text: 'Typed TypeScript client with React streaming hooks'},
+  {icon: 'Lock' as const, text: 'JWT auth, rate limiting, Snowflake IDs built in'},
+];
+
+const faqItems: FAQEntry[] = [
+  {
+    q: 'What is AgentFlow?',
+    a: 'AgentFlow (package: 10xscale-agentflow) is an open-source Python framework for building production-grade multi-agent AI systems. It provides a typed StateGraph for workflow orchestration, durable thread persistence via Redis and Postgres, a built-in REST and SSE API server, and a TypeScript client SDK. It is a modern, batteries-included alternative to LangGraph, CrewAI, AutoGen, and Google ADK.',
+  },
+  {
+    q: 'Who built AgentFlow and why?',
+    a: '10xScale, an AI-product company, built AgentFlow to power their own production AI products. After finding that existing frameworks required too much custom plumbing to reach production, 10xScale built a batteries-included framework and open-sourced it under the MIT license. Every product at 10xScale runs on AgentFlow.',
+  },
+  {
+    q: 'How is AgentFlow different from LangGraph?',
+    a: 'AgentFlow and LangGraph share the graph-based mental model, but AgentFlow ships the full production stack: a built-in REST and SSE API server, a typed TypeScript client, a hosted playground, and dual-layer Redis + Postgres persistence. LangGraph requires separate LangServe or LangSmith integration and pulls in the LangChain dependency tree. AgentFlow has no LangChain dependency.',
+  },
+  {
+    q: 'How is AgentFlow different from CrewAI or AutoGen?',
+    a: 'CrewAI uses a role-based DSL that hides control flow; adding persistence and an API server requires significant extra glue. AutoGen is conversation-driven with LLM-powered selectors, making deterministic routing hard to reason about. AgentFlow keeps the graph explicit, typed, and readable, with production infrastructure included from day one.',
+  },
+  {
+    q: 'Which AI models does AgentFlow support?',
+    a: 'AgentFlow supports OpenAI (GPT-4o, o1, o3-mini), Google Gemini (Gemini 2.5 Flash, Gemini 2.0), Anthropic Claude (Claude 3.5, Claude 4), and any model exposed via a compatible API. You switch models by changing the model string — the graph and tools stay exactly the same.',
+  },
+  {
+    q: 'Does AgentFlow support streaming?',
+    a: 'Yes. AgentFlow ships a built-in SSE (Server-Sent Events) endpoint on the API server. The TypeScript client (@10xscale/agentflow-client) includes React hooks for streaming responses token-by-token or message-by-message. The hosted playground uses these hooks.',
+  },
+  {
+    q: 'Can I use AgentFlow with TypeScript or a Next.js frontend?',
+    a: 'Yes. The @10xscale/agentflow-client npm package is a fully typed TypeScript SDK that covers all API endpoints: invoke, stream, threads, memory, and file operations. It ships React hooks for streaming and is compatible with Next.js, Vite, Remix, and any React project.',
+  },
+  {
+    q: 'Is AgentFlow production-ready?',
+    a: 'AgentFlow is the runtime used in production by 10xScale for all their AI products. It ships with Postgres + Redis dual-layer persistence for durable threads, JWT authentication, rate limiting, Snowflake ID generation for distributed deployments, and Docker/Kubernetes build support via `agentflow build --docker-compose`.',
+  },
+  {
+    q: 'How do I install AgentFlow?',
+    a: 'Install the core library and CLI with: pip install 10xscale-agentflow 10xscale-agentflow-cli. Then scaffold a project with `agentflow init`, start a dev server with `agentflow api`, and open the playground with `agentflow play`. The TypeScript client is available via: npm install @10xscale/agentflow-client.',
+  },
+  {
+    q: 'What is the license for AgentFlow?',
+    a: 'AgentFlow is released under the MIT license. You can use it freely in commercial and open-source products without restriction. The full source code is available on GitHub at github.com/10xHub/Agentflow.',
+  },
+];
+
 export default function Home() {
   return (
     <Layout
-      title="AgentFlow: Open-Source Python Framework for Production AI Agents"
-      description="An open-source Python framework for building production AI agents. Multi-agent orchestration, memory, streaming, REST API, and TypeScript client included. A modern alternative to LangGraph, CrewAI, and AutoGen.">
+      title="AgentFlow by 10xScale — Production Python Framework for AI Agents"
+      description="AgentFlow is the open-source Python framework built by 10xScale to power all their AI products in production. Multi-agent orchestration, durable memory, streaming, REST API, and TypeScript client included. A modern alternative to LangGraph, CrewAI, and AutoGen.">
       <main>
         {/* HERO */}
         <section className="hero hero--agentflow">
           <div className="container heroGrid">
             <div className="heroCopy">
               <p className="eyebrow">
-                <Icon name="Sparkles" size={12} /> &nbsp;v1.0 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
+                <Icon name="Sparkles" size={12} /> &nbsp;By 10xScale &nbsp;·&nbsp; v0.7 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
               </p>
               <Heading as="h1" className="heroTitle">
                 Production AI agents in Python. Ship in minutes.
               </Heading>
               <Heading as="h2" className="heroSubheadline">
-                A batteries-included framework for multi-agent orchestration,
-                memory, and streaming APIs. A modern alternative to LangGraph,
-                CrewAI, and AutoGen.
+                The open-source framework 10xScale built to power all their AI
+                products — and open-sourced so every team could start from the
+                same battle-tested foundation.
               </Heading>
               <p className="heroSubtitle">
                 Typed graphs, durable threads, a REST and SSE server, and a typed
-                TypeScript client. Ship a working agent fast, then scale to
-                production without rewriting the foundation.
+                TypeScript client. A modern alternative to LangGraph, CrewAI, and
+                AutoGen — with the full production stack included.
               </p>
               <div className="heroActions">
                 <Link
@@ -242,6 +300,49 @@ export default function Home() {
 
         {/* FEATURE PILLARS */}
         <HomepageFeatures />
+
+        {/* 10XSCALE PRODUCTION PROOF */}
+        <section className="section section--tenxscale">
+          <div className="container">
+            <div className="tenxGrid">
+              <div className="tenxCopy">
+                <p className="eyebrow">
+                  <Icon name="Building2" size={12} /> &nbsp;Built by 10xScale
+                </p>
+                <Heading as="h2" className="tenxHeading">
+                  The framework behind every 10xScale product.
+                </Heading>
+                <p className="tenxLead">
+                  10xScale is an AI-product company. AgentFlow is the runtime
+                  they built to power their products in production — not a demo,
+                  not a side project. When a feature was missing, they built it.
+                  When a pattern was painful, they fixed it.
+                </p>
+                <p className="tenxBody">
+                  The result is a framework shaped entirely by real production
+                  constraints: durable threads that survive restarts, typed graphs
+                  that stay readable at scale, and an API server that ships on
+                  day one rather than sprint ten. Then they open-sourced all of
+                  it so every team could start from the same foundation.
+                </p>
+                <Link
+                  className="button button--secondary button--md"
+                  to="https://10xscale.ai"
+                  onClick={() => trackEvent('cta_tenxscale', {location: '10xscale-section'})}>
+                  Visit 10xscale.ai &nbsp;→
+                </Link>
+              </div>
+              <ul className="tenxChecklist" aria-label="Production capabilities">
+                {tenxFeatures.map(({icon, text}) => (
+                  <li key={text} className="tenxItem">
+                    <Icon name={icon} size={18} className="tenxIcon" />
+                    <span>{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
 
         {/* SAME AGENT, EVERY FRAMEWORK */}
         <section className="section section--switcher">
@@ -323,6 +424,23 @@ export default function Home() {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="section section--faq">
+          <div className="container">
+            <div className="sectionHeader sectionHeader--center">
+              <p className="eyebrow">
+                <Icon name="HelpCircle" size={12} /> &nbsp;FAQ
+              </p>
+              <Heading as="h2">Questions about AgentFlow.</Heading>
+              <p>
+                Common questions about the framework, how it compares to
+                alternatives, and how 10xScale uses it in production.
+              </p>
+            </div>
+            <FAQ items={faqItems} />
           </div>
         </section>
 

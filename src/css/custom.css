@@ -582,6 +582,87 @@ body {
   border-radius: var(--af-radius-md);
 }
 
+/* ─── 10xScale production proof section ─────────────────────────────── */
+.section--tenxscale {
+  background:
+    radial-gradient(ellipse at 0% 50%, rgba(37, 99, 235, 0.08), transparent 50%),
+    transparent;
+}
+
+.tenxGrid {
+  display: grid;
+  gap: 4rem;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.tenxCopy {
+  max-width: 38rem;
+}
+
+.tenxHeading {
+  font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+  margin-bottom: 1.25rem;
+}
+
+.tenxLead {
+  color: var(--af-text-strong);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.tenxBody {
+  color: var(--af-text-dim);
+  font-size: 0.97rem;
+  line-height: 1.7;
+  margin-bottom: 1.75rem;
+}
+
+.tenxChecklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-xl);
+  background: var(--af-bg-1);
+  overflow: hidden;
+}
+
+.tenxItem {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--af-border);
+  color: var(--af-text);
+  font-size: 0.94rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.tenxItem:last-child {
+  border-bottom: none;
+}
+
+.tenxIcon {
+  flex-shrink: 0;
+  color: var(--af-blue-hi);
+}
+
+/* ─── FAQ section ────────────────────────────────────────────────────── */
+.section--faq {
+  background:
+    radial-gradient(ellipse at 100% 50%, rgba(139, 92, 246, 0.06), transparent 45%),
+    transparent;
+}
+
 @media screen and (max-width: 996px) {
   .hero--agentflow {
     padding: 4rem 0 3rem;
@@ -594,7 +675,8 @@ body {
    * its parent is already oversized). */
   .heroGrid,
   .trackGrid,
-  .journeyGrid {
+  .journeyGrid,
+  .tenxGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -713,6 +795,12 @@ body {
   .trackCard p {
     font-size: 0.92rem;
     line-height: 1.6;
+  }
+
+  /* 10xScale checklist — tighter padding on phones */
+  .tenxItem {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
   }
 
   /* Journey cards — compress padding */
