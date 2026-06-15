@@ -146,6 +146,24 @@ agent = Agent(
 agent = Agent(model="gpt-4o", retry_config=False)
 ```
 
+### Circuit breaker (opt-in)
+
+The circuit breaker tracks consecutive failures per `(provider, model)` pair. Once a target fails `circuit_breaker_threshold` times in a row, its circuit opens and calls to it are skipped (moving to the next fallback) for `circuit_breaker_reset_timeout` seconds. After the cooldown a single trial is allowed; success closes the circuit.
+
+```python
+agent = Agent(
+    model="gpt-4o",
+    fallback_models=["gpt-4o-mini"],
+    retry_config=RetryConfig(
+        circuit_breaker_enabled=True,        # default: False
+        circuit_breaker_threshold=5,         # consecutive failures before open
+        circuit_breaker_reset_timeout=30.0,  # seconds to stay open
+    ),
+)
+```
+
+See [Configure Agent](../../how-to/python/configure-agent.md#circuit-breaker) for more detail.
+
 ---
 
 ## Reasoning models

@@ -160,6 +160,58 @@ flowchart TD
 - deploy with `agentflow api` behind HTTPS and correct CORS/auth settings
 - treat `agentflow play` as an interactive test path, not the deployment architecture
 
+## Secret redaction in logs
+
+Debug logging may surface API keys, bearer tokens, signed URLs, or other credentials that appear in LLM request parameters and error messages. The `agentflow.utils` module provides helpers to redact common credential formats before they reach your log handlers.
+
+### Patterns redacted
+
+`mask_secrets` redacts the following credential formats:
+
+- OpenAI keys (`sk-...`, `sk-proj-...`)
+- Google API keys (`AIza...`)
+- GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`)
+- Slack tokens (`xox...`)
+- AWS access key IDs (`AKIA...`)
+- `Bearer <token>` values in Authorization headers
+- `key=value` pairs where the key is `api_key`, `access_token`, `secret`, or `password`
+- Signed-URL credential query parameters (`?token=`, `&sig=`, `&X-Amz-Signature=`, etc.)
+
+### Quick setup
+
+```python
+from agentflow.utils import install_secret_redaction
+
+# Call once at application startup, after configuring your logging handlers.
+install_secret_redaction()                   # covers the "agentflow" logger and its handlers
+install_secret_redaction("root")             # or cover the root logger
+```
+
+### Attaching to a specific handler
+
+For finer control, add `SecretRedactionFilter` directly to a handler. Handler-level filters apply to all loggers that propagate to that handler, including children:
+
+```python
+import logging
+from agentflow.utils import SecretRedactionFilter
+
+handler = logging.StreamHandler()
+handler.addFilter(SecretRedactionFilter())
+logging.getLogger("agentflow").addHandler(handler)
+```
+
+### Redacting arbitrary strings
+
+```python
+from agentflow.utils import mask_secrets
+
+safe_text = mask_secrets(some_string_that_may_contain_keys)
+```
+
+This is a defence-in-depth measure. Prefer not logging secrets in the first place. `mask_secrets` is a heuristic and may miss novel credential formats.
+
+---
+
 ## Quick production checklist
 
 1. confirm exact runtime command

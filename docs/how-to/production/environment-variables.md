@@ -187,6 +187,17 @@ Used when `MEDIA_STORAGE_TYPE=cloud`.
 
 ---
 
+## LLM provider
+
+| Variable | Type | Default | Description |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | `string` | — | API key for the OpenAI provider. |
+| `GEMINI_API_KEY` | `string` | — | API key for the Google Gemini API (preferred over `GOOGLE_API_KEY`). |
+| `GOOGLE_API_KEY` | `string` | — | Fallback name for the Gemini API key. |
+| `AGENTFLOW_LLM_TIMEOUT` | `float` | `600.0` | Default request timeout in seconds applied to every LLM client. Override with `set_default_llm_timeout()` at runtime. Must be a positive number. |
+
+---
+
 ## Production checklist
 
 Minimum variables to set before a public deployment:

@@ -227,6 +227,61 @@ agent = Agent(model="gpt-4o", retry_config=False)
 | `initial_delay` | `1.0` | Seconds to wait before the first retry. |
 | `max_delay` | `30.0` | Cap on the delay between retries. |
 | `backoff_factor` | `2.0` | Multiplier applied after each retry. |
+| `circuit_breaker_enabled` | `False` | Enable circuit breaker (opt-in). |
+| `circuit_breaker_threshold` | `5` | Consecutive failures that open a circuit. |
+| `circuit_breaker_reset_timeout` | `30.0` | Seconds the circuit stays open before a half-open trial. |
+
+### Circuit breaker
+
+The circuit breaker is an opt-in complement to retries and `fallback_models`. Once a `(provider, model)` pair fails `circuit_breaker_threshold` times in a row, its circuit opens and subsequent calls to that target are skipped immediately (moving straight to the next fallback) for `circuit_breaker_reset_timeout` seconds. After the cooldown a single trial is allowed; a successful trial closes the circuit, a failed trial re-opens it.
+
+This prevents a dead provider from being retried on every call while other fallbacks are available.
+
+```python
+from agentflow.core.graph.agent_internal.constants import RetryConfig
+
+agent = Agent(
+    model="gpt-4o",
+    fallback_models=["gpt-4o-mini", ("gemini-2.0-flash", "google")],
+    retry_config=RetryConfig(
+        max_retries=3,
+        circuit_breaker_enabled=True,
+        circuit_breaker_threshold=5,
+        circuit_breaker_reset_timeout=30.0,
+    ),
+)
+```
+
+Circuit state is per `Agent` instance and scoped to `(provider, model)` pairs. Restarting the process resets all circuit state.
+
+---
+
+## LLM call timeout
+
+All LLM clients apply a default request timeout of 600 seconds so a stalled provider cannot hang a graph run indefinitely.
+
+### Override globally via environment variable
+
+```bash
+AGENTFLOW_LLM_TIMEOUT=120   # seconds
+```
+
+### Override programmatically
+
+```python
+from agentflow.core.llm import set_default_llm_timeout, get_default_llm_timeout
+
+set_default_llm_timeout(120.0)   # apply globally from this point on
+set_default_llm_timeout(None)    # reset to env var / built-in default
+```
+
+Resolution order (first match wins):
+
+1. A programmatic override set via `set_default_llm_timeout`.
+2. The `AGENTFLOW_LLM_TIMEOUT` environment variable.
+3. The built-in default of 600 seconds (`DEFAULT_LLM_TIMEOUT_SECONDS`).
+
+An explicit `timeout=` kwarg passed directly to the underlying SDK client still takes precedence over this default.
 
 ---
 

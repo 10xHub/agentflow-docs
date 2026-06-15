@@ -36,17 +36,23 @@ All publishers extend `BasePublisher`. Pass a publisher to `StateGraph(publisher
 
 ## ConsolePublisher
 
-Prints every event to stdout. Good for debugging locally.
+Prints every event to stdout. Good for debugging locally. This publisher is opt-in and writes to stdout by default. In a server context where stdout output is not desirable, pass `{"use_logger": True}` to route events through the `agentflow.publisher` logger at `INFO` level instead:
 
 ```python
 from agentflow.runtime.publisher import ConsolePublisher
 from agentflow.core.graph import StateGraph
 
+# Default — writes to stdout
 publisher = ConsolePublisher()
+
+# Route through the logging system
+publisher = ConsolePublisher(config={"use_logger": True})
 
 graph = StateGraph(publisher=publisher)
 # ... add nodes, edges, compile, invoke
 ```
+
+Do not use `ConsolePublisher` in production. Use a real transport (`RedisPublisher`, `KafkaPublisher`, `RabbitMQPublisher`) for any deployed environment.
 
 ---
 
@@ -232,9 +238,9 @@ Every event published carries an `EventModel` with these fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `event` | `Event` | Source: `GRAPH_EXECUTION`, `NODE_EXECUTION`, `TOOL_EXECUTION`, `STREAMING`. |
+| `event` | `Event` | Source: `GRAPH_EXECUTION`, `NODE_EXECUTION`, `LLM_CALL`, `TOOL_EXECUTION`, `STREAMING`, `REALTIME`. |
 | `event_type` | `EventType` | Phase: `START`, `PROGRESS`, `RESULT`, `END`, `UPDATE`, `ERROR`, `INTERRUPTED`. |
-| `content_type` | `list[ContentType]` | Content tags: `TEXT`, `MESSAGE`, `TOOL_CALL`, `TOOL_RESULT`, `IMAGE`, `STATE`, etc. |
+| `content_type` | `list[ContentType]` | Content tags: `TEXT`, `MESSAGE`, `TOOL_CALL`, `TOOL_RESULT`, `IMAGE`, `AUDIO`, `TRANSCRIPT`, `STATE`, etc. |
 | `node_name` | `str \| None` | Node that emitted the event. |
 | `data` | `dict` | Event payload (args, results, error messages, etc.). |
 | `content_blocks` | `list[ContentBlock]` | Structured message blocks (tool calls, tool results, etc.). |

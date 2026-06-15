@@ -42,6 +42,7 @@ const sidebars: SidebarsConfig = {
             "prebuild/agents/supervisor-team-agent",
             "prebuild/agents/rag-agent",
             "prebuild/agents/structured-output-agent",
+            "prebuild/agents/audio-agent",
           ],
         },
         {
@@ -87,6 +88,7 @@ const sidebars: SidebarsConfig = {
             "how-to/python/run-background-tasks",
             "how-to/python/configure-id-generator",
             "how-to/python/handoff-between-agents",
+            "how-to/python/use-realtime-audio",
           ],
         },
         {
@@ -356,6 +358,7 @@ const sidebars: SidebarsConfig = {
           label: "REST API",
           items: [
             "reference/rest-api/graph",
+            "reference/rest-api/live",
             "reference/rest-api/threads",
             "reference/rest-api/memory-store",
             "reference/rest-api/files",
@@ -392,6 +395,7 @@ const sidebars: SidebarsConfig = {
             "reference/python/memory-stores",
             "reference/python/media",
             "reference/python/publishers",
+            "reference/python/realtime",
             "reference/python/testing",
             "reference/python/evaluation",
             "reference/python/context-manager",

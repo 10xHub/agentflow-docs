@@ -118,6 +118,18 @@ my-agent/
 
 Everything you need is already wired up — auth, validators, lifecycle hooks, evaluations, and tests. You extend what you need and delete what you don't.
 
+## Type checking (PEP 561)
+
+The package ships a `py.typed` marker, so mypy and pyright can type-check your code against Agentflow's own annotations without any extra configuration:
+
+```bash
+mypy your_module.py
+```
+
+No stub packages are required. This applies to `10xscale-agentflow` only; the CLI package (`10xscale-agentflow-cli`) is a server application and does not export a typed public API.
+
+---
+
 ## Install the TypeScript client
 
 If you are calling AgentFlow from a TypeScript or Node.js application:

@@ -144,6 +144,12 @@ REDOCS_PATH=
 
 Set these based on the `provider` you use on your `Agent`. They are read at client creation time.
 
+### LLM timeout
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AGENTFLOW_LLM_TIMEOUT` | `600.0` | Default request timeout in seconds applied to every LLM client. Must be a positive number. See [Configure Agent](../../how-to/python/configure-agent.md#llm-call-timeout) for the programmatic API. |
+
 ### OpenAI (`provider="openai"`)
 
 | Variable | Description |

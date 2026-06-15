@@ -67,8 +67,10 @@ from agentflow.runtime.publisher.events import Event
 |---|---|
 | `GRAPH_EXECUTION` | Emitted by the graph runner (start/end of full execution). |
 | `NODE_EXECUTION` | Emitted at the start and end of each node. |
+| `LLM_CALL` | Emitted for individual LLM API calls within a node. |
 | `TOOL_EXECUTION` | Emitted before and after each tool call. |
 | `STREAMING` | Emitted for each incremental streaming chunk from the LLM. |
+| `REALTIME` | Emitted by realtime audio-to-audio sessions. |
 
 ---
 
@@ -105,6 +107,7 @@ from agentflow.runtime.publisher.events import ContentType
 | `TOOL_RESULT` | Tool execution result. |
 | `IMAGE` | Image content. |
 | `AUDIO` | Audio content. |
+| `TRANSCRIPT` | Text transcript of audio content (realtime sessions). |
 | `VIDEO` | Video content. |
 | `DOCUMENT` | Document content. |
 | `DATA` | Binary/structured data. |
@@ -143,16 +146,18 @@ async with ConsolePublisher() as publisher:
 
 ## `ConsolePublisher`
 
-Prints events to stdout. For development and debugging only.
+A development and debugging publisher. It is opt-in and not wired up by default. For production, use a real transport such as `RedisPublisher`, `KafkaPublisher`, or `RabbitMQPublisher`.
+
+By default events are written to stdout via `print`. In server contexts where stdout output is undesirable, set `use_logger=True` to route events through the `agentflow.publisher` logger at `INFO` level instead.
 
 ```python
 from agentflow.runtime.publisher import ConsolePublisher
 
-publisher = ConsolePublisher(config={
-    "format": "json",
-    "include_timestamp": True,
-    "indent": 2,
-})
+# Default — writes to stdout
+publisher = ConsolePublisher()
+
+# Route through the logging system instead of stdout
+publisher = ConsolePublisher(config={"use_logger": True})
 
 app = graph.compile(publisher=publisher)
 ```
@@ -162,6 +167,7 @@ app = graph.compile(publisher=publisher)
 | `format` | `"json"` | Output format. |
 | `include_timestamp` | `True` | Include timestamp in output. |
 | `indent` | `2` | JSON indentation. |
+| `use_logger` | `False` | When `True`, emit via the `agentflow.publisher` logger at `INFO` level instead of `print`. |
 
 ---
 

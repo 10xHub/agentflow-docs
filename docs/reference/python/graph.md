@@ -287,13 +287,38 @@ Same semantics as `StateGraph.override_node()` but on an already-compiled graph.
 
 ---
 
+### Async context manager
+
+`CompiledGraph` implements the async context manager protocol. Use `async with` to ensure `aclose()` runs automatically on exit, even when an exception is raised:
+
+```python
+async def main():
+    graph = graph_builder.compile()
+    async with graph:
+        result = await graph.ainvoke({"messages": [msg]})
+
+# aclose() has been called here, even if ainvoke raised
+```
+
+When your graph is built by an async factory function, await the factory first, then use `async with`:
+
+```python
+async def main():
+    async with await build_and_compile_graph() as graph:
+        result = await graph.ainvoke(input_data)
+```
+
+---
+
 ### `aclose`
 
 ```python
 await app.aclose()
 ```
 
-Cleanup method for graceful shutdown. Stops background tasks, closes publisher connections, and releases any held resources. Always call this when shutting down a long-lived application.
+Releases all resources gracefully: stops background tasks, closes the checkpointer, closes the publisher, and releases the store. Always call this when shutting down a long-lived application.
+
+`aclose()` is idempotent: calling it a second time is a no-op and returns `{"status": "already_closed"}` rather than raising. This means calling `aclose()` explicitly inside an `async with` block, then having `__aexit__` call it again, is safe.
 
 ---
 
