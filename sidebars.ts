@@ -373,6 +373,7 @@ const sidebars: SidebarsConfig = {
             "reference/client/message",
             "reference/client/invoke",
             "reference/client/stream",
+            "reference/client/realtime",
             "reference/client/threads",
             "reference/client/memory",
             "reference/client/files",

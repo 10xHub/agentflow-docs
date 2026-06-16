@@ -55,6 +55,7 @@ new AgentFlowClient(config: AgentFlowConfig)
 | `credentials` | `RequestCredentials` | ❌ | `undefined` | The `credentials` option forwarded to the underlying `fetch` call (e.g. `'include'` for cookie-based sessions). |
 | `timeout` | `number` | ❌ | `300000` | Per-request timeout in milliseconds. Default is 5 minutes. Applies to both `invoke` and `stream` calls. Set to a lower value in latency-sensitive UIs. |
 | `debug` | `boolean` | ❌ | `false` | Enable verbose `console.debug` / `console.info` logging of every request and response. Useful during development; disable in production. |
+| `webSocketImpl` | `typeof WebSocket` | ❌ | `undefined` | WebSocket implementation for `wsStream()` and `realtime()`. Browsers and Node 21+ have a global `WebSocket` and need nothing here; on Node 18/20 pass the [`ws`](https://www.npmjs.com/package/ws) package. |
 
 ### Example
 
@@ -94,6 +95,13 @@ The table below lists every public method on `AgentFlowClient` grouped by domain
 |---|---|---|
 | `invoke(messages, options?)` | `Promise<InvokeResult>` | Send messages and receive the final state. Automatically handles remote tool call loops. See [`reference/client/invoke`](invoke.md). |
 | `stream(messages, options?)` | `AsyncGenerator<StreamChunk>` | Send messages and receive a stream of real-time chunks. See [`reference/client/stream`](stream.md). |
+| `wsStream(messages, options?)` | `AsyncGenerator<StreamChunk>` | Same streaming contract as `stream()` but over a single persistent WebSocket (`WS /v1/graph/ws`), eliminating the per-tool-call HTTP round trip for remote tools. |
+
+### Realtime audio
+
+| Method | Returns | Description |
+|---|---|---|
+| `realtime(init, options?)` | `RealtimeSession` | Open a transport-only audio-to-audio session over `WS /v1/graph/live`. Send PCM16 in, receive PCM16 out, with transcripts, tool calls, and auto reconnect/resume. See [`reference/client/realtime`](realtime.md). |
 
 ### Threads and state
 
