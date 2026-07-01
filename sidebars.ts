@@ -80,6 +80,7 @@ const sidebars: SidebarsConfig = {
             "how-to/python/use-prebuilt-agents",
             "how-to/python/use-prebuilt-tools",
             "how-to/python/use-publishers",
+            "how-to/python/send-traces-to-logfire-langsmith",
             "how-to/python/use-dependency-injection",
             "how-to/python/use-mcp",
             "how-to/python/use-context-manager",
@@ -167,6 +168,22 @@ const sidebars: SidebarsConfig = {
       ],
     },
 
+    {
+      type: "category",
+      label: "Glossary",
+      collapsed: true,
+      items: [
+        "glossary/index",
+        "glossary/what-is-an-ai-agent",
+        "glossary/what-is-a-react-agent",
+        "glossary/what-is-multi-agent-orchestration",
+        "glossary/what-is-a-state-graph",
+        "glossary/what-is-agent-memory",
+        "glossary/what-is-model-context-protocol",
+        "glossary/what-is-retrieval-augmented-generation",
+        "glossary/what-is-agent-streaming",
+      ],
+    },
     {
       type: "category",
       label: "Compare",

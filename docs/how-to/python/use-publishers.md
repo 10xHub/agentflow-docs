@@ -218,17 +218,22 @@ graph = StateGraph(
 
 ## OtelPublisher
 
-Emits execution events as OpenTelemetry spans. Requires installing OpenTelemetry SDK packages manually.
+Emits execution events as OpenTelemetry spans (graph → node → LLM → tool) with GenAI semantic-convention attributes. Requires installing the OpenTelemetry SDK packages manually.
+
+`setup_tracing(graph, level=...)` attaches an `OtelPublisher` to the graph and must be called **before** `graph.compile()`. With no explicit tracer it uses the global `TracerProvider`, so configure your exporter (Jaeger, Tempo, Honeycomb, …) first.
 
 ```python
-from agentflow.runtime.publisher import OtelPublisher, setup_tracing
+from agentflow.core.graph import StateGraph
+from agentflow.runtime.publisher import setup_tracing, ObservabilityLevel
 
-# Configure OTLP exporter (e.g. to Jaeger, Tempo, Honeycomb)
-setup_tracing(service_name="my-agent-service")
+graph = StateGraph()
+# ... add nodes, edges, set entry point
 
-publisher = OtelPublisher()
-graph = StateGraph(publisher=publisher)
+setup_tracing(graph, level=ObservabilityLevel.STANDARD)  # before compile()
+app = graph.compile()
 ```
+
+To send these spans to a hosted backend, see [Send traces to Logfire and LangSmith](./send-traces-to-logfire-langsmith.md).
 
 ---
 

@@ -1,0 +1,173 @@
+---
+title: "What Is RAG (Retrieval-Augmented Generation)? Python Guide"
+sidebar_label: What is RAG?
+description: RAG (Retrieval-Augmented Generation) is an AI pattern where an agent retrieves relevant documents before generating a response. Learn how it works and how to build a RAG agent in Python.
+keywords:
+  - what is rag
+  - retrieval augmented generation
+  - rag python
+  - rag agent python
+  - ai rag tutorial
+sidebar_position: 7
+---
+
+# What is RAG (Retrieval-Augmented Generation)?
+
+**Retrieval-Augmented Generation (RAG) is an AI pattern where an agent searches a knowledge base for documents relevant to the user's query and includes them in the LLM's context before generating a response.** This lets the agent answer questions about private data, real-time information, or large document sets that could not fit in the model's context window.
+
+RAG was introduced in the paper "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" by Lewis et al. (Meta AI, 2020, arXiv:2005.11401) and has become the most common pattern for connecting LLMs to custom knowledge.
+
+## Why RAG matters
+
+LLMs have two limitations that RAG addresses:
+
+1. **Training cutoff**: the model only knows what it was trained on. Your internal docs, product database, or recent news are not in the training data.
+2. **Context length**: even with large context windows (1M tokens), your entire knowledge base cannot fit in a single prompt.
+
+RAG solves both: it retrieves only the relevant documents for each query, keeping context small, and the retrieved documents can come from any source updated in real time.
+
+## How RAG works
+
+```
+User query: "What is our refund policy?"
+     │
+     ▼
+[Embed query] → vector representation
+     │
+     ▼
+[Search vector store] → retrieve top-K relevant document chunks
+     │                   e.g. ["Refund policy: 30-day window...", "Exceptions include..."]
+     ▼
+[Build prompt] → system prompt + retrieved chunks + user query
+     │
+     ▼
+[LLM generates answer] grounded in the retrieved documents
+     │
+     ▼
+Response: "Our refund policy offers a 30-day window for..."
+```
+
+The retrieval step turns a potentially infinite knowledge base into a focused, query-specific set of relevant passages.
+
+## Building a RAG agent with AgentFlow
+
+AgentFlow ships a prebuilt `RAGAgent` that handles retrieval, context injection, and generation:
+
+```python
+from agentflow.prebuild.agents.rag_agent import RAGAgent
+from agentflow.core.state import AgentState, Message
+
+agent = RAGAgent(
+    model="google/gemini-2.5-flash",
+    store_url="qdrant://localhost:6333",
+    collection_name="company_docs",
+    system_prompt=[{
+        "role": "system",
+        "content": "Answer questions using the retrieved documents. Cite your sources."
+    }],
+)
+
+app = agent.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the refund policy?")]},
+    config={"thread_id": "support-123"},
+)
+print(result["messages"][-1].text())
+```
+
+For a custom RAG pipeline with full control over the retrieval and injection steps, build the graph manually:
+
+```python
+from agentflow.core.graph import Agent, StateGraph, ToolNode
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import END
+from agentflow.prebuilt.tools.memory_tools import search_memory
+
+# Retrieval as a tool
+def search_docs(query: str) -> str:
+    """Search the knowledge base for relevant documents."""
+    # Replace with your actual vector search implementation
+    return "Relevant excerpt: Our return policy allows returns within 30 days."
+
+tool_node = ToolNode([search_docs])
+agent_node = Agent(
+    model="google/gemini-2.5-flash",
+    tool_node="RETRIEVE",
+    system_prompt=[{
+        "role": "system",
+        "content": "Always search for relevant documents before answering. Cite what you find."
+    }],
+)
+
+def route(state: AgentState) -> str:
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None):
+        return "RETRIEVE"
+    return END
+
+graph = StateGraph(AgentState)
+graph.add_node("AGENT", agent_node)
+graph.add_node("RETRIEVE", tool_node)
+graph.add_conditional_edges("AGENT", route, {"RETRIEVE": "RETRIEVE", END: END})
+graph.add_edge("RETRIEVE", "AGENT")
+graph.set_entry_point("AGENT")
+
+app = graph.compile()
+```
+
+## RAG vs fine-tuning
+
+Teams often debate whether to fine-tune a model or use RAG to add domain knowledge:
+
+| | RAG | Fine-tuning |
+|--|-----|------------|
+| Knowledge update | Real-time (update the vector store) | Requires retraining |
+| Private documents | Yes — documents never leave your infra | Bakes data into model weights |
+| Cost | Inference + retrieval | High upfront training cost |
+| Accuracy for facts | High (cites sources) | Can hallucinate memorized facts |
+| Best for | Dynamic, growing, or private knowledge | Style, format, and domain-specific reasoning patterns |
+
+Most production systems use RAG for facts and optionally fine-tune for tone or domain-specific reasoning.
+
+## Vector stores supported by AgentFlow
+
+AgentFlow integrates with:
+
+| Store | Package extra | Use case |
+|-------|--------------|---------|
+| Qdrant | `agentflow[qdrant]` | Self-hosted or Qdrant Cloud |
+| Mem0 | `agentflow[mem0]` | User-level long-term memory with Mem0 |
+| PgVector | `agentflow[pg_checkpoint]` | Postgres-native vector search |
+
+<FAQ items={[
+  {
+    q: "What is the difference between RAG and a database query?",
+    a: "A database query retrieves rows that exactly match a condition (WHERE user_id = 123). RAG retrieves documents by semantic similarity — it finds passages that are conceptually related to a query even if they don't share exact keywords. This is done by embedding both the query and the documents as vectors and finding the nearest neighbors in vector space."
+  },
+  {
+    q: "What is a vector store?",
+    a: "A vector store is a database optimized for storing and searching dense vector embeddings. When you add a document to a vector store, it is first converted to a numerical vector (embedding) by an embedding model. Search finds documents whose vectors are closest to the query vector. Popular vector stores include Qdrant, Pinecone, Weaviate, and PgVector."
+  },
+  {
+    q: "How many documents should I retrieve in a RAG query?",
+    a: "The standard starting point is top-5 to top-10 documents. Too few means relevant information may be missed; too many fills the context with irrelevant text and degrades answer quality. The optimal number depends on document length, LLM context window size, and how tightly clustered your knowledge base is."
+  },
+  {
+    q: "Can RAG work with AgentFlow's multi-turn conversations?",
+    a: "Yes. When using AgentFlow's checkpointer for thread persistence, each turn builds on previous turns. The RAG retrieval can use both the current query and the conversation history to retrieve more relevant documents for follow-up questions."
+  },
+  {
+    q: "What is the difference between RAGAgent and a ReAct agent with a search tool?",
+    a: "A ReAct agent with a search tool retrieves documents on demand — the LLM decides when to search. RAGAgent retrieves documents at the start of every turn as a mandatory first step, then generates with the context pre-loaded. RAGAgent is better for Q&A over a fixed knowledge base; a ReAct agent with a search tool is better for open-ended tasks where search is one of many possible actions."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/prebuild/agents/rag-agent', title: 'RAGAgent reference', description: 'Configure AgentFlow\'s prebuilt RAG agent with your vector store.', intent: 'reference'},
+  {to: '/docs/use-cases/rag-agent', title: 'RAG agent use case', description: 'Real-world RAG agent patterns with AgentFlow.', intent: 'guide'},
+  {to: '/docs/tutorials/from-examples/qdrant-memory', title: 'Qdrant memory tutorial', description: 'Connect AgentFlow to a Qdrant vector store for long-term memory.', intent: 'tutorial'},
+  {to: '/docs/concepts/memory-and-store', title: 'Memory and store concepts', description: 'How AgentFlow\'s memory and store abstractions work.', intent: 'concept'},
+]} />

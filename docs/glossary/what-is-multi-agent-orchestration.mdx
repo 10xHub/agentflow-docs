@@ -1,0 +1,185 @@
+---
+title: "What Is Multi-Agent Orchestration? Python Guide"
+sidebar_label: What is multi-agent orchestration?
+description: Multi-agent orchestration coordinates multiple AI agents so they collaborate on a shared goal with explicit handoffs and control flow. Learn patterns and Python examples.
+keywords:
+  - what is multi-agent orchestration
+  - multi-agent systems python
+  - agent orchestration
+  - multi-agent ai framework
+  - python multi-agent
+sidebar_position: 3
+---
+
+# What is multi-agent orchestration?
+
+**Multi-agent orchestration is the practice of coordinating multiple AI agents — each with its own tools, expertise, and scope — so they collaborate on a shared goal through structured handoffs and explicit control flow.** Instead of one large agent doing everything, orchestration decomposes a complex task into sub-problems that specialized agents solve in parallel or sequence.
+
+The key word is *orchestration*: who decides which agent handles what, when control passes from one agent to another, and how results are combined.
+
+## Why use multiple agents?
+
+A single ReAct agent with unlimited tools has problems:
+
+- **Context length**: every tool result goes into the same context window
+- **Focus**: an agent trying to do everything often does nothing well
+- **Parallelism**: sequential tool calls are slow; specialized agents can run in parallel
+- **Cost**: a large reasoning model is expensive for simple subtasks
+
+Multiple agents solve these by dividing responsibility: a supervisor decides what to do, specialists execute specific work, results are aggregated at the end.
+
+## Orchestration patterns
+
+### Supervisor + specialists
+
+A supervisor agent receives the user's goal and routes to specialist agents:
+
+```
+User → Supervisor
+           ├── Research agent (web search, summarize)
+           ├── Code agent (write and run code)
+           └── Writing agent (draft final output)
+```
+
+The supervisor does not do the work — it decomposes and delegates.
+
+### Swarm (peer-to-peer handoffs)
+
+Agents hand off to each other directly based on context:
+
+```
+User → Customer support agent
+           → (escalate) Billing agent
+           → (technical) Engineering agent
+```
+
+No central supervisor. Each agent decides when to hand off.
+
+### Parallel fan-out
+
+A coordinator dispatches work to multiple agents simultaneously and aggregates results:
+
+```
+User query → Coordinator
+    ├── Agent A (source 1)    ─┐
+    ├── Agent B (source 2)    ─┤→ Aggregator → Final answer
+    └── Agent C (source 3)    ─┘
+```
+
+## Building multi-agent systems with AgentFlow
+
+### Supervisor pattern
+
+```python
+from agentflow.prebuild.agents.supervisor_team_agent import SupervisorTeamAgent
+from agentflow.prebuilt.agent import ReactAgent
+from agentflow.core.state import AgentState, Message
+
+def search_web(query: str) -> str:
+    """Search the web."""
+    return f"Search results for: {query}"
+
+def run_python(code: str) -> str:
+    """Execute Python code in a sandbox."""
+    return f"Output: (execution result)"
+
+research_agent = ReactAgent(
+    name="researcher",
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a research specialist. Search the web for information."}],
+    tools=[search_web],
+)
+
+code_agent = ReactAgent(
+    name="coder",
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a coding specialist. Write and run Python code."}],
+    tools=[run_python],
+)
+
+team = SupervisorTeamAgent(
+    model="openai/gpt-4o",
+    agents=[research_agent, code_agent],
+    system_prompt=[{"role": "system", "content": "Route tasks to the right specialist agent."}],
+)
+
+app = team.compile()
+```
+
+### Explicit handoff between agents
+
+For precise control, use AgentFlow's `Command` and handoff tools:
+
+```python
+from agentflow.core.graph import Agent, StateGraph
+from agentflow.prebuilt.tools.handoff import create_handoff_tool
+from agentflow.core.state import AgentState
+from agentflow.utils import END
+
+handoff_to_billing = create_handoff_tool(agent_name="billing")
+handoff_to_support = create_handoff_tool(agent_name="support")
+
+triage_agent = Agent(
+    model="google/gemini-2.5-flash",
+    tool_node="billing",
+    system_prompt=[{"role": "system", "content": "Triage support requests. Handoff billing questions to the billing agent."}],
+)
+
+billing_agent = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Handle billing questions."}],
+)
+
+graph = StateGraph(AgentState)
+graph.add_node("triage", triage_agent)
+graph.add_node("billing", billing_agent)
+graph.add_conditional_edges("triage", lambda s: "billing" if s.next_agent == "billing" else END)
+graph.add_edge("billing", END)
+graph.set_entry_point("triage")
+
+app = graph.compile()
+```
+
+## Orchestration vs single agent
+
+| | Single agent | Multi-agent |
+|--|-------------|------------|
+| Context window | Shared by all tasks | Scoped per agent |
+| Tool count | Unlimited but noisy | Focused per specialist |
+| Parallelism | Sequential by default | Agents can run in parallel |
+| Debugging | One trace | Per-agent traces |
+| Cost | Same model for all tasks | Cheap model for simple tasks |
+
+For most tasks under 10 tool calls, a single ReAct agent is simpler. Move to multi-agent when you hit context limits, need parallel execution, or specialists have meaningfully different capabilities.
+
+<FAQ items={[
+  {
+    q: "What is the difference between a supervisor agent and a swarm?",
+    a: "A supervisor agent has explicit control: it receives the task, decides which agent handles it, and aggregates results. A swarm uses peer-to-peer handoffs: each agent decides whether to handle the request or pass it to a more appropriate peer. Supervisors are easier to debug; swarms are more flexible for open-ended routing."
+  },
+  {
+    q: "How do agents share state in a multi-agent system?",
+    a: "In AgentFlow, agents in the same graph share a single AgentState object that flows through the graph. Each agent reads from and writes to this shared state. For agents running in separate graphs, state is passed through the message payload at handoff time."
+  },
+  {
+    q: "Can multi-agent systems run agents in parallel?",
+    a: "Yes. AgentFlow's StateGraph supports parallel branches: you can fan out to multiple agent nodes simultaneously and merge results. The graph engine handles concurrent execution via Python's async runtime."
+  },
+  {
+    q: "Is multi-agent orchestration the same as LangGraph's multi-agent support?",
+    a: "Both LangGraph and AgentFlow support multi-agent orchestration using graph-based routing. AgentFlow includes the production stack (API server, TypeScript client) needed to deploy these systems without additional configuration. See the AgentFlow vs LangGraph comparison for a detailed breakdown."
+  },
+  {
+    q: "When should I use a single agent vs multiple agents?",
+    a: "Use a single agent for tasks with fewer than 10–15 tool calls that fit in one context window. Use multiple agents when: the task decomposes naturally into specialist roles, some subtasks can run in parallel, different subtasks need different models (cheap vs powerful), or one agent's context gets too long to reason well."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/prebuild/agents/supervisor-team-agent', title: 'SupervisorTeamAgent reference', description: 'Configure a supervisor agent that routes work to specialist sub-agents.', intent: 'reference'},
+  {to: '/docs/prebuild/agents/swarm-agent', title: 'SwarmAgent reference', description: 'Peer agents that hand off to each other based on context.', intent: 'reference'},
+  {to: '/docs/how-to/python/handoff-between-agents', title: 'Handoff between agents', description: 'How to implement explicit agent handoffs with the Command primitive.', intent: 'guide'},
+  {to: '/docs/tutorials/from-examples/multiagent', title: 'Multi-agent tutorial', description: 'A complete example of a multi-agent system with AgentFlow.', intent: 'tutorial'},
+]} />

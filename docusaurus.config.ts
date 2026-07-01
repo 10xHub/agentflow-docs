@@ -222,7 +222,8 @@ const config: Config = {
         {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
         {to: '/docs/courses', label: 'Courses', position: 'left'},
 
-        // {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/docs/glossary', label: 'Glossary', position: 'left'},
         // Explicit `search` slot — without this, Docusaurus appends the
         // SearchBar at the very end of the right cluster (after GitHub +
         // the color-mode toggle). Putting it first on the right places

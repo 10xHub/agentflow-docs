@@ -1,0 +1,143 @@
+---
+title: "What Is an AI Agent? Definition and Python Guide (2026)"
+sidebar_label: What is an AI agent?
+description: An AI agent is a program that uses an LLM to perceive inputs, reason about them, and take actions in a loop until it completes a goal. Learn the definition, patterns, and how to build one in Python.
+keywords:
+  - what is an ai agent
+  - ai agent definition
+  - python ai agent
+  - build ai agent python
+  - ai agent 2026
+sidebar_position: 1
+---
+
+# What is an AI agent?
+
+**An AI agent is a software program that uses a large language model (LLM) to perceive inputs, reason about them, and take actions — including calling external tools, writing code, or querying databases — in a loop until it achieves a goal.** Unlike a single LLM call, an agent can complete multi-step tasks autonomously by deciding which actions to take based on intermediate results.
+
+The term "agent" has been used broadly in AI research since the 1990s, but in 2024–2026 it has come to specifically mean LLM-powered programs that can use tools and maintain state across multiple steps.
+
+## The core loop
+
+Every AI agent runs some version of this loop:
+
+1. **Perceive** — receive a user message or environment observation
+2. **Reason** — the LLM decides what to do next
+3. **Act** — call a tool, write a file, query a database, or respond
+4. **Observe** — get the result of the action
+5. **Repeat** — or stop if the goal is met
+
+The most widely used implementation of this loop is the **ReAct pattern** (Reason + Act), introduced by Yao et al. (2022). See [What is a ReAct agent?](/docs/glossary/what-is-a-react-agent) for details.
+
+## What makes something an "agent" vs a chatbot
+
+| Characteristic | Chatbot | AI agent |
+|---------------|---------|---------|
+| Can call tools | No | Yes |
+| Runs in a loop | No — single LLM call | Yes — until goal is met |
+| Maintains task state | No | Yes |
+| Takes actions in the world | No | Yes |
+| Can spawn sub-tasks | No | Yes (multi-agent) |
+
+A chatbot responds to one message with one LLM call. An agent may make dozens of LLM calls and tool calls before returning an answer.
+
+## How to build an AI agent in Python
+
+AgentFlow provides a prebuilt `ReactAgent` that implements the full agent loop. You supply the tools; the framework handles routing, tool execution, and state.
+
+```python
+from agentflow.prebuilt.agent import ReactAgent
+from agentflow.core.state import AgentState, Message
+
+def search_web(query: str) -> str:
+    """Search the web and return a summary of results."""
+    # Replace with a real search API call
+    return f"Top results for '{query}': [result 1], [result 2]"
+
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    return f"Weather in {city}: 22°C, sunny"
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant. Use tools when they help."}],
+    tools=[search_web, get_weather],
+)
+
+app = agent.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in Tokyo and latest AI news?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+The agent will call `get_weather` for Tokyo, call `search_web` for the news query, then compose a final answer — all automatically.
+
+## Serving an AI agent as an API
+
+Once you have a compiled agent, one command starts a production HTTP server:
+
+```bash
+pip install 10xscale-agentflow-cli
+agentflow init
+agentflow api
+```
+
+This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET /v1/graph/threads/{id}` — no extra FastAPI code required.
+
+## Types of AI agents
+
+| Agent type | Description | AgentFlow prebuilt |
+|-----------|-------------|-------------------|
+| **ReAct agent** | Reason and Act in a loop with tools | `ReactAgent` |
+| **RAG agent** | Retrieves documents before answering | `RAGAgent` |
+| **Supervisor agent** | Routes tasks to specialist sub-agents | `SupervisorTeamAgent` |
+| **Swarm agent** | Peer agents hand off to each other | `SwarmAgent` |
+| **Plan-act-reflect** | Plans, executes, reflects, revises | `PlanActReflectAgent` |
+| **Structured output** | Returns typed, validated responses | `StructuredOutputAgent` |
+
+## Why agents need more than a raw LLM call
+
+A raw LLM call returns text. For production AI agents, you also need:
+
+- **Persistent threads** — conversations that survive server restarts
+- **Tool execution** — call functions, APIs, databases in parallel
+- **Streaming** — send tokens to a frontend as they generate
+- **Auth and rate limiting** — control who can call the agent and how often
+- **Observability** — traces, metrics, error tracking
+
+AgentFlow ships all of these as part of the framework. See [Get Started](/docs/get-started) for the full stack.
+
+<FAQ items={[
+  {
+    q: "What is the difference between an AI agent and an LLM?",
+    a: "An LLM is a model that generates text given a prompt. An AI agent is a program built on top of an LLM that can also call tools, maintain state across multiple steps, and take actions in a loop until it completes a goal. An LLM is a component inside an AI agent, not the agent itself."
+  },
+  {
+    q: "What programming language is best for building AI agents?",
+    a: "Python is the dominant language for AI agent development because all major LLM provider SDKs (OpenAI, Anthropic, Google) have first-class Python support and most agent frameworks (AgentFlow, LangGraph, CrewAI, AutoGen) are Python-native. TypeScript is used for frontend agent clients and increasingly for Node.js agent runtimes."
+  },
+  {
+    q: "How do AI agents use tools?",
+    a: "The LLM inside an agent can request tool calls by returning a structured response that names the tool and provides the arguments. The agent runtime executes the tool (a Python function), sends the result back to the LLM, and the LLM continues reasoning. AgentFlow's ToolNode executes multiple tool calls in parallel via asyncio.gather."
+  },
+  {
+    q: "What is the difference between an AI agent and a workflow?",
+    a: "A workflow has fixed, pre-determined steps. An AI agent decides dynamically which steps to take based on the LLM's reasoning. In practice, most production systems use both: deterministic graph structure (workflow) with LLM-powered decision points (agent) at nodes where human-like reasoning is needed."
+  },
+  {
+    q: "Can AI agents remember previous conversations?",
+    a: "Yes, with the right persistence layer. AgentFlow uses a thread ID system — each conversation gets a thread ID, and the full message history is stored in Redis (hot) and Postgres (durable). When you invoke the agent again with the same thread ID, it has access to the full conversation history."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/get-started/first-agent', title: 'Build your first agent', description: 'A step-by-step guide to building and serving a Python AI agent with AgentFlow.', intent: 'guide'},
+  {to: '/docs/glossary/what-is-a-react-agent', title: 'What is a ReAct agent?', description: 'The Reason + Act pattern — the most common single-agent architecture.', intent: 'concept'},
+  {to: '/docs/concepts/agents-and-tools', title: 'Agents and tools', description: 'How agents and tools work together in AgentFlow.', intent: 'concept'},
+  {to: '/docs/compare', title: 'Compare frameworks', description: 'AgentFlow vs LangGraph, CrewAI, AutoGen, and Google ADK.', intent: 'guide'},
+]} />

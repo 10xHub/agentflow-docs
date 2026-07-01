@@ -223,6 +223,37 @@ my_generator = MyThreadNameGenerator()
 
 When a new thread is created via the API, it automatically gets a readable name like `exploring-ideas` instead of `550e8400-e29b-41d4-a716-446655440000`.
 
+## Observability
+
+Send graph, node, LLM, and tool spans to [Pydantic Logfire](https://pydantic.dev/logfire) and/or [LangSmith](https://docs.langchain.com/langsmith/) by adding an `observability` block. The server configures the exporters and attaches the tracing publisher at startup — you do not call any setup helper yourself.
+
+```json
+{
+  "agent": "graph.react:app",
+  "observability": {
+    "level": "standard",
+    "logfire":   { "enabled": true, "service_name": "my-agent", "send_to_logfire": true, "console": false },
+    "langsmith": { "enabled": true, "project": "my-agent", "endpoint": null }
+  }
+}
+```
+
+Keep the secrets in `.env`, never in `agentflow.json`:
+
+```bash
+LOGFIRE_TOKEN=your-logfire-write-token
+LANGSMITH_API_KEY=your-langsmith-api-key
+```
+
+Field notes:
+
+- `level` — `spans` (timing only), `standard` (default; token counts, model, params — no message content), or `full` (adds prompt/completion content; PII risk, opt in deliberately).
+- `logfire.enabled` / `langsmith.enabled` — turn each backend on independently; enable both to fan out to both.
+- `langsmith.endpoint` — leave `null` for the default, or set a regional base URL like `https://eu.api.smith.langchain.com/otel`.
+- Requires the extra: `pip install '10xscale-agentflow[observability]'`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter.
+
+For the equivalent Python API (`setup_logfire` / `setup_langsmith` / `setup_observability` and the dedicated publishers), see [Send traces to Logfire and LangSmith](../python/send-traces-to-logfire-langsmith.md).
+
 ## Authentication
 
 ### No authentication (development only)

@@ -163,6 +163,32 @@ This installs `asyncpg` and `redis[asyncio]`.
 
 ---
 
+## SqliteCheckpointer
+
+`SqliteCheckpointer` collapses the two-layer model into a **single local SQLite file**. Durable state, the realtime state cache, messages, threads, and the generic cache all live in one `.db` file — there is no Redis and no Postgres. I/O is fully async via `aiosqlite`; a single persistent connection runs in WAL mode with writes serialized behind an `asyncio.Lock`.
+
+```python
+from agentflow.storage.checkpointer import SqliteCheckpointer
+
+# Defaults to ~/.agentflow/checkpointer.db; ":memory:" gives an ephemeral DB.
+checkpointer = SqliteCheckpointer("agent_state.db")
+app = graph.compile(checkpointer=checkpointer)
+```
+
+Like `PgCheckpointer`, it reads the state cache table first and falls back to durable state, and it reconstructs custom `AgentState` subclasses on read via an embedded class path. Data is keyed purely by `thread_id`; `user_id` is not required.
+
+**Use it for client-side / single-user agents** — a desktop app shipping a Python sidecar (Tauri, Electron, PyInstaller), a local CLI agent, or any deployment where each user has their own process and their own database file (one writer per file). **Avoid it for shared multi-user servers**: SQLite serializes writers and does not scale horizontally — use `PgCheckpointer` instead.
+
+Install the extra:
+
+```bash
+pip install "10xscale-agentflow[sqlite_checkpoint]"
+```
+
+Call `await checkpointer.arelease()` (or `checkpointer.release()`) at shutdown to close the connection.
+
+---
+
 ## Checkpointer API reference
 
 All methods exist in both **async** (preferred) and **sync** (convenience wrapper) flavours. The sync wrappers call `run_coroutine()` internally.
@@ -287,14 +313,14 @@ See [Configure agentflow.json](../how-to/api-cli/configure-agentflow-json.md).
 
 ## Choosing a checkpointer
 
-| Criterion | InMemoryCheckpointer | PgCheckpointer |
-|---|---|---|
-| State survives restart | No | Yes |
-| Shared across workers | No | Yes |
-| Multi-tenant user scoping | No | Yes |
-| External dependencies | None | PostgreSQL + Redis |
-| Setup required | No | `await cp.asetup()` |
-| Best for | Dev, tests | Production |
+| Criterion | InMemoryCheckpointer | SqliteCheckpointer | PgCheckpointer |
+|---|---|---|---|
+| State survives restart | No | Yes | Yes |
+| Shared across workers | No | No | Yes |
+| Multi-tenant user scoping | No | No | Yes |
+| External dependencies | None | None (single file) | PostgreSQL + Redis |
+| Setup required | No | No (lazy) | `await cp.asetup()` |
+| Best for | Dev, tests | Client-side / single-user agents | Production multi-user |
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: Checkpointers — AgentFlow Python AI Agent Framework
 sidebar_label: Checkpointers
-description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer — state persistence for conversation threads.
+description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer — state persistence for conversation threads.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -25,6 +25,8 @@ A checkpointer persists graph state between requests so conversations survive se
 from agentflow.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
 # Optional — requires asyncpg
 from agentflow.storage.checkpointer import PgCheckpointer
+# Optional — requires aiosqlite
+from agentflow.storage.checkpointer import SqliteCheckpointer
 ```
 
 ---
@@ -162,6 +164,49 @@ This is set automatically. You do not set it directly.
 
 ---
 
+## `SqliteCheckpointer`
+
+Single-file SQLite checkpointer. Stores **everything** — durable state, the hot "realtime" state cache, generic TTL cache, messages, and threads — in one local `.db` file. No Postgres, no Redis. Fully async via `aiosqlite`.
+
+:::note Optional dependency
+Requires `aiosqlite`. Install with:
+```
+pip install 10xscale-agentflow[sqlite_checkpoint]
+```
+:::
+
+```python
+from agentflow.storage.checkpointer import SqliteCheckpointer
+
+# Defaults to ~/.agentflow/checkpointer.db; pass a path to override.
+checkpointer = SqliteCheckpointer("agent_state.db")
+
+await checkpointer.asetup()   # creates tables (also runs lazily on first use)
+app = graph.compile(checkpointer=checkpointer)
+```
+
+### Constructor parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `db_path` | `str \| Path \| None` | Path to the SQLite database file. Defaults to `~/.agentflow/checkpointer.db`. Parent directories are created on setup. Pass `":memory:"` for an ephemeral in-process database (useful for tests). |
+
+**When to use:**
+- **Client-side / embedded agents.** A desktop app that ships a Python sidecar (Tauri, Electron, PyInstaller) or a local CLI agent — the checkpointer runs entirely on the user's machine, right next to the app.
+- **Dedicated-room deployments.** Each user (or tenant, or session) has their own process and their own `.db` file, so there is exactly one writer per database.
+
+**When NOT to use:**
+- **Multi-user servers where many users share one backend.** SQLite serializes writers and does not scale horizontally. Reach for [`PgCheckpointer`](#pgcheckpointer) (Postgres + optional Redis) instead.
+
+### Design notes
+
+- **One file, no external services.** The realtime state cache lives in a separate SQLite table (`af_state_cache`) rather than Redis; durable state lives in `af_states`. Reads check the cache table first, then fall back to durable state — the same two-layer read path as `PgCheckpointer`, collapsed into one file.
+- **Custom state is preserved.** State is serialized with an embedded `__class_path__` and reconstructed into its exact `AgentState` subclass on read, matching `PgCheckpointer`.
+- **Concurrency.** A single persistent connection is opened lazily with `PRAGMA journal_mode=WAL`; writes are serialized behind an `asyncio.Lock`. Call `await checkpointer.arelease()` (or `checkpointer.release()`) at shutdown to close it.
+- **Isolation.** Data is keyed purely by `thread_id`; `user_id` is not required. `alist_threads` returns every thread in the file, which matches the one-database-per-user model.
+
+---
+
 ## Writing a custom checkpointer
 
 ```python
@@ -240,4 +285,5 @@ Additional keys used internally:
 | `StorageError` | Unrecoverable PostgreSQL error. | Check Postgres logs and DSN config. |
 | `TransientStorageError` | Temporary Postgres failure. | Automatically retried by the framework. |
 | `ImportError: asyncpg` | `PgCheckpointer` used without `asyncpg` installed. | Run `pip install asyncpg`. |
+| `ImportError: aiosqlite` | `SqliteCheckpointer` used without `aiosqlite` installed. | Run `pip install 10xscale-agentflow[sqlite_checkpoint]`. |
 | State lost between requests | Using `InMemoryCheckpointer` with multiple workers. | Switch to `PgCheckpointer` or ensure a single-process deployment. |
