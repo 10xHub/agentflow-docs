@@ -1,7 +1,7 @@
 ---
 title: Configure agentflow.json — Python AI Agent Framework
 sidebar_label: Configure agentflow.json
-description: How to configure agentflow.json for checkpointers, stores, auth, and environment variables. Part of the AgentFlow agentflow api guide for production-ready.
+description: How to configure agentflow.json for checkpointers, stores, auth, and environment variables.
 keywords:
   - agentflow api
   - agentflow cli
@@ -223,6 +223,182 @@ my_generator = MyThreadNameGenerator()
 
 When a new thread is created via the API, it automatically gets a readable name like `exploring-ideas` instead of `550e8400-e29b-41d4-a716-446655440000`.
 
+## Memory store
+
+The `store` field points at a `BaseStore` instance. Without it the `/v1/store/*` endpoints report
+that no store is configured, even if your graph uses one internally.
+
+```python
+# graph/dependencies.py
+from agentflow.storage.store import QdrantStore
+from agentflow.storage.store.embedding import OpenAIEmbedding
+
+my_store = QdrantStore(
+    embedding=OpenAIEmbedding(),
+    path="./qdrant_data",
+)
+```
+
+For local development and tests, `agentflow.qa.testing.InMemoryStore` is a `BaseStore`
+implementation with no external dependencies — it satisfies the same field:
+
+```python
+from agentflow.qa.testing import InMemoryStore
+
+my_store = InMemoryStore()
+```
+
+```json
+{
+  "agent": "graph.react:app",
+  "store": "graph.dependencies:my_store"
+}
+```
+
+The value is a `module:attribute` path resolving to an instance, not a class. Loading fails at
+startup with a clear error if the attribute is not a `BaseStore`.
+
+## Dependency injection
+
+The `injectq` field points at an `InjectQ` container. Use it when your nodes or tools need
+services resolved at startup: a database session factory, an HTTP client, a settings object.
+
+```python
+# graph/dependencies.py
+from injectq import InjectQ
+
+container = InjectQ()
+container.bind_instance(MyDatabase, MyDatabase(dsn=os.environ["DATABASE_URL"]))
+```
+
+```json
+{
+  "agent": "graph.react:app",
+  "injectq": "graph.dependencies:container"
+}
+```
+
+The container is activated as the global instance when it loads, so the server's own bindings
+(graph config, auth backend, media service, checkpointer) land in the same container as yours.
+Bind a `BaseRateLimitBackend` here when using `"backend": "custom"` for rate limiting.
+
+## Redis
+
+A single Redis URL for the server's own use, as a plain string:
+
+```json
+{
+  "agent": "graph.react:app",
+  "redis": "redis://localhost:6379/0"
+}
+```
+
+It backs the shared L2 tier of the thread-ownership cache used by the `ownership` and `rbac`
+authorization backends. When it is unset the server falls back to the `REDIS_URL` environment
+variable. With neither set, or without the `redis` package installed, the cache runs in-process
+only and the server logs a warning; nothing breaks, but each worker pays its own first lookup per
+thread.
+
+This is separate from `rate_limit.redis`, which the rate limiter uses. Configure both if you want
+both features backed by Redis:
+
+```json
+{
+  "redis": "redis://localhost:6379/0",
+  "rate_limit": {
+    "backend": "redis",
+    "redis": { "url": "redis://localhost:6379/1" }
+  }
+}
+```
+
+## Rate limiting
+
+Add a `rate_limit` block to turn on the sliding-window limiter. It is off until you do.
+
+```json
+{
+  "agent": "graph.react:app",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": false,
+    "trusted_proxy_hops": 1,
+    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
+    "fail_open": true
+  }
+}
+```
+
+Three things that are easy to miss:
+
+- `by` accepts `"user"` as well as `"ip"` and `"global"`. Switch to `"user"` once auth is enabled.
+- The limiter also gates **WebSocket handshakes** on `/v1/graph/ws` and `/v1/graph/live`, sharing
+  the same bucket as REST. Exceeding it closes the handshake with code `1013`.
+- `"backend": "memory"` counts per process and logs a startup warning. With N workers the real
+  limit is `requests x N`.
+
+Full reference: [Rate Limiting](../../reference/api-cli/rate-limiting.md). Step-by-step setup:
+[Configure rate limiting](./configure-rate-limiting.md).
+
+## WebSocket connection limits
+
+Cap how many WebSocket connections a single server process will hold open:
+
+```json
+{
+  "agent": "graph.react:app",
+  "websocket": {
+    "max_connections": 100
+  }
+}
+```
+
+`max_connections` counts `/v1/graph/ws` and `/v1/graph/live` together. `null`, `0`, or an absent
+block means unlimited. A negative value raises a `ValueError` at startup.
+
+When the cap is reached the handshake is refused before `accept()` with close code `1013`, so the
+client sees a clean rejection rather than a socket that opens and immediately dies. The slot is
+released when the handler returns or the client disconnects.
+
+The counter is per process, like the in-memory rate-limit backend. With four workers,
+`max_connections: 100` means up to 400 concurrent sockets across the deployment. Size it per
+worker, not per cluster.
+
+## Observability
+
+Send graph, node, LLM, and tool spans to [Pydantic Logfire](https://pydantic.dev/logfire) and/or [LangSmith](https://docs.langchain.com/langsmith/) by adding an `observability` block. The server configures the exporters and attaches the tracing publisher at startup — you do not call any setup helper yourself.
+
+```json
+{
+  "agent": "graph.react:app",
+  "observability": {
+    "level": "standard",
+    "logfire":   { "enabled": true, "service_name": "my-agent", "send_to_logfire": true, "console": false },
+    "langsmith": { "enabled": true, "project": "my-agent", "endpoint": null }
+  }
+}
+```
+
+Keep the secrets in `.env`, never in `agentflow.json`:
+
+```bash
+LOGFIRE_TOKEN=your-logfire-write-token
+LANGSMITH_API_KEY=your-langsmith-api-key
+```
+
+Field notes:
+
+- `level` — `spans` (timing only), `standard` (default; token counts, model, params — no message content), or `full` (adds prompt/completion content; PII risk, opt in deliberately).
+- `logfire.enabled` / `langsmith.enabled` — turn each backend on independently; enable both to fan out to both.
+- `langsmith.endpoint` — leave `null` for the default, or set a regional base URL like `https://eu.api.smith.langchain.com/otel`.
+- Requires the extra: `pip install '10xscale-agentflow[observability]'`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter.
+
+For the equivalent Python API (`setup_logfire` / `setup_langsmith` / `setup_observability` and the dedicated publishers), see [Send traces to Logfire and LangSmith](../python/send-traces-to-logfire-langsmith.md).
+
 ## Authentication
 
 ### No authentication (development only)
@@ -265,23 +441,33 @@ Requests without a valid token get a `401 Unauthorized` response.
 
 For integration with external identity providers (OAuth, SAML, custom API keys):
 
+`authenticate` is **synchronous** and takes `(request, response, credential)` — the bearer token
+arrives as `credential`. Do not declare it `async def` (the server calls it without `await`).
+
 ```python
 # graph/auth.py
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+from typing import Any
+
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
+from agentflow_cli import BaseAuth
 
 class MyCustomAuth(BaseAuth):
-    async def authenticate(self, request) -> dict | None:
-        # Check custom header or token
+    def authenticate(
+        self, request: Request, response: Response,
+        credential: HTTPAuthorizationCredentials | None,
+    ) -> dict[str, Any] | None:
+        # Custom header (API key) — or use `credential.credentials` for a bearer token.
         api_key = request.headers.get("X-API-Key")
         if not api_key:
             return None
-        
-        # Verify against your system
-        user = await verify_api_key(api_key)
+
+        user = verify_api_key(api_key)
         if not user:
             return None
-        
-        # Return user info for authorization later
+
+        # Return user info (at least user_id) for authorization later.
         return {"user_id": user.id, "role": user.role}
 ```
 
@@ -297,22 +483,43 @@ class MyCustomAuth(BaseAuth):
 
 ### Authorization (fine-grained permissions)
 
-After authenticating, restrict which users can access which endpoints:
+After authenticating, restrict which users can access which endpoints. Without an
+`authorization` key the default is mode-based — `"ownership"` (owner-only threads) in
+production, `"allow_all"` in development. For roles → permissions with no code, use the RBAC
+config block:
+
+```json
+{
+  "agent": "graph.react:app",
+  "auth": "jwt",
+  "authorization": {
+    "backend": "rbac",
+    "roles": { "admin": ["*"], "user": ["graph:invoke", "graph:stream", "checkpointer:read"] },
+    "default_scopes": [],
+    "isolation": "owner"
+  }
+}
+```
+
+For arbitrary rules, subclass `AuthorizationBackend`. `authorize` takes
+`(user, resource, action, resource_id=None, **context)`:
 
 ```python
 # graph/auth.py
-class MyAuthorizationBackend:
-    async def authorize(self, user: dict, resource: str, action: str) -> bool:
+from typing import Any
+
+from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+
+class MyAuthorizationBackend(AuthorizationBackend):
+    async def authorize(
+        self, user: dict[str, Any], resource: str, action: str,
+        resource_id: str | None = None, **context: Any,
+    ) -> bool:
         role = user.get("role", "guest")
-        
-        # Only admins can invoke graph
         if resource == "graph" and action == "invoke":
             return role == "admin"
-        
-        # Only owners can view threads
         if resource == "checkpointer" and action == "read":
             return role in ("admin", "user")
-        
         return False
 ```
 
@@ -323,6 +530,9 @@ class MyAuthorizationBackend:
   "authorization": "graph.auth:MyAuthorizationBackend"
 }
 ```
+
+See the [Authentication reference](/docs/reference/api-cli/auth) for the full scope catalog,
+`isolation_scope`/`scopes_for`, and how the isolation policy reaches the storage layer.
 
 ## Testing
 

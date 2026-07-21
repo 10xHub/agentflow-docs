@@ -1,3 +1,15 @@
+---
+title: Handoff Tools — Prebuilt tools
+sidebar_label: Handoff Tools
+description: create_handoff_tool and is_handoff_tool build and detect transfer_to_X tools used to route control between agents in a swarm.
+keywords:
+  - handoff tools
+  - create_handoff_tool
+  - is_handoff_tool
+  - agent transfer tool
+  - swarm handoff
+---
+
 # Handoff Tools
 
 Utilities for creating agent-to-agent transfer tools used in multi-agent swarm patterns.

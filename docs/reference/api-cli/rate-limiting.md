@@ -1,6 +1,11 @@
 ---
 title: Rate Limiting
 description: Complete reference for the rate_limit block in agentflow.json.
+keywords:
+  - rate_limit config
+  - agentflow.json reference
+  - rate limiting backend
+  - sliding window limiter reference
 ---
 
 # Rate limiting reference
@@ -17,12 +22,41 @@ to turn it off.
 | `backend` | string | `"memory"` | Counter storage. `"memory"`, `"redis"`, or `"custom"`. |
 | `requests` | integer | `100` | Maximum requests allowed within each window. |
 | `window` | integer | `60` | Window size in seconds. |
-| `by` | string | `"ip"` | Scope of the limit. `"ip"` for per-client limits; `"global"` for one shared quota. |
+| `by` | string | `"ip"` | Bucket key. `"ip"`, `"user"`, or `"global"`. See [Bucket keys](#bucket-keys). |
 | `exclude_paths` | string array | `[]` | Request paths that bypass rate limiting entirely. |
-| `trusted_proxy_headers` | boolean | `false` | Use `X-Forwarded-For` as the client IP. Only enable behind a proxy that strips this header from untrusted clients. |
+| `trusted_proxy_headers` | boolean | `false` | Use `X-Forwarded-For` to resolve the client IP. Only enable behind a proxy you control. |
+| `trusted_proxy_hops` | integer | `1` | How many proxies of your own sit in front of the app. See [Proxy hops](#proxy-hops). Must be `>= 1`. |
 | `redis.url` | string | `null` | Redis connection URL. Required for the `"redis"` backend. Supports `${ENV_VAR}` expansion. |
 | `redis.prefix` | string | `"agentflow:rate-limit"` | Key prefix used for all Redis entries. |
 | `fail_open` | boolean | `true` | When `true`, requests are allowed if the Redis backend is unreachable. When `false`, they are denied. Only applies to the `"redis"` backend. |
+
+Invalid values are rejected at config load: `by` outside `ip`/`user`/`global`, `backend` outside `memory`/`redis`/`custom`, a non-positive `requests` or `window`, or `trusted_proxy_hops` below `1` all raise a `ValueError` and stop the server from starting.
+
+## Bucket keys
+
+`by` decides which bucket a request is counted against.
+
+| `by` | Key | Notes |
+| --- | --- | --- |
+| `"ip"` | the resolved client address | The default. One bucket per client address. |
+| `"user"` | `user:<user_id>` | One bucket per authenticated user. Falls back to `ip:<address>` when there is no authenticated user, so anonymous traffic is still limited per caller rather than sharing one bucket everybody can exhaust. |
+| `"global"` | `__global__` | One bucket for the whole service. |
+
+`"user"` is what you want once auth is enabled. Limiting purely by IP gives a single user roaming between addresses an effectively unlimited budget, while a NAT'd office sharing one address gets throttled as though it were one caller.
+
+## Proxy hops
+
+`X-Forwarded-For` is a list that each proxy **appends** to. Whatever the caller sent arrives at the left of the list; only the entries your own proxies appended, on the right, are trustworthy. Reading the leftmost entry would let a caller send a different value on every request, land in a fresh bucket each time, and never be limited at all.
+
+`trusted_proxy_hops` is how many entries, counted from the **right**, your own infrastructure appended. With the default of `1` (one proxy in front of the app) the last entry is the address that proxy actually observed. If the header carries fewer entries than the configured hop count, the header is ignored entirely and the peer address is used, with a warning.
+
+`trusted_proxy_hops` only has an effect when `trusted_proxy_headers` is `true`.
+
+## WebSocket handshakes
+
+Rate limiting is HTTP middleware, and Starlette runs middleware for HTTP scopes only, so WebSocket handshakes would otherwise bypass it. `WS /v1/graph/ws` and `WS /v1/graph/live` therefore re-apply the check at the handshake, using the **same backend and the same bucket** as REST requests. Opening a socket counts exactly like any other request; exceeding the limit refuses the handshake with WebSocket close code `1013` (Try Again Later) before `accept()`.
+
+The separate [`websocket.max_connections`](./configuration.md#websocket) cap is enforced at the same point and uses the same close code.
 
 ## Minimal example
 
@@ -80,6 +114,10 @@ pip install "10xscale-agentflow-cli[redis]"
 | `memory` | Local development, tests, demos, single-process services |
 | `redis` | Production: Gunicorn/Uvicorn with multiple workers, Docker/Kubernetes |
 | `custom` | Custom storage, external quota services, non-standard enforcement |
+
+:::warning The memory backend counts per process
+Enabling the `memory` backend logs a startup warning. It keeps counters in process memory, so with N workers the effective limit is `requests x N`, and every counter resets when a worker restarts. Use the `redis` backend for any multi-worker deployment.
+:::
 
 ## Response headers
 

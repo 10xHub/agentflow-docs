@@ -21,7 +21,7 @@ sidebar_position: 6
 
 ```python
 import asyncio
-from agentflow.core.state import Message
+from agentflow.core.state import Message, StreamEvent
 from agentflow.utils import ResponseGranularity
 
 async def stream_example(app, question: str):
@@ -30,8 +30,8 @@ async def stream_example(app, question: str):
         config={"thread_id": "stream-session-1"},
         response_granularity=ResponseGranularity.LOW,
     ):
-        if chunk.content:
-            print(chunk.content, end="", flush=True)
+        if chunk.event == StreamEvent.MESSAGE and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
     print()  # newline after stream ends
 
 asyncio.run(stream_example(app, "What is quantum entanglement?"))
@@ -44,7 +44,13 @@ asyncio.run(stream_example(app, "What is quantum entanglement?"))
 Every chunk yielded by `astream()` is a `StreamChunk`:
 
 ```python
-from agentflow.core.state.stream_chunks import StreamChunk
+from agentflow.core.state import StreamChunk, StreamEvent
+
+class StreamEvent(enum.StrEnum):
+    STATE = "state"
+    MESSAGE = "message"
+    ERROR = "error"
+    UPDATES = "updates"
 
 class StreamChunk:
     event: StreamEvent = StreamEvent.MESSAGE
@@ -65,24 +71,40 @@ class StreamChunk:
     )
 ```
 
+There is no `chunk.content` attribute. Always branch on `chunk.event` first, then read the matching holder:
+
+| `chunk.event` | Read | Notes |
+|---|---|---|
+| `StreamEvent.MESSAGE` | `chunk.message` | Use `chunk.message.text()` to get the text. |
+| `StreamEvent.STATE` | `chunk.state` | An `AgentState` model, so use attribute access. |
+| `StreamEvent.UPDATES` | `chunk.data` | Dict describing progress, for example tool invocation. |
+| `StreamEvent.ERROR` | `chunk.data` | Dict describing the failure; `reason` is always set, tool failures also carry `error`. |
+
+`StreamChunk` is configured with `use_enum_values=True`, so `chunk.event` is a plain string at runtime. `StreamEvent` is a `StrEnum`, so comparing against the enum member still works and reads better.
+
 For a basic streaming chat UI you usually only need `chunk.message` for the emitted message payload or `chunk.data` for event-specific data.
 
 ---
 
 ## Step 3: Differentiate tokens from complete messages
 
-The stream emits `message.delta` for partial updates. When `delta` is present, treat the chunk as an in-progress message; when `delta` is absent, treat it as the complete message.
+`Message.delta` is a boolean flag. When `delta` is `True` the chunk carries a partial, in-progress message; when it is `False` the message is complete. Either way the text lives in `message.text()`.
 
 ```python
+from agentflow.core.state import StreamEvent
+
 buffer = ""
 
 async for chunk in app.astream({"messages": [Message.text_message("Explain gravity.")]},
                                 config={"thread_id": "t1"}):
-    if chunk.message and getattr(chunk.message, "delta", None):
-        # Partial message — append the delta to the live display
-        buffer += chunk.message.delta
+    if chunk.event != StreamEvent.MESSAGE or not chunk.message:
+        continue
+
+    if chunk.message.delta:
+        # Partial message — append the new text to the live display
+        buffer += chunk.message.text()
         update_ui_streaming(buffer)
-    elif chunk.message:
+    else:
         # Complete message — replace the streaming placeholder
         final_msg = chunk.message
         buffer = ""
@@ -102,6 +124,7 @@ async for chunk in app.astream({"messages": [Message.text_message("Explain gravi
 | `ResponseGranularity.FULL` | Text tokens + complete state dict including `execution_meta`. |
 
 ```python
+from agentflow.core.state import StreamEvent
 from agentflow.utils import ResponseGranularity
 
 async for chunk in app.astream(
@@ -109,28 +132,36 @@ async for chunk in app.astream(
     config={"thread_id": "t2"},
     response_granularity=ResponseGranularity.FULL,
 ):
-    if chunk.state:
-        print("State snapshot:", chunk.state.get("context_summary"))
-    if chunk.content:
-        print(chunk.content, end="", flush=True)
+    if chunk.event == StreamEvent.STATE and chunk.state:
+        # chunk.state is an AgentState model, not a dict
+        print("State snapshot:", chunk.state.context_summary)
+    elif chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
 ```
 
 ---
 
 ## Step 5: Observe tool calls in the stream
 
-When the agent calls a tool, the stream emits chunks for the tool call and the tool result. You can watch `chunk.node_name` to know which node produced each chunk.
+When the agent calls a tool, the stream emits an `UPDATES` chunk when the tool is invoked and a `MESSAGE` chunk carrying the tool result. There is no `chunk.node_name`: the producing node is reported under the `"node"` key, in `chunk.metadata` for state and model chunks and in `chunk.data` for tool chunks.
 
 ```python
+from agentflow.core.state import StreamEvent
+
 async for chunk in app.astream({"messages": [Message.text_message("What is 123 * 456?")]},
                                 config={"thread_id": "t3"}):
-    node = chunk.node_name or "unknown"
-    if chunk.content:
-        print(f"[{node}] {chunk.content}", end="")
-    elif chunk.messages:
-        for msg in chunk.messages:
-            if msg.role == "tool":
-                print(f"\n[tool result] {msg.content}")
+    node = (chunk.metadata or {}).get("node") or (chunk.data or {}).get("node") or "unknown"
+
+    if chunk.event == StreamEvent.UPDATES and chunk.data:
+        # Tool lifecycle, for example {"status": "invoking_tool", "tool_name": "multiply"}
+        print(f"\n[{node}] {chunk.data.get('status')} {chunk.data.get('tool_name', '')}")
+    elif chunk.event == StreamEvent.MESSAGE and chunk.message:
+        if chunk.message.role == "tool":
+            print(f"\n[{node}] tool result: {chunk.message.text()}")
+        else:
+            print(f"[{node}] {chunk.message.text()}", end="")
+    elif chunk.event == StreamEvent.ERROR and chunk.data:
+        print(f"\n[{node}] failed: {chunk.data.get('reason')}")
 ```
 
 ---
@@ -139,19 +170,32 @@ async for chunk in app.astream({"messages": [Message.text_message("What is 123 *
 
 If you need the complete final messages but still want to use streaming for lower latency:
 
+There is no `chunk.messages`. Collect the completed messages yourself, skipping deltas and de-duplicating on `message_id`:
+
 ```python
+from agentflow.core.state import StreamEvent
+
 async def stream_to_messages(app, input_messages: list[Message]) -> list[Message]:
     final_messages: list[Message] = []
+    seen: set[str | int] = set()
 
     async for chunk in app.astream(
         {"messages": input_messages},
         config={"thread_id": "collect-1"},
     ):
-        if chunk.messages:
-            final_messages = chunk.messages  # each update replaces with the latest
+        if chunk.event != StreamEvent.MESSAGE or not chunk.message:
+            continue
+        if chunk.message.delta:
+            continue  # partial update, the complete message arrives later
+        if chunk.message.message_id in seen:
+            continue
+        seen.add(chunk.message.message_id)
+        final_messages.append(chunk.message)
 
     return final_messages
 ```
+
+Alternatively, run with `ResponseGranularity.FULL` and keep the `chunk.state.context` list from the last `StreamEvent.STATE` chunk.
 
 ---
 
@@ -161,6 +205,8 @@ Call `app.astop()` from another task or coroutine to cancel the running executio
 
 ```python
 import asyncio
+
+from agentflow.core.state import StreamEvent
 
 thread_id = "long-run-1"
 stopped = False
@@ -172,8 +218,8 @@ async def run_stream():
     ):
         if stopped:
             break
-        if chunk.content:
-            print(chunk.content, end="", flush=True)
+        if chunk.event == StreamEvent.MESSAGE and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
 
 async def stop_after(seconds: float):
     await asyncio.sleep(seconds)
@@ -196,6 +242,8 @@ The sync wrapper `app.stop(config)` is available for non-async contexts.
 `interrupt_before` and `interrupt_after` pause the graph at named nodes and resume on the next `ainvoke()` or `astream()` call with the same `thread_id`.
 
 ```python
+from agentflow.core.state import StreamEvent
+
 app = graph.compile(
     checkpointer=checkpointer,
     interrupt_before=["review_step"],  # pause before this node runs
@@ -206,16 +254,18 @@ async for chunk in app.astream(
     {"messages": [Message.text_message("Start the workflow.")]},
     config={"thread_id": "workflow-1"},
 ):
-    print(chunk.content or "", end="")
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="")
 
 # User reviews the state here ...
 
 # Second call on the same thread_id: resumes from "review_step"
 async for chunk in app.astream(
-    {"messages": [Message.text_message("Approved — continue.")]},
+    {"messages": [Message.text_message("Approved, continue.")]},
     config={"thread_id": "workflow-1"},
 ):
-    print(chunk.content or "", end="")
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="")
 ```
 
 ---
@@ -225,7 +275,7 @@ async for chunk in app.astream(
 ```python
 import asyncio
 from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import AgentState, Message
+from agentflow.core.state import AgentState, Message, StreamEvent
 from agentflow.storage.checkpointer import InMemoryCheckpointer
 from agentflow.utils import END, ResponseGranularity
 
@@ -250,8 +300,8 @@ async def chat(thread_id: str, user_input: str):
         config={"thread_id": thread_id},
         response_granularity=ResponseGranularity.LOW,
     ):
-        if chunk.content:
-            print(chunk.content, end="", flush=True)
+        if chunk.event == StreamEvent.MESSAGE and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
 
     print()
 
@@ -267,7 +317,9 @@ asyncio.run(main())
 ## What you learned
 
 - `app.astream()` is an async generator; iterate it with `async for`.
-- `chunk.message.delta` carries partial message updates; a message without `delta` is complete.
+- Branch on `chunk.event`, then read `chunk.message`, `chunk.state`, or `chunk.data`. `StreamChunk` has no `content` attribute.
+- `chunk.message.text()` extracts the text from a message's content blocks.
+- `chunk.message.delta` is a boolean: `True` for a partial update, `False` for the complete message.
 - `ResponseGranularity.LOW` (default) is the lowest overhead option.
 - Break out of the loop and call `app.astop()` to cancel execution early.
 - `interrupt_before` / `interrupt_after` pause execution for human-in-the-loop workflows.

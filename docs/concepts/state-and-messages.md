@@ -1,5 +1,5 @@
 ---
-title: State and Messages — AgentFlow Python AI Agent Framework
+title: State and Messages — AgentFlow concepts
 sidebar_label: State and Messages
 description: AgentState fields, Message structure, all content block types, ToolResult, and the add_messages reducer.
 keywords:

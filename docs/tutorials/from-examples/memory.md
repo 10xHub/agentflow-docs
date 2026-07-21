@@ -1,7 +1,7 @@
 ---
-title: Memory — AgentFlow Python AI Agent Framework
+title: Memory — AgentFlow tutorial
 sidebar_label: Memory
-description: Build a personalized AgentFlow graph with long-term memory retrieval and storage using Mem0. Part of the AgentFlow ai agent tutorial guide for production-ready.
+description: Build a personalized AgentFlow graph with long-term memory retrieval and storage using Mem0.
 keywords:
   - ai agent tutorial
   - multi-agent tutorial
@@ -26,7 +26,7 @@ A simple personalized agent that remembers user preferences across turns by:
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `mem0ai` installed
 - a Google model key such as `GOOGLE_API_KEY`

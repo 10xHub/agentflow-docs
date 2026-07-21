@@ -1,5 +1,5 @@
 ---
-title: Custom State — AgentFlow Python AI Agent Framework
+title: Custom State — AgentFlow tutorial
 sidebar_label: Custom State
 description: Extend AgentState with domain-specific fields and learn how partial state updates work at invoke time.
 keywords:
@@ -22,7 +22,7 @@ An HR assistant agent that carries extra fields — candidate CV text, job descr
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
 - A Google Gemini API key set as `GEMINI_API_KEY` in your environment
 

@@ -195,7 +195,7 @@ for await (const chunk of client.stream(
   [Message.text_message("Plan and write a Python script for fetching weather.")],
   {config: {thread_id: "ts-stream-1"}},
 )) {
-  if (chunk.type === "message_chunk") process.stdout.write(chunk.content ?? "");
+  if (chunk.event === "message" && chunk.message) process.stdout.write(chunk.message.text());
 }
 ```
 

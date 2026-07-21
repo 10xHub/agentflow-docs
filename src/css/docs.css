@@ -384,6 +384,17 @@ h4:hover .hash-link,
   font-weight: 600;
 }
 
+/* Reference headings are symbol names, so the table of contents is full of
+ * long unbreakable identifiers like `ContainsKeywordsCriterion`. Shrink the
+ * inline-code face and drop its padding so more of the name fits on one line
+ * before the browser has to break it mid-word. */
+.table-of-contents code {
+  padding: 0.05rem 0.25rem;
+  font-size: 0.86em;
+  overflow-wrap: break-word;
+  hyphens: none;
+}
+
 /* ─── Tables (in-doc) ───────────────────────────────────────────────── */
 
 .theme-doc-markdown table {

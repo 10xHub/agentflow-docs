@@ -1,7 +1,7 @@
 ---
 title: Create and configure the client
 sidebar_label: Create and configure the client
-description: Step-by-step guide to installing, instantiating, and verifying AgentFlowClient. Part of the AgentFlow agentflow typescript client guide for production-ready.
+description: Step-by-step guide to installing, instantiating, and verifying AgentFlowClient.
 keywords:
   - agentflow typescript client
   - ai agent client
@@ -60,7 +60,7 @@ Call `client.ping()` to confirm the server is reachable before sending real requ
 
 ```ts
 const response = await client.ping();
-console.log(response); // { pong: true }
+console.log(response.data); // 'pong'
 ```
 
 If this succeeds the client is ready to use.
@@ -152,8 +152,9 @@ Optionally fetch the graph info to verify the server loaded your graph correctly
 
 ```ts
 const info = await client.graph();
-console.log('Graph ID:', info.data.id);
-console.log('ID type:', info.data.id_type);
+console.log('Nodes:', info.data.nodes.map(n => n.name));
+console.log('Checkpointer:', info.data.info.checkpointer_type);
+console.log('ID type:', info.data.info.id_type);
 ```
 
 A successful response confirms the server started, loaded `agentflow.json`, compiled the graph, and is ready to handle requests.
@@ -188,10 +189,37 @@ const config: AgentFlowConfig = {
   credentials: 'include',             // Optional. For cookie-based sessions in browsers.
   timeout: 300_000,                   // Optional. Milliseconds. Default: 5 mins (300000).
   debug: false,                       // Optional. Default: false. Logs requests to console.debug.
+
+  // Optional. WebSocket constructor for wsStream() and realtime().
+  // Browsers and Node 21+ have a global WebSocket and need nothing here.
+  // On Node 18 or 20 this is required, or the first wsStream()/realtime()
+  // call throws "No WebSocket implementation available".
+  webSocketImpl: undefined,
 };
 
 const client = new AgentFlowClient(config);
 ```
+
+### WebSockets on Node 18 and 20
+
+`wsStream()` and `realtime()` need a `WebSocket` constructor. Node only exposes a global one from version 21, so on Node 18 and 20 install [`ws`](https://www.npmjs.com/package/ws) and pass it through:
+
+```bash
+npm install ws
+```
+
+```ts
+import WebSocket from 'ws';
+import { AgentFlowClient } from '@10xscale/agentflow-client';
+
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000',
+  authToken: process.env.API_TOKEN,
+  webSocketImpl: WebSocket as unknown as typeof globalThis.WebSocket,
+});
+```
+
+Everything else — `invoke()`, `stream()`, threads, memory, files — goes over `fetch` and works without it.
 
 ---
 

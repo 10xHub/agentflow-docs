@@ -1,7 +1,7 @@
 ---
-title: Threads — AgentFlow Python AI Agent Framework
+title: Threads — TypeScript client reference
 sidebar_label: Threads
-description: Reference for all thread, state, and message methods on AgentFlowClient. Part of the AgentFlow typescript client reference guide for production-ready Python AI.
+description: Reference for all thread, state, and message methods on AgentFlowClient.
 keywords:
   - typescript client reference
   - agent client api
@@ -146,7 +146,7 @@ console.log(response.data);
 
 | Parameter | Type | Description |
 |---|---|---|
-| `threadId` | `number` | The thread ID. Note: this method accepts numbers only (not strings) because state is keyed on the integer thread ID. |
+| `threadId` | `number` | The thread ID. See the note below: the TypeScript signature says `number`, but the server accepts strings and real thread ids usually are strings. |
 
 ---
 
@@ -157,7 +157,7 @@ Write a new state snapshot for a thread. Use this to seed initial state, repair 
 ```ts
 await client.updateThreadState(
   12345,
-  { configurable: {} },        // run config
+  {},                          // config body (the server derives it from the path thread_id)
   { user_preferences: { lang: 'fr' } }  // new state
 );
 ```
@@ -166,8 +166,8 @@ await client.updateThreadState(
 
 | Parameter | Type | Description |
 |---|---|---|
-| `threadId` | `number` | The thread ID. |
-| `config` | `Record<string, any>` | LangGraph-style run configuration map. |
+| `threadId` | `number` | The thread ID. Typed `number`; see the note below. |
+| `config` | `Record<string, any>` | Config body. The server rebuilds the config from the path `thread_id` and ignores what you send here, so `{}` is fine. |
 | `state` | `any` | New state object to write. Keys must match the graph's state schema. |
 
 ---
@@ -247,7 +247,7 @@ Append messages to a thread's saved history. Useful for injecting context, syste
 await client.addThreadMessages(
   'thread-123',
   [Message.text_message('You are a travel guide.', 'system')],
-  { configurable: {} },       // config
+  {},                         // config body (the server derives it from the path thread_id)
   { injected_by: 'setup' }    // metadata
 );
 ```
@@ -258,7 +258,7 @@ await client.addThreadMessages(
 |---|---|---|---|
 | `threadId` | `string \| number` | — | The thread ID. |
 | `messages` | `Message[]` | — | Messages to append. |
-| `config` | `Record<string, any>` | `{}` | Run configuration map. |
+| `config` | `Record<string, any>` | `{}` | Config body. The server rebuilds the config from the path `thread_id`, so this is effectively ignored. |
 | `metadata` | `Record<string, any>` | `undefined` | Optional metadata attached to the checkpoint. |
 
 ---
@@ -363,21 +363,37 @@ await client.deleteThread('thread-123');
 
 ---
 
+:::caution `threadId` is typed inconsistently
+`threadState()`, `updateThreadState()`, and `clearThreadState()` declare `threadId: number`. Every sibling method — `threadDetails()`, `threadMessages()`, `addThreadMessages()`, `singleMessage()`, `deleteMessage()`, `deleteThread()` — declares `string | number`, and `observability()` declares `string`.
+
+The server side has no such split: the thread routes validate `thread_id` as `str | int` and reject only empty strings and integers below 1. Real thread ids handed out by the server are strings, and they go into the URL path either way.
+
+So the `number` signatures are a client-side narrowing, not a server constraint. Passing a string thread id to those three methods works at runtime but fails to type-check. Until the signatures are widened, cast at the call site:
+
+```ts
+await client.threadState(threadId as unknown as number);
+```
+:::
+
+---
+
 ## Common errors
 
 | Error | Cause | Fix |
 |---|---|---|
 | `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id`, and confirm `checkpointer` is set in `agentflow.json`. |
+| TypeScript error passing a string id to `threadState` / `updateThreadState` / `clearThreadState` | Those three are typed `threadId: number`. | Cast at the call site; the server accepts strings. See the caution above. |
 | `AgentFlowError` status `422` | Validation failure — invalid `thread_id`, empty `message_id`, bad pagination values. | Check the field constraints listed in [Validation rules](#validation-rules). |
 
 ---
 
 ## What you learned
 
-- Threads persist conversation history and state between `invoke()` calls when a `thread_id` is set in `config.configurable`.
+- Threads persist conversation history and state between `invoke()` calls when `config.thread_id` is set.
 - `threadMessages()` supports search and pagination.
 - `clearThreadState()` removes the state snapshot but not the thread or messages.
 - All thread operations require the checkpointer to be configured in `agentflow.json`.
+- `threadState`, `updateThreadState`, and `clearThreadState` are typed `threadId: number` while their siblings accept `string | number`; the server accepts both.
 
 ## Next step
 

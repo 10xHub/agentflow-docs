@@ -1,5 +1,5 @@
 ---
-title: Qdrant Memory — AgentFlow Python AI Agent Framework
+title: Qdrant Memory — AgentFlow tutorial
 sidebar_label: Qdrant Memory
 description: Build an advanced personalized AgentFlow graph with Mem0, Qdrant, session-aware state, user profiles, and long-term memory operations.
 keywords:
@@ -27,7 +27,7 @@ A more advanced memory-enabled agent that:
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `mem0ai` installed
 - `python-dotenv`
@@ -213,7 +213,8 @@ The chat method passes user and session identity in config:
 ```python
 config = {
     "thread_id": session_id,
-    "configurable": {"user_id": user_id, "session_id": session_id},
+    "user_id": user_id,
+    "session_id": session_id,
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
-title: Test with the Playground — AgentFlow Python AI Agents
+title: Test with the Playground — Beginner path
 sidebar_label: Test with the Playground
-description: Use agentflow play to open the hosted playground and inspect your agent in a browser UI. Part of the AgentFlow ai agents for beginners guide for.
+description: Use agentflow play to open the hosted playground and inspect your agent in a browser UI.
 keywords:
   - ai agents for beginners
   - first ai agent python
@@ -45,7 +45,7 @@ Expected output:
 
 ```text
 INFO: AgentFlow API starting on http://127.0.0.1:8000
-INFO: Opening playground at https://playground.agentflow.dev?backendUrl=http://127.0.0.1:8000
+INFO: Opening playground at https://playground-463bd.web.app?backendUrl=http://127.0.0.1:8000
 ```
 
 The browser should open automatically. If it does not, copy the URL from the terminal output and open it manually.

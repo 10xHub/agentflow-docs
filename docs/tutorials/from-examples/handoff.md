@@ -1,5 +1,5 @@
 ---
-title: Handoff — AgentFlow Python AI Agent Framework
+title: Handoff — AgentFlow tutorial
 sidebar_label: Handoff
 description: Build a multi-agent AgentFlow graph where specialized agents transfer control to each other using handoff tools.
 keywords:
@@ -28,7 +28,7 @@ Instead of routing only from fixed external rules, agents can transfer control t
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - a provider key such as `GEMINI_API_KEY`
 

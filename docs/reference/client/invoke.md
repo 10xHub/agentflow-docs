@@ -1,7 +1,7 @@
 ---
-title: "`invoke()` — AgentFlow Python AI Agent Framework"
+title: "`invoke()` — TypeScript client reference"
 sidebar_label: "`invoke()`"
-description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state. Part of the AgentFlow typescript client reference guide for.
+description: "Reference for the AgentFlowClient.invoke() method — send messages and receive the final state."
 keywords:
   - typescript client reference
   - agent client api
@@ -55,7 +55,7 @@ The client serialises each `Message` before sending it. If `message.message_id` 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `initial_state` | `Record<string, any>` | `undefined` | Initial state values to seed the graph before execution. Keys must match the graph's state schema. |
-| `config` | `Record<string, any>` | `undefined` | LangGraph-style run configuration. Common keys: `{ configurable: { thread_id: 'my-thread' } }`. When `thread_id` is set the server checkpoints state between calls — omitting it runs the graph without persistence. |
+| `config` | `Record<string, any>` | `undefined` | Run configuration. The server reads `thread_id` from the **top level** of this object: `{ thread_id: 'my-thread' }`. When `thread_id` is set the server checkpoints state between calls; omitting it makes the server generate a fresh thread id for the run. A nested `configurable` key is not read and is silently ignored. |
 | `recursion_limit` | `number` | `25` | Maximum number of invoke loop iterations. Each iteration is one call to `/v1/graph/invoke`. When the limit is reached `InvokeResult.recursion_limit_reached` is `true`. |
 | `response_granularity` | `'full' \| 'partial' \| 'low'` | `'full'` | Controls how much data the server returns per call. See [Response granularity](#response-granularity) below. |
 | `onPartialResult` | `InvokeCallback` | `undefined` | Callback invoked after each loop iteration with intermediate results. Useful for showing progress in the UI without full streaming. |
@@ -90,12 +90,12 @@ Use `meta.thread_id` if you want to continue the conversation in a later call:
 
 ```ts
 const first = await client.invoke([userMsg], {
-  config: { configurable: { thread_id: 'conv-001' } },
+  config: { thread_id: 'conv-001' },
 });
 
 const followUp = await client.invoke(
   [Message.text_message('Tell me more')],
-  { config: { configurable: { thread_id: first.meta.thread_id } } }
+  { config: { thread_id: first.meta.thread_id } }
 );
 ```
 
@@ -205,7 +205,7 @@ async function chat(userInput: string) {
   const result = await client.invoke(
     [Message.text_message(userInput)],
     {
-      config: { configurable: { thread_id: THREAD_ID } },
+      config: { thread_id: THREAD_ID },
       response_granularity: 'low',
     }
   );
@@ -229,7 +229,7 @@ const result = await client.invoke(
     initial_state: {
       user_preferences: { language: 'en', theme: 'dark' },
     },
-    config: { configurable: { thread_id: 'thread-789' } },
+    config: { thread_id: 'thread-789' },
   }
 );
 ```
@@ -251,7 +251,7 @@ const result = await client.invoke(
 ## What you learned
 
 - `invoke()` sends messages and returns when the agent produces a final response.
-- The `config.configurable.thread_id` option enables persistent conversations with checkpointing.
+- The `config.thread_id` option enables persistent conversations with checkpointing.
 - `response_granularity: 'low'` is the most efficient setting for chat UIs.
 - The `onPartialResult` callback lets you react to each iteration without requiring full streaming.
 - The remote tool call loop is handled automatically — just register your handlers with `registerTool()`.

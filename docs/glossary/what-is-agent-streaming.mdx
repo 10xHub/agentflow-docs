@@ -1,0 +1,198 @@
+---
+title: "What Is AI Agent Streaming? SSE Guide for Python"
+sidebar_label: What is agent streaming?
+description: AI agent streaming sends responses token-by-token to a frontend using SSE instead of waiting for the full response. Learn how streaming works and how to implement it in Python.
+keywords:
+  - ai agent streaming
+  - what is sse ai agents
+  - stream ai agent responses
+  - server sent events python
+  - agent streaming python
+sidebar_position: 8
+---
+
+# What is AI agent streaming?
+
+**AI agent streaming sends responses to the client token-by-token (or chunk-by-chunk) as the LLM generates them, instead of waiting for the full response to complete before sending anything.** From the user's perspective, the text appears progressively on screen — the same experience as ChatGPT's typewriter effect — dramatically reducing perceived latency.
+
+Streaming matters because LLMs generate tokens sequentially. A 500-token response at typical generation speed takes 5–10 seconds without streaming. With streaming, the user sees the first tokens within 200–500ms.
+
+## How streaming works
+
+```
+LLM generates tokens:  "The" → " weather" → " in" → " Tokyo" → "..."
+                           │         │          │          │
+                           ▼         ▼          ▼          ▼
+SSE stream to client:   chunk1   chunk2     chunk3     chunk4
+                           │         │          │          │
+                           ▼         ▼          ▼          ▼
+UI renders:             "The"  "The weather"  "The weather in"  ...
+```
+
+The server sends each token as an SSE event the moment it is generated. The client receives and renders tokens in real time.
+
+## SSE vs WebSockets for streaming
+
+| | SSE (Server-Sent Events) | WebSockets |
+|--|--------------------------|-----------|
+| Direction | Server → Client only | Bidirectional |
+| Protocol | HTTP/1.1 | WS upgrade |
+| Browser support | Native | Native |
+| Reconnection | Automatic | Manual |
+| Best for | Token streaming | Bidirectional agent interaction |
+
+AgentFlow supports both: `POST /v1/graph/stream` for SSE token streaming, and `WS /v1/graph/ws` for bidirectional WebSocket connections (used for remote tool calls where the client executes tools on behalf of the agent).
+
+## Streaming from Python with AgentFlow
+
+AgentFlow's built-in API server exposes SSE streaming with zero configuration:
+
+```bash
+agentflow api  # starts REST + SSE + WebSocket server
+```
+
+The streaming endpoint:
+
+```bash
+curl -N -X POST http://localhost:8000/v1/graph/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Explain neural networks"}]}],
+    "config": {"thread_id": "demo-1"}
+  }'
+```
+
+Each SSE event arrives as:
+
+```
+data: {"event": "token", "content": "Neural"}
+data: {"event": "token", "content": " networks"}
+data: {"event": "token", "content": " are"}
+...
+data: {"event": "end"}
+```
+
+## Consuming the stream from TypeScript
+
+The `@10xscale/agentflow-client` npm package handles SSE parsing automatically:
+
+```typescript
+import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
+
+for await (const chunk of client.stream(
+  [Message.text_message("Explain neural networks")],
+  { config: { thread_id: "demo-1" } }
+)) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
+  }
+}
+```
+
+## Streaming in a React UI
+
+The client package exposes a single entry point and ships no React bindings, so wire `client.stream()` into your own state. The generator is an ordinary `AsyncGenerator`, so a `for await` inside an effect or an event handler is all you need:
+
+```tsx
+import { useCallback, useState } from "react";
+import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
+
+function Chat() {
+  const [text, setText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const send = useCallback(async (prompt: string) => {
+    setText("");
+    setIsStreaming(true);
+    try {
+      const stream = client.stream([Message.text_message(prompt)], {
+        config: { thread_id: "user-session-123" },
+      });
+      for await (const chunk of stream) {
+        if (chunk.event === StreamEventType.MESSAGE && chunk.message?.delta) {
+          setText((previous) => previous + chunk.message!.text());
+        }
+      }
+    } finally {
+      setIsStreaming(false);
+    }
+  }, []);
+
+  return (
+    <div>
+      <p>{text}</p>
+      {isStreaming && <span>...</span>}
+      <button onClick={() => send("Tell me more")}>Send</button>
+    </div>
+  );
+}
+```
+
+`chunk.message.delta === true` marks an incremental token; the same message arrives once more with `delta === false` when it is complete, so filter on `delta` to avoid printing the answer twice.
+
+## Streaming with tool calls
+
+When an agent calls a tool during streaming, the stream pauses while the tool executes, then resumes with the next LLM response. AgentFlow streams tool-call events so the UI can show "calling search_web..." in real time:
+
+```json
+{"event": "message", "message": {"role": "assistant", "content": [{"type": "tool_call", "name": "search_web", "args": {"query": "latest AI news"}}]}}
+{"event": "message", "message": {"role": "tool", "content": [{"type": "tool_result", "call_id": "...", "output": "..."}]}}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": "Based"}]}}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": " on"}]}}
+```
+
+The server writes one JSON object per line (NDJSON). Tool activity is not a separate event type: it arrives as ordinary `message` chunks whose content blocks are `tool_call` and `tool_result`, so a UI showing "calling search_web..." watches for those block types.
+
+## Streaming in the graph
+
+You can also stream directly from a compiled graph in Python without the API server:
+
+```python
+from agentflow.core.state import Message
+
+async def stream_agent():
+    async for chunk in app.astream(
+        {"messages": [Message.text_message("Tell me about Python")]},
+        config={"thread_id": "demo"},
+    ):
+        if chunk.event == "message" and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
+```
+
+`astream` yields `StreamChunk` objects, not dicts. To push progress out of a tool while it runs, take a `StreamEmitter` parameter in the tool; see [StreamEmitter](/docs/reference/python/stream-emitter) for the injection rules and `from agentflow.core.state.stream_emitter import StreamEmitter` as the import path.
+
+<FAQ items={[
+  {
+    q: "What is SSE (Server-Sent Events)?",
+    a: "Server-Sent Events is a web standard for pushing data from server to client over a persistent HTTP connection. The client opens a GET or POST request with Accept: text/event-stream, and the server sends newline-delimited events as they occur. SSE is simpler than WebSockets for one-directional streaming and reconnects automatically if the connection drops."
+  },
+  {
+    q: "Does streaming work with AI agent tool calls?",
+    a: "Yes. AgentFlow streams token generation and tool call events. When the LLM calls a tool, the stream emits a tool_call_start event; when the tool finishes, a tool_call_end event; then token streaming resumes for the next LLM response. This lets the frontend show exactly what the agent is doing in real time."
+  },
+  {
+    q: "How do I stop a stream mid-generation?",
+    a: "Close the SSE connection from the client side. AgentFlow detects the disconnect and cancels the in-progress LLM generation. See the stop-stream tutorial in the AgentFlow examples for a complete implementation with an abort controller on the TypeScript client."
+  },
+  {
+    q: "Can I stream to multiple clients simultaneously?",
+    a: "Yes. AgentFlow's API server is fully async and handles concurrent streams. Each stream is scoped to a thread_id — multiple users can stream simultaneously without interference. The SSE endpoint uses Python's asyncio for non-blocking I/O."
+  },
+  {
+    q: "Does streaming affect the agent's response quality?",
+    a: "No. The LLM generates the same tokens in the same order regardless of whether streaming is enabled. Streaming only changes when those tokens are delivered to the client — progressively vs. all at once after completion."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/concepts/streaming', title: 'Streaming concepts', description: 'How AgentFlow\'s streaming pipeline works end-to-end.', intent: 'concept'},
+  {to: '/docs/how-to/client/stream-responses', title: 'Stream responses from TypeScript', description: 'Use the TypeScript client to consume streaming responses.', intent: 'guide'},
+  {to: '/docs/how-to/python/stream-graph', title: 'Stream a graph', description: 'Implement streaming directly from a Python graph.', intent: 'guide'},
+  {to: '/docs/tutorials/from-examples/react-streaming', title: 'React streaming tutorial', description: 'A complete React frontend consuming AgentFlow\'s SSE stream.', intent: 'tutorial'},
+]} />

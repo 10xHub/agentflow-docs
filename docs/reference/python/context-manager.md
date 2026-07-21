@@ -1,5 +1,5 @@
 ---
-title: Context Manager — AgentFlow Python AI Agent Framework
+title: Context Manager — Python API reference
 sidebar_label: Context Manager
 description: "BaseContextManager and MessageContextManager — trim and bound the agent's message history before each LLM call."
 keywords:

@@ -1,7 +1,7 @@
 ---
-title: Install Skills — AgentFlow Python AI Agent Framework
+title: Install Skills — CLI how-to
 sidebar_label: Install Skills
-description: How to use agentflow skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot. Part of the AgentFlow CLI guide.
+description: How to use agentflow skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot.
 keywords:
   - agentflow skills
   - agentflow cli

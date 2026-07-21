@@ -1,7 +1,7 @@
 ---
-title: Tutorials — AgentFlow Python AI Agent Framework
+title: Tutorials — AgentFlow tutorial
 sidebar_label: Overview
-description: Hands-on AgentFlow tutorials that turn example code into step-by-step guides. Part of the AgentFlow ai agent tutorial guide for production-ready Python AI.
+description: Hands-on AgentFlow tutorials that turn example code into step-by-step guides.
 keywords:
   - ai agent tutorial
   - multi-agent tutorial
@@ -95,7 +95,7 @@ If you are new to AgentFlow, follow the pages in the order shown above. The tuto
 
 Most tutorials assume:
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Environment variables loaded from `.env`
 - A provider key such as `GEMINI_API_KEY` for Google-based examples

@@ -1,7 +1,7 @@
 ---
-title: Graph — AgentFlow Python AI Agent Framework
+title: Graph — Python API reference
 sidebar_label: Graph
-description: StateGraph, CompiledGraph, START, END — the core execution engine of the agentflow library. Part of the AgentFlow agentflow python reference guide for.
+description: StateGraph, CompiledGraph, START, END — the core execution engine of the agentflow library.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -327,10 +327,37 @@ Releases all resources gracefully: stops background tasks, closes the checkpoint
 | Key | Type | Auto-generated if missing | Description |
 |---|---|---|---|
 | `thread_id` | `str \| int` | Yes (UUID or from ID generator) | Identifies the conversation thread for checkpointing. |
-| `user_id` | `str` | Yes (`"test-user-id"`) | User identifier. Override in production. |
+| `user_id` | `str` | Yes (`"anonymous"`) | User identifier. Override in production. |
 | `run_id` | `str \| int` | Yes | Unique run identifier. |
 | `recursion_limit` | `int` | No (framework default: 25) | Maximum node transitions before `GraphRecursionError`. |
 | `timestamp` | `str` | Yes | ISO 8601 timestamp of the run. |
+| `node_timeout` | `float \| None` | No (framework default: `900.0` seconds) | Deadline for a single node execution. |
+| `tool_timeout` | `float \| None` | No (framework default: `300.0` seconds) | Deadline for a single tool call inside a `ToolNode`. |
+| `durable_checkpoint_every_step` | `bool` | No (default `True`) | Persist state and new messages after each completed step. See [Set up checkpointing](/docs/how-to/python/set-up-checkpointing#durability-guarantees-pgcheckpointer). |
+
+### Execution deadlines
+
+Nothing else bounds a node or a tool. The provider SDK's own timeout does not cover custom tools, MCP calls, or condition functions, so without a deadline a hung call blocks the run forever: the loop never advances a step, the recursion limit never trips, and the between-nodes stop check is never reached.
+
+Both defaults are deliberately generous. They are a backstop against hangs, not a latency budget. The node default (900s) sits above the LLM client timeout (600s) so a slow LLM call fails with its own error rather than being masked by the node deadline.
+
+```python
+result = app.invoke(
+    input_data,
+    config={
+        "thread_id": "t-1",
+        "node_timeout": 120.0,   # tighten the node deadline
+        "tool_timeout": 30.0,    # tighten the tool deadline
+    },
+)
+
+# Disable a deadline entirely: pass None, or any non-positive number
+config = {"thread_id": "t-1", "node_timeout": None}
+```
+
+An absent key uses the framework default. An explicit `None` disables the deadline, which is different from the key being absent. A non-positive value (`0`) also disables it. A value that cannot be parsed as a float logs a warning and falls back to the default.
+
+When a deadline expires the node task is cancelled and a `NodeTimeoutError` is raised, which the execution loop persists and reports as a normal node error.
 
 ---
 
@@ -364,3 +391,4 @@ def my_node(state: AgentState, config: dict) -> dict:
 | `GraphError GRAPH_004` | `interrupt_before` or `interrupt_after` contains a node name that does not exist. | Check node names against `graph.nodes.keys()`. |
 | `GraphRecursionError` | Execution exceeded `recursion_limit`. | Increase `recursion_limit` in config or fix a cycle in the graph. |
 | `RuntimeError` in async context | `invoke()` called inside an async function. | Use `ainvoke()` instead. |
+| `NodeTimeoutError` | A node or tool exceeded `node_timeout` / `tool_timeout`. | Raise the relevant deadline in config, or fix the hanging call. |

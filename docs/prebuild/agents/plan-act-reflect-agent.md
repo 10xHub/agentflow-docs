@@ -1,3 +1,15 @@
+---
+title: PlanActReflectAgent — Prebuilt agents
+sidebar_label: PlanActReflectAgent
+description: PlanActReflectAgent loops through PLAN, ACT, and REFLECT nodes, critiquing its own output before deciding to iterate or stop.
+keywords:
+  - plan act reflect agent
+  - self-critiquing agent
+  - agent reflection loop
+  - iterative planning agent
+  - agentflow reflect pattern
+---
+
 # PlanActReflectAgent
 
 A self-improving agent that plans before acting, then critically evaluates its own work before deciding whether to iterate or stop.
@@ -226,7 +238,7 @@ asyncio.run(main())
 import asyncio
 from agentflow.prebuilt.agent import PlanActReflectAgent
 from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.core.state import Message
 
 agent = PlanActReflectAgent(
@@ -236,7 +248,7 @@ agent = PlanActReflectAgent(
     max_iterations=4,
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = agent.compile(checkpointer=checkpointer)
 
 

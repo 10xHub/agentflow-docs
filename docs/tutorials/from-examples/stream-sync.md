@@ -1,5 +1,5 @@
 ---
-title: Synchronous Streaming — AgentFlow Python AI Agent Framework
+title: Synchronous Streaming — AgentFlow tutorial
 sidebar_label: Synchronous Streaming
 description: Use app.stream() for synchronous token-by-token streaming with a custom state and is_stream config flag.
 keywords:
@@ -22,7 +22,7 @@ A ReAct agent that uses `app.stream()` — the synchronous streaming API — wit
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 
@@ -148,22 +148,26 @@ flowchart TD
 
 ## Example output
 
+Abridged, since each dump also carries `state`, `data`, `thread_id`, `run_id`, and `timestamp`:
+
 ```text
-{'content': 'The weather', 'delta': True, 'node': 'MAIN', 'metadata': {}}
-{'content': ' in your location', 'delta': True, 'node': 'MAIN', 'metadata': {}}
-{'content': ' is not something', 'delta': True, 'node': 'MAIN', 'metadata': {}}
+{'event': 'message', 'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'The weather'}], 'delta': True, ...}, 'metadata': {'node': 'MAIN', 'function_name': 'MAIN'}, ...}
+{'event': 'message', 'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': ' in your location'}], 'delta': True, ...}, 'metadata': {'node': 'MAIN', 'function_name': 'MAIN'}, ...}
 ...
-{'content': None, 'delta': False, 'node': 'MAIN', 'metadata': {}}
+{'event': 'message', 'message': {'role': 'assistant', 'content': [...], 'delta': False, ...}, 'metadata': {'node': 'MAIN', 'function_name': 'MAIN'}, ...}
+{'event': 'state', 'message': None, 'state': {...}, 'metadata': {'node': 'MAIN', 'step': 1}, ...}
 Total chunks received: 12
 ```
 
-The last chunk has `delta=False`, signalling the stream is complete.
+The final message chunk has `message.delta` set to `False`, signalling that message is complete.
 
 ## Passing custom state fields at invoke time
 
 You can seed custom state fields via the `state` key in the input dict:
 
 ```python
+from agentflow.core.state import StreamEvent
+
 inp = {
     "messages": [Message.text_message("Analyse my CV against this job description.")],
     "state": {
@@ -174,9 +178,11 @@ inp = {
 config = {"thread_id": "cv-analysis", "recursion_limit": 10, "is_stream": True}
 
 for chunk in app.stream(inp, config=config):
-    if chunk.delta:
-        print(chunk.content, end="", flush=True)
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
 ```
+
+`StreamChunk` has no `content` or `delta` attribute of its own. Branch on `chunk.event` first, then read `chunk.message`, `chunk.state`, or `chunk.data`. The `delta` flag lives on the message: `chunk.message.delta` is `True` for a partial update and `False` for the complete message.
 
 ## Complete source
 
@@ -256,7 +262,8 @@ print(f"Total chunks received: {message_count}")
 |---|---|
 | `app.stream(inp, config)` | Synchronous generator; use in CLI/script contexts |
 | `is_stream: True` | Config flag that activates the streaming execution path inside the graph |
-| `chunk.delta` | `True` for partial chunks, `False` for the final sentinel chunk |
+| `chunk.event` | `StreamEvent` discriminator; pick the matching holder (`message`, `state`, or `data`) |
+| `chunk.message.delta` | `True` for partial message chunks, `False` when the message is complete |
 | `StateGraph(CustomAgentState())` | Pass a state instance to set the type and default field values |
 
 ## What you learned

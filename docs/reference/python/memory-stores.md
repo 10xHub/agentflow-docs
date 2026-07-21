@@ -1,7 +1,7 @@
 ---
-title: Memory stores — AgentFlow Python AI Agent Framework
+title: Memory stores — Python API reference
 sidebar_label: Memory stores
-description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents. Part of the AgentFlow agentflow python reference guide for production-ready Python AI.
+description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -137,24 +137,24 @@ pip install qdrant-client
 
 ```python
 from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbeddingService
+from agentflow.storage.store.embedding import OpenAIEmbedding
 
 # Local Qdrant (persisted to disk)
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     path="./qdrant_data",
 )
 
 # Remote Qdrant
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     host="localhost",
     port=6333,
 )
 
 # Qdrant Cloud
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     url="https://xyz.qdrant.io",
     api_key="your-api-key",
 )

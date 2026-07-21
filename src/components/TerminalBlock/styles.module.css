@@ -105,6 +105,17 @@
   font-size: 0.84rem;
 }
 
+/* On phones a one-line install command is wider than the viewport, and a
+ * horizontal scrollbar on the primary call to action is a bad first
+ * impression. Shell one-liners wrap; multi-line code keeps scrolling, where
+ * wrapping would destroy the indentation that carries meaning. */
+@media (max-width: 600px) {
+  .compact .pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 .footer {
   padding: 0.75rem 1.25rem;
   border-top: 1px solid var(--af-border);

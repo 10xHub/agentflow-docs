@@ -1,5 +1,5 @@
 ---
-title: MCP File Download — AgentFlow Python AI Agent Framework
+title: MCP File Download — AgentFlow tutorial
 sidebar_label: MCP File Download
 description: Use a GitHub MCP-backed AgentFlow graph to retrieve repository files such as README content through remote MCP tools.
 keywords:
@@ -22,7 +22,7 @@ A GitHub-MCP-backed agent that asks a remote MCP server to fetch a file from a r
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `fastmcp` installed
 - `GITHUB_TOKEN`

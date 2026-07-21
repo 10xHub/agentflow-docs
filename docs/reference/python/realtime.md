@@ -1,5 +1,5 @@
 ---
-title: Realtime — AgentFlow Python AI Agent Framework
+title: Realtime — Python API reference
 sidebar_label: Realtime
 description: Full API reference for the realtime audio-to-audio subsystem — LiveInputQueue, RealtimeConfig, VADConfig, ReconnectConfig, AudioAgent, RealtimeEvent union, and the WebSocket bridge protocol.
 keywords:
@@ -89,13 +89,23 @@ AudioAgent(
 | Parameter | Notes |
 |---|---|
 | `model` | Model string resolved through `detect_provider`. Must resolve to `"google"` provider; only Gemini Live is supported in v1. |
+| `state` | Initial `AgentState` subclass instance for the graph. |
+| `context_manager` | `BaseContextManager` applied to the conversation context. |
+| `publisher` | One publisher or a list of them, forwarded to the underlying `StateGraph`. |
+| `id_generator` | ID generator for thread, run, and message IDs. Defaults to `DefaultIDGenerator()`. |
+| `container` | An existing InjectQ container to build the graph against. When omitted, the ambient container is used. Pass one to isolate DI bindings per agent, which matters when several agents run in the same process. |
 | `realtime_config` | Per-session config. Defaults to `RealtimeConfig(model=model)` if omitted. |
 | `system_prompt` | List of `{"role": "system", "content": "..."}` dicts. Flattened into `system_instruction` at connect time. |
 | `tools` | Callable tools passed to a `ToolNode`. Advertised to the provider at connect time. |
 | `client` | MCP client (fastmcp / mcp). |
+| `pass_user_info_to_mcp` | Forward the run's user identity to MCP tool calls. Forwarded to the internal `ToolNode`. Defaults to `False`. |
 | `skills` | `SkillConfig` for dynamic skill injection. |
 | `memory` | `MemoryConfig` for long-term memory. |
-| `realtime_client_factory` | Override the provider client factory (useful in tests). |
+| `realtime_client_factory` | Zero-argument callable returning a `RealtimeClient`. Overrides the default provider client factory: use it to inject a fake client in tests, or to supply a pre-authenticated Gemini Live client. |
+| `live_node_name` | Name of the graph node holding the `LiveAgent`. Defaults to `"LIVE"`. Change it when the name collides with another node or when a lifecycle hook keys off node names. |
+| `**agent_kwargs` | Forwarded verbatim to the underlying `LiveAgent`. |
+
+A `ToolNode` is only created when `tools` or `client` is provided; otherwise the live agent runs without tools.
 
 ### compile()
 
@@ -154,7 +164,9 @@ Non-blocking upstream input queue. Feed it from any context including audio capt
 LiveInputQueue(maxsize: int = 0)
 ```
 
-All send methods are synchronous (`put_nowait`). Sends after `close()` are dropped silently (logged at DEBUG).
+All send methods are synchronous (`put_nowait`), so the input side keeps accepting audio while the model is still generating. That is the precondition for barge-in. Feed one queue per session.
+
+`maxsize=0` (the default) means unbounded. With a positive `maxsize`, a frame that arrives when the queue is full is dropped and logged at warning level rather than blocking the producer. Sends after `close()` are dropped silently (logged at DEBUG).
 
 ### Methods
 
@@ -162,10 +174,22 @@ All send methods are synchronous (`put_nowait`). Sends after `close()` are dropp
 |---|---|---|
 | `send_audio` | `(data: bytes, sample_rate: int = 16000) -> None` | Send a chunk of PCM16 audio. |
 | `send_text` | `(text: str) -> None` | Inject a text turn into the live session. |
-| `send_image` | `(data: bytes, mime_type: str = "image/jpeg") -> None` | Send a still image or video frame. |
+| `send_image` | `(data: bytes, mime_type: str = "image/jpeg") -> None` | Send a still image or a single video frame. |
 | `send_activity_start` | `() -> None` | Manual VAD: mark start of user speech. Only meaningful when `vad.enabled=False`. |
-| `send_activity_end` | `() -> None` | Manual VAD: mark end of user speech. |
-| `close` | `() -> None` | Signal end of input. Idempotent; enqueues a `close` sentinel. |
+| `send_activity_end` | `() -> None` | Manual VAD: mark end of user speech. Pairs with `send_activity_start`; the provider treats the enclosed audio as one user turn and begins responding. |
+| `close` | `() -> None` | Signal end of input. Idempotent: repeated calls do nothing. Enqueues a single `close` sentinel, which ends the `async for` loop over the queue and lets the pump task finish. Later sends are dropped. |
+
+`closed` is a read-only property reporting whether `close()` has been called.
+
+#### Image input
+
+`send_image` is a Python-SDK capability. Gemini Live accepts still images and video as individual frames, so send video as a stream of frames; roughly 1 fps is the model's effective ceiling. `mime_type` must be an image type the provider supports and defaults to `image/jpeg`.
+
+```python
+queue.send_image(jpeg_bytes, mime_type="image/jpeg")
+```
+
+The API server's `/v1/graph/live` WebSocket bridge forwards audio and text only, so image input is not available over that socket. Use the SDK path when you need it.
 
 ### LiveInput
 

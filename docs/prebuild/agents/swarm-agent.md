@@ -1,3 +1,15 @@
+---
+title: SwarmAgent — Prebuilt agents
+sidebar_label: SwarmAgent
+description: SwarmAgent lets peer agents hand off control directly via transfer_to_X tools, with no central supervisor coordinating routing.
+keywords:
+  - swarm agent
+  - peer-to-peer multi-agent
+  - agent handoff pattern
+  - decentralized multi-agent
+  - transfer_to tool
+---
+
 # SwarmAgent
 
 A peer-to-peer multi-agent pattern where agents hand off control to each other directly — no central coordinator.
@@ -274,7 +286,7 @@ import asyncio
 from agentflow.core.graph import Agent, ToolNode
 from agentflow.prebuilt.agent import SwarmAgent
 from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.prebuilt.tools import google_web_search
 from agentflow.core.state import Message
 
@@ -293,7 +305,7 @@ swarm = SwarmAgent(
     entry="TRIAGE",
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = swarm.compile(checkpointer=checkpointer)
 
 

@@ -1,3 +1,15 @@
+---
+title: Web Tools — Prebuilt tools
+sidebar_label: Web Tools
+description: fetch_url, google_web_search, and vertex_ai_search — prebuilt tools for fetching web pages and running grounded searches.
+keywords:
+  - web tools agentflow
+  - fetch_url
+  - google_web_search
+  - vertex_ai_search
+  - grounded search tool
+---
+
 # Web Tools
 
 Prebuilt tools for fetching content from the public web and running Google-powered searches.

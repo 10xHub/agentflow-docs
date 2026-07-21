@@ -1,460 +1,132 @@
 ---
-title: agentflow.json Configuration — AgentFlow Python AI Agent Framework
-sidebar_label: agentflow.json Config
-description: Complete reference for the agentflow.json configuration file. Covers agent, auth, checkpointer, store, rate limiting, injectq, thread name generator, authorization, and environment loading.
+title: agentflow.json in production — Production how-to
+sidebar_label: agentflow.json in production
+description: Which agentflow.json fields matter in production, the values to set for auth, persistence, and rate limiting, and the defaults that are unsafe once real traffic arrives.
 keywords:
   - agentflow.json
-  - agentflow config
+  - agentflow production config
   - agentflow configuration
-  - python ai agent framework
+  - agent server configuration
+  - production checklist
 ---
 
-# agentflow.json configuration
+# agentflow.json in production
 
-`agentflow.json` is the single configuration file that controls every behavior of the AgentFlow server. The `agentflow api` command reads it at startup. This page documents every supported field.
+Every field, its type, and its default are in the
+[configuration reference](../../reference/api-cli/configuration.md). This page
+covers only what changes when you move from a laptop to a deployment.
 
-## Minimal example
-
-```json
-{
-  "agent": "graph.agent:app",
-  "env": ".env",
-  "auth": null,
-  "thread_name_generator": null
-}
-```
-
-## Full example
+## The production shape
 
 ```json
 {
   "agent": "graph.agent:app",
   "env": ".env",
-  "auth": {
-    "method": "jwt"
-  },
-  "authorization": "graph.agent:MyAuthorizationBackend",
-  "checkpointer": null,
-  "injectq": "graph.agent:container",
-  "store": null,
-  "redis": null,
-  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "auth": "jwt",
+  "authorization": "ownership",
+  "checkpointer": "graph.dependencies:checkpointer",
+  "store": "graph.dependencies:store",
+  "redis": {"url": "${REDIS_URL}"},
   "rate_limit": {
     "enabled": true,
     "backend": "redis",
     "requests": 100,
     "window": 60,
-    "by": "ip",
+    "by": "user",
+    "redis": {"url": "${REDIS_URL}", "prefix": "agentflow:rate-limit"},
     "trusted_proxy_headers": true,
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
-    "redis": {
-      "url": "redis://localhost:6379/0",
-      "prefix": "agentflow:rate-limit"
-    },
+    "trusted_proxy_hops": 1,
     "fail_open": true
   }
 }
 ```
 
+Five of those decisions separate a demo from a deployment.
+
+### `auth` must not stay `null`
+
+With `auth` unset, every request is accepted without credentials. Set `"jwt"`
+and a `JWT_SECRET_KEY` of at least 32 characters, or point at a custom
+`BaseAuth` subclass. See [auth and authorization](auth-and-authorization.md).
+
+### `authorization` decides whether a thread id is a secret
+
+Unset, it is mode-based: `"ownership"` in production, `"allow_all"` in
+development. Set it explicitly rather than relying on `MODE` being correct in
+every environment. Under `"allow_all"`, anyone who knows a `thread_id` can read
+that conversation.
+
+### `checkpointer` must be shared, not in-memory
+
+`InMemoryCheckpointer` loses every thread on restart and is invisible to other
+replicas, so the same user hits a different history depending on which pod
+answers. Production means `PgCheckpointer` with a Postgres and Redis that all
+replicas share. See [checkpointing](checkpointing.md).
+
+### `rate_limit.backend` must be `redis` with more than one replica
+
+The memory backend counts per process, so three replicas allow three times the
+limit you configured.
+
+`trusted_proxy_hops` matters just as much. `X-Forwarded-For` is caller-supplied,
+and hops are counted from the right, so the value must match how many proxies
+actually sit in front of the server. Set it too high and a client can forge its
+own bucket key and bypass the limit entirely.
+
+`fail_open: true` allows requests when the limiter's backend is down. That is
+the right default for availability and the wrong one if the limit is protecting
+something expensive; decide deliberately. See
+[configure rate limiting](../api-cli/configure-rate-limiting.md).
+
+### `observability` is how you find out what happened
+
+Set at least a level, and wire an exporter. A production agent that cannot be
+traced is a production agent you cannot debug. See
+[logging and metrics](logging-and-metrics.md).
+
 ---
 
-## Field reference
+## Secrets
 
-### `agent` (required)
+Environment expansion applies only to the Redis URL fields, `redis` and
+`rate_limit.redis`. Both `$VAR` and `${VAR}` forms work. Everything else in this
+file is read literally, so no other secret belongs in it: keep credentials in
+the environment, point `env` at a `.env` for local runs, and inject real secrets
+through your platform in production.
 
-**Type:** `string`
+A missing variable fails startup rather than falling back:
 
-Import path to your compiled graph, in `module:attribute` format.
-
-```json
-"agent": "graph.agent:app"
+```text
+ValueError: Unresolved environment variable in value: ${REDIS_URL}
 ```
 
-The server imports the module and retrieves the attribute. The attribute must be a `CompiledGraph` instance, a callable that returns one, or an async callable that returns one.
-
-- `"graph.agent:app"` — retrieves the `app` variable from `graph/agent.py`
-- `"mypackage.graph:build_graph"` — calls `build_graph()` synchronously
-- `"mypackage.graph:async_build"` — calls `await async_build()` asynchronously
-
-The module must be importable from the working directory where `agentflow api` is started. The loader inserts the project root into `sys.path` automatically.
+That is deliberate. A server that silently starts with no rate limiter is worse
+than one that refuses to start.
 
 ---
 
-### `env`
-
-**Type:** `string | null` — Default: `null`
-
-Path to a `.env` file. Loaded with `python-dotenv` before the graph module is imported, so environment variables are available during graph initialization.
-
-```json
-"env": ".env"
-```
-
-Environment variable references in the value are expanded. If the file does not exist, it is silently skipped. Setting `null` or omitting the field disables `.env` loading.
-
----
-
-### `auth`
-
-**Type:** `null | "jwt" | object` — Default: `null`
-
-Controls authentication. When `null`, all requests are accepted without credentials (skip the entire auth layer).
-
-#### No authentication
-
-```json
-"auth": null
-```
-
-All endpoints pass through without credential checks. Safe for internal networks or local development. Not recommended for public deployments.
-
-#### JWT authentication
-
-```json
-"auth": "jwt"
-```
-
-or equivalently:
-
-```json
-"auth": {"method": "jwt"}
-```
-
-Validates `Authorization: Bearer <token>` using PyJWT. Requires two environment variables to be set before the server starts:
-
-| Variable | Description |
-| --- | --- |
-| `JWT_SECRET_KEY` | Signing secret (32+ characters recommended in production) |
-| `JWT_ALGORITHM` | Algorithm used to sign tokens (default `HS256`) |
-
-If either variable is missing the server will refuse to start.
-
-The JWT payload must contain a `user_id` field. The decoded payload is merged into the graph's run config and available to nodes as `config["user_id"]`.
-
-**Error responses:**
-
-| Condition | Error code | Message |
-| --- | --- | --- |
-| No token | `REVOKED_TOKEN` | "Invalid token, please login again" |
-| Token expired | `EXPIRED_TOKEN` | "Token has expired, please login again" |
-| Invalid signature | `INVALID_TOKEN` | "Invalid token, please login again" |
-| `user_id` missing | `INVALID_TOKEN` | "Invalid token, user_id missing" |
-
-**Install PyJWT:**
+## Verify before you ship
 
 ```bash
-pip install "10xscale-agentflow-cli[jwt]"
+# 1. Config resolves, graph imports, server boots with no reloader
+agentflow api --no-reload
+
+# 2. Auth is really on: an unauthenticated call must be rejected, not served
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST http://127.0.0.1:8000/v1/graph/invoke -d '{}'   # expect 403, never 200
+
+# 3. Rate limiting is really on
+for i in $(seq 1 120); do
+  curl -s -o /dev/null -w "%{http_code} " http://127.0.0.1:8000/ping
+done   # expect 429s once the window fills
 ```
 
-#### Custom authentication
-
-```json
-"auth": {
-  "method": "custom",
-  "path": "auth.agent_auth:AgentAuth"
-}
-```
-
-Loads and instantiates the class at the given import path. The class must subclass `BaseAuth` and implement the `authenticate` method:
-
-```python
-from agentflow_cli import BaseAuth
-from fastapi import Request, Response
-from fastapi.security import HTTPAuthorizationCredentials
-
-class AgentAuth(BaseAuth):
-    def authenticate(
-        self,
-        request: Request,
-        response: Response,
-        credential: HTTPAuthorizationCredentials,
-    ) -> dict | None:
-        # Validate credential.credentials
-        # Return dict with at least "user_id" on success
-        # Raise an exception on failure
-        return {"user_id": "user-123", "role": "admin"}
-```
-
-The return value is merged into the graph's run config. The server checks that `user_id` is present; if not, a warning is logged but the request proceeds.
-
----
-
-### `authorization`
-
-**Type:** `string | null` — Default: `null`
-
-Import path to a custom `AuthorizationBackend` class or instance, in `module:attribute` format.
-
-```json
-"authorization": "graph.agent:MyAuthorizationBackend"
-```
-
-When `null`, the built-in `DefaultAuthorizationBackend` is used, which allows all requests as long as a valid `user_id` is present.
-
-To implement custom RBAC:
-
-```python
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
-
-class MyAuthorizationBackend(AuthorizationBackend):
-    async def authorize(
-        self,
-        user: dict,
-        resource: str,
-        action: str,
-        resource_id: str | None = None,
-        **context,
-    ) -> bool:
-        if user.get("role") == "admin":
-            return True
-        if resource == "graph" and action == "invoke":
-            return True
-        return False
-```
-
-The `resource` and `action` values match the [permission reference](./api-reference.md#permission-reference) in the API docs.
-
----
-
-### `checkpointer`
-
-**Type:** `string | null` — Default: `null`
-
-Import path to a `BaseCheckpointer` instance, in `module:attribute` format.
-
-```json
-"checkpointer": "graph.agent:my_checkpointer"
-```
-
-When `null`, threads are stateless. Thread endpoints (`/v1/threads/...`) require a checkpointer to be configured.
-
-The server loads the object at the path and binds it as a `BaseCheckpointer` in the dependency injection container. Both `InMemoryCheckpointer` (dev) and `PgCheckpointer` (production) implement this interface.
-
-See [Checkpointing](./checkpointing.md) for setup instructions.
-
----
-
-### `injectq`
-
-**Type:** `string | null` — Default: `null`
-
-Import path to an `InjectQ` container instance, in `module:attribute` format.
-
-```json
-"injectq": "graph.agent:container"
-```
-
-When set, the server uses your container as the global DI container, inheriting all your bindings (database connections, API clients, custom services, etc.). The container must be an `InjectQ` instance.
-
-When `null`, the server creates a default `InjectQ` container automatically.
-
-```python
-# graph/agent.py
-from injectq import InjectQ
-from my_services import DatabaseService, ApiClient
-
-container = InjectQ()
-container.bind(DatabaseService)
-container.bind_instance(ApiClient, ApiClient(api_key=os.environ["MY_API_KEY"]))
-```
-
----
-
-### `store`
-
-**Type:** `string | null` — Default: `null`
-
-Import path to a `BaseStore` instance, in `module:attribute` format.
-
-```json
-"store": "graph.agent:my_store"
-```
-
-When set, enables the `/v1/store/...` endpoints for semantic memory storage and retrieval. The object must implement `BaseStore`.
-
-When `null`, store endpoints are mounted but return errors because no backend is bound.
-
----
-
-### `redis`
-
-**Type:** `string | null` — Default: `null`
-
-Redis connection URL. Used as a fallback Redis URL for features that need Redis (e.g. checkpointer, publisher).
-
-```json
-"redis": "redis://localhost:6379/0"
-```
-
-Note: the `rate_limit` block has its own `redis` sub-key that takes precedence for rate limiting. This top-level `redis` key is for other components.
-
----
-
-### `thread_name_generator`
-
-**Type:** `string | null` — Default: `null`
-
-Import path to a `ThreadNameGenerator` class or instance, in `module:attribute` format.
-
-```json
-"thread_name_generator": "graph.thread_name_generator:MyNameGenerator"
-```
-
-When set, the server calls the generator when a new thread is created to produce a human-readable name (e.g. `"thoughtful-dialogue"`).
-
-The class must subclass `ThreadNameGenerator`:
-
-```python
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
-
-class MyNameGenerator(ThreadNameGenerator):
-    def generate(self) -> str:
-        # Return any string
-        return "session-" + str(int(time.time()))
-```
-
-When `null`, threads get IDs but no human-readable names.
-
----
-
-### `rate_limit`
-
-**Type:** `object | null` — Default: `null`
-
-When present and `enabled: true`, applies rate limiting to all incoming requests.
-
-```json
-"rate_limit": {
-  "enabled": true,
-  "backend": "memory",
-  "requests": 100,
-  "window": 60,
-  "by": "ip",
-  "trusted_proxy_headers": false,
-  "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
-  "fail_open": true
-}
-```
-
-#### `rate_limit` fields
-
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `enabled` | `bool` | No | `true` | Set to `false` to disable rate limiting while keeping the config in place. |
-| `backend` | `string` | No | `"memory"` | Storage backend: `"memory"`, `"redis"`, or `"custom"`. |
-| `requests` | `int` | No | `100` | Maximum requests allowed in the time window. Must be > 0. |
-| `window` | `int` | No | `60` | Time window in seconds. Must be > 0. |
-| `by` | `string` | No | `"ip"` | Key used for bucketing: `"ip"` (per-client) or `"global"` (all clients share one counter). |
-| `trusted_proxy_headers` | `bool` | No | `false` | When `true`, reads the client IP from `X-Forwarded-For` / `X-Real-IP` headers. Enable only when the server is behind a trusted reverse proxy. |
-| `exclude_paths` | `string[]` | No | `[]` | Request paths that bypass rate limiting entirely. |
-| `fail_open` | `bool` | No | `true` | When the backend is unavailable: `true` = allow the request, `false` = deny it (429). |
-
-#### Memory backend (default)
-
-```json
-"rate_limit": {
-  "enabled": true,
-  "backend": "memory",
-  "requests": 100,
-  "window": 60,
-  "by": "ip"
-}
-```
-
-Uses an in-process sliding window counter. Counters are lost on server restart. Not shared across multiple server instances. Suitable for single-process development and testing.
-
-#### Redis backend (production)
-
-```json
-"rate_limit": {
-  "enabled": true,
-  "backend": "redis",
-  "requests": 200,
-  "window": 60,
-  "by": "ip",
-  "trusted_proxy_headers": true,
-  "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
-  "redis": {
-    "url": "redis://localhost:6379/0",
-    "prefix": "agentflow:rate-limit"
-  },
-  "fail_open": true
-}
-```
-
-The `redis` sub-key accepts:
-
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `string` | — | Redis connection URL. Supports environment variable expansion: `"$REDIS_URL"`. |
-| `prefix` | `string` | `"agentflow:rate-limit"` | Key prefix for all rate-limit keys in Redis. |
-
-The `url` field also accepts a bare string as shorthand: `"redis": "redis://localhost:6379/0"`.
-
-Redis rate limits survive server restarts and are shared across all server instances behind a load balancer.
-
-#### Custom backend
-
-```json
-"rate_limit": {
-  "enabled": true,
-  "backend": "custom",
-  "requests": 100,
-  "window": 60,
-  "by": "ip"
-}
-```
-
-When `backend` is `"custom"`, bind a `BaseRateLimitBackend` instance in your InjectQ container before the server starts.
-
----
-
-## Environment variable expansion
-
-String values in `agentflow.json` support environment variable expansion. Use standard shell syntax:
-
-```json
-"redis": {
-  "url": "$REDIS_URL"
-}
-```
-
-or with braces:
-
-```json
-"redis": {
-  "url": "${REDIS_URL}"
-}
-```
-
-The server raises a `ValueError` at startup if a referenced variable is not set in the environment.
-
----
-
-## Config discovery
-
-The `agentflow api` command looks for the config file in this order:
-
-1. The path passed via `--config` (default `agentflow.json`)
-2. `agentflow.json` in the current directory
-3. `.agentflow.json` in the current directory
-4. `agentflow.config.json` in the current directory
-
-The first file found is used.
-
----
-
-## Complete field summary
-
-| Field | Type | Required | Default | Purpose |
-| --- | --- | --- | --- | --- |
-| `agent` | `string` | **Yes** | — | Graph import path (`module:attribute`) |
-| `env` | `string \| null` | No | `null` | `.env` file to load |
-| `auth` | `null \| "jwt" \| object` | No | `null` | Authentication backend |
-| `authorization` | `string \| null` | No | `null` | RBAC authorization backend |
-| `checkpointer` | `string \| null` | No | `null` | Thread state persistence backend |
-| `injectq` | `string \| null` | No | `null` | Dependency injection container |
-| `store` | `string \| null` | No | `null` | Semantic memory store backend |
-| `redis` | `string \| null` | No | `null` | Redis URL for shared components |
-| `thread_name_generator` | `string \| null` | No | `null` | Human-readable thread name generator |
-| `rate_limit` | `object \| null` | No | `null` | Rate limiting configuration |
+Then confirm persistence survives a restart: run a thread, restart the server,
+and read the thread back.
+
+## Related
+
+- [Configuration reference](../../reference/api-cli/configuration.md) — every field and default
+- [Environment variables](environment-variables.md)
+- [Deployment](deployment.md) and [Deploy on Kubernetes](kubernetes.md)
+- [Backup and restore](backup-and-restore.md)

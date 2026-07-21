@@ -1,5 +1,5 @@
 ---
-title: Evaluation Reports — AgentFlow Evaluation
+title: Evaluation Reports — Testing and evaluation
 sidebar_label: Reports
 description: How AgentFlow evaluation reports work — HTML dashboard, JSON output, JUnit XML for CI, ReporterConfig, and how to interpret results.
 keywords:
@@ -25,7 +25,7 @@ After every evaluation run, AgentFlow generates structured reports so you can un
 |---|---|---|
 | HTML | `eval_reports/<id>_<timestamp>.html` | Human review — visual dashboard |
 | JSON | `eval_reports/<id>_<timestamp>.json` | Programmatic analysis, dashboards |
-| JUnit XML | `eval_reports/<id>_<timestamp>.xml` | CI systems (GitHub Actions test summary) |
+| JUnit XML | `eval_reports/<id>_<timestamp>_junit.xml` | CI systems (GitHub Actions test summary) |
 | Console | stdout | Quick local feedback during development |
 
 ---
@@ -66,26 +66,36 @@ Structure (simplified):
     "total_cases": 5,
     "passed_cases": 4,
     "failed_cases": 1,
+    "error_cases": 0,
     "pass_rate": 0.8,
-    "criteria_scores": {
-      "tool_trajectory_avg_score": 1.0,
-      "rouge_match": 0.72
+    "criterion_stats": {
+      "tool_trajectory_avg_score": {
+        "total": 5, "passed": 5, "failed": 0,
+        "avg_score": 1.0, "pass_rate": 1.0
+      },
+      "rouge_match": {
+        "total": 5, "passed": 4, "failed": 1,
+        "avg_score": 0.72, "pass_rate": 0.8
+      }
     }
   },
   "results": [
     {
-      "case_id": "london_weather",
+      "eval_id": "london_weather",
+      "name": "London weather",
       "passed": true,
-      "criteria_results": {
-        "tool_trajectory_avg_score": {"score": 1.0, "passed": true},
-        "rouge_match": {"score": 0.65, "passed": true}
-      },
+      "criterion_results": [
+        {"criterion": "tool_trajectory_avg_score", "score": 1.0, "passed": true, "threshold": 1.0},
+        {"criterion": "rouge_match", "score": 0.65, "passed": true, "threshold": 0.5}
+      ],
       "actual_response": "The weather in London is sunny.",
-      "tool_calls": [{"name": "get_weather", "args": {"location": "London"}}]
+      "actual_tool_calls": [{"name": "get_weather", "args": {"location": "London"}}]
     }
   ]
 }
 ```
+
+Note that `criterion_results` is a **list**, and per-criterion aggregates live under `summary.criterion_stats` keyed by criterion name.
 
 ---
 
@@ -142,30 +152,51 @@ report = await evaluator.evaluate(eval_set)
 ```python
 summary = report.summary
 
-summary.total_cases       # int — total number of cases
-summary.passed_cases      # int — cases where all criteria passed
-summary.failed_cases      # int — cases where at least one criterion failed
-summary.pass_rate         # float 0.0–1.0
-summary.criteria_scores   # dict[str, float] — average score per criterion
+summary.total_cases            # int — total number of cases
+summary.passed_cases           # int — cases where all criteria passed
+summary.failed_cases           # int — cases that failed a criterion without erroring
+summary.error_cases            # int — cases that raised during the run
+summary.pass_rate              # float 0.0–1.0
+summary.criterion_stats        # dict[str, dict] — per-criterion aggregates
+summary.total_duration_seconds # float
+summary.total_token_usage      # TokenUsage — agent + judge tokens
 ```
+
+Each entry in `criterion_stats` is keyed by the criterion's reported name and holds `total`, `passed`, `failed`, `avg_score` and `pass_rate`:
+
+```python
+for name, stats in report.summary.criterion_stats.items():
+    print(f"{name}: avg {stats['avg_score']:.2f}, {stats['passed']}/{stats['total']} passed")
+```
+
+The counting invariant is `total_cases == passed_cases + failed_cases + error_cases` — an errored case is counted in `error_cases`, never also in `failed_cases`.
 
 ### Per-case results
 
+`criterion_results` is a list of `CriterionResult` objects, not a dict:
+
 ```python
 for result in report.results:
-    print(result.case_id, "PASS" if result.passed else "FAIL")
+    print(result.eval_id, "PASS" if result.passed else "FAIL")
 
-    for criterion_key, cr in result.criteria_results.items():
-        print(f"  {criterion_key}: {cr.score:.2f} ({'PASS' if cr.passed else 'FAIL'})")
+    for cr in result.criterion_results:
+        print(f"  {cr.criterion}: {cr.score:.2f} ({'PASS' if cr.passed else 'FAIL'})")
+
+    # Look one up by name
+    traj = result.get_criterion_result("tool_trajectory_avg_score")
 ```
+
+`result.failed_criteria` and `result.passed_criteria` are ready-made filters over the same list.
 
 ### Print to console
 
 ```python
 from agentflow.qa.evaluation import print_report
 
-print_report(report)
+print_report(report, verbose=False, use_color=True)
 ```
+
+`report.format_summary()` returns the same kind of overview as a plain string if you would rather log it than print it.
 
 ---
 
@@ -250,10 +281,12 @@ from agentflow.qa.evaluation import EvalReport
 
 merged = EvalReport.create(
     eval_set_id="combined",
-    eval_set_name="Combined Evaluation",
     results=[*report_a.results, *report_b.results],
+    eval_set_name="Combined Evaluation",
 )
 ```
+
+`EvalReport.create()` recomputes `summary` from the results you pass in.
 
 ---
 

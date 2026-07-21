@@ -1,5 +1,5 @@
 ---
-title: Streaming — AgentFlow Python AI Agent Framework
+title: Streaming — AgentFlow concepts
 sidebar_label: Streaming
 description: How invoke, stream, and astream work; StreamChunk fields; ResponseGranularity; and how to consume SSE in TypeScript.
 keywords:
@@ -205,7 +205,12 @@ Content-Type: application/json
 
 ## Streaming via the REST API
 
-`POST /v1/graph/stream` returns a server-sent events (SSE) response. Each event is a JSON-encoded `StreamChunk`:
+`POST /v1/graph/stream` streams one JSON-encoded `StreamChunk` per line.
+
+The response carries a `text/event-stream` content type, but the body is **not** SSE-framed:
+there are no `data:` prefixes and no blank-line separators. It is newline-delimited JSON
+(NDJSON), so parse it by splitting on newlines rather than with an `EventSource` or an SSE
+client library.
 
 ```bash
 curl -N -X POST http://127.0.0.1:8000/v1/graph/stream \
@@ -219,9 +224,9 @@ curl -N -X POST http://127.0.0.1:8000/v1/graph/stream \
 Response:
 
 ```
-data: {"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": "Once"}]}, ...}
-data: {"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": " upon a time"}]}, ...}
-data: {"event": "state", "state": {...}, ...}
+{"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": "Once"}]}, ...}
+{"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": " upon a time"}]}, ...}
+{"event": "state", "state": {...}, ...}
 ```
 
 ---
@@ -231,16 +236,16 @@ data: {"event": "state", "state": {...}, ...}
 `AgentFlowClient.stream` returns an async iterator of `StreamChunk`:
 
 ```typescript
-import { AgentFlowClient, Message, StreamEvent } from "@10xscale/agentflow-client";
+import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
 
 const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
 
 for await (const chunk of client.stream(
-  [Message.textMessage("Tell me a short story.")],
-  { config: { threadId: "ts-stream-1" } },
+  [Message.text_message("Tell me a short story.")],
+  { config: { thread_id: "ts-stream-1" } },
 )) {
-  if (chunk.event === StreamEvent.MESSAGE && chunk.message) {
-    process.stdout.write(chunk.message.text ?? "");
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
   }
 }
 console.log();

@@ -1,7 +1,7 @@
 ---
-title: Add Authentication — AgentFlow Python AI Agent Framework
+title: Add Authentication — CLI how-to
 sidebar_label: Add Authentication
-description: How to add JWT or custom authentication to the AgentFlow API. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+description: How to add JWT or custom authentication to the AgentFlow API.
 keywords:
   - agentflow api
   - agentflow cli
@@ -179,63 +179,83 @@ Use a custom auth backend for:
 
 Create `graph/auth.py`:
 
+`authenticate` is **synchronous** and takes `(request, response, credential)`. The server calls
+it without `await`, so declaring it `async def` returns an un-awaited coroutine and breaks auth
+silently — keep it a plain `def`.
+
 ```python
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
 import os
+from typing import Any
+
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
+from agentflow_cli import BaseAuth
+
 
 class ApiKeyAuth(BaseAuth):
     def __init__(self):
         # Load valid API keys from environment
         self.valid_keys = os.environ.get("VALID_API_KEYS", "").split(",")
-    
-    async def authenticate(self, request) -> dict | None:
-        # Check for API key in header
+
+    def authenticate(
+        self,
+        request: Request,
+        response: Response,
+        credential: HTTPAuthorizationCredentials | None,
+    ) -> dict[str, Any] | None:
+        # API keys ride in a custom header, not the bearer credential.
         api_key = request.headers.get("X-API-Key")
-        if not api_key:
-            return None  # No credentials provided
-        
-        # Validate the key
-        if api_key not in self.valid_keys:
-            return None  # Invalid key
-        
-        # Return user info for authorization
+        if not api_key or api_key not in self.valid_keys:
+            return None  # missing or invalid -> 401
+
+        # Return user info (at least user_id) for authorization.
         return {
-            "user_id": f"api-key-user",
+            "user_id": "api-key-user",
             "role": "api-user",
-            "api_key_id": api_key
+            "api_key_id": api_key,
         }
 ```
 
 ### Example: OAuth (external provider)
 
+The bearer token is parsed for you and delivered as `credential` — no need to slice the header.
+Keep the method a plain `def`; use a sync HTTP client for provider verification.
+
 ```python
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+from typing import Any
+
 import httpx
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
+from agentflow_cli import BaseAuth
+
 
 class OAuthAuth(BaseAuth):
-    async def authenticate(self, request) -> dict | None:
-        # Extract bearer token from Authorization header
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return None
-        
-        token = auth_header[7:]  # Remove "Bearer " prefix
-        
-        # Verify token with your OAuth provider
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://your-oauth-provider.com/verify",
-                json={"token": token}
-            )
-        
-        if response.status_code != 200:
-            return None  # Invalid token
-        
-        user_data = response.json()
+    def authenticate(
+        self,
+        request: Request,
+        response: Response,
+        credential: HTTPAuthorizationCredentials | None,
+    ) -> dict[str, Any] | None:
+        if credential is None:
+            return None  # no bearer token -> 401
+        token = credential.credentials
+
+        # Verify token with your OAuth provider.
+        resp = httpx.post(
+            "https://your-oauth-provider.com/verify",
+            json={"token": token},
+        )
+        if resp.status_code != 200:
+            return None  # invalid token -> 401
+
+        user_data = resp.json()
         return {
             "user_id": user_data["user_id"],
             "role": user_data["role"],
-            "email": user_data["email"]
+            "email": user_data["email"],
         }
 ```
 
@@ -266,15 +286,82 @@ curl -H "X-API-Key: secret-key-123" \
 
 After authenticating, restrict which users can access which resources using an authorization backend.
 
+### Built-in backends and the secure-by-default policy
+
+You do not have to write any code to get per-user isolation. The framework ships two
+built-in backends, selected with the `authorization` key in `agentflow.json`:
+
+| `authorization` value | Backend | Behaviour |
+|---|---|---|
+| `"ownership"` | `OwnershipAuthorizationBackend` | A thread can be read, written, deleted, stopped or fixed **only by the user who owns it**. Running a new thread (`invoke`/`stream`) is allowed; hijacking someone else's thread is denied. |
+| `"allow_all"` (aliases: `"default"`, `"none"`) | `DefaultAuthorizationBackend` | Any authenticated user may perform any action. |
+| `"module:attribute"` | your class | A custom `AuthorizationBackend` (see below). |
+| not set (`null`) | **depends on mode** | `ownership` in production, `allow_all` in development. |
+
+The default is chosen by run mode, so a production build is safe out of the box:
+
+- **`MODE=production`** → defaults to `ownership`. Object-level isolation is enforced even
+  if you never configure `authorization`.
+- **`MODE=development`** → defaults to `allow_all`, so local iteration is frictionless.
+
+**The developer decision always wins.** To relax security in production, set
+`"authorization": "allow_all"`. To enforce owner-only access in development, set
+`"authorization": "ownership"`. To do something entirely custom, point it at your own class.
+
+```json
+{
+  "agent": "graph.react:app",
+  "auth": "jwt",
+  "authorization": "ownership"
+}
+```
+
+The `ownership` check runs on **every** thread-touching request — `invoke`, `stream`,
+`stop`, `fix`, and all thread state/message read/write/delete — *before* the handler runs.
+Running or reading another user's thread is rejected up front (403), so a foreign `invoke`
+never reaches the model.
+
+**It is scalable.** Thread ownership is immutable (set when the thread is created, changed
+only by deletion), so it is cached: an in-process LRU per worker, plus an optional shared
+Redis tier when `redis` (or `REDIS_URL`) is configured. After the first lookup, an
+authorization check is an in-memory hit — not a database round-trip per request. The cache
+is invalidated automatically when a thread is deleted.
+
+:::note Ownership needs a persistent checkpointer
+`ownership` resolves who owns a thread from the checkpointer's thread registry, which is
+populated by `PgCheckpointer` (the production checkpointer). With no checkpointer
+configured, or a checkpointer that cannot resolve ownership, there are no persisted threads
+to protect, so requests pass through (a warning is logged). The in-memory checkpointer does
+not keep a thread registry, which is why `ownership` is a production default and development
+stays on `allow_all`.
+:::
+
+:::tip Every endpoint is guarded by construction
+The server refuses to start if any non-public route is missing its authorization guard, so a
+newly added endpoint can never silently ship unprotected. `/ping` is the only public route.
+:::
+
 ### Create an authorization backend
 
 Create `graph/auth.py` (or add to existing):
 
 ```python
+from typing import Any
+
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 
 class RoleBasedAuthorization(AuthorizationBackend):
-    async def authorize(self, user: dict, resource: str, action: str) -> bool:
+    async def authorize(
+        self,
+        user: dict,
+        resource: str,
+        action: str,
+        resource_id: str | None = None,
+        **context: Any,
+    ) -> bool:
+        # `resource_id` is the specific object being accessed (e.g. the thread_id),
+        # extracted from the URL path or, for invoke/stream/stop/fix, the request body.
+        # Use it to make object-level (per-thread) decisions.
         role = user.get("role", "guest")
         
         # Define permissions by role
@@ -312,6 +399,55 @@ class RoleBasedAuthorization(AuthorizationBackend):
   "authorization": "graph.auth:RoleBasedAuthorization"
 }
 ```
+
+### Role-based access without code (RBAC config block)
+
+You usually do not need a custom class for role → permission mapping. Set `authorization` to an
+RBAC object and the framework maps roles to **scopes** on top of owner-only isolation:
+
+```json
+{
+  "agent": "graph.react:app",
+  "auth": "jwt",
+  "authorization": {
+    "backend": "rbac",
+    "roles": {
+      "admin":  ["*"],
+      "member": ["graph:invoke", "graph:stream", "graph:read", "checkpointer:read"],
+      "guest":  ["graph:invoke"]
+    },
+    "default_scopes": ["graph:read"],
+    "isolation": "owner"
+  }
+}
+```
+
+- `roles` maps each role (from the JWT `roles`/`role` claim) to the scopes it grants; `"*"` grants all.
+- `default_scopes` is granted to everyone, even a user with no role.
+- `isolation` is `"owner"` (owner-only storage, default) or `"none"` (any authenticated user sees all rows).
+
+An endpoint requires the scope `"<resource>:<action>"`. The full scope catalog:
+
+| Resource | Scopes |
+|---|---|
+| graph | `graph:invoke`, `graph:stream`, `graph:stop`, `graph:fix`, `graph:setup`, `graph:read` |
+| checkpointer | `checkpointer:read`, `checkpointer:write`, `checkpointer:delete` |
+| store | `store:read`, `store:write`, `store:delete` |
+| files | `files:read`, `files:upload` |
+| config | `config:read` |
+
+Scopes are enforced only once an identity carries them (an RBAC role, a custom `scopes_for`, or a
+JWT `scopes` claim). Without any scopes the server stays permissive, so existing setups keep
+working until you issue scopes.
+
+### Data isolation flows to the storage layer
+
+The checks above decide *access* at the API layer. The **data layer** (checkpointer, store)
+enforces *isolation* from a trusted policy: after a successful check the server stamps
+`user["authz"] = {user_id, scope, scopes}`, where `scope` is the backend's `isolation_scope()`.
+Every service copies that trusted `user` into `config["user"]`, so with `owner` isolation the
+checkpointer and store scope every query to the caller — and because it is set server-side, the
+client cannot forge it.
 
 ### Test authorization
 

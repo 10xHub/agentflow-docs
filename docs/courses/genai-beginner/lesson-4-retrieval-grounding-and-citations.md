@@ -1,7 +1,7 @@
 ---
 title: "Lesson 4: Retrieval, Grounding, and Citations"
 sidebar_label: Lesson 4
-description: Ground agent responses in real knowledge using retrieval-augmented generation. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: Ground agent responses in real knowledge using retrieval-augmented generation.
 keywords:
   - genai course
   - ai agent course
@@ -205,67 +205,71 @@ class QAResponse(BaseModel):
 
 ### Step 2: Index Documents
 
+The store owns the embedding model, so indexing means handing it text plus metadata. It embeds and writes the vector for you.
+
 ```python
 from agentflow.storage.store import QdrantStore
-from agentflow.core.embedding import OpenAIEmbedding
+from agentflow.storage.store.embedding import OpenAIEmbedding
+from agentflow.storage.store.store_schema import MemoryType
 
-# Initialize embedding model and store
-embedding_model = OpenAIEmbedding("text-embedding-3-small")
-vector_store = QdrantStore(collection_name="knowledge_base")
+vector_store = QdrantStore(
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
+    collection_name="knowledge_base",
+    path="./qdrant_data",
+)
 
-def index_documents(documents: list[Document]):
+config = {"user_id": "docs-index"}
+
+async def index_documents(documents: list[Document]):
+    await vector_store.asetup()
     for doc in documents:
-        # Embed the content
-        embedding = embedding_model.embed(doc.content)
-        
-        # Store in vector database
-        vector_store.add(
-            id=doc.chunk_id,
-            vector=embedding,
-            payload={
-                "content": doc.content,
-                "source": doc.source
-            }
+        await vector_store.astore(
+            config=config,
+            content=doc.content,
+            memory_type=MemoryType.SEMANTIC,
+            metadata={"source": doc.source, "chunk_id": doc.chunk_id},
         )
 ```
 
 ### Step 3: Retrieve and Answer
 
+`asearch()` embeds the query with the same model and returns `MemorySearchResult` objects carrying `content`, `score`, and the `metadata` you indexed.
+
 ```python
-def rag_query(question: str, top_k: int = 5) -> QAResponse:
-    # 1. Embed the question
-    query_embedding = embedding_model.embed(question)
-    
-    # 2. Retrieve relevant chunks
-    results = vector_store.search(
-        vector=query_embedding,
-        top_k=top_k
+import json
+
+from agentflow.core.llm import call_llm
+
+async def rag_query(question: str, top_k: int = 5) -> QAResponse:
+    # 1. Retrieve relevant chunks (the query is embedded for you)
+    results = await vector_store.asearch(
+        config=config,
+        query=question,
+        limit=top_k,
     )
-    
-    # 3. Build context
-    context = "\n\n".join([
-        f"[Source: {r.payload['source']}]\n{r.payload['content']}"
-        for r in results
-    ])
-    
-    # 4. Generate answer with grounding
+
+    # 2. Build context
+    context = "\n\n".join(
+        f"[Source: {r.metadata['source']}]\n{r.content}" for r in results
+    )
+
+    # 3. Generate answer with grounding
     prompt = f"""
     Answer the question using the provided sources.
     Cite each statement with [Source: filename].
-    
+    Reply as JSON matching: {QAResponse.model_json_schema()}
+
     Sources:
     {context}
-    
+
     Question: {question}
     """
-    
-    response = llm.generate(
-        prompt,
-        response_format=QAResponse
-    )
-    
-    return response
+
+    text, *_ = await call_llm("gpt-4o", prompt, json_mode=True)
+    return QAResponse(**json.loads(text))
 ```
+
+`call_llm` returns the tuple `(text, input_tokens, output_tokens, cache_read_tokens)`, so the answer text is the first element. Inside a graph you would use an `Agent` node with `output_schema=QAResponse` instead, and let the framework parse the structured output.
 
 ### Step 4: Run the System
 
@@ -276,10 +280,10 @@ documents = [
     Document(content="To install AgentFlow: pip install...", source="install.md", chunk_id="2"),
 ]
 
-index_documents(documents)
+await index_documents(documents)
 
 # Query
-result = rag_query("When was AgentFlow founded?")
+result = await rag_query("When was AgentFlow founded?")
 print(result.answer)
 # "AgentFlow was founded in 2024. [Source: about.md]"
 ```

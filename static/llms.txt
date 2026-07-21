@@ -1,0 +1,85 @@
+# AgentFlow by 10xScale
+
+> Open-source Python framework for building production-grade multi-agent AI systems. Typed StateGraph orchestration, durable Redis + Postgres persistence, a built-in REST and SSE API server, and a typed TypeScript client SDK. A batteries-included alternative to LangGraph, CrewAI, AutoGen, and Google ADK.
+
+AgentFlow (pip: `10xscale-agentflow`) was built by 10xScale to power all their AI products in production. It is MIT-licensed and runs anywhere Python 3.12+ runs — no required SaaS account. The CLI package (`10xscale-agentflow-cli`) adds `agentflow api` (starts a production HTTP server from any compiled graph), `agentflow play` (opens a hosted playground), and `agentflow build` (generates Docker files). The TypeScript client (`@10xscale/agentflow-client`) is a fully typed, framework-agnostic npm package with streaming and realtime audio support.
+
+## Pricing
+
+AgentFlow is free and open-source under the MIT license. There is no paid tier, no hosted service requirement, and no usage-based billing.
+
+- Core library: free (`pip install 10xscale-agentflow`)
+- CLI / API server: free (`pip install 10xscale-agentflow-cli`)
+- TypeScript client: free (`npm install @10xscale/agentflow-client`)
+- Source code: https://github.com/10xHub/Agentflow
+
+## Key capabilities
+
+- Typed StateGraph: nodes, conditional edges, sub-graphs, cyclic workflows
+- Prebuilt agents: ReactAgent, RAGAgent, SupervisorTeamAgent, SwarmAgent, PlanActReflectAgent, StructuredOutputAgent, AudioAgent
+- Persistence: InMemoryCheckpointer (dev), PgCheckpointer (Redis + Postgres dual-layer, production)
+- API server: REST invoke, SSE streaming, WebSocket, thread management, memory store, file upload — one command
+- Auth: JWT built-in or custom BaseAuth subclass; RBAC per route and tool
+- Rate limiting: per-user and per-route, in-memory or Redis backend
+- MCP support: native Model Context Protocol integration as client or server
+- Multi-model: native OpenAI and Google Gemini clients; any OpenAI-compatible endpoint (including Anthropic Claude) via base URL
+- Multimodal: image and document input on invoke, stream, and WebSocket runs via file upload
+- Realtime: WebSocket audio sessions backed by Gemini Live
+- Observability: OpenTelemetry, Sentry built in
+- Deployment: `agentflow build --docker-compose` generates production Docker files
+
+## Docs
+
+- [Get Started](https://agentflow.10xscale.ai/docs/get-started): Installation, first agent, connect a TypeScript client
+- [Installation](https://agentflow.10xscale.ai/docs/get-started/installation): pip and npm install commands
+- [Your First Agent](https://agentflow.10xscale.ai/docs/get-started/first-agent): Build and serve a working agent in minutes
+- [Prebuilt Agents](https://agentflow.10xscale.ai/docs/prebuild/agents/react-agent): ReactAgent, RAGAgent, SwarmAgent, SupervisorTeamAgent
+- [State Graph](https://agentflow.10xscale.ai/docs/concepts/state-graph): How nodes, edges, and routing work
+- [Memory and Checkpointing](https://agentflow.10xscale.ai/docs/concepts/checkpointing-and-threads): Durable threads with Redis + Postgres
+- [MCP Integration](https://agentflow.10xscale.ai/docs/how-to/python/use-mcp): Use MCP servers as tool sources
+- [Streaming](https://agentflow.10xscale.ai/docs/concepts/streaming): SSE streaming from Python to TypeScript
+- [API Reference](https://agentflow.10xscale.ai/docs/reference): Python library, REST API, CLI, and TypeScript client reference
+- [Deployment](https://agentflow.10xscale.ai/docs/how-to/production/deployment): Production model, checklist, and reverse proxy notes
+- [Kubernetes](https://agentflow.10xscale.ai/docs/how-to/production/kubernetes): Generated Deployment and Service, grace periods, scaling
+- [Backup and restore](https://agentflow.10xscale.ai/docs/how-to/production/backup-and-restore): What is durable, how to back it up, how to restore safely
+
+## Project
+
+- [Changelog](https://agentflow.10xscale.ai/docs/project/changelog): Release notes and the versioning and deprecation policy
+- [Upgrade to 1.0](https://agentflow.10xscale.ai/docs/project/upgrade-to-1.0): Breaking changes and migration steps
+- [Roadmap](https://agentflow.10xscale.ai/docs/project/roadmap): What is missing, partial, or deliberately out of scope
+- [Security](https://agentflow.10xscale.ai/docs/project/security): Vulnerability reporting and hardening checklist
+- [Support](https://agentflow.10xscale.ai/docs/project/support): Where to ask and how to file a useful bug report
+- [Contributing](https://agentflow.10xscale.ai/docs/project/contributing): Local setup, conventions, and merge checks
+
+## Comparisons
+
+- [AgentFlow vs LangGraph](https://agentflow.10xscale.ai/docs/compare/agentflow-vs-langgraph): Same graph model, plus a built-in API server and TypeScript client
+- [AgentFlow vs CrewAI](https://agentflow.10xscale.ai/docs/compare/agentflow-vs-crewai): Typed graphs vs role-based crews
+- [AgentFlow vs AutoGen](https://agentflow.10xscale.ai/docs/compare/agentflow-vs-autogen): Explicit graph routing vs conversation-driven selectors
+- [AgentFlow vs Google ADK](https://agentflow.10xscale.ai/docs/compare/agentflow-vs-google-adk): Multi-cloud vs Google Cloud-first
+- [Best Python Agent Framework 2026](https://agentflow.10xscale.ai/docs/compare/best-python-agent-framework-2026): Head-to-head comparison
+
+## Glossary
+
+- [What is an AI agent?](https://agentflow.10xscale.ai/docs/glossary/what-is-an-ai-agent): Definition and Python examples
+- [What is a ReAct agent?](https://agentflow.10xscale.ai/docs/glossary/what-is-a-react-agent): Reason + Act pattern explained
+- [What is multi-agent orchestration?](https://agentflow.10xscale.ai/docs/glossary/what-is-multi-agent-orchestration): Coordinating multiple AI agents
+- [What is a state graph?](https://agentflow.10xscale.ai/docs/glossary/what-is-a-state-graph): Graph-based agent workflow model
+- [What is agent memory?](https://agentflow.10xscale.ai/docs/glossary/what-is-agent-memory): Short-term vs long-term memory in AI agents
+- [What is MCP?](https://agentflow.10xscale.ai/docs/glossary/what-is-model-context-protocol): Model Context Protocol for AI tool integration
+
+## Use cases
+
+- [Customer support agent](https://agentflow.10xscale.ai/docs/use-cases/customer-support-agent)
+- [Research agent](https://agentflow.10xscale.ai/docs/use-cases/research-agent)
+- [Data extraction agent](https://agentflow.10xscale.ai/docs/use-cases/data-extraction-agent)
+- [Coding agent](https://agentflow.10xscale.ai/docs/use-cases/coding-agent)
+- [RAG agent](https://agentflow.10xscale.ai/docs/use-cases/rag-agent)
+
+## Contact
+
+- Website: https://10xscale.ai
+- GitHub: https://github.com/10xHub/Agentflow
+- Email: contact@10xscale.ai
+- Maintainer: Shudipto Trafder / 10xScale

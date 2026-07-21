@@ -1,7 +1,7 @@
 ---
-title: Initialize a Project — AgentFlow Python AI Agent Framework
+title: Initialize a Project — CLI how-to
 sidebar_label: Initialize a Project
-description: How to scaffold an AgentFlow project with agentflow init. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+description: How to scaffold an AgentFlow project with agentflow init.
 keywords:
   - agentflow api
   - agentflow cli

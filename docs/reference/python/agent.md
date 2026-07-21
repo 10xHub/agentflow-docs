@@ -1,7 +1,7 @@
 ---
-title: Agent — AgentFlow Python AI Agent Framework
+title: Agent — Python API reference
 sidebar_label: Agent
-description: The Agent class — a smart node that handles LLM calls, tool use, memory, skills, and retries. Part of the AgentFlow agentflow python reference guide for.
+description: The Agent class — a smart node that handles LLM calls, tool use, memory, skills, and retries.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -44,7 +44,7 @@ agent = Agent(
 |---|---|---|---|
 | `model` | `str` | **required** | Model identifier. Examples: `"gpt-4o"`, `"gpt-4o-mini"`, `"gemini-2.0-flash"`, `"gemini-2.5-flash"`. |
 | `provider` | `str \| None` | `None` | Provider name. Supported: `"openai"`, `"google"`. If `None`, the provider is inferred from the model name. |
-| `output_type` | `str` | `"text"` | Expected output type. Use `"text"` for normal responses or `"json"` for structured JSON output. |
+| `output_type` | `str` | `"text"` | Generation modality: `"text"`, `"image"`, `"video"`, or `"audio"`. Structured JSON is requested with `output_schema`, not this field. |
 | `system_prompt` | `list[dict] \| None` | `None` | System prompt as a list of message dicts, e.g. `[{"role": "system", "content": "..."}]`. |
 | `tool_node` | `str \| ToolNode \| None` | `None` | Tools available to the agent. Pass a `ToolNode` instance or the string name of an existing graph node. |
 | `extra_messages` | `list[Message] \| None` | `None` | Additional messages prepended to context before each LLM call. |
@@ -54,9 +54,10 @@ agent = Agent(
 | `reasoning_config` | `dict \| bool \| None` | default | Reasoning configuration for models that support extended thinking (e.g. `o1`, `gemini`). Pass `True` to enable with defaults, `False` to disable, or a dict with model-specific options. |
 | `skills` | `SkillConfig \| None` | `None` | Skills configuration for injecting skill documents into the system prompt. See [`skills`](skills.md). |
 | `memory` | `MemoryConfig \| None` | `None` | Memory configuration for retrieving relevant long-term memories before each LLM call. |
-| `retry_config` | `RetryConfig \| bool \| None` | `True` | Retry configuration for transient API errors. `True` enables default retry, `False` disables. |
+| `retry_config` | `RetryConfig \| bool \| None` | `True` | Retry, back-off, and circuit-breaker configuration for transient API errors. `True` enables defaults, `False` disables. See [Retry configuration](#retry-configuration). |
 | `fallback_models` | `list[str \| tuple[str, str]] \| None` | `None` | Ordered list of fallback model identifiers (or `(model, provider)` tuples) to try if the primary model fails. |
-| `multimodal_config` | `MultimodalConfig \| None` | `None` | Configuration for multimodal file handling — controls auto-offload thresholds. |
+| `multimodal_config` | `MultimodalConfig \| None` | `None` | Image and document handling limits for multimodal requests. See [`media`](media.md#multimodalconfig). |
+| `output_schema` | `type[BaseModel] \| None` | `None` | Pydantic model the final answer must conform to. Only valid with `output_type="text"`; combining it with a media `output_type` raises at construction time. |
 | `use_vertex_ai` | `bool` | `False` | Google provider only. Route Gemini calls through Vertex AI instead of the Gemini API. Equivalent to setting `GOOGLE_GENAI_USE_VERTEXAI=true`. See [Using Vertex AI](../../providers/google.md#using-vertex-ai). |
 | `**kwargs` | any | — | Additional provider-specific parameters passed directly to the LLM SDK. |
 
@@ -145,6 +146,19 @@ agent = Agent(
 # Disable retries
 agent = Agent(model="gpt-4o", retry_config=False)
 ```
+
+### `RetryConfig` fields
+
+| Field | Default | Description |
+|---|---|---|
+| `max_retries` | `3` | Attempts against the primary model before moving to the next fallback. |
+| `initial_delay` | `1.0` | Seconds before the first retry. |
+| `max_delay` | `30.0` | Upper bound on the exponential back-off delay. |
+| `backoff_factor` | `2.0` | Multiplier applied after each retry. |
+| `retryable_status_codes` | `{429, 500, 502, 503, 529}` | HTTP status codes treated as transient. |
+| `circuit_breaker_enabled` | `False` | Track consecutive failures per `(provider, model)` and skip open circuits. |
+| `circuit_breaker_threshold` | `5` | Consecutive failures that open a circuit. |
+| `circuit_breaker_reset_timeout` | `30.0` | Seconds a circuit stays open before a half-open trial. |
 
 ### Circuit breaker (opt-in)
 

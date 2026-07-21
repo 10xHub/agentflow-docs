@@ -1,3 +1,4 @@
+import {existsSync} from 'node:fs';
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
@@ -11,8 +12,18 @@ const baseUrl = process.env.BASE_URL ?? '/';
 const googleAnalyticsId = process.env.GOOGLE_ANALYTICS_ID;
 const microsoftClarityId = process.env.MICROSOFT_CLARITY_ID;
 
+/**
+ * Versioned docs are cut with `npm run docs:cut-version -- 1.0` at release time
+ * (see CONTRIBUTING.md). Until the first snapshot exists there is nothing to
+ * switch between, so the navbar version dropdown stays hidden. It appears
+ * automatically once `versioned_docs/` is created — no config edit needed.
+ */
+const hasVersionedDocs = existsSync('./versioned_docs');
+
 const config: Config = {
-  title: 'AgentFlow by 10xScale',
+  // Kept short on purpose: Docusaurus appends " | <title>" to every page
+  // title, and a long site title pushes real page titles out of search results.
+  title: 'AgentFlow',
   tagline: 'The open-source Python framework powering all 10xScale AI products. Build multi-agent systems with typed graphs, durable memory, streaming, and a full-stack API — without rebuilding the plumbing.',
   favicon: 'img/agentflow-mark.svg',
 
@@ -51,6 +62,20 @@ const config: Config = {
           routeBasePath: 'docs',
           showLastUpdateAuthor: false,
           showLastUpdateTime: true,
+          editUrl: `https://github.com/${orgName}/${repoName}/edit/main/`,
+          // `current` documents the 1.0 release line and is served at /docs.
+          // When work starts on the next minor, freeze this one first:
+          //   npm run docs:cut-version -- 1.0
+          // That creates versioned_docs/version-1.0, after which `current`
+          // becomes the unreleased docs and the version dropdown appears.
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: '1.0',
+              path: '',
+              banner: 'none',
+            },
+          },
         },
         blog: {
           path: 'blog',
@@ -112,12 +137,91 @@ const config: Config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
+        // Every renamed or moved page needs an entry here. `onBrokenLinks:
+        // 'throw'` protects internal links; this protects external ones.
         redirects: [
-          // Add entries when you rename or move pages, e.g.:
-          // {from: '/docs/old-slug', to: '/docs/new-slug'},
+          // The `concept2/` tree was merged into `concepts/` (Jul 2026).
+          {from: '/docs/concept2', to: '/docs/concepts'},
+          {from: '/docs/concept2/agents-tools-control', to: '/docs/concepts/agents-tools-control'},
+          {from: '/docs/concept2/memory', to: '/docs/concepts/memory'},
+          {from: '/docs/concept2/serving-agents', to: '/docs/concepts/serving-agents'},
+          {from: '/docs/concept2/connecting-clients', to: '/docs/concepts/connecting-clients'},
+          {from: '/docs/concept2/extensibility', to: '/docs/concepts/extensibility'},
+          {from: '/docs/concept2/qa', to: '/docs/concepts/qa'},
+          // Paths from the retired MkDocs site.
+          {from: '/docs/getting-started', to: '/docs/get-started'},
+          {from: '/docs/getting-started/installation', to: '/docs/get-started/installation'},
+          {from: '/docs/getting-started/hello-world', to: '/docs/get-started/first-agent'},
+          {from: '/docs/getting-started/core-concepts', to: '/docs/concepts'},
+          {from: '/docs/getting-started/what-is-agentflow', to: '/docs/concepts'},
+          {from: '/docs/reference/library', to: '/docs/reference'},
+          {from: '/docs/reference/client', to: '/docs/reference/client/agentflow-client'},
+          {from: '/docs/reference/cli', to: '/docs/reference/api-cli/commands'},
+          {from: '/docs/Tutorial', to: '/docs/tutorials'},
+          {from: '/docs/faq', to: '/docs/troubleshooting/installation'},
+          // The production API page duplicated the REST reference; the reference wins.
+          {from: '/docs/how-to/production/api-reference', to: '/docs/reference/rest-api/conventions'},
         ],
       },
     ],
+    /**
+     * Writes /llms-full.txt at build time: every doc page concatenated as plain
+     * markdown with its canonical URL. `static/llms.txt` is the curated index
+     * for crawlers; this is the full corpus for anything that wants to read the
+     * documentation in one request instead of 300.
+     */
+    function llmsFullTextPlugin() {
+      return {
+        name: 'agentflow-llms-full-text',
+        async postBuild({outDir}: {outDir: string}) {
+          const {readFile, writeFile, readdir} = await import('node:fs/promises');
+          const {join, relative} = await import('node:path');
+
+          const docsDir = join(process.cwd(), 'docs');
+          const canonical = siteUrl.replace(/\/$/, '');
+
+          async function walk(dir: string): Promise<string[]> {
+            const entries = await readdir(dir, {withFileTypes: true});
+            const files: string[] = [];
+            for (const entry of entries) {
+              const full = join(dir, entry.name);
+              if (entry.isDirectory()) files.push(...(await walk(full)));
+              else if (/\.mdx?$/.test(entry.name)) files.push(full);
+            }
+            return files;
+          }
+
+          const files = (await walk(docsDir)).sort();
+          const parts = [
+            '# AgentFlow documentation — full text',
+            '',
+            `Source: ${canonical}/docs`,
+            'Curated index: ' + canonical + '/llms.txt',
+            `Pages: ${files.length}`,
+            '',
+          ];
+
+          for (const file of files) {
+            const raw = await readFile(file, 'utf8');
+            // Drop front matter; keep the body as authored.
+            const body = raw.startsWith('---')
+              ? raw.slice(raw.indexOf('\n---', 3) + 4).trimStart()
+              : raw;
+            const slug = relative(docsDir, file).replace(/\\/g, '/').replace(/\.mdx?$/, '');
+            parts.push(
+              '',
+              '---',
+              '',
+              `URL: ${canonical}/docs/${slug.replace(/\/index$/, '')}`,
+              '',
+              body.trim(),
+            );
+          }
+
+          await writeFile(join(outDir, 'llms-full.txt'), parts.join('\n'), 'utf8');
+        },
+      };
+    },
     function structuredDataPlugin() {
       const canonical = siteUrl.replace(/\/$/, '');
       const githubUrl = 'https://github.com/10xHub/Agentflow';
@@ -209,6 +313,8 @@ const config: Config = {
         alt: 'AgentFlow logo',
         src: 'img/agentflow-mark.svg',
       },
+      // Kept to four left-hand entries. Everything else lives in the sidebar,
+      // which is where people look once they are inside the docs.
       items: [
         {
           type: 'docSidebar',
@@ -216,13 +322,9 @@ const config: Config = {
           position: 'left',
           label: 'Docs',
         },
-        {to: '/docs/concept2', label: 'Concepts', position: 'left'},
-        {to: '/docs/how-to/python/build-a-graph', label: 'How to Guide', position: 'left'},
-        {to: '/docs/skills', label: 'Skills', position: 'left'},
-        {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
-        {to: '/docs/courses', label: 'Courses', position: 'left'},
-
-        // {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/docs/concepts', label: 'Concepts', position: 'left'},
+        {to: '/docs/reference', label: 'Reference', position: 'left'},
+        {to: '/blog', label: 'Blog', position: 'left'},
         // Explicit `search` slot — without this, Docusaurus appends the
         // SearchBar at the very end of the right cluster (after GitHub +
         // the color-mode toggle). Putting it first on the right places
@@ -231,6 +333,9 @@ const config: Config = {
           type: 'search',
           position: 'right',
         },
+        ...(hasVersionedDocs
+          ? [{type: 'docsVersionDropdown' as const, position: 'right' as const}]
+          : []),
         {
           href: 'https://github.com/10xHub/Agentflow',
           label: 'GitHub',
@@ -244,28 +349,39 @@ const config: Config = {
         {
           title: 'Learn',
           items: [
-            {label: 'Start here', to: '/docs/get-started'},
-            {label: 'What is AgentFlow?', to: '/docs/get-started'},
-            {label: 'First Python agent', to: '/docs/get-started/first-agent'},
+            {label: 'Get started', to: '/docs/get-started'},
+            {label: 'Beginner path', to: '/docs/beginner'},
+            {label: 'Concepts', to: '/docs/concepts'},
+            {label: 'Tutorials', to: '/docs/tutorials'},
+            {label: 'GenAI courses', to: '/docs/courses'},
           ],
         },
         {
-          title: 'Golden path',
+          title: 'Build',
           items: [
             {label: 'Installation', to: '/docs/get-started/installation'},
-            {label: 'Your First Agent', to: '/docs/get-started/first-agent'},
-            {label: 'Open playground', to: '/docs/how-to/api-cli/open-playground'},
+            {label: 'API reference', to: '/docs/reference'},
+            {label: 'Deployment', to: '/docs/how-to/production/deployment'},
+            {label: 'Troubleshooting', to: '/docs/troubleshooting/installation'},
+            {label: 'Glossary', to: '/docs/glossary'},
           ],
         },
         {
-          title: 'Community',
+          title: 'Project',
+          items: [
+            {label: 'Changelog', to: '/docs/project/changelog'},
+            {label: 'Roadmap', to: '/docs/project/roadmap'},
+            {label: 'Contributing', to: '/docs/project/contributing'},
+            {label: 'Security', to: '/docs/project/security'},
+            {label: 'Support', to: '/docs/project/support'},
+          ],
+        },
+        {
+          title: 'Elsewhere',
           items: [
             {label: 'GitHub', href: 'https://github.com/10xHub/Agentflow'},
-          ],
-        },
-        {
-          title: '10xScale',
-          items: [
+            {label: 'PyPI', href: 'https://pypi.org/project/10xscale-agentflow/'},
+            {label: 'npm', href: 'https://www.npmjs.com/package/@10xscale/agentflow-client'},
             {label: '10xscale.ai', href: 'https://10xscale.ai'},
             {label: 'contact@10xscale.ai', href: 'mailto:contact@10xscale.ai'},
           ],

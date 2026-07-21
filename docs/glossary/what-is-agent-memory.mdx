@@ -1,0 +1,173 @@
+---
+title: "What Is Agent Memory? Types and Python Implementation"
+sidebar_label: What is agent memory?
+description: Agent memory is how an AI agent stores and retrieves information across turns, sessions, and restarts. Learn the three memory types and how to implement them in Python.
+keywords:
+  - what is agent memory
+  - ai agent memory
+  - agent memory types
+  - agent checkpointing
+  - python ai agent memory
+sidebar_position: 5
+---
+
+# What is agent memory?
+
+**Agent memory is the set of mechanisms by which an AI agent stores and retrieves information — from the current conversation context, to facts from past sessions, to long-term knowledge about the user.** Without memory, each agent invocation starts from scratch, with no knowledge of previous interactions.
+
+There are three distinct memory types for AI agents, each serving a different purpose and requiring a different implementation.
+
+## The three types of agent memory
+
+### 1. Working memory (in-context)
+
+The messages in the current conversation window. This is what the LLM can "see" right now — the system prompt, user messages, assistant responses, and tool results in the current session.
+
+**Properties:**
+- Fastest to access (already in the LLM input)
+- Limited by the model's context window (typically 8K–1M tokens depending on the model)
+- Disappears when the session ends unless explicitly saved
+
+**In AgentFlow:** the `AgentState.context` list is the working memory. It grows with each message exchange.
+
+### 2. Episodic memory (thread history)
+
+A persistent record of past conversations indexed by thread ID. When you invoke the agent again with the same thread ID, it can reload the conversation history.
+
+**Properties:**
+- Persists across server restarts (stored in Redis + Postgres)
+- Enables multi-turn conversations that continue across sessions
+- Indexed by thread ID — each user/conversation gets their own thread
+
+**In AgentFlow:** implemented via `PgCheckpointer`, which writes graph state to Redis (hot layer) and Postgres (durable layer) after every step.
+
+### 3. Semantic memory (vector store)
+
+Long-term storage of facts, documents, or user preferences, retrieved by semantic similarity rather than exact key. Used when the relevant information cannot fit in the context window.
+
+**Properties:**
+- Unlimited storage (external vector database)
+- Retrieved by similarity search — "what do I know about this user?"
+- Requires embedding the information at write time
+
+**In AgentFlow:** implemented via the `Store` abstraction, with support for Qdrant and Mem0 as backend vector stores.
+
+## Implementing episodic memory (thread persistence)
+
+```python
+from agentflow.storage.checkpointer import PgCheckpointer
+from agentflow.prebuilt.agent import ReactAgent
+from agentflow.core.state import AgentState, Message
+
+def get_weather(city: str) -> str:
+    """Get weather for a city."""
+    return f"22°C, sunny in {city}"
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    tools=[get_weather],
+)
+
+checkpointer = PgCheckpointer(
+    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    redis_url="redis://localhost:6379/0",
+)
+
+app = agent.compile(checkpointer=checkpointer)
+
+# First turn
+result1 = app.invoke(
+    {"messages": [Message.text_message("What's the weather in Tokyo?")]},
+    config={"thread_id": "user-123"},  # thread_id scopes the memory
+)
+
+# Second turn — agent remembers the first question
+result2 = app.invoke(
+    {"messages": [Message.text_message("And in London?")]},
+    config={"thread_id": "user-123"},  # same thread = same memory
+)
+```
+
+The second invocation has full context of the first turn because both use `thread_id: "user-123"`. A different user gets a different thread ID and sees no cross-contamination.
+
+## Implementing semantic memory (long-term store)
+
+```python
+from agentflow.core.state import AgentState
+from agentflow.prebuilt import make_agent_memory_tool, make_user_memory_tool
+
+# Tools for the agent to manage its own long-term memory
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    tools=[make_user_memory_tool(), make_agent_memory_tool()],
+    system_prompt=[{
+        "role": "system",
+        "content": "You have long-term memory tools. Save important facts about the user and search them when relevant."
+    }],
+)
+```
+
+The agent can then decide to save facts ("user prefers Python over JavaScript") and retrieve them in future sessions. `make_user_memory_tool()` scopes the memories to the current user; `make_agent_memory_tool()` scopes them to the agent itself. There is also a single combined `memory_tool` if you would rather expose one tool than two.
+
+## Memory and the API server
+
+When running via `agentflow api`, memory is automatic. The checkpointer is configured in `agentflow.json`:
+
+```json title="agentflow.json"
+{
+  "agent": "graph.agent:app",
+  "checkpointer": "graph.dependencies:my_checkpointer"
+}
+```
+
+The thread ID is passed in each API request:
+
+```bash
+curl -X POST http://localhost:8000/v1/graph/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}], "config": {"thread_id": "user-123"}}'
+```
+
+## Context window management
+
+Working memory grows with each turn. Without trimming, long conversations eventually exceed the model's context limit. AgentFlow handles this automatically when `trim_context=True` is set on the agent:
+
+```python
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    tools=[get_weather],
+    trim_context=True,  # automatically trim old messages when context is too long
+)
+```
+
+<FAQ items={[
+  {
+    q: "What is the difference between agent memory and a database?",
+    a: "A database stores structured data retrieved by exact queries. Agent memory includes all three types: in-context memory (the LLM's working context), episodic memory (conversation threads retrieved by thread ID), and semantic memory (facts retrieved by similarity, not exact match). All three can be backed by databases but serve different retrieval patterns."
+  },
+  {
+    q: "Does AgentFlow support persistent memory out of the box?",
+    a: "Yes. AgentFlow ships with InMemoryCheckpointer for development (state is lost when the process stops) and PgCheckpointer for production (dual-layer Redis + Postgres persistence). When running via agentflow api, the checkpointer is configured in agentflow.json and applied automatically to all requests."
+  },
+  {
+    q: "How does AgentFlow handle multiple users in the same agent?",
+    a: "Each conversation is scoped to a thread_id. Different users get different thread IDs and their memory is completely isolated. The checkpointer stores state keyed by thread_id — there is no cross-contamination between threads. The API server uses thread IDs from each request."
+  },
+  {
+    q: "What is checkpointing in the context of AI agents?",
+    a: "Checkpointing is the practice of saving the full graph state after each processing step to persistent storage. If the server crashes mid-conversation, the state can be restored from the checkpoint. AgentFlow's PgCheckpointer saves to Redis (fast, for active sessions) and Postgres (durable, for long-term history)."
+  },
+  {
+    q: "Can I clear an agent's memory?",
+    a: "Yes. Delete the thread from storage to clear its episodic memory. Via the API: DELETE /v1/threads/{thread_id}. The next invocation with that thread_id will start fresh. For semantic memory stored in a vector store, delete the namespace or specific items."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/concepts/checkpointing-and-threads', title: 'Checkpointing and threads', description: 'How AgentFlow\'s persistence layer works in detail.', intent: 'concept'},
+  {to: '/docs/how-to/python/set-up-checkpointing', title: 'Set up checkpointing', description: 'Configure Redis + Postgres dual-layer persistence for production.', intent: 'guide'},
+  {to: '/docs/how-to/python/use-memory-store', title: 'Use the memory store', description: 'Add long-term semantic memory to your agent.', intent: 'guide'},
+  {to: '/docs/beginner/add-memory', title: 'Add memory to your agent', description: 'Beginner guide to memory and threads.', intent: 'tutorial'},
+]} />

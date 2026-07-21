@@ -1,3 +1,15 @@
+---
+title: StructuredOutputAgent — Prebuilt agents
+sidebar_label: StructuredOutputAgent
+description: StructuredOutputAgent validates LLM output against a Pydantic schema and auto-repairs invalid JSON through a GENERATE/REPAIR loop.
+keywords:
+  - structured output agent
+  - pydantic schema validation
+  - json schema repair agent
+  - agentflow structured output
+  - self-repair loop
+---
+
 # StructuredOutputAgent
 
 An agent that guarantees its output matches a Pydantic schema — with automatic validation and self-repair on failure.

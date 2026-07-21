@@ -1,7 +1,7 @@
 ---
 title: How to use graph utilities — AgentFlow TypeScript Client
 sidebar_label: Graph utilities
-description: Guide to graph(), graphStateSchema(), stopGraph(), and fixGraph() — utility methods on AgentFlowClient for inspecting and controlling graph execution.
+description: Guide to graph(), graphTools(), graphStateSchema(), observability(), stopGraph(), and fixGraph() — utility methods on AgentFlowClient for inspecting and controlling graph execution.
 keywords:
   - agentflow typescript client
   - stop graph execution
@@ -15,12 +15,14 @@ sidebar_position: 8
 
 # How to use graph utilities
 
-`AgentFlowClient` exposes four utility methods for inspecting and controlling the graph:
+`AgentFlowClient` exposes six utility methods for inspecting and controlling the graph:
 
 | Method | What it does |
 |---|---|
 | `graph()` | Fetch graph topology, node list, and server capabilities |
+| `graphTools()` | List the tools each tool node exposes, tagged by source |
 | `graphStateSchema()` | Fetch the JSON Schema of `AgentState` (the graph's state type) |
+| `observability(threadId, runId?)` | Fetch the reconstructed trace for a run: spans, events, and token usage |
 | `stopGraph(threadId)` | Signal a running graph to stop after the current node |
 | `fixGraph(threadId)` | Remove broken tool-call messages from a thread's history |
 
@@ -104,6 +106,98 @@ try {
 
 ---
 
+## graphTools()
+
+Fetches every tool the graph's tool nodes expose from `GET /v1/graph/tools`, grouped by node. Each tool carries a `source` tag, so you can tell a locally defined Python tool from one discovered on an MCP server or one registered by a client via `setup()`.
+
+```ts
+const result = await client.graphTools();
+
+console.log(`${result.data.tool_count} tool(s) across ${result.data.node_count} node(s)`);
+
+for (const node of result.data.nodes) {
+  console.log(`\n${node.node_name} (${node.tool_count})`);
+  for (const tool of node.tools) {
+    console.log(`  [${tool.source}] ${tool.name} — ${tool.description}`);
+  }
+}
+```
+
+### GraphToolsResponse shape
+
+```ts
+type ToolSource = 'local' | 'mcp' | 'remote';
+
+interface GraphToolsResponse {
+  data: {
+    node_count: number;
+    tool_count: number;
+    nodes: Array<{
+      node_name: string;
+      tool_count: number;
+      tools: Array<{
+        name: string;
+        description: string;
+        source: ToolSource;
+        parameters: Record<string, any>;   // JSON Schema, OpenAI function-calling shape
+      }>;
+    }>;
+  };
+  metadata: { request_id: string; timestamp: string; message: string };
+}
+```
+
+| `source` | Meaning |
+|---|---|
+| `local` | A Python function registered on the tool node in your graph. |
+| `mcp` | Discovered at runtime from an MCP server attached to the node. |
+| `remote` | Registered by a client through `registerTool()` + `setup()`, and executed back on that client. |
+
+### Use case: confirm your remote tools actually landed
+
+`setup()` reports how many tools it registered, but `graphTools()` is what the graph will really offer the model. Check the two agree before you rely on a browser-side tool:
+
+```ts
+client.registerTool({
+  node: 'TOOL',
+  name: 'get_location',
+  description: 'Read the browser geolocation',
+  parameters: { type: 'object', properties: {}, required: [] },
+  handler: async () => readGeolocation(),
+});
+
+await client.setup();
+
+const { data } = await client.graphTools();
+const remote = data.nodes
+  .flatMap(n => n.tools)
+  .filter(t => t.source === 'remote')
+  .map(t => t.name);
+
+if (!remote.includes('get_location')) {
+  throw new Error('get_location did not register — did setup() run against this server?');
+}
+```
+
+### Use case: render a capability list in a UI
+
+```ts
+const { data } = await client.graphTools();
+
+const bySource = data.nodes
+  .flatMap(n => n.tools)
+  .reduce<Record<string, string[]>>((acc, t) => {
+    (acc[t.source] ??= []).push(t.name);
+    return acc;
+  }, {});
+
+// { local: ['search_docs'], mcp: ['create_issue', 'list_repos'], remote: ['get_location'] }
+```
+
+`graphTools()` returns an empty `nodes` array for a graph with no tool nodes. That is a valid graph, not an error.
+
+---
+
 ## graphStateSchema()
 
 Fetches the full JSON Schema of `AgentState` from `GET /v1/graph:StateSchema`. The schema describes every field in the graph's state type — useful for building dynamic forms, writing client-side validators, or understanding what data the graph tracks.
@@ -179,6 +273,116 @@ await client.invoke([Message.text_message('Hello')], { initial_state: initialSta
 
 ---
 
+## observability()
+
+Fetches the reconstructed execution trace for a thread from `GET /v1/observability/{thread_id}`. The server returns the most recent run by default; pass a `runId` to fetch a specific one. Use it to show a timeline, attribute latency to a node, or report token usage per run.
+
+```ts
+const result = await client.observability('thread-abc123');
+
+const run = result.data.run;
+if (!run) {
+  console.log('No runs recorded for this thread yet.');
+} else {
+  console.log(`run ${run.run_id} — ${run.status} in ${run.duration_ms}ms`);
+  console.log(`${run.llm_calls} LLM call(s), ${run.tool_calls} tool call(s), ${run.iterations} iteration(s)`);
+  console.log('Tokens:', run.usage.total_tokens);
+
+  for (const span of run.spans) {
+    console.log(`  ${'  '.repeat(span.parent ? 1 : 0)}[${span.kind}] ${span.name} +${span.start_ms}ms (${span.duration_ms}ms)`);
+  }
+}
+```
+
+### ObservabilityResponse shape
+
+```ts
+interface ObservabilityResponse {
+  data: {
+    thread_id: string;
+    run_count: number;
+    run_ids: string[];
+    run: ObsRun | null;     // the requested run, or the latest; null when nothing is recorded
+  };
+  metadata: { request_id: string; timestamp: string; message: string };
+}
+
+interface ObsRun {
+  run_id: string;
+  thread_id: string;
+  status: string;             // e.g. 'done', 'error'
+  started_at: number | null;  // UNIX seconds
+  finished_at: number | null;
+  duration_ms: number;
+  spans: ObsSpan[];
+  events: ObsEvent[];
+  usage: ObsTokenUsage;
+  llm_calls: number;
+  tool_calls: number;
+  iterations: number;
+}
+
+interface ObsSpan {
+  id: string;
+  name: string;
+  kind: 'root' | 'node' | 'llm' | 'tool';
+  parent: string | null;      // span id, or null for the root
+  start_ms: number;           // offset from the run start
+  duration_ms: number;
+  model?: string | null;      // set on 'llm' spans
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+}
+
+interface ObsEvent {
+  id: string;
+  type: string;
+  node: string;
+  offset_ms: number;          // offset from the run start
+  summary: string;
+}
+
+interface ObsTokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  reasoning_tokens: number;
+  total_tokens: number;
+}
+```
+
+A single run is returned per call, and omitting `runId` returns the **last** entry in `run_ids`. `run_ids` is ordered oldest first, so a run picker fetches the list once and then requests each run by id:
+
+```ts
+const { data } = await client.observability(threadId);
+
+for (const runId of data.run_ids) {
+  const detail = await client.observability(threadId, runId);
+  console.log(runId, detail.data.run?.duration_ms, detail.data.run?.usage.total_tokens);
+}
+```
+
+### Use case: find the slowest node in a run
+
+```ts
+const { data } = await client.observability(threadId);
+
+const slowest = (data.run?.spans ?? [])
+  .filter(s => s.kind === 'node')
+  .sort((a, b) => b.duration_ms - a.duration_ms)[0];
+
+if (slowest) {
+  console.log(`Slowest node: ${slowest.name} (${slowest.duration_ms}ms)`);
+}
+```
+
+### Notes
+
+- Traces are reconstructed from what the server recorded during the run. A thread that has never been invoked, or a server with telemetry recording disabled, returns `run: null` and `run_count: 0` rather than an error.
+- `start_ms` and `offset_ms` are offsets from the start of the run, not absolute timestamps. Add `started_at * 1000` to place them on a wall clock.
+- Retention is bounded by the server's telemetry store, so old runs eventually drop out of `run_ids`.
+
+---
+
 ## stopGraph()
 
 Sends a stop signal to a running graph execution via `POST /v1/graph/stop`. The server sets a stop flag on the thread; the graph checks this flag after each node and halts before starting the next node.
@@ -214,7 +418,7 @@ let threadId: string | undefined;
 
 const stream = client.stream(
   [Message.text_message('Write a very long essay about the universe.')],
-  { config: { configurable: { thread_id: 'long-thread' } } }
+  { config: { thread_id: 'long-thread' } }
 );
 
 let stopped = false;
@@ -285,7 +489,7 @@ async function invokeWithRecovery(threadId: string, message: string) {
   try {
     return await client.invoke(
       [Message.text_message(message)],
-      { config: { configurable: { thread_id: threadId } } }
+      { config: { thread_id: threadId } }
     );
   } catch (err) {
     if (err instanceof AgentFlowError && err.errorCode.startsWith('GRAPH')) {
@@ -296,7 +500,7 @@ async function invokeWithRecovery(threadId: string, message: string) {
       // Retry once after the fix
       return await client.invoke(
         [Message.text_message(message)],
-        { config: { configurable: { thread_id: threadId } } }
+        { config: { thread_id: threadId } }
       );
     }
     throw err;
@@ -355,3 +559,5 @@ printGraphDashboard().catch(console.error);
 | `AgentFlowError` status `404` on `fixGraph` | Thread not found or no checkpointer configured. | Check `agentflow.json` for a checkpointer. |
 | `AgentFlowError` status `403` | Caller does not have permission to stop/fix this thread. | Check the `AuthorizationBackend` on the server. |
 | `fixGraph` returns `removed_count: 0` | Thread was already in a valid state. | No action needed. |
+| `graphTools` returns an empty `nodes` array | The graph has no tool nodes. | Not an error. Add a `ToolNode` if the agent is meant to call tools. |
+| `observability` returns `run: null` | The thread has no recorded runs, or telemetry recording is off on the server. | Invoke the thread once, and check the server's telemetry configuration. |

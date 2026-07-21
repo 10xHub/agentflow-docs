@@ -1,5 +1,5 @@
 ---
-title: GitHub MCP — AgentFlow Python AI Agent Framework
+title: GitHub MCP — AgentFlow tutorial
 sidebar_label: GitHub MCP
 description: Use a remote GitHub MCP server from AgentFlow so an agent can query repositories and other GitHub data through MCP tools.
 keywords:
@@ -22,7 +22,7 @@ A ReAct agent that connects to the GitHub Copilot MCP endpoint and asks it to re
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `fastmcp` installed
 - a Google model key such as `GEMINI_API_KEY`

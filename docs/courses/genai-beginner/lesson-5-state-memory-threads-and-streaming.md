@@ -1,7 +1,7 @@
 ---
 title: "Lesson 5: State, Memory, Threads, and Streaming"
 sidebar_label: Lesson 5
-description: Build conversation-aware applications with persistent state and streaming responses. Part of the AgentFlow genai course guide for production-ready Python AI.
+description: Build conversation-aware applications with persistent state and streaming responses.
 keywords:
   - genai course
   - ai agent course
@@ -213,6 +213,8 @@ result2 = app.invoke(
 from fastapi import FastAPI
 from sse_starlette.sse import EventSourceResponse
 
+from agentflow.core.state import StreamEvent
+
 app = FastAPI()
 
 @app.post("/stream/{thread_id}")
@@ -221,10 +223,11 @@ async def stream_chat(thread_id: str, message: str):
         async for chunk in app.graph.astream(
             {"messages": [Message(role="user", content=message)], "thread_id": thread_id}
         ):
-            yield {
-                "event": "message",
-                "data": chunk.content
-            }
+            if chunk.event == StreamEvent.MESSAGE and chunk.message:
+                yield {
+                    "event": "message",
+                    "data": chunk.message.text()
+                }
     
     return EventSourceResponse(event_generator())
 ```
@@ -250,11 +253,15 @@ async def stream_response(thread_id: str, message: str):
 
 ```python
 # Using AgentFlow's built-in streaming
-from agentflow.core.streaming import StreamChunk
+from agentflow.core.state import StreamEvent
 
 for chunk in app.stream({"messages": [Message(role="user", content="Hello!")]}):
-    if isinstance(chunk, StreamChunk):
-        print(chunk.content, end="", flush=True)
+    # Branch on chunk.event, then read the matching holder.
+    # StreamChunk has no `content` attribute.
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
+    elif chunk.event == StreamEvent.ERROR and chunk.data:
+        print(f"\nerror: {chunk.data.get('reason')}")
 ```
 
 ---

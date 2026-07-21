@@ -1,7 +1,7 @@
 ---
-title: Shared Foundations — AgentFlow Python AI Agent Framework
+title: Shared Foundations — GenAI course
 sidebar_label: Shared Foundations
-description: Prerequisite concepts for both GenAI courses. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: Prerequisite concepts for both GenAI courses.
 keywords:
   - genai course
   - ai agent course

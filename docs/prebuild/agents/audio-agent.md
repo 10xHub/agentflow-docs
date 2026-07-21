@@ -1,3 +1,15 @@
+---
+title: AudioAgent — Prebuilt agents
+sidebar_label: AudioAgent
+description: AudioAgent wraps a Gemini Live LiveAgent for realtime audio-to-audio sessions, driven via arealtime() or realtime().
+keywords:
+  - audio agent
+  - gemini live agent
+  - realtime audio agentflow
+  - liveagent
+  - voice agent duplex audio
+---
+
 # AudioAgent
 
 A prebuilt realtime audio-to-audio agent backed by Gemini Live — mirrors `ReactAgent`'s construction surface while wrapping a `LiveAgent` as the graph root.

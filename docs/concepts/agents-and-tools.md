@@ -1,7 +1,7 @@
 ---
-title: Agents and Tools — AgentFlow Python AI Agent Framework
+title: Agents and Tools — AgentFlow concepts
 sidebar_label: Agents and Tools
-description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options. Part of the AgentFlow agentflow concepts guide for.
+description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options.
 keywords:
   - agentflow concepts
   - agent architecture

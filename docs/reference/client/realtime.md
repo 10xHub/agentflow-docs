@@ -1,7 +1,7 @@
 ---
-title: "`realtime()` — AgentFlow Python AI Agent Framework"
+title: "`realtime()` — TypeScript client reference"
 sidebar_label: "`realtime()`"
-description: Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket.
+description: "Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket."
 keywords:
   - typescript client reference
   - realtime audio client
@@ -24,7 +24,7 @@ The session is **transport only**: it moves bytes and events between your app an
 **Source:** `src/endpoints/realtime.ts`  
 **Server reference:** [`reference/rest-api/live`](../rest-api/live.md)
 
-The endpoint is only available when the graph configured in `agentflow.json` is rooted at a `LiveAgent` (built with `AudioAgent`). Calling it against a non-live graph closes the socket with code `1011`.
+The endpoint is only available when the graph configured in `agentflow.json` is rooted at a `LiveAgent` (built with `AudioAgent`). Calling it against a non-live graph sends a fatal `{ type: 'error', code: 'not_live' }` event and closes the socket with code `1008`.
 
 ---
 
@@ -311,7 +311,9 @@ Constants `REALTIME_INPUT_SAMPLE_RATE` (16000) and `REALTIME_OUTPUT_SAMPLE_RATE`
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Socket closes with code `1011` immediately | The configured graph is not rooted at a `LiveAgent`. | Point `agentflow.json` at an `AudioAgent`-based graph. |
+| Socket closes with code `1008` immediately, after an `error` event with `code: 'not_live'` | The configured graph is not rooted at a `LiveAgent`. | Point `agentflow.json` at an `AudioAgent`-based graph. |
+| Socket closes with code `1008` after the init frame | Not authorized for the requested `thread_id`. Preceded by an `error` event with `code: 'not_authorized'`. | Check the token and the server's `AuthorizationBackend`. |
+| Socket closes with code `1011` | An unexpected server-side error ended the session. | Check the server logs. |
 | Socket closes with code `1003` | Invalid init frame (e.g. an unsupported `modalities` value). | Check `model` and `modalities`; read the `error` event for the reason. |
 | `No WebSocket implementation available` thrown | Running on Node &lt; 21 without a global `WebSocket`. | Pass `webSocketImpl` (the `ws` package) in the client config. |
 | No audio plays | The client is transport-only. | Wire the `'audio'` channel to your own audio output. |

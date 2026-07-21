@@ -1,5 +1,5 @@
 ---
-title: Beginner Path — AgentFlow Python AI Agent Framework
+title: Beginner Path — Beginner path
 sidebar_label: Beginner Path
 description: Learn AgentFlow one concept at a time, from a single Python agent to a production-ready app with tools, memory, an API, and a TypeScript client.
 keywords:

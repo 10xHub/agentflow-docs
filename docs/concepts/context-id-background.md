@@ -1,6 +1,12 @@
 ---
 title: Context, IDs, and Background Tasks
 description: How AgentFlow trims model context, generates IDs, and manages background work.
+keywords:
+  - message context manager
+  - id generator agentflow
+  - background tasks
+  - context trimming
+  - snowflake id
 sidebar_position: 14
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Multimodal — AgentFlow Python AI Agent Framework
+title: Multimodal — AgentFlow tutorial
 sidebar_label: Multimodal
 description: Send images, audio, video, and documents to AgentFlow using media blocks, MediaRef, a media store, and multimodal model configuration.
 keywords:
@@ -33,7 +33,7 @@ The tutorial also shows three ways to provide media:
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - a multimodal-capable provider key such as `GOOGLE_API_KEY`
 

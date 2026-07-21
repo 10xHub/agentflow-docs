@@ -1,5 +1,5 @@
 ---
-title: How to manage threads — AgentFlow Python AI Agent Framework
+title: How to manage threads — TypeScript client how-to
 sidebar_label: How to manage threads
 description: Step-by-step guide to listing, inspecting, updating, and deleting conversation threads and messages.
 keywords:
@@ -153,7 +153,7 @@ Write a new state snapshot for a thread. Use this to inject values, repair corru
 ```ts
 await client.updateThreadState(
   12345,
-  { configurable: {} },   // run config
+  {},                     // config body (the server derives it from the path thread_id)
   {
     user_preferences: { language: 'fr', timezone: 'Europe/Paris' },
     context_window: [],
@@ -187,7 +187,7 @@ await client.addThreadMessages(
   [
     Message.text_message('You are a Paris travel expert.', 'system'),
   ],
-  { configurable: {} }   // run config
+  {}                     // config body (the server derives it from the path thread_id)
 );
 ```
 

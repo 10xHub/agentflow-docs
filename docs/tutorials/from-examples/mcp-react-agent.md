@@ -1,5 +1,5 @@
 ---
-title: MCP ReAct Agent — AgentFlow Python AI Agent Framework
+title: MCP ReAct Agent — AgentFlow tutorial
 sidebar_label: MCP ReAct Agent
 description: Connect AgentFlow ToolNode to MCP servers so a ReAct graph can call remote tools as part of normal agent execution.
 keywords:
@@ -22,7 +22,7 @@ A ReAct graph whose tools are not local Python functions, but remote MCP tools d
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `fastmcp` installed
 - a running MCP server, such as the weather server from the earlier tutorial

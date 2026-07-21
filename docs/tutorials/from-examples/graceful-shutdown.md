@@ -1,5 +1,5 @@
 ---
-title: Graceful Shutdown — AgentFlow Python AI Agent Framework
+title: Graceful Shutdown — AgentFlow tutorial
 sidebar_label: Graceful Shutdown
 description: Build a long-running AgentFlow service that handles SIGINT and SIGTERM cleanly, protects initialization and cleanup, and closes graph resources safely.
 keywords:

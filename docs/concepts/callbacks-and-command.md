@@ -1,6 +1,12 @@
 ---
 title: Callbacks and Command
 description: Hook into invocations, validate inputs, recover from errors, and route from inside nodes.
+keywords:
+  - callback manager
+  - agentflow command
+  - invocation type
+  - node routing
+  - hook agent invocations
 sidebar_position: 12
 ---
 
@@ -73,8 +79,7 @@ Register a `GraphLifecycleHook` to react to structural events:
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 
 class MyLifecycleHook(GraphLifecycleHook):
     async def on_graph_start(self, context: GraphLifecycleContext, state: AgentState) -> AgentState | None:

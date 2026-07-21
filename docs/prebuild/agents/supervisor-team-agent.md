@@ -1,3 +1,15 @@
+---
+title: SupervisorTeamAgent — Prebuilt agents
+sidebar_label: SupervisorTeamAgent
+description: SupervisorTeamAgent routes work through a SUPERVISOR node to specialist worker agents, generating its routing prompt from the worker registry.
+keywords:
+  - supervisor agent
+  - multi-agent supervisor pattern
+  - agent team routing
+  - centralized multi-agent
+  - worker agent registry
+---
+
 # SupervisorTeamAgent
 
 A centralized multi-agent pattern where a dedicated supervisor LLM decides which specialist worker to invoke next.
@@ -243,7 +255,7 @@ import asyncio
 from agentflow.core.graph import Agent, ToolNode
 from agentflow.prebuilt.agent import SupervisorTeamAgent
 from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.prebuilt.tools import google_web_search, safe_calculator
 from agentflow.core.state import Message
 
@@ -265,7 +277,7 @@ agent = SupervisorTeamAgent(
     max_rounds=6,
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = agent.compile(checkpointer=checkpointer)
 
 

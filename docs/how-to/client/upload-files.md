@@ -1,7 +1,7 @@
 ---
-title: How to upload files — AgentFlow Python AI Agent Framework
+title: How to upload files — TypeScript client how-to
 sidebar_label: How to upload files
-description: Step-by-step guide to uploading images, audio, and documents and using them in multimodal messages. Part of the AgentFlow agentflow typescript client guide for.
+description: Step-by-step guide to uploading images, audio, and documents and using them in multimodal messages.
 keywords:
   - agentflow typescript client
   - ai agent client
@@ -33,7 +33,7 @@ Before uploading, confirm the server accepts files and check the size limit:
 const config = await client.getMultimodalConfig();
 console.log('Storage backend:', config.data.media_storage_type); // 'local', 's3', etc.
 console.log('Max size (MB):', config.data.media_max_size_mb);    // e.g. 10
-console.log('Document handling:', config.data.document_handling); // 'extract' or 'raw'
+console.log('Document handling:', config.data.document_handling); // 'extract_text', 'pass_raw', or 'skip'
 ```
 
 If `media_storage_type` is empty or the endpoint returns an error, media uploads are not configured on the server.
@@ -107,7 +107,7 @@ const docMsg = new Message('user', [
 ]);
 ```
 
-If `document_handling` is `'extract'`, the server extracts text from the document at upload time and the extracted text is available in `upload.data.extracted_text`.
+If `document_handling` is `'extract_text'` (the server default), the server extracts text from the document at upload time and the extracted text is available in `upload.data.extracted_text`.
 
 ### Audio message
 
@@ -257,7 +257,7 @@ The LLM also determines which types it can process. Check your model's documenta
 | `AgentFlowError` status `415` | Unsupported MIME type. | Use a supported file type (see table above). |
 | `AgentFlowError` status `404` on download | `file_id` not found (deleted or wrong). | Re-upload the file. |
 | Signed URL expired | `direct_url_expires_at` is in the past. | Call `getFileAccessUrl(file_id)` to get a fresh URL. |
-| `extracted_text` is `null` | Document handling is `'raw'` or the file has no extractable text. | Set `document_handling: 'extract'` on the server, or pass the text manually in the message. |
+| `extracted_text` is `null` | Document handling is `'pass_raw'` or `'skip'`, or the file has no extractable text. | Set `DOCUMENT_HANDLING=extract_text` on the server, or pass the text manually in the message. |
 
 ---
 
@@ -270,4 +270,4 @@ The LLM also determines which types it can process. Check your model's documenta
 
 ## Next step
 
-See [how-to/client/register-remote-tools](register-remote-tools.md) to learn how to register browser-side functions that the agent can call remotely.
+See [how-to/client/send-images-and-documents](send-images-and-documents.md) for the `file_id` path and the `Message.withImage` / `withFile` / `multimodal` helpers, or [how-to/client/register-remote-tools](register-remote-tools.md) to register browser-side functions the agent can call.

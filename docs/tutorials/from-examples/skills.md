@@ -1,5 +1,5 @@
 ---
-title: Skills — AgentFlow Python AI Agent Framework
+title: Skills — AgentFlow tutorial
 sidebar_label: Skills
 description: Build an AgentFlow graph that loads SKILL.md instructions dynamically and combines them with normal tools.
 keywords:
@@ -29,7 +29,7 @@ In this tutorial the agent can:
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `python-dotenv` installed
 - a model key for the provider used by the example

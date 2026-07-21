@@ -1,7 +1,7 @@
 ---
-title: How to stream responses — AgentFlow Python AI Agents
+title: How to stream responses — TypeScript client how-to
 sidebar_label: How to stream responses
-description: Step-by-step guide to using client.stream() for real-time token-by-token output. Part of the AgentFlow agentflow typescript client guide for production-ready.
+description: Step-by-step guide to using client.stream() for real-time token-by-token output.
 keywords:
   - agentflow typescript client
   - ai agent client
@@ -92,13 +92,13 @@ for await (const chunk of stream) {
 
 ## Step 4: Use a persistent thread
 
-Same as `invoke()` — pass `config.configurable.thread_id`:
+Same as `invoke()` — pass `config.thread_id`:
 
 ```ts
 const stream = client.stream(
   [Message.text_message('Continue our discussion about climate change.')],
   {
-    config: { configurable: { thread_id: 'stream-session-001' } },
+    config: { thread_id: 'stream-session-001' },
     response_granularity: 'low',
   }
 );
@@ -143,7 +143,7 @@ let threadId: string | undefined;
 
 const stream = client.stream(
   [Message.text_message('Tell me everything about the universe.')],
-  { config: { configurable: { thread_id: 'long-thread' } } }
+  { config: { thread_id: 'long-thread' } }
 );
 
 let stopped = false;
@@ -244,7 +244,7 @@ async function streamToResult(messages: Message[]) {
 const stream = client.wsStream(
   [Message.text_message('Explain quantum computing.')],
   {
-    config: { configurable: { thread_id: 'ws-session-001' } },
+    config: { thread_id: 'ws-session-001' },
     response_granularity: 'low',
   }
 );
@@ -264,16 +264,43 @@ for await (const chunk of stream) {
 
 | | `stream()` | `wsStream()` |
 |---|---|---|
-| Transport | HTTP SSE (one request per tool-call iteration) | WebSocket (single connection for the full call) |
+| Transport | HTTP NDJSON body (one request per tool-call iteration) | WebSocket (single connection for the full call) |
 | Tool call handling | Opens a new HTTP request per iteration | Sends resume messages over the same socket |
-| Browser auth | `Authorization` header | `?token=` query parameter (sent at connect time) |
+| Browser auth | `Authorization` header | `agentflow-bearer` WebSocket subprotocol |
 | Best for | Simple chat without remote tools | Remote-tool-heavy graphs, lower overhead per iteration |
 
 Both methods produce identical `StreamChunk` sequences. The only difference is connection reuse. If your graph makes no remote tool calls, the two methods behave identically. If your graph loops through many tool calls, `wsStream()` avoids the overhead of re-establishing an HTTP connection on each iteration.
 
+The response of `stream()` is sent with `Content-Type: text/event-stream`, but the body is **not** `data:`-prefixed SSE — the server writes one JSON object per line (NDJSON). You only need to care about this if you parse the raw HTTP body yourself; `client.stream()` handles both newline-separated and back-to-back JSON objects for you.
+
+### Run boundaries over the socket
+
+After every run finishes, the server sends a marker chunk on the same socket:
+
+```json
+{ "event": "updates", "data": { "status": "done" } }
+```
+
+`wsStream()` uses that marker to decide when a remote-tool resume can be sent. If you consume the chunks yourself, treat it as the end of the current run rather than the end of the stream — a run that made remote tool calls emits one `status: "done"` per iteration, and the generator only completes when the socket closes.
+
 ### Auth note
 
-Because browsers cannot set custom headers on WebSocket connections, `wsStream()` passes the bearer token as a `?token=` query parameter when connecting. The server extracts it the same way it would from an `Authorization` header.
+The bearer token is never placed in the URL. Browsers cannot set request headers on a WebSocket, so the client sends the token as the second entry of the `Sec-WebSocket-Protocol` header, using the `agentflow-bearer` subprotocol: the socket is opened with `['agentflow-bearer', '<jwt>']`. On Node runtimes whose WebSocket constructor accepts an options argument, an `Authorization: Bearer ...` header is set as well. See [`reference/client/realtime`](../../reference/client/realtime.md), which uses exactly the same handshake.
+
+### WebSocket implementation on Node
+
+`wsStream()` needs a `WebSocket` constructor. Browsers and Node 21+ provide a global one. On Node 18 and 20 you must supply the [`ws`](https://www.npmjs.com/package/ws) package, otherwise the first call throws `No WebSocket implementation available`:
+
+```ts
+import WebSocket from 'ws';
+import { AgentFlowClient } from '@10xscale/agentflow-client';
+
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000',
+  authToken: process.env.API_TOKEN,
+  webSocketImpl: WebSocket as unknown as typeof globalThis.WebSocket,
+});
+```
 
 ---
 

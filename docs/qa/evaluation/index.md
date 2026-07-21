@@ -1,5 +1,5 @@
 ---
-title: Evaluation — AgentFlow Python AI Agent Framework
+title: Evaluation — Testing and evaluation
 sidebar_label: Overview
 description: An introduction to AgentFlow's evaluation framework — EvalSet, EvalConfig, EvalPresets, user simulation, parallel execution, criteria, and the agentflow eval CLI command.
 keywords:
@@ -115,26 +115,32 @@ An `EvalSet` is a named collection of `EvalCase` objects. Each case defines a us
 
 Each evaluation case is scored against one or more criteria. A criterion takes the agent's execution trajectory and final response and produces a score between 0 and 1.
 
-| Criterion key | Type | What it checks |
+The left column is the `CriteriaConfig` field name you set in `EvalConfig`; the criterion reports under its own name, listed in the [criteria reference](./criteria.md).
+
+| Config field | Type | What it checks |
 |---|---|---|
-| `tool_name_match_score` | No-LLM | Tool names called match expected |
-| `tool_trajectory_avg_score` | No-LLM | Tool sequence matches (EXACT / IN_ORDER / ANY_ORDER) |
+| `tool_name_match` | No-LLM | Tool names called match expected |
+| `trajectory` | No-LLM | Tool sequence matches (EXACT / IN_ORDER / ANY_ORDER) |
 | `node_order` | No-LLM | Graph nodes visited in expected order |
 | `rouge_match` | No-LLM | ROUGE-1 token overlap between actual and expected response |
+| `contains_keywords` | No-LLM | Required keywords appear in the response |
 | `response_match` | LLM judge | Semantic equivalence of actual and expected response |
-| `llm_judge` | LLM judge | Overall response quality score |
+| `llm_judge` | LLM judge | The same semantic check, reported separately |
+| `rubric_based` | LLM judge | Your own written grading rules |
 | `factual_accuracy` | LLM judge | Factual correctness of stated facts |
 | `hallucination` | LLM judge | Groundedness — is the response based on actual tool results? |
 | `safety` | LLM judge | Safety across harmful content, hate speech, privacy, misinformation, manipulation |
 | `simulation_goals` | LLM judge | Goal achievement across a full multi-turn simulation transcript |
 
-**Default criteria** (applied when no criteria are configured):
+**CLI default criteria** (used when an eval file supplies no config). All are no-LLM, so a default run costs nothing:
 
-| Criterion | Threshold | Match type |
+| Config field | Threshold | Match type |
 |---|---|---|
-| `response_match` | 0.6 | ANY_ORDER |
-| `tool_name_match_score` | 0.6 | ANY_ORDER |
-| `node_order` | 0.6 | IN_ORDER |
+| `tool_name_match` | 1.0 | — |
+| `rouge_match` | 0.5 | — |
+| `node_order` | 0.8 | EXACT |
+
+Running `AgentEvaluator` directly without a config uses a different set — `EvalConfig.default()`, which is EXACT trajectory at 1.0 plus `response_match` at 0.8.
 
 [Full criteria documentation](./criteria.md)
 
@@ -145,7 +151,7 @@ Each evaluation case is scored against one or more criteria. A criterion takes t
 ```python
 from agentflow.qa.evaluation.config.presets import EvalPresets
 
-config = EvalPresets.tool_usage(threshold=0.6)      # tool calls + response quality
+config = EvalPresets.tool_usage(threshold=0.6)       # tool names + tool sequence, no LLM
 config = EvalPresets.response_quality(threshold=0.7) # LLM judge on response accuracy
 config = EvalPresets.quick_check()                   # fast ROUGE check, no LLM cost
 config = EvalPresets.comprehensive(threshold=0.8)    # all criteria combined
@@ -203,7 +209,7 @@ def get_eval_set() -> EvalSet:
     )
 ```
 
-The CLI loads the agent from `agentflow.json`, applies default criteria (all at 0.6 threshold), runs the eval, and writes reports.
+The CLI loads the agent from `agentflow.json`, applies the default no-LLM criteria shown above, runs the eval, and writes reports.
 
 ---
 
@@ -380,7 +386,7 @@ agentflow eval --no-report
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
 | `timestamp_files` | Append timestamp to filenames so runs do not overwrite each other |
 
-**Config priority (highest first):** CLI flags → `agentflow.json` → per-file `get_eval_config()` → built-in defaults (0.6 threshold)
+**Config priority (highest first):** CLI flags → `agentflow.json` → per-file `get_eval_config()` → built-in defaults
 
 CLI flags always take precedence over `agentflow.json` values.
 

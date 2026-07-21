@@ -163,7 +163,7 @@ Use `config` for runtime metadata. For most cases, you only need these keys:
 | Key | Default | Notes |
 |---|---|---|
 | `thread_id` | auto (UUID) | Conversation/thread identifier used by the checkpointer. |
-| `user_id` | `"test-user-id"` | Passed to tools and publisher events. If not provided, it is set automatically. |
+| `user_id` | `"anonymous"` | Passed to tools and publisher events. If not provided, it is set automatically. |
 | `recursion_limit` | 25 | Maximum node-execution steps before `GraphRecursionError`. |
 
 Other reserved keys are auto-populated by the runtime and should not be set manually:
@@ -195,6 +195,7 @@ result = app.invoke(
 ## Step 8: Stream responses
 
 ```python
+from agentflow.core.state import StreamEvent
 from agentflow.utils import ResponseGranularity
 
 async def stream_example():
@@ -203,8 +204,8 @@ async def stream_example():
         config={"thread_id": "stream-1"},
         response_granularity=ResponseGranularity.LOW,
     ):
-        if chunk.content:
-            print(chunk.content, end="", flush=True)
+        if chunk.event == StreamEvent.MESSAGE and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
 
 asyncio.run(stream_example())
 ```

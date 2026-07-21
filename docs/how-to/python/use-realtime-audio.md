@@ -29,7 +29,7 @@ This guide covers:
 
 ## Prerequisites
 
-- `10xscale-agentflow` >= 0.7.5
+- `10xscale-agentflow` >= 0.9.0
 - A Gemini API key (or Vertex AI credentials)
 
 ---

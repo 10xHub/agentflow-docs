@@ -1,7 +1,7 @@
 ---
-title: Publishers — AgentFlow Python AI Agent Framework
+title: Publishers — Python API reference
 sidebar_label: Publishers
-description: BasePublisher, ConsolePublisher, RedisPublisher, KafkaPublisher, RabbitMQPublisher — stream execution events from the graph.
+description: BasePublisher, ConsolePublisher, RedisPublisher, KafkaPublisher, RabbitMQPublisher, OtelPublisher, LogfirePublisher, LangsmithPublisher — stream execution events from the graph.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -29,6 +29,21 @@ from agentflow.runtime.publisher.events import Event, EventType, ContentType, Ev
 from agentflow.runtime.publisher import RedisPublisher    # pip install redis
 from agentflow.runtime.publisher import KafkaPublisher    # pip install aiokafka
 from agentflow.runtime.publisher import RabbitMQPublisher # pip install aio-pika
+
+# Fan-out
+from agentflow.runtime.publisher import CompositePublisher
+
+# Tracing backends
+from agentflow.runtime.publisher import (
+    LangsmithPublisher,
+    LogfirePublisher,
+    ObservabilityLevel,
+    OtelPublisher,
+    setup_langsmith,
+    setup_logfire,
+    setup_observability,
+    setup_tracing,
+)
 ```
 
 ---
@@ -262,6 +277,120 @@ app = graph.compile(publisher=publisher)
 
 ---
 
+## `CompositePublisher`
+
+Broadcasts every event to a list of publishers concurrently. A failure in one publisher is logged and does not stop the others.
+
+```python
+from agentflow.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
+
+publisher = CompositePublisher([ConsolePublisher(), RedisPublisher({"url": "redis://localhost:6379"})])
+app = graph.compile(publisher=publisher)
+```
+
+`add_publisher(publisher)` and `remove_publisher(publisher)` mutate the list after construction.
+
+---
+
+## Tracing publishers
+
+These publishers map `EventModel` events onto OpenTelemetry spans instead of onto a message bus. Unlike the bus publishers they must be attached **before** `graph.compile()`, because the tracer has to be bound in the DI container at compile time.
+
+### `ObservabilityLevel`
+
+Controls how much data ends up on the spans.
+
+| Value | Emits |
+|---|---|
+| `SPANS` | Timing and structure only. No I/O data. |
+| `STANDARD` | Adds token counts, model name, and request parameters when available. Default. |
+| `FULL` | Adds model input and output messages, tool I/O, and the system prompt. May contain PII; use only in controlled environments. |
+
+### `OtelPublisher`
+
+```python
+from agentflow.runtime.publisher import ObservabilityLevel, OtelPublisher, setup_tracing
+
+# Explicit
+graph._publisher = OtelPublisher(tracer=my_tracer, level=ObservabilityLevel.STANDARD)
+
+# Or via the helper, which builds and attaches one for you
+setup_tracing(graph, level=ObservabilityLevel.STANDARD)
+
+app = graph.compile()
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `tracer` | `Tracer \| None` | `None` | Explicit OTEL tracer. Uses the global `TracerProvider` when omitted. |
+| `level` | `ObservabilityLevel` | `STANDARD` | How much data lands on the spans. |
+
+`setup_tracing(graph, tracer=None, level=STANDARD)` registers an `OtelPublisher` on the graph and returns it. It raises `ImportError` when `opentelemetry-api` is not installed (`pip install "10xscale-agentflow[otel]"`).
+
+### `LogfirePublisher`
+
+An `OtelPublisher` that calls `logfire.configure()` during construction, so the Logfire-managed `TracerProvider` is global before any span is created.
+
+```python
+from agentflow.runtime.publisher import setup_logfire
+
+setup_logfire(graph, service_name="my-agent", send_to_logfire=True)
+app = graph.compile()
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `token` | `str \| None` | `None` | Logfire write token. Falls back to `LOGFIRE_TOKEN`. |
+| `service_name` | `str \| None` | `None` | Service name shown in the Logfire UI. |
+| `send_to_logfire` | `bool` | `True` | Whether to export spans to logfire.dev. |
+| `console` | `Any` | `None` | `False` to suppress console output, or a `logfire.ConsoleOptions`. `None` uses env-var defaults. |
+| `level` | `ObservabilityLevel` | `STANDARD` | Span detail level. |
+| `additional_span_processors` | `list \| None` | `None` | Extra `SpanProcessor` instances to attach alongside the Logfire processor. |
+| `**configure_kwargs` | any | — | Forwarded verbatim to `logfire.configure()`. |
+
+Requires `pip install "10xscale-agentflow[logfire]"`.
+
+### `LangsmithPublisher`
+
+An `OtelPublisher` that builds an OTLP HTTP span processor pointed at LangSmith and attaches it to a supplied or freshly created `TracerProvider`.
+
+```python
+from agentflow.runtime.publisher import setup_langsmith
+
+setup_langsmith(graph, project="my-project")
+app = graph.compile()
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `api_key` | `str \| None` | `None` | LangSmith API key. Falls back to `LANGSMITH_API_KEY`. Raises `ValueError` when neither is set. |
+| `project` | `str \| None` | `None` | Sent as the `Langsmith-Project` request header. |
+| `endpoint` | `str` | `https://api.smith.langchain.com/otel` | Base OTEL endpoint. `/v1/traces` is appended automatically. Override for regional deployments. |
+| `level` | `ObservabilityLevel` | `STANDARD` | Span detail level. |
+| `tracer_provider` | `Any` | `None` | Existing `TracerProvider` to attach to. A new global one is created when omitted. |
+
+Requires `pip install "10xscale-agentflow[langsmith]"`.
+
+### `setup_observability`
+
+One entry point driven by the `observability` block of `agentflow.json`. Enables Logfire and/or LangSmith and makes them share a single `TracerProvider` when both are active.
+
+```python
+from agentflow.runtime.publisher import setup_observability
+
+setup_observability(graph, {
+    "level": "standard",
+    "logfire": {"enabled": True, "service_name": "my-agent", "console": False},
+    "langsmith": {"enabled": True, "project": "my-project"},
+})
+```
+
+Pass `graph=None` to configure providers and exporters only, without binding a publisher onto a graph. Secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) must come from the environment, never from the config dict. An unrecognised `level` falls back to `STANDARD`.
+
+See [Send traces to Logfire or LangSmith](/docs/how-to/python/send-traces-to-logfire-langsmith) for the end-to-end setup.
+
+---
+
 ## Writing a custom publisher
 
 ```python
@@ -305,3 +434,5 @@ class WebhookPublisher(BasePublisher):
 | `ImportError: aiokafka` | `KafkaPublisher` used without `aiokafka`. | `pip install aiokafka`. |
 | `ImportError: aio-pika` | `RabbitMQPublisher` used without `aio-pika`. | `pip install aio-pika`. |
 | Events missing from channel | Publisher not passed to `graph.compile()`. | Add `publisher=my_publisher` to `compile()`. |
+| `ImportError: OpenTelemetry is required for tracing` | `OtelPublisher` / `setup_tracing` used without OTEL. | `pip install "10xscale-agentflow[otel]"`. |
+| No spans from a tracing publisher | Attached after `graph.compile()`. | Call `setup_tracing` / `setup_logfire` / `setup_langsmith` before `compile()`. |

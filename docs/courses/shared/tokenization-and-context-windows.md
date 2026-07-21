@@ -197,33 +197,79 @@ Use these rough estimates for planning:
 | Long article | 2000-4000 | ~5-10 pages |
 | Full conversation (10 turns) | 2000-5000 | Depends on message length |
 
-### Counting in AgentFlow
+### Counting and budgeting in AgentFlow
+
+**AgentFlow ships no token-counting function.** There is no `count_tokens` to import. It deliberately leaves counting to the provider tokenizers, because only they know the true count for a given model, and gives you two things instead: reported usage after each call, and automatic budget enforcement before it.
+
+**Reported usage.** Every assistant `Message` carries a `usages` field populated from the provider's response. This is the number to bill against, since it counts what the provider actually charged for:
 
 ```python
-from agentflow.core.utils import count_tokens
+result = app.invoke(
+    {"messages": [Message.text_message("Summarise this thread")]},
+    config={"thread_id": "budget-1"},
+)
 
-# Count tokens for a full prompt
+usage = result["messages"][-1].usages
+if usage:
+    print(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+    print(usage.cache_read_input_tokens)   # tokens served from the prompt cache
+```
+
+`call_llm()` returns the same numbers positionally: `(text, input_tokens, output_tokens, cache_read_tokens)`.
+
+**Budget enforcement.** Rather than counting the history yourself and trimming it, attach `SummaryContextManager` with a `token_budget` and set `trim_context=True` on the agent. When the estimated history exceeds the budget, the oldest messages are summarized by an LLM into `state.context_summary`, and the most recent `keep_recent` are kept verbatim:
+
+```python
+from agentflow.core.graph import StateGraph, Agent
+from agentflow.core.state import SummaryContextManager
+
+ctx_mgr = SummaryContextManager(
+    model="gpt-4o-mini",   # model that writes the summary
+    token_budget=8000,     # trigger threshold
+    keep_recent=8,         # recent messages kept verbatim
+)
+
+agent = Agent(model="gpt-4o", trim_context=True)   # required for the manager to run
+builder = StateGraph(context_manager=ctx_mgr)
+builder.add_node("chat", agent)
+```
+
+`MessageContextManager` is the simpler alternative: it keeps the most recent N user messages and drops the rest with no LLM call. Both preserve system messages unconditionally.
+
+**Estimating before the call.** If you need a pre-flight estimate — to price a request or reject an oversized upload — call the provider's tokenizer directly. These libraries are external to AgentFlow and are not installed with it:
+
+```python
+import tiktoken   # pip install tiktoken — not an AgentFlow dependency
+
+enc = tiktoken.encoding_for_model("gpt-4o")
+
 def estimate_prompt_cost(
     system_prompt: str,
     messages: list[Message],
-    expected_response_tokens: int = 500
+    expected_response_tokens: int = 500,
+    input_price_per_token: float = 0.0000025,
+    output_price_per_token: float = 0.00001,
 ) -> dict:
-    system_tokens = count_tokens(system_prompt)
-    history_tokens = sum(count_tokens(m.content) for m in messages)
-    
+    system_tokens = len(enc.encode(system_prompt))
+    history_tokens = sum(len(enc.encode(m.text())) for m in messages)
+
     total_input = system_tokens + history_tokens
     total_output = expected_response_tokens
-    total = total_input + total_output
-    
+
     return {
         "system_tokens": system_tokens,
         "history_tokens": history_tokens,
         "input_tokens": total_input,
         "output_tokens": total_output,
-        "total_tokens": total,
-        "estimated_cost": total * 0.00001  # Rough estimate for GPT-4
+        "total_tokens": total_input + total_output,
+        "estimated_cost": (
+            total_input * input_price_per_token
+            + total_output * output_price_per_token
+        ),
     }
 ```
+
+Treat the result as an estimate: it ignores the per-message overhead the provider adds, and it cannot see tool schemas or images. Reconcile against `message.usages` after the call.
 
 ---
 
@@ -303,6 +349,8 @@ flowchart TB
 ```
 
 ### Budget Planning Example
+
+In this and the remaining examples on this page, `count_tokens()` is the tokenizer helper defined earlier in this lesson (tiktoken or the Anthropic SDK). It is not an AgentFlow function — the framework does not provide one. In an AgentFlow app you would normally let `SummaryContextManager` handle the budget instead of computing it by hand.
 
 ```python
 # For a 32K context model with expected 2K response:

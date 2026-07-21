@@ -1,7 +1,7 @@
 ---
-title: Evaluation Worksheet — AgentFlow Python AI Agent Framework
+title: Evaluation Worksheet — GenAI course
 sidebar_label: Evaluation Worksheet
-description: A practical worksheet for designing and running evaluations for GenAI systems. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: A practical worksheet for designing and running evaluations for GenAI systems.
 keywords:
   - genai course
   - ai agent course
@@ -112,67 +112,86 @@ golden = GoldenExample(
 
 ### Test Structure Template
 
+The runner is `AgentEvaluator` from `agentflow.qa.evaluation`. Golden examples are `EvalCase` objects in an `EvalSet` (loadable from a JSON file with `EvalSet.from_file`), and which metrics run is decided by the `CriteriaConfig` you pass in — not by a `metric=` argument at call time.
+
 ```python
 import pytest
-from agentflow.testing import Evaluator
+from agentflow.qa.evaluation import (
+    AgentEvaluator,
+    CriteriaConfig,
+    CriterionConfig,
+    EvalConfig,
+    EvalSet,
+    create_eval_app,
+)
+
+from graph.qa import build_graph   # returns an uncompiled StateGraph
 
 class TestQASystem:
     @pytest.fixture
-    def evaluator(self):
-        return Evaluator(
-            golden_path="tests/golden/qa_examples.csv",
-            model=qa_agent
+    def golden(self):
+        return EvalSet.from_file("tests/golden/qa_examples.json")
+
+    def evaluator(self, criteria: CriteriaConfig):
+        app, collector = create_eval_app(build_graph())
+        return AgentEvaluator(app, collector, config=EvalConfig(criteria=criteria))
+
+    @pytest.mark.asyncio
+    async def test_response_match(self, golden):
+        """Answers must be semantically equivalent to the expected text."""
+        evaluator = self.evaluator(
+            CriteriaConfig(rouge_match=CriterionConfig.rouge_match(threshold=0.7))
         )
-    
-    def test_exact_match_examples(self, evaluator):
-        """Test examples where we expect exact answers."""
-        results = evaluator.evaluate(
-            filter_category="informational",
-            metric="exact_match"
-        )
-        assert results["exact_match_rate"] > 0.7
-    
-    def test_refuses_destructive_requests(self, evaluator):
+        report = await evaluator.evaluate(golden)
+        assert report.summary.pass_rate > 0.7
+
+    @pytest.mark.asyncio
+    async def test_refuses_destructive_requests(self, golden):
         """Safety test: system should refuse harmful requests."""
-        results = evaluator.evaluate(
-            filter_category="safety",
-            metric="refusal_rate"
+        safety = EvalSet(
+            eval_set_id="safety",
+            eval_cases=golden.filter_by_tags(["safety"]),
         )
-        assert results["refusal_rate"] == 1.0
-    
-    def test_schema_compliance(self, evaluator):
-        """All outputs should match expected schema."""
-        results = evaluator.evaluate(
-            metric="schema_validation"
+        evaluator = self.evaluator(
+            CriteriaConfig(safety=CriterionConfig.safety(threshold=1.0))
         )
-        assert results["compliance_rate"] == 1.0
+        report = await evaluator.evaluate(safety)
+        assert report.passed
+
+    @pytest.mark.asyncio
+    async def test_contains_required_terms(self, golden):
+        """Every answer must mention the key terms."""
+        evaluator = self.evaluator(
+            CriteriaConfig(
+                contains_keywords=CriterionConfig.contains_keywords(
+                    keywords=["invoice", "refund"],
+                )
+            )
+        )
+        report = await evaluator.evaluate(golden)
+        assert report.passed
 ```
+
+`evaluate()` is async and returns an `EvalReport`: `report.summary.pass_rate` for the rate, `report.passed` for all-or-nothing, `report.failed_cases` for the ones to inspect.
 
 ### LLM-as-Judge Pattern
 
-For subjective quality checks, use an LLM to evaluate outputs:
+For subjective quality checks, enable a judge criterion instead of writing the judge prompt yourself. `llm_judge` scores against the expected response; `rubric_based` scores against rubrics you write:
 
 ```python
-def llm_judge_eval(prompt: str, output: str, criteria: str) -> dict:
-    judge_prompt = f"""
-    Evaluate this AI output against the criteria.
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, Rubric
 
-    Task: {prompt}
-    Output: {output}
-    
-    Criteria: {criteria}
-    
-    Respond with JSON:
-    {{
-        "score": 1-5,
-        "reasoning": "brief explanation",
-        "passed": true/false
-    }}
-    """
-    
-    response = llm.generate(judge_prompt)
-    return json.loads(response)
+config = EvalConfig(
+    criteria=CriteriaConfig(
+        llm_judge=CriterionConfig.llm_judge(threshold=0.8, num_samples=3),
+    ),
+).with_rubrics([   # adds the rubric_based criterion
+    Rubric.create("tone", "The response is polite and never blames the customer."),
+    Rubric.create("actionable", "The response tells the user exactly what to do next."),
+])
 ```
+
+`num_samples` re-runs the judge and averages the scores, which reduces variance on borderline cases.
 
 ## Step 5: Set Up Continuous Evaluation
 

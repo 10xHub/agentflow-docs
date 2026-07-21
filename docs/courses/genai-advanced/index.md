@@ -1,7 +1,7 @@
 ---
-title: GenAI Advanced Course — AgentFlow Python AI Agent Framework
+title: GenAI Advanced Course — GenAI course
 sidebar_label: GenAI Advanced Course
-description: Master architecture decisions, multi-agent patterns, and production readiness for GenAI systems. Part of the AgentFlow genai course guide for production-ready.
+description: Master architecture decisions, multi-agent patterns, and production readiness for GenAI systems.
 keywords:
   - genai course
   - ai agent course

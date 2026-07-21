@@ -1,7 +1,7 @@
 ---
-title: GenAI Beginner Course — AgentFlow Python AI Agent Framework
+title: GenAI Beginner Course — GenAI course
 sidebar_label: GenAI Beginner Course
-description: Learn to build production-shaped GenAI applications with AgentFlow from scratch. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: Learn to build production-shaped GenAI applications with AgentFlow from scratch.
 keywords:
   - genai course
   - ai agent course

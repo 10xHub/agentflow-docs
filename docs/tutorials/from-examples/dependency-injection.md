@@ -1,5 +1,5 @@
 ---
-title: Dependency Injection — AgentFlow Python AI Agent Framework
+title: Dependency Injection — AgentFlow tutorial
 sidebar_label: Dependency Injection
 description: Use InjectQ with AgentFlow to inject shared services such as checkpointers, stores, callbacks, and app-specific dependencies into graph nodes and tools.
 keywords:
@@ -28,7 +28,7 @@ A ReAct-style graph that uses dependency injection to provide shared services to
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `injectq` installed
 - A provider key such as `GEMINI_API_KEY`

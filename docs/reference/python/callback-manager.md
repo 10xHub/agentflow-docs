@@ -1,5 +1,5 @@
 ---
-title: Callback Manager — AgentFlow Python AI Agent Framework
+title: Callback Manager — Python API reference
 sidebar_label: Callback Manager
 description: CallbackManager, BeforeInvokeCallback, AfterInvokeCallback, OnErrorCallback, BaseValidator, PromptInjectionValidator — hook into every LLM, tool, and MCP
 keywords:

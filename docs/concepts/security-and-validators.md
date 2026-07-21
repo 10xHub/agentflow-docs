@@ -1,6 +1,12 @@
 ---
 title: Security and Validators
 description: Graph-level validation, prompt-injection checks, and safety boundaries for AgentFlow apps.
+keywords:
+  - basevalidator
+  - prompt injection validation
+  - agentflow security
+  - graph validators
+  - tool argument validation
 sidebar_position: 13
 ---
 

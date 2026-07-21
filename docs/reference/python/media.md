@@ -1,7 +1,7 @@
 ---
-title: Media — AgentFlow Python AI Agent Framework
+title: Media — Python API reference
 sidebar_label: Media
-description: MediaOffloadPolicy, ensure_media_offloaded, BaseMediaStore — handling large binary content in agent messages.
+description: MediaOffloadPolicy, ensure_media_offloaded, BaseMediaStore, MediaRefResolver — handling large binary content in agent messages.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -22,7 +22,7 @@ Use the media layer when your agent processes images, audio, video, or documents
 ## Import path
 
 ```python
-from agentflow.storage.media.offload import MediaOffloadPolicy, ensure_media_offloaded
+from agentflow.storage.media import MediaOffloadPolicy, ensure_media_offloaded
 ```
 
 ---
@@ -32,7 +32,7 @@ from agentflow.storage.media.offload import MediaOffloadPolicy, ensure_media_off
 An enum that controls when inline base64 data is offloaded to a `BaseMediaStore`.
 
 ```python
-from agentflow.storage.media.offload import MediaOffloadPolicy
+from agentflow.storage.media import MediaOffloadPolicy
 ```
 
 | Value | Description |
@@ -75,30 +75,30 @@ The message is mutated **in place** and also returned. Blocks without inline dat
 
 ## `BaseMediaStore`
 
-Abstract interface for media storage backends. Provides `store(data, mime_type)` and `retrieve(key)`.
+Abstract interface for media storage backends. Concrete stores implement `store()`, `retrieve()`, `delete()`, `exists()`, `get_metadata()`, `get_direct_url()`, and `to_media_ref()`.
 
 ```python
-from agentflow.storage.media.storage.base import BaseMediaStore
+from agentflow.storage.media import BaseMediaStore
 ```
 
 ### Implementations
 
 | Class | Backend | Notes |
 |---|---|---|
-| `LocalMediaStore` | Local filesystem | Development and single-server setups. |
-| `S3MediaStore` | AWS S3 / S3-compatible | Requires `boto3`. |
-| `GCSMediaStore` | Google Cloud Storage | Requires `google-cloud-storage`. |
+| `InMemoryMediaStore` | Process memory | Development and tests. Data is lost on restart. |
+| `LocalFileMediaStore` | Local filesystem | Single-server setups. `LocalFileMediaStore(base_dir="./agentflow_media")`. |
+| `CloudMediaStore` | S3 / GCS / Azure via `cloud-storage-manager` | Requires the `cloud-storage` extra. Supports signed URLs. |
 
-Import from `agentflow.storage.media.storage`.
+All three are re-exported from `agentflow.storage.media` (and from `agentflow.storage.media.storage`).
 
 ---
 
 ## Wiring media storage into the graph
 
 ```python
-from agentflow.storage.media.storage.local import LocalMediaStore
+from agentflow.storage.media import LocalFileMediaStore
 
-media_store = LocalMediaStore(base_dir="./media_uploads")
+media_store = LocalFileMediaStore(base_dir="./media_uploads")
 
 app = graph.compile(
     checkpointer=my_checkpointer,
@@ -120,8 +120,7 @@ When a `media_store` is configured:
 When sending a multimodal message to the graph, use `MediaRef` to reference the media:
 
 ```python
-from agentflow.core.state.message import Message
-from agentflow.core.state.message_block import ImageBlock, MediaRef
+from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
 
 # From a URL
 msg = Message(
@@ -154,26 +153,78 @@ msg = Message(
 
 ## `MultimodalConfig`
 
-Configuration for the `Agent` class's auto-offload behaviour:
+Per-agent configuration for how media is validated and delivered to the provider:
 
 ```python
-from agentflow.storage.media.config import MultimodalConfig
+from agentflow.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
 
 agent = Agent(
     model="gpt-4o",
     multimodal_config=MultimodalConfig(
-        auto_offload=True,
-        max_inline_bytes=50_000,
-        offload_policy=MediaOffloadPolicy.THRESHOLD,
+        image_handling=ImageHandling.BASE64,
+        document_handling=DocumentHandling.EXTRACT_TEXT,
+        max_image_dimension=2048,
     ),
 )
 ```
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `auto_offload` | `bool` | `True` | Automatically offload large blobs during ingestion. |
-| `max_inline_bytes` | `int` | `50_000` | Size threshold for `THRESHOLD` policy. |
-| `offload_policy` | `MediaOffloadPolicy` | `THRESHOLD` | Override the default policy. |
+| `image_handling` | `ImageHandling` | `BASE64` | How images are sent to the provider. |
+| `document_handling` | `DocumentHandling` | `EXTRACT_TEXT` | How documents are processed before sending. |
+| `max_image_size_mb` | `float` | `10.0` | Maximum accepted image size in megabytes. |
+| `max_image_dimension` | `int` | `2048` | Images are resized when either dimension exceeds this. |
+| `supported_image_types` | `set[str]` | jpeg, png, webp, gif | Allowed image MIME types. |
+| `supported_doc_types` | `set[str]` | pdf, docx | Allowed document MIME types. |
+
+Offload behaviour is not configured here. It is driven by `MediaOffloadPolicy` and the `media_store` passed to `graph.compile()`.
+
+---
+
+## `MediaRefResolver`
+
+Resolves a `MediaRef` into the concrete content part a provider expects: it fetches `agentflow://media/{key}` references out of the media store, and can hand out signed direct URLs instead of re-uploading bytes on every turn.
+
+```python
+from agentflow.storage.media import MediaRefResolver
+
+resolver = MediaRefResolver(media_store=media_store)
+
+# Optional: share signed URLs across processes through a cache backend
+resolver = resolver.with_cache(
+    cache_backend=my_redis_cache,
+    expiration_seconds=3600,
+    refresh_buffer_seconds=60,
+)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `media_store` | `BaseMediaStore \| None` | `None` | Store used to resolve internal `agentflow://media/{key}` references. Internal references raise when omitted. |
+| `cache_backend` | `Any \| None` | `None` | Optional cache for generated signed URLs. |
+| `direct_url_expiration_seconds` | `int` | `3600` | Lifetime of a generated signed URL. |
+| `direct_url_refresh_buffer_seconds` | `int` | `60` | Regenerate a cached URL this many seconds before it expires. |
+
+---
+
+## OpenAI file helpers
+
+For documents already uploaded through the OpenAI Files API, two helpers build the request fragments OpenAI expects:
+
+```python
+from agentflow.storage.media import (
+    create_openai_file_attachment,
+    create_openai_file_search_tool,
+)
+
+tool = create_openai_file_search_tool(["file-abc123"])
+# -> {"type": "file_search", "file_search": {...}}  — pass in the `tools` list
+
+attachment = create_openai_file_attachment("file-abc123", tools=["file_search"])
+# -> {"file_id": "file-abc123", "tools": [{"type": "file_search"}]}
+```
+
+`create_openai_file_search_tool(file_ids)` returns a tool dict for the `tools` parameter. `create_openai_file_attachment(file_id, tools=None)` returns a message attachment dict; `tools` defaults to `["file_search"]`.
 
 ---
 

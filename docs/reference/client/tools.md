@@ -1,7 +1,7 @@
 ---
-title: Tools — AgentFlow Python AI Agent Framework
+title: Tools — TypeScript client reference
 sidebar_label: Tools
-description: Reference for registering and using remote (browser-side) tools with AgentFlowClient. Part of the AgentFlow typescript client reference guide for.
+description: Reference for registering and using remote (browser-side) tools with AgentFlowClient.
 keywords:
   - typescript client reference
   - agent client api
@@ -243,9 +243,24 @@ This is the method `invoke()` calls internally after each server response.
 
 ---
 
+## What `setup()` sends
+
+`client.setup()` does not use `all_tools()`. It maps each `ToolRegistration` you passed to `registerTool()` onto a `RemoteTool` and posts the list to the server:
+
+```ts
+interface RemoteTool {
+  node_name: string;                  // from registration.node
+  name: string;                       // from registration.name
+  description: string;                // from registration.description, or ''
+  parameters: Record<string, any>;    // from registration.parameters, or {}
+}
+```
+
+So the node name is part of the wire payload: the server registers each tool against the tool node that will be allowed to call it.
+
 ## Tool definitions in OpenAI format
 
-`toolExecutor.all_tools()` returns tools in the OpenAI-compatible `Function Calling` format. This is what gets serialised when you call `client.setup()`:
+`toolExecutor.all_tools()` returns every registered tool in the OpenAI function-calling shape. It is a convenience for code that needs to hand the same tool list to an LLM SDK directly; nothing inside the client calls it, and it is not what `setup()` transmits. Note that it flattens the per-node grouping.
 
 ```ts
 interface Tool {

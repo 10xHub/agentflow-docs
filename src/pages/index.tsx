@@ -23,7 +23,7 @@ const docTracks = [
     eyebrow: '02',
     title: 'Learn the core concepts',
     body: 'Understand agents, tools, state, memory, streaming, and production runtime boundaries before you scale up.',
-    href: '/docs/concepts/architecture',
+    href: '/docs/concepts',
   },
   {
     eyebrow: '03',
@@ -177,9 +177,9 @@ const tenxFeatures = [
   {icon: 'ShieldCheck' as const, text: 'Used in production at 10xScale across all products'},
   {icon: 'GitBranch' as const, text: 'Typed StateGraph — explicit, readable, replayable'},
   {icon: 'DatabaseZap' as const, text: 'Redis + Postgres dual-layer persistence'},
-  {icon: 'Zap' as const, text: 'Multi-model: OpenAI, Gemini, Anthropic, and custom'},
+  {icon: 'Zap' as const, text: 'Multi-model: OpenAI, Gemini, and OpenAI-compatible endpoints'},
   {icon: 'Globe' as const, text: 'REST + SSE server included — zero extra config'},
-  {icon: 'Code2' as const, text: 'Typed TypeScript client with React streaming hooks'},
+  {icon: 'Code' as const, text: 'Typed TypeScript client with streaming and realtime audio'},
   {icon: 'Lock' as const, text: 'JWT auth, rate limiting, Snowflake IDs built in'},
 ];
 
@@ -202,19 +202,19 @@ const faqItems: FAQEntry[] = [
   },
   {
     q: 'Which AI models does AgentFlow support?',
-    a: 'AgentFlow supports OpenAI (GPT-4o, o1, o3-mini), Google Gemini (Gemini 2.5 Flash, Gemini 2.0), Anthropic Claude (Claude 3.5, Claude 4), and any model exposed via a compatible API. You switch models by changing the model string — the graph and tools stay exactly the same.',
+    a: 'AgentFlow has native clients for OpenAI and Google Gemini, selected automatically from the model string (for example "google/gemini-2.5-flash" or "openai/gpt-4o-mini"). Any other provider exposing an OpenAI-compatible endpoint, including Anthropic Claude, works by pointing the OpenAI client at its base URL. Switching models leaves the graph and tools exactly the same.',
   },
   {
     q: 'Does AgentFlow support streaming?',
-    a: 'Yes. AgentFlow ships a built-in SSE (Server-Sent Events) endpoint on the API server. The TypeScript client (@10xscale/agentflow-client) includes React hooks for streaming responses token-by-token or message-by-message. The hosted playground uses these hooks.',
+    a: 'Yes. The API server ships a built-in streaming endpoint, plus a WebSocket endpoint for streaming and a separate one for realtime audio. The TypeScript client (@10xscale/agentflow-client) exposes streaming as an async iterator you can consume from any framework, so responses arrive token-by-token or message-by-message. The hosted playground is built on it.',
   },
   {
     q: 'Can I use AgentFlow with TypeScript or a Next.js frontend?',
-    a: 'Yes. The @10xscale/agentflow-client npm package is a fully typed TypeScript SDK that covers all API endpoints: invoke, stream, threads, memory, and file operations. It ships React hooks for streaming and is compatible with Next.js, Vite, Remix, and any React project.',
+    a: 'Yes. The @10xscale/agentflow-client npm package is a fully typed TypeScript SDK that covers all API endpoints: invoke, stream, threads, memory, files, graph inspection, and observability. It is framework-agnostic with no React dependency, so it works in Next.js, Vite, Remix, any React project, and plain Node.js.',
   },
   {
     q: 'Is AgentFlow production-ready?',
-    a: 'AgentFlow is the runtime used in production by 10xScale for all their AI products. It ships with Postgres + Redis dual-layer persistence for durable threads, JWT authentication, rate limiting, Snowflake ID generation for distributed deployments, and Docker/Kubernetes build support via `agentflow build --docker-compose`.',
+    a: 'AgentFlow is the runtime used in production by 10xScale for all their AI products. The 1.0 release adds optimistic concurrency on durable state, an idempotent tool-execution ledger, real node and tool timeouts, and per-user isolation across storage. It ships Postgres + Redis dual-layer persistence, JWT authentication, rate limiting, Snowflake IDs, and Docker and Kubernetes builds via `agentflow build --docker-compose --k8s`.',
   },
   {
     q: 'How do I install AgentFlow?',
@@ -236,8 +236,12 @@ export default function Home() {
         <section className="hero hero--agentflow">
           <div className="container heroGrid">
             <div className="heroCopy">
+              {/* No version number here on purpose: a hard-coded one on the
+                  landing page goes stale on every release. Versions live on
+                  /docs/project/changelog, which is generated from the real
+                  release notes. */}
               <p className="eyebrow">
-                <Icon name="Sparkles" size={12} /> &nbsp;By 10xScale &nbsp;·&nbsp; v0.8 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
+                <Icon name="Sparkles" size={12} /> &nbsp;By 10xScale &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
               </p>
               <Heading as="h1" className="heroTitle">
                 Production AI agents in Python. Ship in minutes.
@@ -432,7 +436,7 @@ export default function Home() {
           <div className="container">
             <div className="sectionHeader sectionHeader--center">
               <p className="eyebrow">
-                <Icon name="HelpCircle" size={12} /> &nbsp;FAQ
+                <Icon name="CircleQuestionMark" size={12} /> &nbsp;FAQ
               </p>
               <Heading as="h2">Questions about AgentFlow.</Heading>
               <p>

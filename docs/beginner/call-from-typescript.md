@@ -1,7 +1,7 @@
 ---
-title: Call from TypeScript — AgentFlow Python AI Agent Framework
+title: Call from TypeScript — Beginner path
 sidebar_label: Call from TypeScript
-description: Use AgentFlowClient to call your running agent API from a TypeScript application. Part of the AgentFlow ai agents for beginners guide for production-ready.
+description: Use AgentFlowClient to call your running agent API from a TypeScript application.
 keywords:
   - ai agents for beginners
   - first ai agent python
@@ -108,8 +108,8 @@ const stream = client.stream(
 );
 
 for await (const chunk of stream) {
-  if (chunk.type === "message_chunk") {
-    process.stdout.write(chunk.content ?? "");
+  if (chunk.event === "message" && chunk.message) {
+    process.stdout.write(chunk.message.text());
   }
 }
 console.log(); // newline after stream ends

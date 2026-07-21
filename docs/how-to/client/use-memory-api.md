@@ -1,7 +1,7 @@
 ---
 title: How to use the memory API
 sidebar_label: How to use the memory API
-description: Step-by-step guide to storing, searching, and managing long-term memories with AgentFlowClient. Part of the AgentFlow agentflow typescript client guide for.
+description: Step-by-step guide to storing, searching, and managing long-term memories with AgentFlowClient.
 keywords:
   - agentflow typescript client
   - ai agent client
@@ -101,7 +101,7 @@ async function invokeWithMemory(question: string, threadId: string) {
 
   // 3. Invoke
   return client.invoke([systemMsg, Message.text_message(question)], {
-    config: { configurable: { thread_id: threadId } },
+    config: { thread_id: threadId },
     response_granularity: 'low',
   });
 }
@@ -271,7 +271,7 @@ async function memoryChat(userInput: string) {
       Message.text_message(userInput),
     ],
     {
-      config: { configurable: { thread_id: THREAD_ID } },
+      config: { thread_id: THREAD_ID },
       response_granularity: 'low',
     }
   );

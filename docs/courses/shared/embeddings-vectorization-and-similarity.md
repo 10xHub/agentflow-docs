@@ -130,10 +130,12 @@ flowchart TB
 ### Embedding Generation in Code
 
 ```python
-from agentflow.core.embedding import EmbeddingModel
+import math
+
+from agentflow.storage.store.embedding import OpenAIEmbedding
 
 # Initialize embedding model
-embedding_model = EmbeddingModel("text-embedding-3-small")
+embedding_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 # Generate embeddings
 query = "How do I reset my password?"
@@ -142,10 +144,17 @@ doc = "Click 'Forgot Password' to reset your credentials"
 query_vector = embedding_model.embed(query)
 doc_vector = embedding_model.embed(doc)
 
-# Compute similarity
-similarity = embedding_model.cosine_similarity(query_vector, doc_vector)
+# Compute similarity — the embedding classes return raw vectors,
+# so the distance function is yours to pick
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    return dot / (math.dist(a, [0.0] * len(a)) * math.dist(b, [0.0] * len(b)))
+
+similarity = cosine_similarity(query_vector, doc_vector)
 print(f"Similarity: {similarity:.2f}")  # e.g., 0.89
 ```
+
+`embed()` is a synchronous wrapper around `aembed()`; inside async code call `await embedding_model.aembed(text)` directly. Both classes also expose `embed_batch()` / `aembed_batch()` for lists of texts, and a `dimension` property. Use `GoogleEmbedding` in place of `OpenAIEmbedding` for Gemini embedding models.
 
 ### Embedding Output
 
@@ -153,10 +162,11 @@ print(f"Similarity: {similarity:.2f}")  # e.g., 0.89
 # What an embedding looks like
 embedding = embedding_model.embed("Hello, world!")
 
-print(f"Type: {type(embedding)}")  # numpy array
-print(f"Shape: {embedding.shape}")  # (1536,)
+print(f"Type: {type(embedding)}")  # <class 'list'>
+print(f"Length: {len(embedding)}")  # 1536
+print(f"Model dimension: {embedding_model.dimension}")  # 1536
 print(f"Sample values: {embedding[:5]}")  # First 5 values
-# Output: [-0.002  0.004 -0.001  0.023 -0.008]
+# Output: [-0.002, 0.004, -0.001, 0.023, -0.008]
 ```
 
 ---
@@ -312,32 +322,41 @@ flowchart TB
 
 ### AgentFlow Integration
 
+AgentFlow's stores take an embedding object and do the vectorization for you: you hand `astore()` plain text, not a vector, and `asearch()` a plain query string.
+
 ```python
 from agentflow.storage.store import QdrantStore
-from agentflow.core.embedding import OpenAIEmbedding
+from agentflow.storage.store.embedding import OpenAIEmbedding
+from agentflow.storage.store.store_schema import MemoryType
 
 # Initialize
-embedding_model = OpenAIEmbedding("text-embedding-3-small")
-vector_store = QdrantStore(collection_name="knowledge_base")
+vector_store = QdrantStore(
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
+    collection_name="knowledge_base",
+    path="./qdrant_data",
+)
+await vector_store.asetup()
 
-# Add documents
+config = {"user_id": "user-123"}
+
+# Add documents — the store embeds each one before writing
 documents = [
     "How to reset your password",
     "Click 'Forgot Password' on the login page",
     "Contact support for account issues"
 ]
 
-for i, doc in enumerate(documents):
-    vector = embedding_model.embed(doc)
-    vector_store.add(
-        id=f"doc_{i}",
-        vector=vector,
-        payload={"text": doc}
+for doc in documents:
+    await vector_store.astore(
+        config=config,
+        content=doc,
+        memory_type=MemoryType.SEMANTIC,
     )
 
-# Search
-query_vector = embedding_model.embed("I forgot my login")
-results = vector_store.search(vector=query_vector, top_k=2)
+# Search — the query is embedded with the same model
+results = await vector_store.asearch(config=config, query="I forgot my login", limit=2)
+for result in results:
+    print(result.content, result.score)
 ```
 
 ---

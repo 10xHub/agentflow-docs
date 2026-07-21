@@ -1,7 +1,7 @@
 ---
-title: Files — AgentFlow Python AI Agent Framework
+title: Files — TypeScript client reference
 sidebar_label: Files
-description: Reference for file upload and media access methods on AgentFlowClient. Part of the AgentFlow typescript client reference guide for production-ready Python AI.
+description: Reference for file upload and media access methods on AgentFlowClient.
 keywords:
   - typescript client reference
   - agent client api
@@ -193,13 +193,13 @@ If you display a file in the UI and the user might have the page open for a long
 
 Fetch the server's multimodal configuration — which storage backend is active, the max upload size, and how documents are handled.
 
-**Endpoint:** `GET /v1/files/config`
+**Endpoint:** `GET /v1/config/multimodal`
 
 ```ts
 const config = await client.getMultimodalConfig();
-console.log(config.data.media_storage_type);  // 'local' | 's3' | 'gcs' | 'azure_blob'
-console.log(config.data.media_max_size_mb);   // 10
-console.log(config.data.document_handling);   // 'extract' | 'raw'
+console.log(config.data.media_storage_type);  // 'memory' | 'local' | 'cloud' | 'pg'
+console.log(config.data.media_max_size_mb);   // 25 by default
+console.log(config.data.document_handling);   // 'extract_text' | 'pass_raw' | 'skip'
 ```
 
 ### `MultimodalConfigResponse`
@@ -210,7 +210,7 @@ interface MultimodalConfigResponse {
     media_storage_type: string;   // Storage backend identifier
     media_storage_path: string;   // Base path or bucket name
     media_max_size_mb: number;    // Maximum file size in megabytes
-    document_handling: string;    // How documents are processed on upload
+    document_handling: string;    // 'extract_text' | 'pass_raw' | 'skip'
   };
   metadata?: ResponseMetadata;
 }

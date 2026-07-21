@@ -1,0 +1,182 @@
+---
+title: "What Is the Model Context Protocol (MCP)? Guide for AI Agents"
+sidebar_label: What is MCP?
+description: The Model Context Protocol (MCP) is an open standard that lets AI agents connect to external tools and data sources through a common interface. Learn how MCP works and how to use it in Python.
+keywords:
+  - what is model context protocol
+  - what is mcp
+  - mcp ai agents
+  - model context protocol python
+  - mcp tools ai
+sidebar_position: 6
+---
+
+# What is the Model Context Protocol (MCP)?
+
+**The Model Context Protocol (MCP) is an open standard developed by Anthropic that lets AI agents connect to external tools and data sources — files, databases, APIs, services — through a common client-server interface.** Instead of writing a custom integration for every tool, MCP provides a single protocol that any agent can use to talk to any MCP-compatible server.
+
+MCP was released as an open standard in November 2024 and has been adopted across the AI agent ecosystem, including support in AgentFlow, LangGraph, Claude Desktop, and major IDEs.
+
+## The problem MCP solves
+
+Before MCP, connecting an agent to a tool meant:
+
+1. Writing a Python wrapper function for each external service
+2. Handling authentication and serialization per integration
+3. Rewriting integrations if you switched agent frameworks
+4. No standard for discovery — agents could not find available tools dynamically
+
+MCP standardizes all of this: an MCP server exposes tools (functions), resources (files, data), and prompts through a defined protocol. Any MCP client — including AI agents — can connect and use whatever the server exposes, without custom integration code.
+
+## How MCP works
+
+```
+AI Agent (MCP Client)           MCP Server
+        │                           │
+        │─── list_tools() ─────────►│
+        │◄── [tool1, tool2, ...]────│
+        │                           │
+        │─── call_tool(name, args) ─►│
+        │◄── tool result ───────────│
+```
+
+The agent connects to the MCP server, discovers available tools, and calls them. The server handles the actual execution — calling an API, reading a file, querying a database.
+
+## Using MCP tools in AgentFlow
+
+AgentFlow supports MCP natively. You can mount any MCP server as a tool source:
+
+AgentFlow speaks MCP through the [`fastmcp`](https://gofastmcp.com) client. Install the extra with `pip install "10xscale-agentflow[mcp]"`, build a `Client`, and hand it to the node that owns tools:
+
+```python
+from fastmcp import Client
+from agentflow.prebuilt import ReactAgent
+
+# Connect to an MCP server. A command string starts it over stdio;
+# a URL connects to a running HTTP server.
+mcp_client = Client("python -m mcp_filesystem_server /data")
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    tools=[],                 # local Python tools, if any
+    client=mcp_client,        # MCP tools are discovered on top of them
+    system_prompt=[{"role": "system", "content": "You can read files. Help the user."}],
+)
+
+app = agent.compile()
+```
+
+For a hand-built graph, the client goes on the `ToolNode` instead:
+
+```python
+from agentflow.core.graph import ToolNode
+
+tool_node = ToolNode(tools=[], client=mcp_client)
+```
+
+Either way, the tool list is fetched from the MCP server before each LLM call, so tools added on the server show up without restarting the agent.
+
+## Running your own MCP server
+
+AgentFlow lets you expose your Python functions as an MCP server:
+
+AgentFlow does not ship its own MCP server implementation. Write the server with `fastmcp` (the same package the client side uses) and point an AgentFlow `Client` at it:
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP(name="my-tools")
+
+@mcp.tool()
+def read_file(path: str) -> str:
+    """Read a file at the given path."""
+    with open(path) as f:
+        return f.read()
+
+@mcp.tool()
+def list_files(directory: str) -> list[str]:
+    """List files in a directory."""
+    import os
+    return os.listdir(directory)
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+Any MCP client — another agent, Claude Desktop, VS Code — can now call your tools through the standard protocol.
+
+## MCP vs custom tool functions
+
+| | Custom Python function | MCP tool |
+|--|----------------------|---------|
+| Framework dependency | Yes — Python only | No — any MCP client |
+| Discovery | Manual | Automatic via list_tools() |
+| Multi-language | No | Yes — server can be any language |
+| Reusability | One agent/framework | Any MCP client |
+| Setup | None | Requires MCP server process |
+
+For tools only used by one Python agent, a plain function is simpler. MCP is the right choice when you want to share tools across multiple agents, frameworks, or applications.
+
+## MCP transports
+
+MCP supports two transports:
+
+- **stdio** — agent launches the MCP server as a subprocess, communicates over stdin/stdout. Best for local tools.
+- **SSE (Server-Sent Events)** — agent connects to a running HTTP server. Best for remote tools, services, or tools that need to stay running.
+
+AgentFlow supports both:
+
+```python
+from fastmcp import Client
+
+# stdio transport: the command string is launched as a subprocess
+client = Client("node my-server.js")
+
+# HTTP transport: point at a running server
+client = Client("http://localhost:3000/mcp")
+
+# Several servers at once, with per-server headers
+client = Client({
+    "mcpServers": {
+        "github": {
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": {"Authorization": "Bearer ..."},
+            "transport": "streamable-http",
+        },
+    }
+})
+```
+
+See [How to use MCP tools](/docs/how-to/python/use-mcp) for the full setup, including forwarding authenticated user context to the server and filtering MCP tools by tag.
+
+<FAQ items={[
+  {
+    q: "Who created the Model Context Protocol?",
+    a: "MCP was created by Anthropic and released as an open standard in November 2024. It has since been adopted by many AI frameworks and tools, including AgentFlow, LangGraph, Claude Desktop, Cursor, and GitHub Copilot."
+  },
+  {
+    q: "Do I need MCP to give my agent tools?",
+    a: "No. You can give your agent plain Python functions as tools — this is simpler and requires no MCP server. MCP is useful when you want to share tools across multiple agents, use tools from another language or service, or adopt the growing ecosystem of pre-built MCP servers for common services (GitHub, Slack, databases)."
+  },
+  {
+    q: "Is MCP the same as function calling?",
+    a: "No. Function calling is the LLM mechanism for requesting tool execution — the LLM returns a structured response naming a function and its arguments. MCP is the transport and discovery protocol for how the agent finds and calls those functions. MCP sits on top of function calling: the LLM still uses function calling, but the available functions come from MCP servers."
+  },
+  {
+    q: "What MCP servers are available?",
+    a: "The MCP ecosystem includes official servers from Anthropic (filesystem, web search, memory) and a growing community registry. Major services like GitHub, Google Drive, Slack, and PostgreSQL have published MCP servers. AgentFlow's install-skills command can add pre-built MCP integrations to your agent project."
+  },
+  {
+    q: "Can I filter which MCP tools are available to an agent?",
+    a: "Yes. AgentFlow's MCPClient supports tool filtering so you can limit which tools from an MCP server are available to the agent. This is useful when a server exposes many tools but you only want the agent to use a subset."
+  }
+]} />
+
+## Next steps
+
+<RelatedDocs docs={[
+  {to: '/docs/how-to/python/use-mcp', title: 'Use MCP tools', description: 'Connect your AgentFlow agent to MCP servers.', intent: 'guide'},
+  {to: '/docs/tutorials/from-examples/mcp-client', title: 'MCP client tutorial', description: 'Complete example of using an external MCP server.', intent: 'tutorial'},
+  {to: '/docs/tutorials/from-examples/mcp-server', title: 'MCP server tutorial', description: 'Build and run your own MCP server with AgentFlow.', intent: 'tutorial'},
+  {to: '/docs/tutorials/from-examples/mcp-react-agent', title: 'ReAct agent with MCP', description: 'Connect a ReAct agent to MCP tools.', intent: 'tutorial'},
+]} />

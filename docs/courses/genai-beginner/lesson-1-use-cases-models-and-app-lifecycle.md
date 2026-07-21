@@ -277,52 +277,38 @@ Here's how the building blocks come together in AgentFlow:
 pip install 10xscale-agentflow
 
 # Import the core components
-from agentflow.core.graph import StateGraph, AgentState
-from agentflow.core.state import Message
-from agentflow.core.llm import OpenAIModel
+from agentflow.core.graph import StateGraph, Agent
+from agentflow.core.state import AgentState, Message
+from agentflow.utils import START, END
 ```
+
+`AgentState` lives in `agentflow.core.state`; the graph classes live in `agentflow.core.graph`.
 
 ### Step 2: Define Your Model
 
+There is no model wrapper class to instantiate. `Agent` takes the model identifier as a string and infers the provider from it. Extra keyword arguments are forwarded to the provider SDK.
+
 ```python
-# Choose a model
-model = OpenAIModel(
-    "gpt-4o",
-    temperature=0.7  # 0 = deterministic, 1 = creative
+agent = Agent(
+    model="gpt-4o",
+    system_prompt=[{"role": "system", "content": "You are a helpful coding assistant."}],
+    temperature=0.7,  # 0 = deterministic, 1 = creative
 )
 ```
 
 ### Step 3: Create the Agent Graph
 
+`Agent` is itself a node: add it to the graph and wire the edges. It handles the LLM call, so you do not write the request by hand.
+
 ```python
 from agentflow.core.graph import StateGraph
 
-# Create a state graph
-builder = StateGraph(AgentState)
+# Create a state graph — defaults to AgentState
+builder = StateGraph()
 
-# Define a simple chat node
-@builder.node
-def chat(state: AgentState) -> AgentState:
-    messages = state.get("messages", [])
-    
-    # Get the last user message
-    last_message = messages[-1].content if messages else ""
-    
-    # Generate a response
-    response = model.generate(
-        system_instruction="You are a helpful coding assistant.",
-        messages=[m.dict() for m in messages]
-    )
-    
-    # Add the response to messages
-    messages.append(Message(role="assistant", content=response))
-    
-    return {"messages": messages}
-
-# Add the node and set entry/finish points
-builder.add_node("chat", chat)
-builder.set_entry_point("chat")
-builder.set_finish_point("chat")
+builder.add_node("chat", agent)
+builder.add_edge(START, "chat")   # START edge sets the entry point
+builder.add_edge("chat", END)
 
 # Compile the graph
 app = builder.compile()
@@ -331,65 +317,57 @@ app = builder.compile()
 ### Step 4: Run the App
 
 ```python
-# Create an initial state
-initial_state = {
-    "messages": [
-        Message(role="user", content="Hello! What is AgentFlow?")
-    ]
-}
-
-# Invoke the agent
-result = app.invoke(initial_state)
+# Invoke the agent — input is a dict with a "messages" list
+result = app.invoke(
+    {"messages": [Message.text_message("Hello! What is AgentFlow?")]},
+    config={"thread_id": "session-1"},
+)
 
 # Get the response
-response = result["messages"][-1].content
-print(response)
+print(result["messages"][-1].text())
 ```
+
+`Message.text_message()` builds a user message by default. `Message.text()` pulls the plain text back out of the content blocks.
 
 ### Step 5: Add Streaming (Better UX)
 
 ```python
+from agentflow.core.state import StreamEvent
+
 # Stream responses for better perceived latency
-for chunk in app.stream(initial_state):
-    if hasattr(chunk, 'content'):
-        print(chunk.content, end="", flush=True)
-    print()  # newline at the end
+for chunk in app.stream({"messages": [Message.text_message("Hello!")]}):
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
+
+print()  # newline at the end
 ```
 
 ### Complete Code
 
 ```python
-from agentflow.core.graph import StateGraph, AgentState
+from agentflow.core.graph import StateGraph, Agent
 from agentflow.core.state import Message
-from agentflow.core.llm import OpenAIModel
+from agentflow.utils import START, END
 
-# Initialize model
-model = OpenAIModel("gpt-4o")
+# Initialize the agent node
+agent = Agent(
+    model="gpt-4o",
+    system_prompt=[{"role": "system", "content": "You are a helpful coding assistant."}],
+)
 
 # Create graph
-builder = StateGraph(AgentState)
-
-@builder.node
-def chat(state: AgentState) -> AgentState:
-    messages = state.get("messages", [])
-    response = model.generate(
-        system_instruction="You are a helpful coding assistant.",
-        messages=[m.dict() for m in messages]
-    )
-    messages.append(Message(role="assistant", content=response))
-    return {"messages": messages}
-
-builder.add_node("chat", chat)
-builder.set_entry_point("chat")
-builder.set_finish_point("chat")
+builder = StateGraph()
+builder.add_node("chat", agent)
+builder.add_edge(START, "chat")
+builder.add_edge("chat", END)
 
 app = builder.compile()
 
 # Run
 result = app.invoke({
-    "messages": [Message(role="user", content="Hello!")]
+    "messages": [Message.text_message("Hello!")]
 })
-print(result["messages"][-1].content)
+print(result["messages"][-1].text())
 ```
 
 ---

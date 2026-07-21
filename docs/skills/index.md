@@ -1,6 +1,12 @@
 ---
 title: Skills
 description: Install bundled AgentFlow assistant skills for Codex, Claude, and GitHub Copilot.
+keywords:
+  - agentflow skills
+  - agentflow cli skills command
+  - claude code skills
+  - codex skills
+  - github copilot skills
 slug: /skills
 ---
 

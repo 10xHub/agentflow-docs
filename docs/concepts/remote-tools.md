@@ -1,6 +1,12 @@
 ---
 title: Remote Tools
 description: How AgentFlow lets a Python graph request tools that execute in a TypeScript client or browser.
+keywords:
+  - remote tools
+  - client-side tools
+  - browser tool execution
+  - typescript client tools
+  - agentflow remote tool
 sidebar_position: 7
 ---
 

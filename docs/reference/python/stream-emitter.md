@@ -1,6 +1,11 @@
 ---
 title: StreamEmitter
 description: Emit live progress, errors, and status updates from tools during streaming execution.
+keywords:
+  - streamemitter reference
+  - emit tool progress
+  - streaming execution
+  - astream tool updates
 sidebar_position: 14
 ---
 

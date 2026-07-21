@@ -2,12 +2,11 @@ import {useEffect, useState} from 'react';
 import Icon from '../Icon';
 import styles from './styles.module.css';
 
-const CACHE_KEY = 'agentflow_stats_v1';
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const CACHE_KEY = 'agentflow_stats_v2';
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 
 type LiveStats = {
   stars: number;
-  commits: number;
   ts: number;
 };
 
@@ -17,41 +16,34 @@ function fmt(n: number): string {
   return String(n);
 }
 
-async function loadStats(): Promise<LiveStats> {
+/**
+ * Star count is best-effort only. Unauthenticated api.github.com calls are
+ * rate-limited per IP and return 403 for a large share of visitors, so the
+ * component must render a complete, truthful bar when the fetch fails —
+ * never a dash or a zero.
+ */
+async function loadStars(): Promise<number> {
   if (typeof localStorage !== 'undefined') {
     try {
       const raw = localStorage.getItem(CACHE_KEY);
       if (raw) {
         const cached: LiveStats = JSON.parse(raw);
-        if (Date.now() - cached.ts < CACHE_TTL) return cached;
+        if (Date.now() - cached.ts < CACHE_TTL && cached.stars > 0) return cached.stars;
       }
     } catch {}
   }
 
-  const [repoRes, commitsRes] = await Promise.allSettled([
-    fetch('https://api.github.com/repos/10xHub/Agentflow'),
-    fetch('https://api.github.com/repos/10xHub/Agentflow/commits?per_page=1'),
-  ]);
+  const res = await fetch('https://api.github.com/repos/10xHub/Agentflow');
+  if (!res.ok) return 0;
+  const data = await res.json();
+  const stars: number = data.stargazers_count ?? 0;
 
-  let stars = 0;
-  let commits = 0;
-
-  if (repoRes.status === 'fulfilled' && repoRes.value.ok) {
-    const data = await repoRes.value.json();
-    stars = data.stargazers_count ?? 0;
+  if (stars > 0) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({stars, ts: Date.now()} satisfies LiveStats));
+    } catch {}
   }
-
-  if (commitsRes.status === 'fulfilled' && commitsRes.value.ok) {
-    const link = commitsRes.value.headers.get('Link') ?? '';
-    const match = link.match(/[?&]page=(\d+)>;\s*rel="last"/);
-    if (match) commits = parseInt(match[1], 10);
-  }
-
-  const result: LiveStats = {stars, commits, ts: Date.now()};
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(result));
-  } catch {}
-  return result;
+  return stars;
 }
 
 type Stat = {
@@ -65,38 +57,51 @@ type Props = {
   stats?: Stat[];
 };
 
+/** Facts that hold with or without a successful network call. */
+const staticStats: Stat[] = [
+  {
+    icon: 'Scale',
+    label: 'License',
+    value: 'MIT',
+    href: 'https://opensource.org/licenses/MIT',
+  },
+  {
+    icon: 'Code',
+    label: 'Requires',
+    value: 'Python 3.12+',
+  },
+  {
+    icon: 'Package',
+    label: 'on PyPI',
+    value: '10xscale-agentflow',
+    href: 'https://pypi.org/project/10xscale-agentflow/',
+  },
+];
+
 export default function StatsBar({stats}: Props) {
-  const [live, setLive] = useState<LiveStats | null>(null);
+  const [stars, setStars] = useState(0);
 
   useEffect(() => {
-    loadStats().then(setLive).catch(() => {});
+    loadStars()
+      .then(setStars)
+      .catch(() => {});
   }, []);
 
-  const items: Stat[] = stats ?? [
-    {
-      icon: 'Star',
-      label: 'GitHub stars',
-      value: live ? `★ ${fmt(live.stars)}` : '★ —',
-      href: 'https://github.com/10xHub/Agentflow',
-    },
-    {
-      icon: 'GitBranch',
-      label: 'commits',
-      value: live ? fmt(live.commits) : '—',
-      href: 'https://github.com/10xHub/Agentflow/commits/main',
-    },
-    {
-      icon: 'BadgeCheck',
-      label: '',
-      value: '82% (Codecov)',
-    },
-    {
-      icon: 'Scale',
-      label: 'License',
-      value: 'MIT',
-      href: 'https://opensource.org/licenses/MIT',
-    },
-  ];
+  const githubStat: Stat = stars
+    ? {
+        icon: 'Star',
+        label: 'GitHub stars',
+        value: fmt(stars),
+        href: 'https://github.com/10xHub/Agentflow',
+      }
+    : {
+        icon: 'Star',
+        label: 'on GitHub',
+        value: 'Star us',
+        href: 'https://github.com/10xHub/Agentflow',
+      };
+
+  const items: Stat[] = stats ?? [githubStat, ...staticStats];
 
   return (
     <section className={styles.bar} aria-label="Project stats">
@@ -110,7 +115,7 @@ export default function StatsBar({stats}: Props) {
             </>
           );
           return (
-            <li key={s.label} className={styles.item}>
+            <li key={`${s.icon}-${s.label}`} className={styles.item}>
               {s.href ? (
                 <a href={s.href} target="_blank" rel="noopener noreferrer">
                   {inner}

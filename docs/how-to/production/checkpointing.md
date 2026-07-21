@@ -1,5 +1,5 @@
 ---
-title: Checkpointing — AgentFlow Python AI Agent Framework
+title: Checkpointing — Production how-to
 sidebar_label: Checkpointing
 description: How to choose, configure, and troubleshoot checkpointers for development and production AgentFlow deployments.
 keywords:
@@ -94,6 +94,11 @@ Why this is the production choice:
 - supports multiple app instances
 - gives shared thread/message/state storage
 - separates fast access and durable storage concerns
+
+`PgCheckpointer` keeps a bounded, per-thread history of state snapshots and
+prunes older ones automatically. Tune how many are retained with
+`state_history_limit` (default `20`; set `1` to keep only the current state) —
+see [State history retention](../python/set-up-checkpointing.md#state-history-retention-state_history_limit).
 
 ## Deployment topology
 
