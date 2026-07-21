@@ -148,7 +148,6 @@ const sidebars: SidebarsConfig = {
           label: "Production",
           items: [
             "how-to/production/index",
-            "how-to/production/api-reference",
             "how-to/production/agentflow-json",
             "how-to/production/environment-variables",
             "how-to/production/auth-and-authorization",
@@ -300,6 +299,7 @@ const sidebars: SidebarsConfig = {
           type: "category",
           label: "REST API",
           items: [
+            "reference/rest-api/conventions",
             "reference/rest-api/graph",
             "reference/rest-api/live",
             "reference/rest-api/threads",

@@ -26,7 +26,7 @@ The `agentflow api` command starts a FastAPI + Uvicorn server that exposes your 
 | **Observability** | `/v1/observability/...` | Reconstructed run traces. Development only; returns an empty payload in production. |
 | **Evals** | `/v1/evals/...` | Eval report viewer. **Unauthenticated**; block or remove it on a public deployment. |
 
-Full endpoint reference: [API Reference](./api-reference.md)
+Full endpoint reference: [REST API reference](../../reference/rest-api/conventions.md), starting with the shared conventions, auth model, and permission table.
 
 Sending images and documents to an agent: [Multimodal and vision](./multimodal-and-vision.md)
 
@@ -34,7 +34,7 @@ Sending images and documents to an agent: [Multimodal and vision](./multimodal-a
 
 All server behavior is controlled by two inputs:
 
-1. **`agentflow.json`** — which graph to load, which auth backend, which checkpointer, rate limiting, etc. Complete reference: [agentflow.json config](./agentflow-json.md)
+1. **`agentflow.json`** — which graph to load, which auth backend, which checkpointer, rate limiting, etc. Production guidance: [agentflow.json in production](./agentflow-json.md). Complete field reference: [configuration reference](../../reference/api-cli/configuration.md)
 2. **Environment variables** — secrets and runtime tunables (`JWT_SECRET_KEY`, `ORIGINS`, `MODE`, `LOG_LEVEL`, etc.). Complete reference: [Environment variables](./environment-variables.md)
 
 ## Authentication and authorization

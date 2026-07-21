@@ -149,76 +149,87 @@ flowchart TB
 
 ### Image Understanding
 
+You do not hand-build provider-specific content parts like `image_url`. A message is a list of typed content blocks, and an `ImageBlock` wraps a `MediaRef` that is either a URL or inline base64. The agent translates those blocks into whatever shape the provider expects.
+
 ```python
-from agentflow.core.llm import OpenAIModel
-from agentflow.core.state import Message
 import base64
 
-def encode_image(image_path: str) -> str:
-    with open(image_path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
+from agentflow.core.graph import StateGraph, Agent
+from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
+from agentflow.utils import START, END
 
-class VisionAgent:
-    def __init__(self):
-        self.llm = OpenAIModel("gpt-4o")  # Vision-capable model
-    
-    def analyze_image(self, image_path: str, question: str) -> str:
-        """Analyze an image and answer questions about it."""
-        image_data = encode_image(image_path)
-        
-        messages = [
-            Message(role="user", content=[
-                {
-                    "type": "text",
-                    "text": question
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_data}"
-                    }
-                }
-            ])
-        ]
-        
-        return self.llm.generate(messages=messages)
+vision_agent = Agent(model="gpt-4o")   # vision-capable model
+
+builder = StateGraph()
+builder.add_node("vision", vision_agent)
+builder.add_edge(START, "vision")
+builder.add_edge("vision", END)
+app = builder.compile()
+
+def analyze_image(image_path: str, question: str) -> str:
+    """Analyze an image and answer questions about it."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    message = Message(
+        role="user",
+        content=[
+            TextBlock(text=question),
+            ImageBlock(
+                media=MediaRef(kind="data", data_base64=image_data, mime_type="image/jpeg")
+            ),
+        ],
+    )
+
+    result = app.invoke({"messages": [message]}, config={"thread_id": "vision-1"})
+    return result["messages"][-1].text()
 ```
+
+For an image that already lives on the web, use `MediaRef(kind="url", url=..., mime_type=...)` and skip the base64 step entirely. Compile with a `media_store` (see [Media](/docs/reference/python/media)) and large inline blobs are offloaded automatically, so checkpoints hold a reference rather than the bytes.
 
 ### Document Q&A
 
+A tool is a plain function: annotate the parameters, describe them in the docstring, and return a plain value. Errors go back to the model as ordinary return values so it can recover.
+
 ```python
-from agentflow.core.tools import tool, ToolResult
 import PyPDF2
 
-class DocumentProcessor:
-    def extract_text(self, file_path: str, max_pages: int = 10) -> str:
-        """Extract text from PDF."""
-        with open(file_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            text = ""
-            for i, page in enumerate(reader.pages[:max_pages]):
-                text += page.extract_text() + "\n\n"
-        return text
+from agentflow.core.llm import call_llm
+from agentflow.utils.decorators import tool
+
+def extract_text(file_path: str, max_pages: int = 10) -> str:
+    """Extract text from a PDF."""
+    with open(file_path, "rb") as f:
+        reader = PyPDF2.PdfReader(f)
+        return "\n\n".join(page.extract_text() for page in reader.pages[:max_pages])
 
 @tool(name="read_document", description="Read text from a document file")
-def read_document(file_path: str, question: str = None) -> ToolResult:
-    """Read and optionally answer questions about a document."""
-    processor = DocumentProcessor()
-    
+async def read_document(file_path: str, question: str | None = None) -> str:
+    """Read and optionally answer questions about a document.
+
+    Args:
+        file_path: Path to the document to read.
+        question: Optional question to answer from the document.
+    """
     try:
-        content = processor.extract_text(file_path)
-        
-        if question:
-            # Answer question about document
-            response = llm.generate(
-                f"Based on this document, answer: {question}\n\n{content}"
-            )
-            return ToolResult(result=response)
-        else:
-            return ToolResult(result=content[:5000])  # Limit output
+        content = extract_text(file_path)
     except Exception as e:
-        return ToolResult(error=str(e))
+        return f"Error: could not read {file_path}: {e}"
+
+    if question:
+        # Answer question about document
+        text, *_ = await call_llm(
+            "gpt-4o",
+            f"Based on this document, answer: {question}\n\n{content}",
+        )
+        return text
+
+    return content[:5000]   # Limit output
 ```
+
+Tools may be sync or async — `ToolNode` handles both. `call_llm` returns the tuple `(text, input_tokens, output_tokens, cache_read_tokens)`, so the answer is the first element.
+
+Agents can also read PDFs directly as a `DocumentBlock` instead of through a tool; `MultimodalConfig(document_handling=DocumentHandling.EXTRACT_TEXT)` controls how they are processed.
 
 ---
 

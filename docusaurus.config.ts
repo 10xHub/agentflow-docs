@@ -159,6 +159,8 @@ const config: Config = {
           {from: '/docs/reference/cli', to: '/docs/reference/api-cli/commands'},
           {from: '/docs/Tutorial', to: '/docs/tutorials'},
           {from: '/docs/faq', to: '/docs/troubleshooting/installation'},
+          // The production API page duplicated the REST reference; the reference wins.
+          {from: '/docs/how-to/production/api-reference', to: '/docs/reference/rest-api/conventions'},
         ],
       },
     ],

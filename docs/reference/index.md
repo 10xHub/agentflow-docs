@@ -41,10 +41,12 @@ The server generates its own OpenAPI schema, so the authoritative contract for
 | --- | --- | --- |
 | Swagger UI | `http://127.0.0.1:8000/docs` | `DOCS_PATH` |
 | ReDoc | `http://127.0.0.1:8000/redocs` | `REDOCS_PATH` |
-| OpenAPI JSON | `http://127.0.0.1:8000/openapi.json` | derived from `DOCS_PATH` |
+| OpenAPI JSON | `http://127.0.0.1:8000/openapi.json` | FastAPI default, always on |
 
 Set `DOCS_PATH` and `REDOCS_PATH` to empty values in production to turn the
-interactive docs off; the server warns if they are left on.
+interactive docs off; the server warns if they are left on. Note that the raw
+schema at `/openapi.json` stays available regardless, so block it at the proxy
+if you do not want it public.
 
 | Group | Covers |
 | --- | --- |

@@ -230,7 +230,20 @@ that no store is configured, even if your graph uses one internally.
 
 ```python
 # graph/dependencies.py
-from agentflow.storage.store import InMemoryStore
+from agentflow.storage.store import QdrantStore
+from agentflow.storage.store.embedding import OpenAIEmbedding
+
+my_store = QdrantStore(
+    embedding=OpenAIEmbedding(),
+    path="./qdrant_data",
+)
+```
+
+For local development and tests, `agentflow.qa.testing.InMemoryStore` is a `BaseStore`
+implementation with no external dependencies — it satisfies the same field:
+
+```python
+from agentflow.qa.testing import InMemoryStore
 
 my_store = InMemoryStore()
 ```

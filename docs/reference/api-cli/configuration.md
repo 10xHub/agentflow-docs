@@ -372,11 +372,50 @@ Default settings for `agentflow eval`. All fields are optional. CLI flags always
 
 ---
 
+## File discovery
+
+The CLI resolves the config file in this order and uses the first one it finds:
+
+1. The path passed to `--config`
+2. `agentflow.json`
+3. `.agentflow.json`
+4. `agentflow.config.json`
+
+If none exists, startup fails with a message listing those names.
+
+---
+
+## Environment variable expansion
+
+Expansion is **not** applied to every string in the file. It applies to the
+Redis URL in two places: the top-level `redis` value and `rate_limit.redis`.
+
+```json
+{
+  "redis": {"url": "${REDIS_URL}"},
+  "rate_limit": {"redis": {"url": "$RATE_LIMIT_REDIS_URL"}}
+}
+```
+
+Both `$VAR` and `${VAR}` forms work, and the value may be given either as a bare
+string or as an object with a `url` key. If the variable is not set in the
+environment, startup fails with:
+
+```text
+ValueError: Unresolved environment variable in value: ${REDIS_URL}
+```
+
+Every other secret belongs in the environment rather than in this file. Use the
+`env` key to point at a `.env`, and read the value from the environment in your
+own code.
+
+---
+
 ## Loading order
 
 When the CLI starts:
 
-1. Reads `agentflow.json`
+1. Reads the config file resolved above
 2. Loads `.env` if `env` is set
 3. Imports the module specified in `agent` and gets the compiled graph
 4. Imports and configures `checkpointer`, `store`, `injectq`, and `authorization` if set
