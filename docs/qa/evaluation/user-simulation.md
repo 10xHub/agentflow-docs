@@ -1,5 +1,5 @@
 ---
-title: User Simulation — AgentFlow Evaluation
+title: User Simulation — Testing and evaluation
 sidebar_label: User Simulation
 description: How to use AgentFlow's AI-powered user simulator to test agents with dynamic, goal-driven conversations. Covers the CLI get_scenarios() protocol, UserSimulator, ConversationScenario, BatchSimulator, and SimulationGoalsCriterion.
 keywords:

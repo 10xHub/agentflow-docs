@@ -1,7 +1,7 @@
 ---
-title: REST API — Evals — AgentFlow Python AI Agent Framework
+title: REST API — Evals — REST API reference
 sidebar_label: REST API
-description: Reference for the eval run listing and detail endpoints that serve agentflow eval reports over HTTP, including their public, unauthenticated status. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+description: Reference for the eval run listing and detail endpoints that serve agentflow eval reports over HTTP, including their public, unauthenticated status.
 keywords:
   - rest api reference
   - agent http api

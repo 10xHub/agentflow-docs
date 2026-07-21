@@ -1,5 +1,5 @@
 ---
-title: Logging and Metrics — AgentFlow Python AI Agent Framework
+title: Logging and Metrics — Production how-to
 sidebar_label: Logging and metrics
 description: Enable structured JSON logging with run correlation and secret redaction, and export AgentFlow counters and timers to OpenTelemetry.
 keywords:

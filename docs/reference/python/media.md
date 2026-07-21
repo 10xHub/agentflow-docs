@@ -1,5 +1,5 @@
 ---
-title: Media — AgentFlow Python AI Agent Framework
+title: Media — Python API reference
 sidebar_label: Media
 description: MediaOffloadPolicy, ensure_media_offloaded, BaseMediaStore, MediaRefResolver — handling large binary content in agent messages.
 keywords:

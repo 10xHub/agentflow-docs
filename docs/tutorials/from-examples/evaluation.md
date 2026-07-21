@@ -1,5 +1,5 @@
 ---
-title: Evaluation — AgentFlow Python AI Agent Framework
+title: Evaluation — AgentFlow tutorial
 sidebar_label: Evaluation
 description: "Use AgentFlow's evaluation framework to score tool use, response quality, trajectories, simulation goals, and reporting workflows."
 keywords:

@@ -26,7 +26,7 @@ An extended ReAct agent that validates every incoming user message before it rea
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 

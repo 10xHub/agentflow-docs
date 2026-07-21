@@ -1,7 +1,7 @@
 ---
-title: How to stream responses — AgentFlow Python AI Agents
+title: How to stream responses — TypeScript client how-to
 sidebar_label: How to stream responses
-description: Step-by-step guide to using client.stream() for real-time token-by-token output. Part of the AgentFlow agentflow typescript client guide for production-ready.
+description: Step-by-step guide to using client.stream() for real-time token-by-token output.
 keywords:
   - agentflow typescript client
   - ai agent client

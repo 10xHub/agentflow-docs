@@ -1,7 +1,7 @@
 ---
 title: Lesson 7 Memory Checkpoints Artifacts And Durable Execution
 sidebar_label: Lesson 7 Memory Checkpoints Artifacts And Durable Execution
-description: Implement durable execution with memory patterns, checkpointing, and operational replay. Part of the AgentFlow genai course guide for production-ready Python.
+description: Implement durable execution with memory patterns, checkpointing, and operational replay.
 keywords:
   - genai course
   - ai agent course

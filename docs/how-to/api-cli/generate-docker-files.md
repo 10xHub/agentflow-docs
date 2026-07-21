@@ -1,7 +1,7 @@
 ---
-title: Generate Docker Files — AgentFlow Python AI Agent Framework
+title: Generate Docker Files — CLI how-to
 sidebar_label: Generate Docker Files
-description: How to use agentflow build to generate a Dockerfile and docker-compose.yml. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+description: How to use agentflow build to generate a Dockerfile and docker-compose.yml.
 keywords:
   - agentflow api
   - agentflow cli
@@ -87,24 +87,23 @@ services:
 | --- | --- | --- |
 | `--output / -o` | `Dockerfile` | Output path for the Dockerfile |
 | `--force / -f` | `false` | Overwrite existing files |
-| `--python-version` | `3.13` | Python version in the `FROM` line (e.g., `3.12`, `3.11`) |
+| `--python-version` | `3.13` | Python version in the `FROM` line. AgentFlow requires 3.12 or newer, so `3.12` and `3.13` are the supported values |
 | `--port / -p` | `8000` | Port to expose in the image |
 | `--docker-compose` | off | Also generate `docker-compose.yml` |
 | `--service-name` | `agentflow-cli` | Service name in `docker-compose.yml` |
 
 ## Customize the Python version
 
-If you need Python 3.12:
+The default is `3.13`. To pin the image to 3.12:
 
 ```bash
 agentflow build --python-version 3.12
 ```
 
-If you need Python 3.11:
-
-```bash
-agentflow build --python-version 3.11
-```
+:::warning
+AgentFlow declares `requires-python = ">=3.12"`. Passing a lower version produces an
+image whose `pip install` step fails at build time.
+:::
 
 ## Customize the exposed port
 

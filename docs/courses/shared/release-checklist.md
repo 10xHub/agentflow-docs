@@ -1,7 +1,7 @@
 ---
 title: GenAI Application Release Checklist
 sidebar_label: GenAI Application Release Checklist
-description: A comprehensive release checklist for GenAI applications built with AgentFlow. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: A comprehensive release checklist for GenAI applications built with AgentFlow.
 keywords:
   - genai course
   - ai agent course

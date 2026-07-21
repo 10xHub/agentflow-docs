@@ -1,5 +1,5 @@
 ---
-title: "Graph control — AgentFlow Python AI Agent Framework"
+title: Graph control — TypeScript client reference
 sidebar_label: "Graph control"
 description: Reference for the graph-control methods on AgentFlowClient — ping, graph, graphTools, observability, graphStateSchema, stopGraph, fixGraph, and setup — plus the AgentState shape.
 keywords:

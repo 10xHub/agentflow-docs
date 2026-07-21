@@ -1,5 +1,5 @@
 ---
-title: API Reference — AgentFlow Python AI Agent Framework
+title: API Reference — Production how-to
 sidebar_label: API Reference
 description: Complete REST and WebSocket API reference for the AgentFlow server. Covers all endpoints, request/response schemas, authentication, and error codes.
 keywords:

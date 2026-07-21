@@ -1,5 +1,5 @@
 ---
-title: React Streaming — AgentFlow Python AI Agent Framework
+title: React Streaming — AgentFlow tutorial
 sidebar_label: React Streaming
 description: Stream graph responses token-by-token using astream with ResponseGranularity, and understand the difference between invoke and stream.
 keywords:
@@ -22,7 +22,7 @@ An async ReAct agent that calls `astream` instead of `invoke`. Each node emits `
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 

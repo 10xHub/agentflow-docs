@@ -1,5 +1,5 @@
 ---
-title: Google GenAI Adapter — AgentFlow Python AI Agent Framework
+title: Google GenAI Adapter — AgentFlow tutorial
 sidebar_label: Google GenAI Adapter
 description: "Use the GoogleGenAIConverter to integrate raw google-genai SDK calls into AgentFlow's message format, including streaming."
 keywords:
@@ -26,7 +26,7 @@ Three standalone examples that demonstrate how to use the `GoogleGenAIConverter`
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - `google-genai` SDK installed:
 

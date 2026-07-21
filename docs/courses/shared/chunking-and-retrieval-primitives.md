@@ -1,7 +1,7 @@
 ---
 title: Chunking and Retrieval Primitives
 sidebar_label: Chunking and Retrieval Primitives
-description: Master document chunking, retrieval strategies, and context assembly for production RAG systems. Part of the AgentFlow genai course guide for production-ready.
+description: Master document chunking, retrieval strategies, and context assembly for production RAG systems.
 keywords:
   - genai course
   - ai agent course

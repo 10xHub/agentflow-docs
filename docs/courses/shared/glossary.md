@@ -1,7 +1,7 @@
 ---
-title: Glossary — AgentFlow Python AI Agent Framework
+title: Glossary — GenAI course
 sidebar_label: Glossary
-description: Key terms and definitions used throughout the GenAI courses. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: Key terms and definitions used throughout the GenAI courses.
 keywords:
   - genai course
   - ai agent course

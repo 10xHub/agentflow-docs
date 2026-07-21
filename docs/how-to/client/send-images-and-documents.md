@@ -1,5 +1,5 @@
 ---
-title: How to send images and documents — AgentFlow Python AI Agent Framework
+title: How to send images and documents — TypeScript client how-to
 sidebar_label: How to send images and documents
 description: Task-oriented guide to sending images, PDFs, and other media to an agent from TypeScript using uploadFile, Message.withImage, Message.withFile, and Message.multimodal.
 keywords:

@@ -1,5 +1,5 @@
 ---
-title: Evaluation — AgentFlow Python AI Agent Framework
+title: Evaluation — Testing and evaluation
 sidebar_label: Overview
 description: An introduction to AgentFlow's evaluation framework — EvalSet, EvalConfig, EvalPresets, user simulation, parallel execution, criteria, and the agentflow eval CLI command.
 keywords:

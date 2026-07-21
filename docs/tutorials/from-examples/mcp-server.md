@@ -1,5 +1,5 @@
 ---
-title: MCP Server — AgentFlow Python AI Agent Framework
+title: MCP Server — AgentFlow tutorial
 sidebar_label: MCP Server
 description: Expose tools over Model Context Protocol using FastMCP so AgentFlow and other MCP clients can call them remotely.
 keywords:
@@ -22,7 +22,7 @@ A small MCP server that exposes a `get_weather` tool over HTTP using FastMCP. Th
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `fastmcp` installed
 
 Install the dependency:

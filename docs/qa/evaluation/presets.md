@@ -1,5 +1,5 @@
 ---
-title: Eval Presets & Configuration — AgentFlow Evaluation
+title: Eval Presets & Configuration — Testing and evaluation
 sidebar_label: Presets & Config
 description: Ready-to-use EvalPresets and how to build custom EvalConfig — tool_usage, response_quality, conversation_flow, comprehensive, safety_check, and quick_check presets.
 keywords:

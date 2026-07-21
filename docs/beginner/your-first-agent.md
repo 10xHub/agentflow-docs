@@ -1,7 +1,7 @@
 ---
-title: Your First Agent — AgentFlow Python AI Agent Framework
+title: Your First Agent — Beginner path
 sidebar_label: Your First Agent
-description: Build and run a minimal AgentFlow graph that calls a real language model. Part of the AgentFlow ai agents for beginners guide for production-ready Python AI.
+description: Build and run a minimal AgentFlow graph that calls a real language model.
 keywords:
   - ai agents for beginners
   - first ai agent python

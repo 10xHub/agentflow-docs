@@ -1,5 +1,5 @@
 ---
-title: MCP Client — AgentFlow Python AI Agent Framework
+title: MCP Client — AgentFlow tutorial
 sidebar_label: MCP Client
 description: Connect to MCP servers with FastMCP Client, list remote tools, inspect metadata, and invoke tools directly.
 keywords:
@@ -22,7 +22,7 @@ A standalone MCP client that connects to a weather server, lists the remote tool
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `fastmcp` installed
 - the MCP server from the previous tutorial running locally
 

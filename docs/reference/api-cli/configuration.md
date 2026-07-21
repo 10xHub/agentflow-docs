@@ -1,7 +1,7 @@
 ---
 title: agentflow.json Configuration
 sidebar_label: agentflow.json Configuration
-description: Complete reference for all fields in agentflow.json. Part of the AgentFlow agentflow api reference guide for production-ready Python AI agents.
+description: Complete reference for all fields in agentflow.json.
 keywords:
   - agentflow api reference
   - rest api documentation

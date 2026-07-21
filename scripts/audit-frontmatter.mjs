@@ -3,13 +3,16 @@
  * Front-matter SEO linter for AgentFlow docs.
  *
  * Walks docs/ and reports markdown files where:
- *   - title is missing, > 60 chars, or < 25 chars
- *   - description is missing, > 160 chars, or < 100 chars
- *   - keywords array is missing
+ *   - title, description, or keywords are missing            -> error, fails CI
+ *   - title or description length is outside the search-result
+ *     display window                                          -> warning only
  *
- * Exit code 1 on any error so CI can gate merges.
+ * Length is deliberately a warning. Failing CI on a short description is what
+ * produced the "Part of the AgentFlow <keyword> guide for." padding sentence
+ * across 85 pages. A short, honest description beats a padded one.
  *
- * Usage: node scripts/audit-frontmatter.mjs [--fix-missing]
+ * Usage: node scripts/audit-frontmatter.mjs [--strict]
+ *   --strict  also fail on length warnings
  */
 import {readdir, readFile} from 'node:fs/promises';
 import {resolve, dirname, relative} from 'node:path';
@@ -19,10 +22,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 const docsDir = resolve(root, 'docs');
 
-const TITLE_MIN = 25;
-const TITLE_MAX = 60;
-const DESC_MIN = 100;
-const DESC_MAX = 160;
+/** Docusaurus appends " | AgentFlow" (12 chars) to every page title. */
+const TITLE_MIN = 10;
+const TITLE_MAX = 65;
+const DESC_MIN = 60;
+const DESC_MAX = 165;
+
+const strict = process.argv.includes('--strict');
 
 async function walk(dir) {
   const entries = await readdir(dir, {withFileTypes: true});
@@ -78,12 +84,15 @@ function parseFrontMatter(src) {
 
 const issues = [];
 const files = await walk(docsDir);
+let errorCount = 0;
+let warnCount = 0;
 
 for (const file of files) {
   const rel = relative(root, file).replace(/\\/g, '/');
   const src = await readFile(file, 'utf8');
   const fm = parseFrontMatter(src);
   const errs = [];
+  const warns = [];
 
   if (!fm) {
     errs.push('missing front matter');
@@ -92,34 +101,38 @@ for (const file of files) {
     const desc = typeof fm.description === 'string' ? fm.description : '';
     if (!title) errs.push('title missing');
     else if (title.length > TITLE_MAX)
-      errs.push(`title ${title.length} chars (max ${TITLE_MAX})`);
+      warns.push(`title ${title.length} chars (max ${TITLE_MAX})`);
     else if (title.length < TITLE_MIN)
-      errs.push(`title ${title.length} chars (min ${TITLE_MIN})`);
+      warns.push(`title ${title.length} chars (min ${TITLE_MIN})`);
 
     if (!desc) errs.push('description missing');
     else if (desc.length > DESC_MAX)
-      errs.push(`description ${desc.length} chars (max ${DESC_MAX})`);
+      warns.push(`description ${desc.length} chars (max ${DESC_MAX})`);
     else if (desc.length < DESC_MIN)
-      errs.push(`description ${desc.length} chars (min ${DESC_MIN})`);
+      warns.push(`description ${desc.length} chars (min ${DESC_MIN})`);
 
     if (!Array.isArray(fm.keywords) || fm.keywords.length === 0)
       errs.push('keywords missing');
   }
 
-  if (errs.length) issues.push({file: rel, errs});
+  errorCount += errs.length;
+  warnCount += warns.length;
+  if (errs.length || warns.length) issues.push({file: rel, errs, warns});
 }
 
 if (issues.length === 0) {
-  console.log(`OK — all ${files.length} doc files pass SEO front-matter checks.`);
+  console.log(`OK — all ${files.length} doc files pass front-matter checks.`);
   process.exit(0);
 }
 
-console.log(`SEO front-matter issues in ${issues.length}/${files.length} files:\n`);
-for (const {file, errs} of issues) {
+console.log(`Front-matter report for ${files.length} doc files:\n`);
+for (const {file, errs, warns} of issues) {
   console.log(`  ${file}`);
-  for (const e of errs) console.log(`    - ${e}`);
+  for (const e of errs) console.log(`    error   ${e}`);
+  for (const w of warns) console.log(`    warning ${w}`);
 }
 console.log(
-  `\nFix targets: title ${TITLE_MIN}-${TITLE_MAX} chars, description ${DESC_MIN}-${DESC_MAX} chars, keywords array.`,
+  `\n${errorCount} error(s), ${warnCount} warning(s). ` +
+    `Guidance: title ${TITLE_MIN}-${TITLE_MAX} chars, description ${DESC_MIN}-${DESC_MAX} chars, keywords array required.`,
 );
-process.exit(1);
+process.exit(errorCount > 0 || (strict && warnCount > 0) ? 1 : 0);

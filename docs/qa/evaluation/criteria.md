@@ -1,5 +1,5 @@
 ---
-title: Evaluation Criteria — AgentFlow Evaluation
+title: Evaluation Criteria — Testing and evaluation
 sidebar_label: Criteria
 description: Reference for all eight AgentFlow evaluation criteria — tool matching, trajectory, ROUGE, semantic response, LLM-as-judge, factual accuracy, hallucination, and safety.
 keywords:

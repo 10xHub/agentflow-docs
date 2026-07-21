@@ -1,5 +1,5 @@
 ---
-title: Tool Decorator — AgentFlow Python AI Agent Framework
+title: Tool Decorator — AgentFlow tutorial
 sidebar_label: Tool Decorator
 description: "Use the @tool decorator to attach metadata, tags, and capabilities to Python functions before registering them with a ToolNode."
 keywords:
@@ -22,7 +22,7 @@ A collection of decorated tools that demonstrate every feature of the `@tool` de
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
 
 ## Why use `@tool`?

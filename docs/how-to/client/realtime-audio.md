@@ -1,5 +1,5 @@
 ---
-title: How to build a realtime audio session — AgentFlow Python AI Agent Framework
+title: How to build a realtime audio session — TypeScript client how-to
 sidebar_label: How to build a realtime audio session
 description: Step-by-step guide to capturing microphone audio, streaming it to a live agent with client.realtime(), and playing the agent's PCM16 reply back in the browser.
 keywords:

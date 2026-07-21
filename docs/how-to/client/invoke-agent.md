@@ -1,7 +1,7 @@
 ---
-title: How to invoke the agent — AgentFlow Python AI Agents
+title: How to invoke the agent — TypeScript client how-to
 sidebar_label: How to invoke the agent
-description: Step-by-step guide to calling client.invoke() and handling the response. Part of the AgentFlow agentflow typescript client guide for production-ready Python AI.
+description: Step-by-step guide to calling client.invoke() and handling the response.
 keywords:
   - agentflow typescript client
   - ai agent client

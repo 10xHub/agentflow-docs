@@ -1,7 +1,7 @@
 ---
-title: OpenAI — AgentFlow Python AI Agent Framework
+title: OpenAI — Model providers
 sidebar_label: OpenAI
-description: Configure the OpenAI provider for GPT and reasoning models. Part of the AgentFlow llm providers guide for production-ready Python AI agents.
+description: Configure the OpenAI provider for GPT and reasoning models.
 keywords:
   - llm providers
   - ai model providers

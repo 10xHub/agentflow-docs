@@ -1,7 +1,7 @@
 ---
-title: Auth — AgentFlow Python AI Agent Framework
+title: Auth — TypeScript client reference
 sidebar_label: Auth
-description: Reference for all authentication options available in AgentFlowClient. Part of the AgentFlow typescript client reference guide for production-ready Python AI.
+description: Reference for all authentication options available in AgentFlowClient.
 keywords:
   - typescript client reference
   - agent client api

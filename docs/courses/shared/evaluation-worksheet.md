@@ -1,7 +1,7 @@
 ---
-title: Evaluation Worksheet — AgentFlow Python AI Agent Framework
+title: Evaluation Worksheet — GenAI course
 sidebar_label: Evaluation Worksheet
-description: A practical worksheet for designing and running evaluations for GenAI systems. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: A practical worksheet for designing and running evaluations for GenAI systems.
 keywords:
   - genai course
   - ai agent course

@@ -1,5 +1,5 @@
 ---
-title: Memory — AgentFlow Python AI Agent Framework
+title: Memory — TypeScript client reference
 sidebar_label: Memory
 description: Reference for all memory store methods on AgentFlowClient — store, search, list, update, and delete memories.
 keywords:

@@ -1,5 +1,5 @@
 ---
-title: LLM Utilities — AgentFlow Python AI Agent Framework
+title: LLM Utilities — Python API reference
 sidebar_label: LLM utilities
 description: call_llm, create_llm_client, detect_provider, and the default LLM timeout controls exported from agentflow.core.llm.
 keywords:

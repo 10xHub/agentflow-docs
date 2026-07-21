@@ -1,7 +1,7 @@
 ---
-title: "`invoke()` — AgentFlow Python AI Agent Framework"
+title: `invoke()` — TypeScript client reference
 sidebar_label: "`invoke()`"
-description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state. Part of the AgentFlow typescript client reference guide for.
+description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state.
 keywords:
   - typescript client reference
   - agent client api

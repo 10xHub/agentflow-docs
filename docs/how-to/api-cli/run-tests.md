@@ -1,5 +1,5 @@
 ---
-title: Run Tests — AgentFlow Python AI Agent Framework
+title: Run Tests — CLI how-to
 sidebar_label: Run Tests
 description: How to run your AgentFlow project's test suite using agentflow test. Covers coverage, thresholds, keyword filters, and agentflow.json configuration.
 keywords:

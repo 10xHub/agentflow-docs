@@ -1,5 +1,5 @@
 ---
-title: Skills Chat — AgentFlow Python AI Agent Framework
+title: Skills Chat — AgentFlow tutorial
 sidebar_label: Skills Chat
 description: Turn the skills example into a persistent terminal chat with thread memory and visible skill activation.
 keywords:

@@ -1,5 +1,5 @@
 ---
-title: "`stream()` — AgentFlow Python AI Agent Framework"
+title: `stream()` — TypeScript client reference
 sidebar_label: "`stream()`"
 description: Reference for the AgentFlowClient.stream() method — receive real-time streaming chunks from the agent.
 keywords:

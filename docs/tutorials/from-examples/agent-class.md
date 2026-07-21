@@ -1,5 +1,5 @@
 ---
-title: Agent Class Pattern — AgentFlow Python AI Agent Framework
+title: Agent Class Pattern — AgentFlow tutorial
 sidebar_label: Agent Class Pattern
 description: Build a weather-aware assistant using the Agent class, ToolNode, and conditional routing in a StateGraph.
 keywords:
@@ -22,7 +22,7 @@ A conversational agent that can look up weather information for any city. The ag
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
 - A Google Gemini API key (`pip install google-generativeai` and set `GEMINI_API_KEY` in your environment)
 - A `.env` file in your project root with `GEMINI_API_KEY=<your_key>`

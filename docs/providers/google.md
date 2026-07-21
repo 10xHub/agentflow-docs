@@ -1,7 +1,7 @@
 ---
-title: Google — AgentFlow Python AI Agent Framework
+title: Google — Model providers
 sidebar_label: Google
-description: Configure the Google provider to run Gemini models via Google AI Studio or Vertex AI. Part of the AgentFlow llm providers guide for production-ready Python AI.
+description: Configure the Google provider to run Gemini models via Google AI Studio or Vertex AI.
 keywords:
   - llm providers
   - ai model providers

@@ -1,5 +1,5 @@
 ---
-title: REST API — Live WebSocket — AgentFlow Python AI Agent Framework
+title: REST API — Live WebSocket — REST API reference
 sidebar_label: Live WebSocket
 description: Reference for the WS /v1/graph/live WebSocket endpoint that bridges browser or SDK audio to a realtime AudioAgent (Gemini Live). Covers the init frame, upstream binary/control frames, downstream binary/JSON events, and authentication.
 keywords:

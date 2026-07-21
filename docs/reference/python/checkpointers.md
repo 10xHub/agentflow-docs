@@ -1,5 +1,5 @@
 ---
-title: Checkpointers — AgentFlow Python AI Agent Framework
+title: Checkpointers — Python API reference
 sidebar_label: Checkpointers
 description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer — state persistence for conversation threads.
 keywords:

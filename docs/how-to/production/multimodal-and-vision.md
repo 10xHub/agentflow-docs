@@ -1,5 +1,5 @@
 ---
-title: Multimodal and Vision — AgentFlow Python AI Agent Framework
+title: Multimodal and Vision — Production how-to
 sidebar_label: Multimodal and Vision
 description: How to send images, audio, and documents to an AgentFlow agent over the API. Covers file upload, the file_id reference rewrite, document text extraction, and the MEDIA_* environment variables.
 keywords:

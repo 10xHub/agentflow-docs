@@ -1,5 +1,5 @@
 ---
-title: Realtime — AgentFlow Python AI Agent Framework
+title: Realtime — Python API reference
 sidebar_label: Realtime
 description: Full API reference for the realtime audio-to-audio subsystem — LiveInputQueue, RealtimeConfig, VADConfig, ReconnectConfig, AudioAgent, RealtimeEvent union, and the WebSocket bridge protocol.
 keywords:

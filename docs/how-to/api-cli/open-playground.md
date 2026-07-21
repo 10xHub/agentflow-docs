@@ -1,7 +1,7 @@
 ---
-title: Open the Playground — AgentFlow Python AI Agent Framework
+title: Open the Playground — CLI how-to
 sidebar_label: Open the Playground
-description: How to use agentflow play to start the API and open the hosted playground. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+description: How to use agentflow play to start the API and open the hosted playground.
 keywords:
   - agentflow api
   - agentflow cli
@@ -42,7 +42,7 @@ You should see output like:
 ```
 [INFO] Starting API server...
 [INFO] API server running on http://127.0.0.1:8000
-[INFO] Opening playground at: https://playground.agentflow.dev?backendUrl=http://127.0.0.1:8000
+[INFO] Opening playground at: https://playground-463bd.web.app?backendUrl=http://127.0.0.1:8000
 ```
 
 A browser window opens automatically showing the playground UI connected to your local API. If the browser does not open, copy the URL from the terminal log and open it manually.
@@ -233,7 +233,7 @@ If you want others to test your agent:
 1. Deploy the API server to a public URL (e.g., on a cloud provider)
 2. Share the playground URL with the `backendUrl` query parameter:
    ```
-   https://playground.agentflow.dev?backendUrl=https://your-api.example.com
+   https://playground-463bd.web.app?backendUrl=https://your-api.example.com
    ```
 3. Others can open this URL and test your agent in their browsers
 

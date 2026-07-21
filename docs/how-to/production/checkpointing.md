@@ -1,5 +1,5 @@
 ---
-title: Checkpointing — AgentFlow Python AI Agent Framework
+title: Checkpointing — Production how-to
 sidebar_label: Checkpointing
 description: How to choose, configure, and troubleshoot checkpointers for development and production AgentFlow deployments.
 keywords:

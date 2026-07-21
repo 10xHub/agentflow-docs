@@ -1,5 +1,5 @@
 ---
-title: Environment Variables — AgentFlow Python AI Agent Framework
+title: Environment Variables — Production how-to
 sidebar_label: Environment Variables
 description: Complete reference for all environment variables read by the AgentFlow server. Covers auth, CORS, logging, security headers, Snowflake IDs, OpenTelemetry, and media storage.
 keywords:

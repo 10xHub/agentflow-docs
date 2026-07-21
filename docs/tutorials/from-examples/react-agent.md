@@ -1,5 +1,5 @@
 ---
-title: ReAct Agent — AgentFlow Python AI Agent Framework
+title: ReAct Agent — AgentFlow tutorial
 sidebar_label: ReAct Agent
 description: Build a persistent ReAct agent with an InMemoryCheckpointer, injectable tool parameters, and custom state.
 keywords:
@@ -27,7 +27,7 @@ A ReAct (Reason + Act) agent that:
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 

@@ -1,7 +1,7 @@
 ---
-title: Your First Agent — AgentFlow Python AI Agent Framework
+title: Your First Agent — Get started
 sidebar_label: Your First Agent
-description: Build and run your first AgentFlow agent in Python — from a prebuilt ReactAgent to a full StateGraph with tools. Part of the AgentFlow get started guide.
+description: Build and run your first AgentFlow agent in Python — from a prebuilt ReactAgent to a full StateGraph with tools.
 keywords:
   - agentflow get started
   - python ai agent

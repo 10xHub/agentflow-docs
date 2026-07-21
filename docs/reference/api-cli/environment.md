@@ -1,7 +1,7 @@
 ---
-title: Environment Variables — AgentFlow Python AI Agent Framework
+title: Environment Variables — CLI reference
 sidebar_label: Environment Variables
-description: All environment variables recognized by the AgentFlow API server. Part of the AgentFlow agentflow api reference guide for production-ready Python AI agents.
+description: All environment variables recognized by the AgentFlow API server.
 keywords:
   - agentflow api reference
   - rest api documentation

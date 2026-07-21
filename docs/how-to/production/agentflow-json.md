@@ -1,5 +1,5 @@
 ---
-title: agentflow.json Configuration — AgentFlow Python AI Agent Framework
+title: agentflow.json Configuration — Production how-to
 sidebar_label: agentflow.json Config
 description: Complete reference for the agentflow.json configuration file. Covers agent, auth, checkpointer, store, rate limiting, injectq, thread name generator, authorization, and environment loading.
 keywords:

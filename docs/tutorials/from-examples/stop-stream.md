@@ -1,7 +1,7 @@
 ---
-title: Stop Stream — AgentFlow Python AI Agent Framework
+title: Stop Stream — AgentFlow tutorial
 sidebar_label: Stop Stream
-description: Gracefully stop a running AgentFlow stream from the caller by using app.stop(config). Part of the AgentFlow ai agent tutorial guide for production-ready Python.
+description: Gracefully stop a running AgentFlow stream from the caller by using app.stop(config).
 keywords:
   - ai agent tutorial
   - multi-agent tutorial
@@ -22,7 +22,7 @@ A long-running streaming graph that emits output over time and a caller that sto
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 
 ## Why stream cancellation matters

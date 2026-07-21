@@ -1,5 +1,5 @@
 ---
-title: Synchronous Streaming — AgentFlow Python AI Agent Framework
+title: Synchronous Streaming — AgentFlow tutorial
 sidebar_label: Synchronous Streaming
 description: Use app.stream() for synchronous token-by-token streaming with a custom state and is_stream config flag.
 keywords:
@@ -22,7 +22,7 @@ A ReAct agent that uses `app.stream()` — the synchronous streaming API — wit
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 

@@ -1,5 +1,5 @@
 ---
-title: Multiagent — AgentFlow Python AI Agent Framework
+title: Multiagent — AgentFlow tutorial
 sidebar_label: Multiagent
 description: Route work between multiple specialized nodes in a single AgentFlow graph using conditional edges and a coordinator-style main node.
 keywords:
@@ -28,7 +28,7 @@ This example is intentionally simple and deterministic. It is a good introductio
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - `10xscale-agentflow` installed
 
 ## Graph layout

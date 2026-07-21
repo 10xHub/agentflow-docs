@@ -1,7 +1,7 @@
 ---
 title: Installation Troubleshooting
 sidebar_label: Installation Troubleshooting
-description: Symptoms, causes, and fixes for common AgentFlow installation and environment setup issues. Part of the AgentFlow agentflow troubleshooting guide for.
+description: Symptoms, causes, and fixes for common AgentFlow installation and environment setup issues.
 keywords:
   - agentflow troubleshooting
   - agent debugging
@@ -42,7 +42,7 @@ flowchart TD
 
 **Fix**
 
-- use Python 3.11+
+- use Python 3.12+
 - create a fresh virtual environment
 - reinstall inside the fresh environment
 

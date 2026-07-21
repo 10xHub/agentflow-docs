@@ -1,7 +1,7 @@
 ---
 title: How to use the memory API
 sidebar_label: How to use the memory API
-description: Step-by-step guide to storing, searching, and managing long-term memories with AgentFlowClient. Part of the AgentFlow agentflow typescript client guide for.
+description: Step-by-step guide to storing, searching, and managing long-term memories with AgentFlowClient.
 keywords:
   - agentflow typescript client
   - ai agent client

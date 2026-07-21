@@ -1,7 +1,7 @@
 ---
-title: Run the API Server — AgentFlow Python AI Agent Framework
+title: Run the API Server — CLI how-to
 sidebar_label: Run the API Server
-description: How to start the AgentFlow API server for development and production. Part of the AgentFlow agentflow api guide for production-ready Python AI agents.
+description: How to start the AgentFlow API server for development and production.
 keywords:
   - agentflow api
   - agentflow cli

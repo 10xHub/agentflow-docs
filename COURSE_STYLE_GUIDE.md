@@ -1,15 +1,8 @@
----
-title: Course Style Guide — AgentFlow Python AI Agent Framework
-sidebar_label: Course Style Guide
-description: Standards and template for writing GenAI course lessons. Part of the AgentFlow genai course guide for production-ready Python AI agents.
-keywords:
-  - genai course
-  - ai agent course
-  - agent engineering course
-  - agentflow
-  - python ai agent framework
-  - course style guide
----
+# Course style guide
+
+Standards and template for writing GenAI course lessons under `docs/courses/`.
+This file lives outside `docs/` on purpose: it is an authoring reference, not a published page.
+
 
 
 # Course Style Guide

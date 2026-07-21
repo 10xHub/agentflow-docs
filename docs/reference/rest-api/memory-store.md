@@ -1,7 +1,7 @@
 ---
-title: REST API — Memory Store — AgentFlow Python AI Agents
+title: REST API — Memory Store — REST API reference
 sidebar_label: REST API
-description: Reference for the memory store endpoints. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+description: Reference for the memory store endpoints.
 keywords:
   - rest api reference
   - agent http api

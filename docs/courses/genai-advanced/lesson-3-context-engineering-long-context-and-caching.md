@@ -1,7 +1,7 @@
 ---
 title: "Lesson 3: Context Engineering, Long Context, and Caching"
 sidebar_label: Lesson 3
-description: Master context optimization for quality, cost, and latency tradeoffs. Part of the AgentFlow genai course guide for production-ready Python AI agents.
+description: Master context optimization for quality, cost, and latency tradeoffs.
 keywords:
   - genai course
   - ai agent course

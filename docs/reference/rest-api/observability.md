@@ -1,7 +1,7 @@
 ---
-title: REST API — Observability — AgentFlow Python AI Agent Framework
+title: REST API — Observability — REST API reference
 sidebar_label: REST API
-description: Reference for the GET /v1/observability/{thread_id} endpoint that reconstructs a run trace with spans, events, and token usage. Part of the AgentFlow rest api reference guide for production-ready Python AI agents.
+description: Reference for the GET /v1/observability/{thread_id} endpoint that reconstructs a run trace with spans, events, and token usage.
 keywords:
   - rest api reference
   - agent http api

@@ -1,5 +1,5 @@
 ---
-title: Run Evaluations — AgentFlow Python AI Agent Framework
+title: Run Evaluations — CLI how-to
 sidebar_label: Run Evaluations
 description: How to run agent evaluations using agentflow eval. Covers parallel execution, user simulation, EvalPresets, report generation, thresholds, and agentflow.json configuration.
 keywords:

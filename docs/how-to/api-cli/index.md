@@ -1,5 +1,5 @@
 ---
-title: API & CLI Overview — AgentFlow Python AI Agent Framework
+title: API & CLI Overview — CLI how-to
 sidebar_label: Overview
 description: Overview of the AgentFlow CLI commands. Install, scaffold, serve, test, evaluate, and deploy agents from the terminal.
 keywords:
