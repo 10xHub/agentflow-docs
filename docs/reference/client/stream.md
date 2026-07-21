@@ -46,7 +46,7 @@ Same as [`invoke()`](invoke.md#parameters). An array of `Message` objects.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `initial_state` | `Record<string, any>` | `undefined` | Initial state values to seed the graph. |
-| `config` | `Record<string, any>` | `undefined` | Run config. Set `configurable.thread_id` for persistent state. |
+| `config` | `Record<string, any>` | `undefined` | Run config. Set `thread_id` at the top level of this object for persistent state. |
 | `recursion_limit` | `number` | `25` | Maximum recursion depth for the graph. |
 | `response_granularity` | `'full' \| 'partial' \| 'low'` | `'low'` | Controls how much data is included in state/update events. Default is `'low'` for streaming (unlike invoke where the default is `'full'`). |
 
@@ -122,7 +122,7 @@ console.log('\n--- Stream complete ---');
 const stream = client.stream(
   [Message.text_message('Analyse this dataset.')],
   {
-    config: { configurable: { thread_id: 'analysis-001' } },
+    config: { thread_id: 'analysis-001' },
     response_granularity: 'full',
   }
 );

@@ -52,7 +52,7 @@ const client = new AgentFlowClient({
 | Method | Transport | Returns | Use when |
 |---|---|---|---|
 | `client.invoke(messages, options?)` | HTTP POST | `Promise<InvokeResult>` | You only need the final response |
-| `client.stream(messages, options?)` | SSE | `AsyncGenerator<StreamChunk>` | Real-time token-by-token display |
+| `client.stream(messages, options?)` | HTTP, NDJSON body | `AsyncGenerator<StreamChunk>` | Real-time token-by-token display |
 | `client.wsStream(messages, options?)` | WebSocket | `AsyncGenerator<StreamChunk>` | Low-latency or bidirectional use |
 
 ```typescript
@@ -111,10 +111,12 @@ await client.invoke(
 ### Thread management
 
 ```typescript
-const threads = await client.threads({ user_id: 'user-123' });
+// threads() filters by free-text search and paginates; it does not take a user_id.
+const threads = await client.threads({ search: 'refund', offset: 0, limit: 20 });
+
 const detail  = await client.threadDetails('thread-abc');
-const state   = await client.threadState('thread-abc');
-await client.deleteThread({ thread_id: 'thread-abc' });
+const state   = await client.threadState('thread-abc' as unknown as number); // typed number; see the threads reference
+await client.deleteThread('thread-abc');
 ```
 
 ---
@@ -130,7 +132,7 @@ sequenceDiagram
   participant G as Python Graph
 
   C->>C: register tool "read_clipboard" with local handler
-  C->>API: client.setupGraph() — sends tool schemas to server
+  C->>API: client.setup() — sends tool schemas to server
   C->>API: client.invoke(message)
   API->>G: run graph (server knows schema, not handler)
   G-->>API: RemoteToolCallBlock — needs client execution
@@ -143,31 +145,35 @@ sequenceDiagram
 ```
 
 ```typescript
-import { AgentFlowClient, Message, StreamRequest } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-// 1. Register tool with a local execution handler
-const request: StreamRequest = {
-  messages: [Message.text_message('What is on my clipboard?')],
-  tools: [
-    {
-      name: 'read_clipboard',
-      description: 'Read text from the user clipboard',
-      parameters: { type: 'object', properties: {} },
-      execute: async (_args) => {
-        const text = await navigator.clipboard.readText();
-        return { content: text };
-      },
-    },
-  ],
-};
-
-// 2. Stream — client intercepts tool_call events, runs handler, sends result back
-await client.stream(request, {
-  onTextDelta: (text) => display(text),
-  onDone: () => console.log('done'),
+// 1. Register the tool with its local handler. `node` is the tool node in your
+//    graph that is allowed to call it.
+client.registerTool({
+  node: 'TOOL',
+  name: 'read_clipboard',
+  description: 'Read text from the user clipboard',
+  parameters: { type: 'object', properties: {}, required: [] },
+  handler: async () => ({ content: await navigator.clipboard.readText() }),
 });
+
+// 2. Send the schemas to the server. Once per client, before the first run.
+await client.setup();
+
+// 3. Run. invoke() and stream() both drive the tool loop for you: when the
+//    server asks for read_clipboard, the client runs the handler and sends the
+//    result back automatically.
+const stream = client.stream([Message.text_message('What is on my clipboard?')], {
+  config: { thread_id: 'clipboard-demo' },
+});
+
+for await (const chunk of stream) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message?.delta) {
+    display(chunk.message.text());
+  }
+}
 ```
 
 No server changes needed. The server sees the tool schema and calls it; the client sees the call, runs the handler, and returns the result — all within the same stream connection.
@@ -181,11 +187,11 @@ Upload a file first, then reference the returned ID in a message:
 ```typescript
 import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
 
-const uploaded = await client.uploadFile(file, { purpose: 'vision' });
+const uploaded = await client.uploadFile(file);
 
-await client.invoke({
-  messages: [Message.withFile('What is in this image?', uploaded.file_id, 'image/jpeg')],
-});
+await client.invoke([
+  Message.withFile('What is in this image?', uploaded.data.file_id, 'image/jpeg'),
+]);
 ```
 
 ---
@@ -210,11 +216,23 @@ The token is sent as `Authorization: Bearer <token>` on every request. The serve
 ## Memory from the client
 
 ```typescript
-await client.storeMemory({ user_id: 'u1', content: 'Prefers dark mode', metadata: {} });
+import { MemoryType } from '@10xscale/agentflow-client';
 
-const results = await client.searchMemory({ user_id: 'u1', query: 'UI preferences' });
+await client.storeMemory({
+  content: 'Prefers dark mode',
+  memory_type: MemoryType.SEMANTIC,   // required
+  category: 'preferences',            // required
+  metadata: {},
+});
 
-await client.forgetMemories({ user_id: 'u1', topic: 'preferences' });
+const results = await client.searchMemory({
+  query: 'UI preferences',
+  memory_type: MemoryType.SEMANTIC,
+  limit: 5,
+});
+console.log(results.data.results);
+
+await client.forgetMemories({ memory_type: MemoryType.SEMANTIC, category: 'preferences' });
 ```
 
 ---
@@ -222,8 +240,12 @@ await client.forgetMemories({ user_id: 'u1', topic: 'preferences' });
 ## Health check
 
 ```typescript
-const ok = await client.ping();   // returns true if API is reachable
+// Resolves when the API is reachable; throws an AgentFlowError otherwise.
+const pong = await client.ping();
+console.log(pong.data);   // 'pong'
 ```
+
+There is no `user_id` argument on the memory or thread methods. Scoping is a server-side concern: the authenticated user is derived from the request, and per-call scoping goes in the `config` object.
 
 ---
 

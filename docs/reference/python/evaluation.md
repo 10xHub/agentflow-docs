@@ -419,7 +419,7 @@ HTMLReporter(output_path="eval-report.html").write(report)
 ## `DEFAULT_JUDGE_MODEL`
 
 ```python
-from agentflow.qa.evaluation import DEFAULT_JUDGE_MODEL
+from agentflow.qa.evaluation.config.types import DEFAULT_JUDGE_MODEL
 # "gemini-2.5-flash"
 ```
 

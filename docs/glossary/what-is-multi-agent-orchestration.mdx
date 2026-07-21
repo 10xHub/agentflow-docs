@@ -71,8 +71,7 @@ User query → Coordinator
 ### Supervisor pattern
 
 ```python
-from agentflow.prebuild.agents.supervisor_team_agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent import ReactAgent
+from agentflow.prebuilt import ReactAgent, SupervisorTeamAgent
 from agentflow.core.state import AgentState, Message
 
 def search_web(query: str) -> str:

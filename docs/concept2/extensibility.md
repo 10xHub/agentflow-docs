@@ -56,8 +56,8 @@ flowchart TB
 | `BaseConverter` | `agentflow/agentflow/runtime/adapters/llm/base_converter.py` | `convert_response()`, `convert_streaming_response()` |
 | `BaseValidator` | `agentflow/agentflow/utils/callbacks.py` | `validate(messages)` |
 | `BaseIDGenerator` | `agentflow/agentflow/utils/id_generator.py` | `generate()` |
-| `BaseAuth` | `agentflow-api/agentflow_cli/src/app/core/auth/base_auth.py` | `authenticate(request)` |
-| `AuthorizationBackend` | `agentflow-api/agentflow_cli/src/app/core/auth/authorization.py` | `check(user, operation, resource)` |
+| `BaseAuth` | `agentflow-api/agentflow_cli/src/app/core/auth/base_auth.py` | `authenticate(request, response, credential)` |
+| `AuthorizationBackend` | `agentflow-api/agentflow_cli/src/app/core/auth/authorization.py` | `authorize(user, resource, action, resource_id=None, **context)` |
 | `BaseRateLimitBackend` | `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py` | `check(key, limit, window)`, `close()` |
 | `ThreadNameGenerator` | `agentflow-api/agentflow_cli/src/app/utils/thread_name_generator.py` | `generate_name(messages)` |
 | `BaseCriterion` | `agentflow/agentflow/qa/evaluation/criteria/base.py` | `score(trajectory, response)` |
@@ -269,13 +269,15 @@ All four server-layer ABCs are wired via `agentflow.json` — no code changes to
 
 ### `BaseAuth`
 
+`authenticate` is synchronous and takes `(request, response, credential)`:
+
 ```python
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+from agentflow_cli import BaseAuth
 
 class ApiKeyAuth(BaseAuth):
-    async def authenticate(self, request) -> dict | None:
+    def authenticate(self, request, response, credential) -> dict | None:
         key = request.headers.get("X-API-Key")
-        return await lookup_api_key(key)   # None → 401
+        return lookup_api_key(key)   # dict with user_id, or None → 401
 ```
 
 ### `AuthorizationBackend`
@@ -284,9 +286,13 @@ class ApiKeyAuth(BaseAuth):
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 
 class RBACBackend(AuthorizationBackend):
-    async def check(self, user: dict, operation: str, resource: str) -> bool:
-        return operation in ROLE_PERMISSIONS[user["role"]]
+    async def authorize(self, user, resource, action, resource_id=None, **context) -> bool:
+        return f"{resource}:{action}" in ROLE_PERMISSIONS[user["role"]]
 ```
+
+For role→scope mapping you usually do not need a class — set `"authorization"` to an RBAC
+config block (`{"backend": "rbac", "roles": {...}}`). The built-in `"ownership"` backend gives
+owner-only threads with no code.
 
 ### `BaseRateLimitBackend`
 

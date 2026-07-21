@@ -89,7 +89,7 @@ const THREAD_ID = 'user-123-session-1';
 const result = await client.invoke(
   [Message.text_message('Tell me about Paris.')],
   {
-    config: { configurable: { thread_id: THREAD_ID } },
+    config: { thread_id: THREAD_ID },
   }
 );
 
@@ -97,7 +97,7 @@ const result = await client.invoke(
 const followUp = await client.invoke(
   [Message.text_message('And what about its history?')],
   {
-    config: { configurable: { thread_id: THREAD_ID } },
+    config: { thread_id: THREAD_ID },
   }
 );
 // The agent remembers "Paris" from the first turn
@@ -115,7 +115,7 @@ The `response_granularity` option controls how much the server includes in the r
 const result = await client.invoke(
   [Message.text_message('Summarise this document')],
   {
-    config: { configurable: { thread_id: 'doc-summary-01' } },
+    config: { thread_id: 'doc-summary-01' },
     response_granularity: 'low',  // Only return messages, no state or summary
   }
 );
@@ -161,10 +161,10 @@ try {
   displayResponse(result.messages);
 } catch (err) {
   if (err instanceof AgentFlowError) {
-    if (err.status === 401) {
+    if (err.statusCode === 401) {
       redirectToLogin();
     } else {
-      showError(`Server error [${err.status}]: ${err.message}`);
+      showError(`Server error [${err.statusCode}]: ${err.message}`);
     }
   } else {
     showError('Unexpected error');
@@ -193,7 +193,7 @@ async function ask(question: string, threadId: string): Promise<string> {
   const result = await client.invoke(
     [Message.text_message(question)],
     {
-      config: { configurable: { thread_id: threadId } },
+      config: { thread_id: threadId },
       response_granularity: 'low',
     }
   );
@@ -232,7 +232,7 @@ agentflow api
 ## What you learned
 
 - Use `Message.text_message()` to create user and system messages.
-- Pass `config: { configurable: { thread_id } }` to persist conversation state.
+- Pass `config: { thread_id }` to persist conversation state.
 - Extract assistant text by filtering `result.messages` for `role === 'assistant'` and `block.type === 'text'`.
 - Use `response_granularity: 'low'` for the fastest response in production.
 - Catch `AgentFlowError` to handle HTTP errors by status code.

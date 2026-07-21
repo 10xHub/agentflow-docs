@@ -325,9 +325,9 @@ agent = Agent(
 )
 
 # Or upload file and use file_id
-from agentflow.storage.media import MediaStorage
-media = MediaStorage()
-file_id = await media.upload(file_path)
+from agentflow.storage.media import LocalFileMediaStore
+media = LocalFileMediaStore(base_dir="./agentflow_media")
+storage_key = await media.store(file_path.read_bytes(), "image/png")
 # Use file_id in message instead of URL
 ```
 
@@ -431,7 +431,7 @@ app = graph.compile(recursion_limit=50, execution_timeout=60)
 ```python
 # Configure proper checkpointer
 app = graph.compile(
-    checkpointer=PostgresCheckpointer(connection_string=dsn)
+    checkpointer=PgCheckpointer(postgres_dsn=dsn)
 )
 
 # Handle transient errors

@@ -349,11 +349,14 @@ print(response)
 ### Step 5: Add Streaming (Better UX)
 
 ```python
+from agentflow.core.state import StreamEvent
+
 # Stream responses for better perceived latency
 for chunk in app.stream(initial_state):
-    if hasattr(chunk, 'content'):
-        print(chunk.content, end="", flush=True)
-    print()  # newline at the end
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
+
+print()  # newline at the end
 ```
 
 ### Complete Code

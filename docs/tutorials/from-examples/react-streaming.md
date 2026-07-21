@@ -277,14 +277,14 @@ sequenceDiagram
 | `app.astream(...)` | Async generator returning `StreamChunk` objects as nodes execute |
 | `app.stream(...)` | Synchronous version of `astream` for non-async contexts |
 | `ResponseGranularity.LOW` | Minimal payload — just text deltas |
-| `chunk.delta` | `True` while streaming, `False` on the final assembled chunk |
+| `chunk.message.delta` | `True` while streaming a partial message, `False` on the final assembled message |
 | `Message.tool_message(...)` | Create a tool-result message with explicit `tool_call_id` |
 
 ## What you learned
 
 - The difference between `invoke`, `stream`, and `astream`.
 - How to use `ResponseGranularity` to control chunk size.
-- How to interpret `chunk.delta` to distinguish partial from final output.
+- How to interpret `chunk.message.delta` to distinguish partial from final output.
 - How to return a typed `Message` from a tool function.
 
 ## Next step

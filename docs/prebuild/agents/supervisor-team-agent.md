@@ -243,7 +243,7 @@ import asyncio
 from agentflow.core.graph import Agent, ToolNode
 from agentflow.prebuilt.agent import SupervisorTeamAgent
 from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.prebuilt.tools import google_web_search, safe_calculator
 from agentflow.core.state import Message
 
@@ -265,7 +265,7 @@ agent = SupervisorTeamAgent(
     max_rounds=6,
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = agent.compile(checkpointer=checkpointer)
 
 

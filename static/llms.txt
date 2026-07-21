@@ -2,7 +2,7 @@
 
 > Open-source Python framework for building production-grade multi-agent AI systems. Typed StateGraph orchestration, durable Redis + Postgres persistence, a built-in REST and SSE API server, and a typed TypeScript client SDK. A batteries-included alternative to LangGraph, CrewAI, AutoGen, and Google ADK.
 
-AgentFlow (pip: `10xscale-agentflow`) was built by 10xScale to power all their AI products in production. It is MIT-licensed and runs anywhere Python 3.12+ runs — no required SaaS account. The CLI package (`10xscale-agentflow-cli`) adds `agentflow api` (starts a production HTTP server from any compiled graph), `agentflow play` (opens a hosted playground), and `agentflow build` (generates Docker files). The TypeScript client (`@10xscale/agentflow-client`) is a fully typed npm package with React streaming hooks.
+AgentFlow (pip: `10xscale-agentflow`) was built by 10xScale to power all their AI products in production. It is MIT-licensed and runs anywhere Python 3.12+ runs — no required SaaS account. The CLI package (`10xscale-agentflow-cli`) adds `agentflow api` (starts a production HTTP server from any compiled graph), `agentflow play` (opens a hosted playground), and `agentflow build` (generates Docker files). The TypeScript client (`@10xscale/agentflow-client`) is a fully typed, framework-agnostic npm package with streaming and realtime audio support.
 
 ## Pricing
 
@@ -22,7 +22,9 @@ AgentFlow is free and open-source under the MIT license. There is no paid tier, 
 - Auth: JWT built-in or custom BaseAuth subclass; RBAC per route and tool
 - Rate limiting: per-user and per-route, in-memory or Redis backend
 - MCP support: native Model Context Protocol integration as client or server
-- Multi-model: OpenAI, Google Gemini, Anthropic Claude, custom providers
+- Multi-model: native OpenAI and Google Gemini clients; any OpenAI-compatible endpoint (including Anthropic Claude) via base URL
+- Multimodal: image and document input on invoke, stream, and WebSocket runs via file upload
+- Realtime: WebSocket audio sessions backed by Gemini Live
 - Observability: OpenTelemetry, Sentry built in
 - Deployment: `agentflow build --docker-compose` generates production Docker files
 

@@ -37,7 +37,31 @@ pip install "10xscale-agentflow[google-genai]"
 pip install "10xscale-agentflow[openai,google-genai]"
 ```
 
-Other available extras: `pg_checkpoint`, `mcp`, `redis`, `kafka`, `rabbitmq`, `qdrant`, `mem0`, `otel`, `images`.
+### Extras matrix
+
+Every optional dependency of `10xscale-agentflow` is behind an extra. Combine them in one bracket, for example `pip install "10xscale-agentflow[openai,pg_checkpoint,mcp]"`.
+
+| Extra | Installs | Enables |
+|---|---|---|
+| `openai` | `openai` | OpenAI provider (also any OpenAI-compatible endpoint). |
+| `google-genai` | `google-genai` | Google Gemini provider and Vertex AI. |
+| `realtime` | `google-genai` | Realtime audio sessions (`AudioAgent`, Gemini Live). |
+| `mcp` | `fastmcp`, `mcp` | MCP servers as tools through `ToolNode(client=...)`. |
+| `pg_checkpoint` | `asyncpg`, `redis` | `PgCheckpointer` (Postgres durable state + Redis hot cache). |
+| `sqlite_checkpoint` | `aiosqlite` | `SqliteCheckpointer` for single-user, single-file persistence. |
+| `redis` | `redis` | `RedisPublisher` and Redis-backed helpers. |
+| `kafka` | `aiokafka` | `KafkaPublisher`. |
+| `rabbitmq` | `aio-pika` | `RabbitMQPublisher`. |
+| `all_publishers` | `redis`, `aiokafka`, `aio-pika` | All three network publishers at once. |
+| `qdrant` | `qdrant-client` | `QdrantStore` vector memory. |
+| `mem0` | `mem0ai` | `Mem0Store` managed memory. |
+| `images` | `Pillow` | Image resizing and validation in the media layer. |
+| `cloud-storage` | `cloud-storage-manager` | `CloudMediaStore` for S3, GCS, and Azure. |
+| `otel` | `opentelemetry-api`, `opentelemetry-sdk` | `OtelPublisher`, `setup_tracing`, and OTEL metrics export. |
+| `logfire` | `logfire` | `LogfirePublisher` and `setup_logfire`. |
+| `langsmith` | OTEL API/SDK + OTLP HTTP exporter | `LangsmithPublisher` and `setup_langsmith`. |
+| `observability` | `otel` + `logfire` + `langsmith` | All tracing backends at once. |
+| `a2a_sdk` | `a2a-sdk` | Declared for A2A tooling. The A2A protocol bridge is not active in this release. |
 
 Verify the CLI is ready:
 

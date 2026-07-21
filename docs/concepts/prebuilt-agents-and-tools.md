@@ -10,15 +10,32 @@ AgentFlow includes prebuilt building blocks for common agent patterns. Use them 
 
 ## Prebuilt agents
 
-Stable prebuilt agents are exported from `agentflow.prebuilt.agent` and `agentflow.prebuilt`.
+Prebuilt agents live in `agentflow.prebuilt.agent`.
 
 | Agent | Use case |
 |---|---|
 | `ReactAgent` | Standard model and tool loop. |
-| `RouterAgent` | Route work to specialized agents or branches. |
 | `RAGAgent` | Retrieval-augmented generation with retriever and synthesis steps. |
+| `PlanActReflectAgent` | Plan, execute, and critique across multiple passes. |
+| `StructuredOutputAgent` | Constrain the final answer to a schema. |
+| `SupervisorTeamAgent` | A supervisor routes work to named workers (`WorkerConfig`). |
+| `SwarmAgent` | Peer agents hand control to each other (`SwarmMemberConfig`). |
+| `AudioAgent` | Realtime audio-to-audio sessions over a live provider socket. |
 
-Some experimental modules may exist in source. Treat exported names as the stable public surface.
+Reranker base classes ship alongside the RAG agent:
+
+| Class | Use case |
+|---|---|
+| `BaseReranker` | Interface for custom reranking of retrieved documents. |
+| `CohereReranker` | Rerank with the Cohere Rerank API. |
+| `CrossEncoderReranker` | Rerank with a local cross-encoder model. |
+
+Everything above except `AudioAgent` is also re-exported from `agentflow.prebuilt`. `AudioAgent` must be imported from `agentflow.prebuilt.agent`:
+
+```python
+from agentflow.prebuilt.agent import AudioAgent
+from agentflow.prebuilt import ReactAgent, SupervisorTeamAgent, SwarmAgent
+```
 
 ## Prebuilt tools
 

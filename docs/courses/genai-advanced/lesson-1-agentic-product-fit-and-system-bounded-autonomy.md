@@ -181,28 +181,43 @@ flowchart TB
 ### Architecture: Manager + Specialists
 
 ```python
-from agentflow.core.graph import StateGraph, END
-from agentflow.prebuilt.agent import RouterAgent
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.prebuilt.agent import SupervisorTeamAgent
+from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
 
-# Manager routes to specialists
-manager = RouterAgent(
-    routes={
-        "order_status": "order_agent",
-        "refund": "refund_agent",  # Requires approval
-        "escalation": "escalation_agent",
-        "general": "general_agent"
-    }
+# A supervisor routes each turn to one specialist, then regains control.
+manager = SupervisorTeamAgent(
+    supervisor_model="gpt-4o",
+    workers={
+        "ORDER": WorkerConfig(
+            agent=Agent(
+                model="gpt-4o-mini",
+                tool_node=ToolNode([check_order_status, track_shipment]),
+            ),
+            description="Looks up order status and shipment tracking.",
+        ),
+        "REFUND": WorkerConfig(
+            agent=Agent(model="gpt-4o", tool_node=ToolNode([process_refund])),
+            description="Issues refunds. Spend actions require human approval.",
+        ),
+        "ESCALATION": WorkerConfig(
+            agent=Agent(model="gpt-4o", tool_node=ToolNode([create_ticket, send_alert])),
+            description="Creates tickets and alerts a human when the case is out of scope.",
+        ),
+        "GENERAL": WorkerConfig(
+            agent=Agent(model="gpt-4o-mini", tool_node=ToolNode([search_kb, general_help])),
+            description="Answers general questions from the knowledge base.",
+        ),
+    },
+    max_rounds=8,
 )
 
-# Specialist agents
-order_agent = ReactAgent(tools=[check_order_status, track_shipment])
-refund_agent = ReactAgent(
-    tools=[process_refund],
-    require_approval=True  # Human approval required
-)
-escalation_agent = ReactAgent(tools=[create_ticket, send_alert])
-general_agent = ReactAgent(tools=[search_kb, general_help])
+app = manager.compile(checkpointer=checkpointer)
 ```
+
+The supervisor picks one worker per round and receives control back after that
+worker runs, until it emits `FINISH` or `max_rounds` is reached. Approval gates
+belong on the individual tools rather than on the routing layer.
 
 ---
 

@@ -14,7 +14,7 @@ keywords:
 
 # Playground troubleshooting
 
-This page only covers `agentflow play` and hosted playground connection issues, as required by the sprint plan.
+This page covers `agentflow play`, hosted playground connection issues, and the states the playground UI shows when a feature is not available for the connected agent.
 
 ## How `agentflow play` works
 
@@ -66,6 +66,88 @@ The playground is hosted externally. `agentflow play` does not run a separate lo
 - inspect API logs in the terminal running `agentflow play`
 - test the same request against the API directly with curl
 
+## Issue: every page says you are not connected
+
+**Symptoms**
+
+- the playground opens on the Connect page
+- Chat, Live, and the Inspect pages refuse to do anything
+
+**Cause**
+
+- there is no active connection. The playground is connect-first by design: `/` is the Connection page, and the other routes need an active backend before they will load anything.
+
+**Fix**
+
+- open Connect (`/`), confirm the backend URL, pick the auth mode that matches the server's `agentflow.json`, and connect
+- `agentflow play` pre-fills the URL, so this usually means the connection attempt failed rather than that it was never made — check the capability chips and the error shown on the Connect page
+
+## Issue: the Live page will not start a session
+
+**Symptoms**
+
+- the Live page shows "Live not available for this agent" instead of a session
+- or it shows "Not connected" with a button back to Connect
+
+**Cause**
+
+- the connected graph is not a realtime agent. The playground derives a `live` capability chip from `info.is_realtime` in `GET /v1/graph` and gates the page on it, rather than opening a socket the server would immediately close with code `1008`.
+
+**Fix**
+
+- connect an agent whose graph is rooted at a live agent (for example a Gemini live model)
+- for a turn-based graph, use Chat instead. The reverse gate also exists: connect a live agent and the **Chat** page refuses, because `WS /v1/graph/ws` and `POST /v1/graph/invoke` reject a realtime graph
+
+## Issue: the microphone does not work on the Live page
+
+**Symptoms**
+
+- tapping the mic shows "Microphone unavailable" or a similar error
+- no browser permission prompt appears
+
+**Likely causes**
+
+- the permission prompt was denied, so `getUserMedia` rejects
+- the page is not in a secure context. `getUserMedia` requires HTTPS or `localhost`
+- another application holds the microphone
+
+**Fix**
+
+- re-allow microphone access for the site in the browser's site settings and reload
+- access the playground over `localhost` or HTTPS
+- close whatever else is using the mic
+
+Denial is handled, not fatal: the session stays open and the turn is ended cleanly, so you can grant permission and tap the mic again.
+
+## Issue: the paperclip in the chat composer does nothing
+
+**Cause**
+
+- file attachments are not implemented in the playground. The paperclip button in the chat composer is inert, and the **Files** page in the rail is a placeholder marked "Soon".
+
+**Fix**
+
+- there is no playground workaround. File upload works over the API and the TypeScript client; see [How to send images and documents](/docs/how-to/client/send-images-and-documents)
+
+## Issue: an Inspect page is empty
+
+**Symptoms**
+
+- Thread Inspector lists nothing
+- Observability says no runs were captured
+- Memory Inspector is empty
+
+**Likely causes**
+
+- Thread Inspector and the checkpoint views need a checkpointer configured in `agentflow.json`
+- Observability reads the active thread, and shows a placeholder until a run has been recorded for it
+- Memory Inspector needs a store configured on the server
+
+**Fix**
+
+- check the capability chips on the connection bar: `checkpointer` and `store` report what the backend actually has
+- send a message in Chat first, then open Observability for that thread
+
 ## Issue: mixed-content or browser security warnings
 
 **Symptoms**
@@ -104,7 +186,8 @@ The playground is hosted externally. `agentflow play` does not run a separate lo
 2. confirm the server terminal shows the local API URL
 3. run `curl http://127.0.0.1:8000/ping`
 4. confirm the browser URL contains the same host and port in `backendUrl`
-5. send a simple test message
+5. connect on the Connect page and check the capability chips
+6. send a simple test message in Chat
 
 ## Related docs
 
@@ -115,3 +198,5 @@ The playground is hosted externally. `agentflow play` does not run a separate lo
 
 - How to troubleshoot the hosted playground by separating browser connectivity from API health.
 - Why `agentflow play` is a testing path and not a separate frontend runtime.
+- That the playground is connect-first, and that Live, Chat, and the Inspect pages gate themselves on capabilities read from `GET /v1/graph`.
+- That file attachments are not implemented in the playground yet.

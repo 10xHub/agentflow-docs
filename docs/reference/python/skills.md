@@ -60,8 +60,33 @@ agent = Agent(
 | `skills_dir` | `str \| None` | `None` | Path to the directory containing `SKILL.md` files. Relative paths are resolved from the working directory. Set to `None` to disable skills entirely. |
 | `inject_trigger_table` | `bool` | `True` | When `True`, the agent's system prompt includes a summary table of all available skills and their triggers. This helps the LLM discover skills before they are triggered. |
 | `hot_reload` | `bool` | `True` | Re-read skill files on every agent call. Set to `False` in production for better performance once skills are stable. |
+| `mode` | `"on-demand" \| "session"` | `"on-demand"` | Activation strategy. See below. |
+| `preload_from` | `str \| None` | `None` | Name of the `AgentState` field holding the skill to preload. Only used when `mode="session"`. |
 
-**Validation:** `skills_dir` must not be an empty string. Pass `None` to disable.
+**Validation:** `skills_dir` must not be an empty string. Pass `None` to disable. `preload_from` must not be an empty string.
+
+### Activation modes
+
+`mode="on-demand"` is the default: the trigger table is injected into the system prompt and the LLM calls `set_skill()` to pull in the skill body when it decides a skill applies.
+
+`mode="session"` pins one skill for the whole session. The framework reads `state.<preload_from>` at the start of every call, resolves that name to a `SKILL.md`, and injects it as a system message before the first LLM call. No trigger table and no `set_skill` tool are injected. This suits multi-tenant agents where each session has a fixed persona or domain.
+
+```python
+from agentflow.core.state import AgentState
+from agentflow.core.skills.models import SkillConfig
+
+class FashionState(AgentState):
+    SKILL_NAME: str = ""
+
+agent = Agent(
+    model="gpt-4o",
+    skills=SkillConfig(
+        skills_dir="./skills/",
+        mode="session",
+        preload_from="SKILL_NAME",
+    ),
+)
+```
 
 ---
 
@@ -81,6 +106,37 @@ Parsed metadata for a single skill file. Returned when you inspect loaded skills
 | `priority` | `int` | 0 to 1000. | Order in which skills are injected when multiple trigger simultaneously. Higher = earlier. |
 | `skill_dir` | `str` | — | Directory containing the skill file. Set automatically by the loader. |
 | `skill_file` | `str` | — | Path to the `SKILL.md` file. Set automatically by the loader. |
+
+---
+
+## `SkillsRegistry`
+
+The registry holds discovered `SkillMeta` entries and builds the prompt fragments the agent injects. `Agent` creates and drives one for you; use it directly when you want to inspect or preload skills outside a graph.
+
+```python
+from agentflow.core.skills import SkillsRegistry
+
+registry = SkillsRegistry()
+registry.discover("./skills")
+
+table = registry.build_trigger_table()
+set_skill = registry.build_set_skill_tool()
+```
+
+| Method | Returns | Description |
+|---|---|---|
+| `discover(skills_dir)` | `list[SkillMeta]` | Scan a directory for `SKILL.md` files and register everything found. |
+| `register(meta)` | `None` | Register a single `SkillMeta` by hand. |
+| `get(name)` | `SkillMeta \| None` | Look up one skill. |
+| `get_all(tags=None)` | `list[SkillMeta]` | All registered skills, optionally filtered to those carrying any of `tags`. |
+| `names()` | `list[str]` | Registered skill names. |
+| `unregister(name)` | `bool` | Remove a skill. Returns `True` when it was present. |
+| `load_content(name, hot_reload=True)` | `str` | The body of the skill's `SKILL.md`. Returns `""` for unknown names. With `hot_reload=True` the file mtime is refreshed so edits are picked up. |
+| `load_resources(name)` | `dict[str, str]` | Every resource file declared by the skill, keyed by filename. |
+| `build_trigger_table(tags=None)` | `str` | The markdown trigger table injected into the system prompt, sorted by descending `priority` then name. Empty string when no skills are registered. |
+| `build_set_skill_tool(hot_reload=True)` | callable | The `set_skill(skill_name, resource_name=None)` tool the LLM calls to load a skill on demand. |
+
+`SkillsRegistry` also supports `len(registry)` and `name in registry`.
 
 ---
 

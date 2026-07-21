@@ -30,9 +30,7 @@ keywords:
 {
   "agent": "graph.agent:app",
   "env": ".env",
-  "auth": {
-    "method": "jwt"
-  },
+  "auth": "jwt",
   "authorization": "graph.agent:MyAuthorizationBackend",
   "checkpointer": null,
   "injectq": "graph.agent:container",
@@ -44,17 +42,30 @@ keywords:
     "backend": "redis",
     "requests": 100,
     "window": 60,
-    "by": "ip",
+    "by": "user",
     "trusted_proxy_headers": true,
+    "trusted_proxy_hops": 1,
     "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
     "redis": {
       "url": "redis://localhost:6379/0",
       "prefix": "agentflow:rate-limit"
     },
     "fail_open": true
+  },
+  "websocket": {
+    "max_connections": 100
+  },
+  "observability": {
+    "level": "standard",
+    "logfire": {"enabled": true, "service_name": "my-agent"},
+    "langsmith": {"enabled": false, "project": "my-agent"}
   }
 }
 ```
+
+:::note `auth` as an object needs both keys
+`"auth": "jwt"` is a bare string. The object form is only for custom backends and requires **both** `method` and `path`: `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}`. An object missing either key raises a `ValueError` at startup.
+:::
 
 ---
 
@@ -344,10 +355,16 @@ When present and `enabled: true`, applies rate limiting to all incoming requests
 | `backend` | `string` | No | `"memory"` | Storage backend: `"memory"`, `"redis"`, or `"custom"`. |
 | `requests` | `int` | No | `100` | Maximum requests allowed in the time window. Must be > 0. |
 | `window` | `int` | No | `60` | Time window in seconds. Must be > 0. |
-| `by` | `string` | No | `"ip"` | Key used for bucketing: `"ip"` (per-client) or `"global"` (all clients share one counter). |
-| `trusted_proxy_headers` | `bool` | No | `false` | When `true`, reads the client IP from `X-Forwarded-For` / `X-Real-IP` headers. Enable only when the server is behind a trusted reverse proxy. |
+| `by` | `string` | No | `"ip"` | Bucket key: `"ip"` (per client address), `"user"` (per authenticated `user_id`, falling back to `ip:<address>` for anonymous callers), or `"global"` (one counter for everyone). |
+| `trusted_proxy_headers` | `bool` | No | `false` | When `true`, resolves the client IP from `X-Forwarded-For`. Enable only when the server is behind a proxy you control. |
+| `trusted_proxy_hops` | `int` | No | `1` | How many proxies of your own sit in front of the app. Entries are counted from the **right** of `X-Forwarded-For`, since only those were appended by your infrastructure. Must be >= 1. |
 | `exclude_paths` | `string[]` | No | `[]` | Request paths that bypass rate limiting entirely. |
 | `fail_open` | `bool` | No | `true` | When the backend is unavailable: `true` = allow the request, `false` = deny it (429). |
+
+Two behaviours that are not obvious from the field list:
+
+- **WebSocket handshakes count against the same bucket.** Rate-limit middleware is HTTP-only, so `/v1/graph/ws` and `/v1/graph/live` re-apply the check at the handshake using the same backend and key. Exceeding the limit closes the handshake with code `1013`, not with an HTTP 429.
+- **`"backend": "memory"` counts per process** and logs a warning at startup. With N workers the effective limit is `requests x N`, and it resets on every worker restart. Use Redis for anything multi-worker.
 
 #### Memory backend (default)
 
@@ -409,6 +426,46 @@ When `backend` is `"custom"`, bind a `BaseRateLimitBackend` instance in your Inj
 
 ---
 
+### `websocket`
+
+**Type:** `object | null`
+
+Per-process limits for the WebSocket endpoints.
+
+```json
+"websocket": {
+  "max_connections": 100
+}
+```
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `max_connections` | `int \| null` | No | `null` | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. A negative value raises a `ValueError` at startup. |
+
+Exceeding the cap refuses the handshake before `accept()` with close code `1013` (Try Again Later), so the client gets a clean rejection rather than a socket that opens and immediately dies. The slot is released when the handler returns or the client disconnects.
+
+The counter is per process, like the in-memory rate-limit backend. With four workers, `max_connections: 100` allows up to 400 concurrent sockets across the deployment. Size it per worker.
+
+---
+
+### `observability`
+
+**Type:** `object | null`
+
+Declarative Logfire and LangSmith tracing setup, passed through to the core framework's observability configuration.
+
+```json
+"observability": {
+  "level": "standard",
+  "logfire":   {"enabled": true, "service_name": "my-agent"},
+  "langsmith": {"enabled": true, "project": "my-agent", "endpoint": null}
+}
+```
+
+Secrets stay in the environment: `LOGFIRE_TOKEN` and `LANGSMITH_API_KEY` are read from there and are never read from this file.
+
+---
+
 ## Environment variable expansion
 
 String values in `agentflow.json` support environment variable expansion. Use standard shell syntax:
@@ -458,3 +515,5 @@ The first file found is used.
 | `redis` | `string \| null` | No | `null` | Redis URL for shared components |
 | `thread_name_generator` | `string \| null` | No | `null` | Human-readable thread name generator |
 | `rate_limit` | `object \| null` | No | `null` | Rate limiting configuration |
+| `websocket` | `object \| null` | No | `null` | WebSocket connection limits (`max_connections`) |
+| `observability` | `object \| null` | No | `null` | Logfire / LangSmith tracing setup |

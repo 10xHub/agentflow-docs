@@ -226,7 +226,7 @@ asyncio.run(main())
 import asyncio
 from agentflow.prebuilt.agent import PlanActReflectAgent
 from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.core.state import Message
 
 agent = PlanActReflectAgent(
@@ -236,7 +236,7 @@ agent = PlanActReflectAgent(
     max_iterations=4,
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = agent.compile(checkpointer=checkpointer)
 
 

@@ -16,7 +16,7 @@ keywords:
 
 `WS /v1/graph/live` is a WebSocket bridge between a client (browser, SDK, native app) and a `CompiledGraph` rooted at a `LiveAgent` (built with `AudioAgent`). It maps audio frames to `LiveInputQueue` calls and streams `RealtimeEvent` objects back.
 
-The endpoint is only available when the graph configured in `agentflow.json` contains a `LiveAgent`. Calling it against a non-live graph closes the socket with code `1011`.
+The endpoint is only available when the graph configured in `agentflow.json` contains a `LiveAgent`. Calling it against a non-live graph sends a fatal `error` event with `code: "not_live"` and closes the socket with code `1008`. Check `info.is_realtime` on `GET /v1/graph` to decide which socket to open.
 
 Base URL: `ws://<host>/v1/graph/live`
 
@@ -24,11 +24,46 @@ Base URL: `ws://<host>/v1/graph/live`
 
 ## Authentication
 
-Uses `RequirePermission("graph", "stream")`. For browser WebSocket clients that cannot send HTTP headers at connection time, pass the token as a query parameter:
+Uses `RequirePermission("graph", "stream")`. The server looks for a bearer token in three places, in this order:
+
+1. **`Authorization: Bearer <token>` header** — for non-browser clients (Python, server-to-server).
+2. **`Sec-WebSocket-Protocol: agentflow-bearer, <token>`** — the preferred mechanism for browsers. The token rides in a request header, so it never lands in URLs, access logs, or browser history. The server echoes the `agentflow-bearer` sentinel back on `accept()`, which browsers require.
+3. **`?token=<jwt>` query parameter** — last-resort fallback. The token is exposed in URLs and access logs; use (2) instead when you can.
+
+```javascript
+// Browser: preferred subprotocol transport
+const ws = new WebSocket(
+  "ws://localhost:8000/v1/graph/live",
+  ["agentflow-bearer", jwt],
+);
+```
 
 ```
+# Query fallback
 ws://localhost:8000/v1/graph/live?token=<jwt>
 ```
+
+An authentication or authorization failure closes the handshake with code `1008` before `accept()`.
+
+---
+
+## Connection limits
+
+WebSocket handshakes bypass the HTTP rate-limit and request-size middleware (Starlette runs `BaseHTTPMiddleware` for HTTP scopes only), so the endpoint re-applies two protections at the handshake itself:
+
+- **The global rate limit.** A handshake is counted against the same bucket as REST requests, using the `rate_limit` block in `agentflow.json`. Exceeding it rejects the handshake with close code `1013`.
+- **`websocket.max_connections`.** A per-process cap on concurrent WebSocket connections across `/v1/graph/live` and `/v1/graph/ws`. Exceeding it also rejects with `1013`.
+
+```json
+{
+  "agent": "graph.audio:app",
+  "websocket": {
+    "max_connections": 100
+  }
+}
+```
+
+Omit the block (or use `null`/`0`) for unlimited connections. The counter is per process, like the in-memory rate-limit backend, so size it per worker.
 
 ---
 
@@ -53,6 +88,8 @@ The first frame from the client must be a JSON text frame. It configures the ses
   "model": "gemini-live-2.5-flash-preview",
   "voice": "Puck",
   "modalities": ["AUDIO"],
+  "system_prompt": "You are a terse voice assistant.",
+  "tools_tags": ["weather"],
   "vad": {
     "enabled": true,
     "silence_duration_ms": 800
@@ -60,15 +97,19 @@ The first frame from the client must be a JSON text frame. It configures the ses
 }
 ```
 
-| Field | Type | Default | Description |
+| Field | Type | Maps to | Description |
 |---|---|---|---|
-| `thread_id` | string | auto-generated UUID | Thread identifier for persistence and resume. Reuse to resume a previous session. |
-| `model` | string | agent build-time value | Override the Gemini Live model for this session. |
-| `voice` | string | agent build-time value | Override the voice (e.g. `"Puck"`). |
-| `modalities` | array | `["AUDIO"]` | Override `response_modalities`. Exactly one entry; `["AUDIO"]` or `["TEXT"]`. |
-| `vad` | object | agent build-time value | Override `VADConfig` fields for this session. |
+| `thread_id` | string | — | Thread identifier for persistence and resume. Reuse to resume a previous session. |
+| `model` | string | `RealtimeConfig.model` | Override the live model for this session. |
+| `voice` | string | `RealtimeConfig.voice` | Override the voice (e.g. `"Puck"`). |
+| `modalities` | array or string | `RealtimeConfig.response_modalities` | Override the response modalities. Exactly one entry; `["AUDIO"]` or `["TEXT"]`. A bare string (`"AUDIO"`) is coerced to a one-element list. |
+| `system_prompt` | string | `RealtimeConfig.system_instruction` | Override the system instruction for this session. |
+| `tools_tags` | array | `RealtimeConfig.tools_tags` | Restrict the tools exposed to this session by tag. |
+| `vad` | object | `RealtimeConfig.vad` | Override `VADConfig` fields for this session. |
 
-Fields not present in the init frame keep the agent's compiled values. An invalid init frame (not JSON, not a dict) closes the socket with code `1003`.
+Fields not present in the init frame keep the agent's compiled values. An invalid init frame (not JSON, or JSON that is not an object) closes the socket with code `1003`.
+
+**Thread handling.** `thread_id` is optional. When it is absent the server generates a UUID for the session and persists the thread record before the first event is pumped; the generated id is not echoed back as a separate frame, so a client that needs to resume later should supply its own id. When `thread_id` **is** present it is ownership-checked before the session starts: a thread owned by another user is rejected with a fatal `error` event (`code: "not_authorized"`) and close code `1008`.
 
 ---
 
@@ -85,7 +126,14 @@ Frame: <binary PCM16 bytes>
 Format: 16-bit signed integer, little-endian, mono, 16000 Hz
 ```
 
-There is no minimum or maximum frame size. 100 ms chunks (~3200 bytes) are a typical packet size.
+100 ms chunks (~3200 bytes) are a typical packet size. There is no minimum, but the bridge enforces two bounds because WebSocket frames never pass through the HTTP request-size middleware:
+
+| Bound | Value | Behaviour when exceeded |
+|---|---|---|
+| Maximum single frame | 1 MiB (`REALTIME_MAX_FRAME_BYTES`) | The frame is dropped and a warning is logged. The session continues; no error event is sent. |
+| Upstream queue depth | 1000 frames (`REALTIME_INPUT_QUEUE_MAXSIZE`) | The oldest queued frame is dropped to make room. At ~50 frames/second this is roughly 20 seconds of buffered audio. |
+
+Send audio in normal chunks (tens of KB). A 1 MiB frame is around 30 seconds of 16 kHz PCM16 in one message, far beyond any realistic capture buffer.
 
 ### JSON control frames
 
@@ -121,7 +169,7 @@ Signals the end of user speech.
 {"type": "close"}
 ```
 
-Ends the session gracefully. The server drains any in-flight model response before closing.
+Ends the session gracefully. The server closes the input queue and gives the model up to 30 seconds (`REALTIME_DRAIN_TIMEOUT`) to drain its in-flight response before cancelling and closing the socket. The same grace period applies when the client simply disconnects.
 
 ---
 
@@ -212,6 +260,14 @@ The provider issued a session-resumption handle. The server stores this in the c
 
 The provider will rotate the connection soon. The server reconnects automatically; clients will see a brief gap in audio events but no explicit close.
 
+**Agent changed**
+
+```json
+{"type": "agent_changed", "author": "billing-agent"}
+```
+
+The active agent or persona for the session changed. `author` identifies the new agent. Informational; use it to relabel the transcript in the UI.
+
 **Error (non-fatal)**
 
 ```json
@@ -228,22 +284,37 @@ Transient error; the session continues.
 
 Fatal error; the session ended. The server closes the WebSocket after emitting this event.
 
+### Error event codes
+
+Codes the bridge itself emits, in addition to any provider code passed through:
+
+| `code` | `fatal` | Meaning | Followed by close |
+|---|---|---|---|
+| `not_live` | `true` | The configured graph is not a live agent. Use `WS /v1/graph/ws`. | `1008` |
+| `not_authorized` | `true` | The `thread_id` in the init frame belongs to another user. | `1008` |
+| `invalid_config` | `true` | The init frame produced an invalid `RealtimeConfig` (for example an unusable `modalities` value). | server close |
+
 ---
 
 ## WebSocket close codes
 
 | Code | Meaning |
 |---|---|
-| `1000` | Normal closure: session ended. |
-| `1003` | Invalid init frame (not a JSON dict). |
-| `1011` | Internal error: non-live graph, provider failure, or checkpointer error. |
+| `1000` | Normal closure: the session ended. |
+| `1003` | Invalid init frame: the first frame was not JSON, or was JSON that is not an object. |
+| `1008` | Policy violation: authentication or authorization was rejected at the handshake, or the graph is not a live agent (`not_live`), or the requested `thread_id` is owned by another user (`not_authorized`). |
+| `1011` | Unexpected server error during the session (provider failure, checkpointer error). This code is used only for unhandled failures. |
+| `1013` | Try again later: the global rate limit or `websocket.max_connections` was exceeded. The handshake is refused before `accept()`. |
 
 ---
 
-## Limitations
+## Scope: audio and text only
 
-- Image and video frame input is SDK-only (`LiveInputQueue.send_image()`). The WebSocket bridge does not forward image frames; there is no binary image frame type in the protocol.
-- Exactly one `LiveAgent` must be present in the graph. Multiple live agents per graph are not supported in v1.
+This socket carries **binary PCM16 audio frames and JSON control frames**. The upstream pump recognises binary audio plus the `text`, `activity_start`, `activity_end`, and `close` control types, and forwards nothing else. There is no image frame type in the live protocol.
+
+Image and document input belongs on the turn-based run endpoints (`POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WS /v1/graph/ws`), which accept `ImageBlock`/`DocumentBlock` content referencing an uploaded `file_id`. See [Multimodal and vision](../../how-to/production/multimodal-and-vision.md).
+
+Exactly one `LiveAgent` must be present in the graph; multiple live agents per graph are not supported.
 
 ---
 

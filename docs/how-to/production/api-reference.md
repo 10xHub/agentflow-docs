@@ -49,13 +49,23 @@ When auth is configured in `agentflow.json`, all endpoints except `/ping` requir
 Authorization: Bearer <token>
 ```
 
-WebSocket connections that cannot send an `Authorization` header can pass the token as a query parameter instead:
+WebSocket connections that cannot set an `Authorization` header have two options, in order of preference:
+
+```javascript
+// Preferred for browsers: the token rides in a request header, not the URL
+new WebSocket("ws://host/v1/graph/ws", ["agentflow-bearer", token]);
+```
 
 ```
+# Last-resort fallback: the token lands in URLs and access logs
 /v1/graph/ws?token=<token>
 ```
 
+The server echoes the `agentflow-bearer` sentinel back on `accept()`, which browsers require to complete the handshake.
+
 If auth is not configured (`"auth": null`), credentials are not required and the auth layer is skipped entirely.
+
+Authentication failures return HTTP `403` with an `error.code` such as `REVOKED_TOKEN` or `EXPIRED_TOKEN`, not `401`. On WebSocket routes the same failures become close code `1008`.
 
 ### Permission model
 
@@ -250,6 +260,7 @@ Return the graph structure and metadata (nodes, edges, capabilities).
   "info": {
     "node_count": 3,
     "edge_count": 4,
+    "is_realtime": false,
     "checkpointer": true,
     "checkpointer_type": "PgCheckpointer",
     "publisher": false,
@@ -273,6 +284,73 @@ Return the graph structure and metadata (nodes, edges, capabilities).
   ]
 }
 ```
+
+`is_realtime` tells the client which socket to open: `false` means `/v1/graph/ws`, `true` means `/v1/graph/live`. Connecting to the wrong one is rejected at the handshake with close code `1008`.
+
+---
+
+### `GET /v1/graph/tools`
+
+List the tools exposed by every `ToolNode` in the graph, grouped by node.
+
+**Permission:** `graph:read`
+
+**Response data**
+
+```json
+{
+  "node_count": 1,
+  "tool_count": 2,
+  "nodes": [
+    {
+      "node_name": "tools",
+      "tool_count": 2,
+      "tools": [
+        {
+          "name": "get_weather",
+          "description": "Look up the current weather for a city.",
+          "source": "local",
+          "parameters": {"type": "object", "properties": {"city": {"type": "string"}}}
+        },
+        {
+          "name": "search_repos",
+          "description": "Search GitHub repositories.",
+          "source": "mcp",
+          "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}
+        }
+      ]
+    }
+  ]
+}
+```
+
+`source` is `local` (a Python function on the node), `mcp` (from a connected MCP server), or `remote` (registered by a client through `POST /v1/graph/setup`). Tool collection is best-effort per node: an MCP server that fails to respond is logged and contributes no tools rather than failing the request.
+
+---
+
+### `WebSocket /v1/graph/live`
+
+Realtime audio bridge for a graph rooted at a live agent. Binary PCM16 frames upstream and downstream, JSON control and event frames alongside them.
+
+**Permission:** `graph:stream`
+
+Only available when `info.is_realtime` is `true`. A turn-based graph is rejected with an `error` event carrying `code: "not_live"` and close code `1008`.
+
+Full protocol, init frame fields, event catalogue, and close codes: [Live WebSocket](/docs/reference/rest-api/live).
+
+---
+
+### `GET /v1/observability/{thread_id}`
+
+Reconstruct a run trace for a thread: span tree, event list, aggregated token usage, and call counts.
+
+**Permission:** `graph:read`
+
+**Query parameters:** `run_id` (optional) selects a specific run instead of the latest.
+
+The trace comes from an in-process telemetry store that is bound **only outside production**. With `MODE=production` the endpoint returns an empty payload (`run_count: 0`, `run: null`) rather than an error. Use OpenTelemetry or the `observability` block for production tracing.
+
+Full response schema: [Observability](/docs/reference/rest-api/observability).
 
 ---
 
@@ -877,7 +955,10 @@ The table below lists every `(resource, action)` pair enforced by the server. Wh
 | `POST /v1/graph/invoke` | `graph` | `invoke` |
 | `POST /v1/graph/stream` | `graph` | `stream` |
 | `WebSocket /v1/graph/ws` | `graph` | `stream` |
+| `WebSocket /v1/graph/live` | `graph` | `stream` |
 | `GET /v1/graph` | `graph` | `read` |
+| `GET /v1/graph/tools` | `graph` | `read` |
+| `GET /v1/observability/{thread_id}` | `graph` | `read` |
 | `GET /v1/graph:StateSchema` | `graph` | `read` |
 | `POST /v1/graph/stop` | `graph` | `stop` |
 | `POST /v1/graph/setup` | `graph` | `setup` |
@@ -905,6 +986,14 @@ The table below lists every `(resource, action)` pair enforced by the server. Wh
 | `GET /v1/files/{id}/url` | `files` | `read` |
 | `GET /v1/config/multimodal` | `config` | `read` |
 | `GET /ping` | (none) | (none) |
+| `GET /v1/evals/runs` | (none) | (none) |
+| `GET /v1/evals/runs/{run_id}` | (none) | (none) |
+
+The last three rows are the complete public allowlist. Every other route must carry a `RequirePermission` guard, and the server refuses to start if one does not.
+
+:::warning The eval endpoints are unauthenticated
+`/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port, regardless of your `auth` setting. Keep `eval_reports/` out of the deployed working directory, or block `/v1/evals/*` at your ingress. See [REST API: Evals](/docs/reference/rest-api/evals).
+:::
 
 ---
 

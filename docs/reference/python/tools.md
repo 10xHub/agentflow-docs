@@ -39,12 +39,13 @@ tools = ToolNode([my_function, another_function])
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `funcs` | `list[Callable]` | `[]` | Local Python functions to register. |
-| `client` | `MCPClient \| None` | `None` | MCP client for remote tool access. |
-| `composio` | `ComposioAdapter \| None` | `None` | Composio adapter for external integrations. |
-| `langchain` | `LangChainAdapter \| None` | `None` | LangChain tools adapter. |
+| `tools` | `Iterable[Callable]` | **required** | Local Python functions to register. Each is registered under its `__name__`. |
+| `client` | `fastmcp.Client \| None` | `None` | MCP client for remote tool access. Requires `pip install "10xscale-agentflow[mcp]"`. |
+| `pass_user_info_to_mcp` | `bool` | `False` | Forward the run config's `user` dict to MCP tool calls as request metadata, readable on the server via `ctx.request_context.meta`. |
 
-Only the first positional argument (`funcs`) is commonly used. The other adapters are optional integrations.
+Pass an empty list when the node only serves MCP tools: `ToolNode([], client=client)`.
+
+**Raises:** `TypeError` when an item in `tools` is not callable, `ImportError` when a `client` is given but the MCP packages are not installed.
 
 ---
 
@@ -139,17 +140,26 @@ app = graph.compile()
 
 ## MCP integration
 
+`ToolNode` talks to MCP servers through a `fastmcp.Client`. Install the extra with `pip install "10xscale-agentflow[mcp]"`, then pass the client to `ToolNode`:
+
 ```python
-from agentflow.runtime.adapters.mcp import MCPClient
+from fastmcp import Client
+from agentflow.core.graph import StateGraph, ToolNode
 
-async with MCPClient(server_url="http://localhost:8080") as mcp:
-    tools = ToolNode(client=mcp)
-    # tools.mcp_tools contains the list of available MCP tool names
+client = Client({
+    "mcpServers": {
+        "local": {"url": "http://localhost:8080/mcp", "transport": "streamable-http"},
+    }
+})
 
-    graph = StateGraph()
-    graph.add_node("TOOL", tools)
-    # ...
+tools = ToolNode([], client=client)
+# tools.mcp_tools contains the list of available MCP tool names
+
+graph = StateGraph()
+graph.add_node("TOOL", tools)
 ```
+
+See [Use MCP servers](/docs/how-to/python/use-mcp) for the full setup.
 
 When `client` is provided, `ToolNode` fetches available tool schemas from the MCP server on startup and routes calls matching MCP tool names to the remote server.
 
@@ -249,5 +259,5 @@ schemas = tool_node.get_tool_schemas()
 | Error | Cause | Fix |
 |---|---|---|
 | `ToolExecutionError` | The function raised an exception. | Check tool implementation. The `is_error=True` result is returned to the LLM to handle. |
-| `ToolNotFoundError` | LLM requested a tool name that is not registered. | Verify the function is in the `funcs` list and that the name matches exactly. |
+| `ToolNotFoundError` | LLM requested a tool name that is not registered. | Verify the function is in the `tools` list and that the name matches exactly. |
 | `TypeError` | Tool called with wrong argument types. | Add type annotations and docstrings to improve schema accuracy. |

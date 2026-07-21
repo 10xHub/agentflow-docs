@@ -108,8 +108,8 @@ const stream = client.stream(
 );
 
 for await (const chunk of stream) {
-  if (chunk.type === "message_chunk") {
-    process.stdout.write(chunk.content ?? "");
+  if (chunk.event === "message" && chunk.message) {
+    process.stdout.write(chunk.message.text());
   }
 }
 console.log(); // newline after stream ends

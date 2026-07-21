@@ -1,15 +1,15 @@
 ---
-title: Publishers and Runtime Protocols
-description: Structured execution events, external event buses, and AgentFlow runtime protocol integrations.
+title: Publishers and Runtime Adapters
+description: Structured execution events, external event buses, and AgentFlow runtime adapters.
 sidebar_position: 16
 ---
 
-# Publishers and runtime protocols
+# Publishers and runtime adapters
 
-Publishers and runtime protocols let AgentFlow communicate with systems outside the immediate graph run.
+Publishers and runtime adapters let AgentFlow communicate with systems outside the immediate graph run.
 
 - Publishers emit structured execution events for observability and event buses.
-- Runtime protocols expose or call agents through protocols such as A2A and ACP.
+- Runtime adapters normalize provider-native SDK payloads into AgentFlow messages and tool results.
 
 ## Publishers
 
@@ -30,6 +30,10 @@ Available publisher implementations include:
 | `RedisPublisher` | Pub/Sub or stream-backed event distribution. |
 | `KafkaPublisher` | Kafka event pipelines. |
 | `RabbitMQPublisher` | RabbitMQ messaging. |
+| `CompositePublisher` | Fan an event out to several publishers at once. |
+| `OtelPublisher` | OpenTelemetry spans for each run, node, and tool call. |
+| `LogfirePublisher` | Logfire traces. |
+| `LangsmithPublisher` | LangSmith traces over OTLP. |
 
 Events carry source, phase, content type, node name, thread ID, run ID, payload, timestamp, and metadata.
 
@@ -37,25 +41,11 @@ Events carry source, phase, content type, node name, thread ID, run ID, payload,
 
 Runtime adapters normalize provider-native or third-party formats into AgentFlow messages, tool schemas, and results.
 
-| Adapter area | Examples |
+| Adapter area | Exports |
 |---|---|
-| LLM converters | `GoogleGenAIConverter`, `OpenAIConverter`, `OpenAIResponsesConverter` |
-| Tool adapters | `LangChainAdapter`, `ComposioAdapter` |
+| LLM converters | `BaseConverter`, `ConverterType`, `GoogleGenAIConverter`, `OpenAIConverter`, `OpenAIResponsesConverter` |
 
-## A2A and ACP
-
-A2A helpers live under `agentflow.runtime.protocols.a2a`.
-
-| Helper | Purpose |
-|---|---|
-| `build_a2a_app`, `create_a2a_server` | Serve an AgentFlow graph as an A2A-compatible app. |
-| `delegate_to_a2a_agent` | Call a remote A2A agent once. |
-| `create_a2a_client_node` | Use a remote A2A agent as a graph node. |
-| `AgentFlowExecutor` | Bridge AgentFlow graph execution into A2A. |
-
-A2A support requires optional dependencies. Keep imports lazy or guarded when the protocol package may not be installed.
-
-ACP support is available under `agentflow.runtime.protocols.acp`. Check source and reference docs before extending it because the public docs are thinner than the core graph docs.
+Import them from `agentflow.runtime.adapters`.
 
 ## Rules
 
@@ -63,8 +53,7 @@ ACP support is available under `agentflow.runtime.protocols.acp`. Check source a
 |---|---|
 | Prefer publishers over ad hoc print statements | Events stay structured and backend-agnostic. |
 | Close network publishers on shutdown | Redis, Kafka, and RabbitMQ publishers own resources. |
-| Keep optional protocol dependencies optional | Core graph imports should stay lightweight. |
-| Distinguish serving from delegating | Serving a graph as A2A differs from calling a remote A2A agent. |
+| Keep optional publisher dependencies optional | Core graph imports should stay lightweight. |
 
 ## Related docs
 

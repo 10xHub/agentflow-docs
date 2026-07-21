@@ -35,7 +35,7 @@ flowchart TB
   subgraph Core["10xscale-agentflow (Python)"]
     Graph[StateGraph / Agent / ToolNode]
     State[AgentState / Message]
-    Prebuilt[ReactAgent / RouterAgent / prebuilt tools]
+    Prebuilt[ReactAgent / SupervisorTeamAgent / SwarmAgent / prebuilt tools]
     Checkpointer[Checkpointer]
     Store[Memory store]
     Media[Media store]
@@ -62,12 +62,12 @@ flowchart TB
 | Sub-package | Key exports |
 |---|---|
 | `agentflow.core` | `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, `StreamChunk` |
-| `agentflow.prebuilt.agent` | `ReactAgent`, `RouterAgent`, `RAGAgent`, `create_react_agent` |
+| `agentflow.prebuilt.agent` | `ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `AudioAgent` |
 | `agentflow.prebuilt.tools` | `safe_calculator`, `fetch_url`, `google_web_search`, `file_read`, `file_write`, `memory_tool`, `create_handoff_tool` |
 | `agentflow.storage.checkpointer` | `InMemoryCheckpointer`, `PgCheckpointer` |
 | `agentflow.storage.store` | `QdrantStore`, `Mem0Store` |
 | `agentflow.storage.media` | `InMemoryMediaStore`, `LocalFileMediaStore`, `CloudMediaStore` |
-| `agentflow.runtime` | Publisher adapters (SSE, A2A) |
+| `agentflow.runtime` | Publishers (`ConsolePublisher`, `RedisPublisher`, `KafkaPublisher`, `RabbitMQPublisher`, `OtelPublisher`) and LLM SDK converters |
 | `agentflow.utils` | `ResponseGranularity`, `CallbackManager`, `tool` decorator |
 | `agentflow.qa` | Testing helpers and evaluation tools |
 

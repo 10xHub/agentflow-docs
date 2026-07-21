@@ -30,12 +30,21 @@ In production, you often need both.
 ```mermaid
 flowchart LR
     A[Incoming request] --> B[Authentication]
-    B -->|invalid| C[401 Unauthorized]
-    B -->|valid user context| D[Authorization]
-    D -->|denied| E[403 Forbidden]
+    B -->|invalid or missing| C[403 Forbidden]
+    B -->|valid user context| S[Scope check]
+    S -->|missing scope| E[403 Forbidden]
+    S -->|scope ok| D[Object-level authorization]
+    D -->|denied| E
     D -->|allowed| F[Route handler]
     F --> G[Graph / checkpointer / store]
 ```
+
+:::note Everything is 403, not 401
+The built-in JWT backend signals every failure with `UserAccountError`, which the error handler
+returns as **HTTP 403** with a code in the body. Missing credentials, an expired token, and an
+insufficient scope all produce 403; only the `error_code` distinguishes them. Do not build client
+logic that keys on 401. On WebSocket routes the same failures become close code `1008`.
+:::
 
 ## Recommended production choices
 
@@ -113,10 +122,20 @@ curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -d '{"messages": [{"role": "user", "content": "hello"}], "config": {"thread_id": "t1"}}'
 ```
 
-Expected result:
+Expected result: **HTTP `403`**, with `REVOKED_TOKEN` in the body, and the request rejected before graph execution.
 
-- HTTP `401`
-- request is rejected before graph execution
+```json
+{
+  "error": {
+    "code": "REVOKED_TOKEN",
+    "message": "Invalid token, please login again",
+    "details": []
+  },
+  "metadata": {"status": "error"}
+}
+```
+
+With no `Authorization` header there is no credential to extract, so the backend raises immediately with `REVOKED_TOKEN`. The code reads oddly for a request that presented nothing at all, but it is the correct thing to assert on: it is what "no usable credential" produces. Assert on the status and the code, not on the message text, which is redacted differently under `MODE=production`.
 
 Then test with a valid token:
 
@@ -134,12 +153,28 @@ Expected result:
 
 ### Failure behavior to expect
 
+Every row below is HTTP `403`; the `error.code` in the body is what tells them apart.
+
+| `error.code` | Likely cause | Fix |
+|---|---|---|
+| `REVOKED_TOKEN` | No credential presented at all | Attach `Authorization: Bearer <token>`, or the `agentflow-bearer` subprotocol on a WebSocket |
+| `EXPIRED_TOKEN` | `exp` is in the past | Refresh the token; check for clock skew between issuer and server |
+| `INVALID_TOKEN` | Bad signature, mismatched algorithm, or **no `user_id` claim** | Verify `JWT_SECRET_KEY` and `JWT_ALGORITHM`; confirm the issuer emits `user_id`, not just `sub` |
+| `JWT_SETTINGS_NOT_CONFIGURED` | `JWT_SECRET_KEY` or `JWT_ALGORITHM` unset at request time | Set both; the config load also checks them at startup |
+| `Missing required scope: <resource>:<action>` | The identity carries scopes that do not include this endpoint's | Widen the role's scopes, or check that `scopes_for` is not returning an empty list |
+
+Two claim requirements catch people out repeatedly:
+
+- **`user_id` is mandatory** and `sub` is not accepted in its place. An identity provider that emits only `sub` needs a mapping step before the token reaches AgentFlow.
+- **`exp` is mandatory.** Decoding uses `options={"require": ["exp"]}`, so a non-expiring token is rejected rather than accepted forever.
+
+Other recurring causes:
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `401 Unauthorized` on every request | missing bearer token or bad secret | verify token and `JWT_SECRET_KEY` |
-| valid token still rejected | mismatched algorithm | verify `JWT_ALGORITHM` |
-| works locally but fails in prod | production secret differs from issuer secret | align signing configuration |
-| random auth failures after deploy | secret rotation not coordinated | rotate keys intentionally and update issuers/consumers together |
+| Works locally but fails in production | Production secret differs from the issuer's | Align signing configuration |
+| Random auth failures after a deploy | Uncoordinated secret rotation | Rotate keys intentionally and update issuers and consumers together |
+| `ImportError` mentioning PyJWT | The `jwt` extra is not installed | `pip install "10xscale-agentflow-cli[jwt]"` |
 
 ## Custom auth deployment checklist
 
@@ -153,41 +188,146 @@ Your backend should:
 - avoid blocking slow network lookups on every request if you can cache or validate efficiently
 - never log raw secrets or tokens
 
-Minimal custom auth shape:
+Minimal custom auth shape. `authenticate` is **synchronous** and takes
+`(request, response, credential)` — declaring it `async def` returns an un-awaited coroutine
+and breaks auth silently.
 
 ```python
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
+from typing import Any
+
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
+from agentflow_cli import BaseAuth
 
 
 class ApiKeyAuth(BaseAuth):
-    async def authenticate(self, request) -> dict | None:
+    def authenticate(
+        self,
+        request: Request,
+        response: Response,
+        credential: HTTPAuthorizationCredentials | None,
+    ) -> dict[str, Any] | None:
+        # API keys ride in a custom header, not the bearer credential — read headers directly.
         api_key = request.headers.get("X-API-Key")
-        if not api_key:
-            return None
-        if api_key != "expected-key":
+        if not api_key or api_key != "expected-key":
             return None
         return {"user_id": "service-user", "role": "service"}
 ```
 
-## Authorization for permissions
+## Authorization
 
-Authentication alone is not enough if you want to restrict dangerous operations.
+Authentication alone is not enough if you want to restrict dangerous operations or keep each
+user's threads private. Authorization is configured separately, via the `authorization` key.
 
-Examples of operations you may want to control more tightly:
+### Owner-only access is the production default
 
-- graph invocation
-- graph streaming
-- thread deletion
-- message deletion
-- memory store writes
+The framework ships an `ownership` backend that makes a thread accessible **only to the user
+who created it** — read, stream, stop, fix, delete, and even a fresh `invoke`/`stream` on
+someone else's thread are all rejected up front with 403, before the model runs. With
+`MODE=production` this is the **default**: object-level isolation is enforced even if you never
+set `authorization`. Development defaults to `allow_all` for frictionless local iteration. Your
+explicit choice always wins.
 
-Example authorization config:
+```json
+{ "agent": "graph.react:app", "auth": "jwt", "authorization": "ownership" }
+```
+
+It is **scalable** — ownership is immutable, so it is cached by `ThreadOwnershipResolver`:
+a bounded in-process LRU (10,000 entries, no expiry) in front of an optional shared Redis tier
+(key prefix `af:authz:owner`, also no expiry). After the first lookup an authorization check is an
+in-memory hit, not a database round-trip per request. Negative results are never cached, so a
+thread that does not exist yet cannot be mistakenly attributed to a later caller.
+
+Ownership resolves from `BaseCheckpointer.aget_thread_owner` on a checkpointer that implements it
+(Postgres, SQLite, in-memory). With none configured there are no persisted threads to protect, so
+requests pass through with a warning.
+
+### Operational requirements for ownership
+
+Three things to get right when running ownership in production:
+
+1. **Give the L2 cache a Redis.** Set `redis` in `agentflow.json`, or `REDIS_URL` in the
+   environment. Without one, every worker keeps its own L1 cache and each pays its own first
+   database lookup per thread. If the `redis` package is not installed the server logs a warning
+   at startup and runs L1-only; watch for that line after a dependency change.
+2. **Evict on delete.** The server does this for you when a thread is deleted through
+   `DELETE /v1/threads/{thread_id}`. If you delete threads out of band, straight from the
+   database, the cached owner survives and the id cannot be reused by a different user until the
+   process restarts.
+3. **Close on shutdown.** The lifespan handler calls `aclose()` on the backend, which closes the
+   L2 client. A custom backend that opens its own connections must implement `aclose()` or leak
+   them across reloads.
+
+If you write a caching authorization backend of your own, implement both `evict(thread_id)` and
+`aclose()`. They are the contract the server calls into.
+
+### Role-based access control
+
+For roles → scopes without writing code, use the RBAC config block. It layers scope enforcement
+on top of owner-only isolation:
 
 ```json
 {
-  "authorization": "graph.auth:my_authorization_backend"
+  "authorization": {
+    "backend": "rbac",
+    "roles": {
+      "admin":  ["*"],
+      "member": ["graph:invoke", "graph:stream", "graph:read", "checkpointer:read"]
+    },
+    "default_scopes": ["graph:read"],
+    "isolation": "owner"
+  }
 }
 ```
+
+This loads `RoleBasedAuthorizationBackend`. `backend` also accepts `"role_based"` or `"roles"`,
+`type` is an accepted alias for `backend`, and `role_scopes` is an accepted alias for `roles` —
+useful to know when reading someone else's config, but pick one spelling and stay with it.
+
+An endpoint requires the scope `"<resource>:<action>"` (for example `graph:invoke`,
+`checkpointer:delete`). A role granting `"*"` gets every scope. `default_scopes` is granted to
+everyone, including a user with no role at all.
+
+Available scopes: `graph:{invoke,stream,stop,fix,setup,read}`,
+`checkpointer:{read,write,delete}`, `store:{read,write,delete}`, `files:{upload,read}`,
+`config:read`.
+
+:::warning An empty scope list denies everything
+Scopes resolve from `scopes_for` on the authorization backend first, and fall back to the
+identity's own `scopes` claim only when that returns `None`. The three outcomes are not
+interchangeable:
+
+- `None` means unrestricted; the check is skipped. This is why nothing breaks before you issue
+  scopes.
+- A non-empty list restricts to exactly those pairs.
+- An **empty list denies every endpoint**, because no required scope can be a member of it.
+
+`RoleBasedAuthorizationBackend.scopes_for` always returns a list, never `None`. So the moment you
+switch to RBAC, a user whose role is not in the `roles` table and for whom `default_scopes` is
+empty is locked out of everything. Give `default_scopes` a sensible floor, and roll RBAC out
+against a staging environment first.
+:::
+
+### Custom authorization backend
+
+For arbitrary rules, point `authorization` at your own class:
+
+```json
+{ "authorization": "graph.auth:my_authorization_backend" }
+```
+
+See the [Authentication reference](/docs/reference/api-cli/auth) for the full
+`AuthorizationBackend` interface (`authorize`, `isolation_scope`, `scopes_for`).
+
+### Data isolation is enforced in the storage layer too
+
+API-layer checks (ownership, scopes) decide *access*. The **data layer** (checkpointer, store)
+enforces *isolation* from a trusted policy the server stamps after each successful check:
+`user["authz"] = {user_id, scope, scopes}`, where `scope` comes from the backend's
+`isolation_scope()` (`"owner"` or `"none"`). Every service copies that trusted `user` into
+`config["user"]`, so the policy reaches the core library and cannot be forged by the client —
+with `owner` scope, the checkpointer and store partition every row to the caller.
 
 ## Permission boundaries
 
@@ -206,20 +346,50 @@ A good production pattern is:
 - stricter access for delete operations
 - admin-only access for memory-store or management routes when needed
 
+## The server refuses to boot with an unprotected route
+
+Every non-public route must carry a `RequirePermission` dependency. That is checked once at
+startup, after the routers are mounted. If a route is missing its guard the server raises and
+does not start:
+
+```
+RuntimeError: Refusing to start: the following routes are not protected by RequirePermission.
+Add the dependency, or add the path to the public allowlist if it is intentionally open:
+  - POST /v1/my-new-endpoint
+```
+
+This is the failure you want: a forgotten guard becomes a loud deploy-time error instead of a
+silent open endpoint. If you hit it after adding a route of your own, add the dependency rather
+than widening the allowlist.
+
+Exactly three paths are public: `/ping`, `/v1/evals/runs`, and `/v1/evals/runs/{run_id}`.
+
+:::warning The eval endpoints are unauthenticated
+`/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port,
+regardless of your `auth` setting. Before deploying, either keep `eval_reports/` out of the image
+and working directory, or block `/v1/evals/*` at your ingress. See
+[REST API: Evals](/docs/reference/rest-api/evals).
+:::
+
 ## Production recommendations
 
 1. never run a public production API with `"auth": null`
 2. require HTTPS in front of the API
 3. disable `/docs` and `/redoc` on public deployments unless intentionally exposed
 4. keep auth secrets outside version control
-5. test both `401` and `403` paths before release
+5. block or remove the public eval endpoints
+6. test both the rejected and the accepted paths before release, asserting on `error.code` rather than on 401 versus 403
 
 ## Troubleshooting quick table
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| requests succeed without credentials | auth not enabled | set `auth` in `agentflow.json` and restart |
-| `403 Forbidden` for valid users | authorization backend too restrictive | inspect backend rules and returned user context |
+| requests succeed without credentials | auth not enabled | set `auth` in `agentflow.json` and restart; the server logs a warning at startup when auth is disabled |
+| `403 Forbidden` for valid users | authorization backend too restrictive, or an empty resolved scope list | inspect backend rules and the returned user context; check `default_scopes` |
+| `403 Missing required scope: ...` | the identity's scopes do not cover this endpoint | add the `"<resource>:<action>"` pair to the role, or to `default_scopes` |
+| user cannot read a thread they created | a different `user_id` between the two requests, or the thread was created before auth was enabled | check the `user_id` claim is stable across token refreshes |
+| ownership seems not to apply | the checkpointer does not implement `aget_thread_owner`, or none is configured | look for the "cannot resolve thread ownership" warning in the logs and switch to a checkpointer that supports it |
+| WebSocket closes immediately with `1008` | auth or authorization rejected at the handshake | check the token transport; browsers should use the `agentflow-bearer` subprotocol |
 | frontend works locally but not in production | missing CORS origin or missing auth header forwarding | fix `ORIGINS` and proxy/header config |
 | JWT works in curl but not in browser app | frontend is not attaching `Authorization` header | inspect client config and browser network tab |
 

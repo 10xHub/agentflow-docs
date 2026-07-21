@@ -274,7 +274,7 @@ import asyncio
 from agentflow.core.graph import Agent, ToolNode
 from agentflow.prebuilt.agent import SwarmAgent
 from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.prebuilt.tools import google_web_search
 from agentflow.core.state import Message
 
@@ -293,7 +293,7 @@ swarm = SwarmAgent(
     entry="TRIAGE",
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = swarm.compile(checkpointer=checkpointer)
 
 

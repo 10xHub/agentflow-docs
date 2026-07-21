@@ -27,8 +27,7 @@ from agentflow.utils.callbacks import (
     GraphLifecycleHook,
     GraphLifecycleContext,
 )
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 ```
 
 ---
@@ -62,7 +61,7 @@ Fires after state is loaded but before the first node executes. Use to inject ob
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
+from agentflow.core.state import AgentState
 import uuid
 
 class TraceStartHook(GraphLifecycleHook):
@@ -103,8 +102,7 @@ Fires after execution loop completes successfully, before final persistence. Use
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 import json
 
 class MetricsEndHook(GraphLifecycleHook):
@@ -167,8 +165,7 @@ Fires when an unhandled exception escapes the execution loop. Use to alert, log 
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -239,7 +236,7 @@ Fires when graph execution pauses waiting for user input or manual approval. Use
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
+from agentflow.core.state import AgentState
 
 class InterruptNotificationHook(GraphLifecycleHook):
     async def on_interrupt(
@@ -307,7 +304,7 @@ Fires when a previously interrupted graph is resumed. Use to validate resume dat
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
+from agentflow.core.state import AgentState
 from typing import Any
 
 class ResumeValidationHook(GraphLifecycleHook):
@@ -375,8 +372,7 @@ Fires immediately before state/messages are persisted to the checkpointer. Use t
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 from typing import Sequence
 
 class RedactionCheckpointHook(GraphLifecycleHook):
@@ -452,7 +448,7 @@ Fires after each node transition — after a node executes and state is merged. 
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
+from agentflow.core.state import AgentState
 import copy
 
 class ObserveNodeTransitionHook(GraphLifecycleHook):
@@ -523,8 +519,7 @@ Combine `on_graph_start` and `on_graph_end` to bookend a trace span:
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 from opentelemetry import trace
 
 class OpenTelemetryHook(GraphLifecycleHook):
@@ -574,7 +569,7 @@ Combine `on_interrupt`, `on_resume`, and `on_checkpoint`:
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
+from agentflow.core.state import AgentState
 
 class ApprovalWorkflowHook(GraphLifecycleHook):
     async def on_interrupt(
@@ -620,8 +615,7 @@ Collect execution metrics across multiple hooks:
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 import time
 
 class MetricsHook(GraphLifecycleHook):

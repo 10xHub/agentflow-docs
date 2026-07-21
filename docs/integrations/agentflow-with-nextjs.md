@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   const stream = client.stream(
     [Message.text_message(text)],
-    {config: {thread_id: `user-${user.id}`, recursion_limit: 25}},
+    {config: {thread_id: `user-${user.id}`}, recursion_limit: 25},
   );
 
   // Convert AsyncIterable to ReadableStream and re-emit as SSE
@@ -103,15 +103,30 @@ A small React hook for consuming the stream:
 
 import {useState, useCallback} from "react";
 
-type Chunk =
-  | {type: "message_chunk"; content?: string}
-  | {type: "tool_start"; name: string}
-  | {type: "tool_end"};
+// Mirrors StreamChunk from @10xscale/agentflow-client. `event` is one of
+// StreamEventType: "message" | "updates" | "state" | "error".
+type Chunk = {
+  event: "message" | "updates" | "state" | "error";
+  message?: {role: string; content: Array<Record<string, unknown>>} | null;
+  state?: Record<string, unknown> | null;
+  data?: Record<string, unknown>;
+  thread_id?: string;
+  run_id?: string;
+};
+
+// `message.content` is an array of content blocks; concatenate the text ones.
+// (The Message class has a `text()` method, but chunks that crossed the proxy
+// as JSON are plain objects.)
+const chunkText = (chunk: Chunk) =>
+  (chunk.message?.content ?? [])
+    .filter((b) => b.type === "text")
+    .map((b) => String(b.text ?? ""))
+    .join("");
 
 export function useAgentStream() {
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [toolName, setToolName] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
 
   const send = useCallback(async (text: string) => {
     setOutput("");
@@ -142,22 +157,23 @@ export function useAgentStream() {
           const json = dataLine.slice(6);
           if (json === "{}") continue;
           const chunk = JSON.parse(json) as Chunk;
-          if (chunk.type === "message_chunk" && chunk.content) {
-            setOutput((s) => s + chunk.content);
-          } else if (chunk.type === "tool_start") {
-            setToolName(chunk.name);
-          } else if (chunk.type === "tool_end") {
-            setToolName(null);
+          if (chunk.event === "message") {
+            setOutput((s) => s + chunkText(chunk));
+          } else if (chunk.event === "updates") {
+            // Run-lifecycle marker, e.g. {status: "completed"}.
+            setStatus(String(chunk.data?.status ?? ""));
+          } else if (chunk.event === "error") {
+            // The server never raises mid-stream; it emits this chunk instead.
+            throw new Error(String(chunk.data?.reason ?? "stream error"));
           }
         }
       }
     } finally {
       setStreaming(false);
-      setToolName(null);
     }
   }, []);
 
-  return {output, streaming, toolName, send};
+  return {output, streaming, status, send};
 }
 ```
 
@@ -168,13 +184,13 @@ Usage in a chat component:
 import {useAgentStream} from "./useAgentStream";
 
 export default function Chat() {
-  const {output, streaming, toolName, send} = useAgentStream();
+  const {output, streaming, status, send} = useAgentStream();
   return (
     <div>
       <button onClick={() => send("Weather in Tokyo?")} disabled={streaming}>
         Ask
       </button>
-      {toolName ? <small>Calling {toolName}…</small> : null}
+      {status ? <small>{status}</small> : null}
       <pre>{output}</pre>
     </div>
   );

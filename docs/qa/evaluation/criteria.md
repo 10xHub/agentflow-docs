@@ -112,7 +112,7 @@ ROUGE-1 counts shared unigrams. A score of `0.5` means roughly half the words ov
 
 ---
 
-### contains_keywords — Keyword presence
+### contains_keywords — Keyword presence {#contains_keywords}
 
 Checks that a list of required keywords appear in the actual response.
 

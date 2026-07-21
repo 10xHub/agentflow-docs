@@ -298,15 +298,19 @@ flowchart LR
 ### MCP in AgentFlow
 
 ```python
-from agentflow.integrations.mcp import MCPClient
+from fastmcp import Client
 
-# Connect to MCP server
-mcp_client = MCPClient("http://mcp-server:8080")
+from agentflow.core.graph import ToolNode
 
-# List available tools
-tools = mcp_client.list_tools()
+# Connect to an MCP server. AgentFlow uses the fastmcp client directly.
+mcp_client = Client("http://mcp-server:8080/mcp")
+
+# Hand the client to a ToolNode; it discovers the server's tools for you.
+tool_node = ToolNode([], client=mcp_client)
+
+# Inspect what the server exposes
+tools = await tool_node.all_tools()
 print(tools)
-# [{'name': 'filesystem_read', ...}, {'name': 'database_query', ...}]
 
 # Use tools in agent
 agent = ReactAgent(

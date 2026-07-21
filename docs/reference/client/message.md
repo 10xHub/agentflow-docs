@@ -121,6 +121,112 @@ const toolResult = Message.tool_message([
 ]);
 ```
 
+### `Message.withImage(text, imageUrl, role?)`
+
+Creates a `user` message containing a `TextBlock` followed by an `ImageBlock`. The image is referenced by URL, so pass either an `http(s)` URL the server can fetch or a `data:` URI with inline base64.
+
+```ts
+const msg = Message.withImage('Describe this', 'https://example.com/photo.jpg');
+const inline = Message.withImage('Describe this', 'data:image/png;base64,iVBORw0...');
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | — | The prompt that accompanies the image. |
+| `imageUrl` | `string` | — | URL or `data:` URI. Stored as `MediaRef` with `kind: 'url'`. |
+| `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. Note there is no `'tool'` option here. |
+
+To attach an image you uploaded through `client.uploadFile()`, use `Message.withFile()` instead — it builds a `file_id` reference, which is what the server resolves at LLM-call time.
+
+### `Message.withFile(text, fileId, mimeType?, role?)`
+
+Creates a message containing a `TextBlock` plus one media block referencing an uploaded file by id. The block type is picked from `mimeType`:
+
+| `mimeType` starts with | Block created |
+|---|---|
+| `image/` | `ImageBlock` |
+| `audio/` | `AudioBlock` |
+| `video/` | `VideoBlock` |
+| anything else, or omitted | `DocumentBlock` |
+
+```ts
+const upload = await client.uploadFile(pdfFile);
+const msg = Message.withFile('Summarize this PDF', upload.data.file_id, 'application/pdf');
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | — | The prompt that accompanies the file. |
+| `fileId` | `string` | — | `file_id` from `client.uploadFile()` (`response.data.file_id`). |
+| `mimeType` | `string` | `undefined` | Used to select the block type and stored on the `MediaRef`. Omitting it produces a `DocumentBlock`. |
+| `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. |
+
+Pass the real MIME type. Uploading a PNG and omitting `mimeType` produces a `DocumentBlock`, which is not what a vision model expects.
+
+### `Message.multimodal(blocks, role?)`
+
+Creates a message from an arbitrary array of content blocks. Use it when the shape does not fit `withImage` or `withFile`: several images at once, an image between two pieces of text, or a mix of URL and `file_id` references.
+
+```ts
+const msg = Message.multimodal([
+  new TextBlock('Which of these two rooms is brighter?'),
+  new ImageBlock(new MediaRef('url', 'https://example.com/a.jpg')),
+  new ImageBlock(new MediaRef('url', 'https://example.com/b.jpg')),
+]);
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `blocks` | `ContentBlock[]` | — | Blocks in the order the model should see them. |
+| `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. |
+
+---
+
+## Instance methods
+
+### `text()`
+
+Flattens the message's content down to a single string. `TextBlock` blocks contribute their `text`; `ToolResultBlock` blocks contribute their `output` (stringified with `JSON.stringify` when it is not already a string). Every other block type contributes an empty string, so an image-only message returns `''`.
+
+```ts
+const answer = result.messages.at(-1)?.text();
+```
+
+This is the method to use when rendering a reply, including for streaming deltas.
+
+### `attach_media(media, as_type)`
+
+Appends one media block to an existing message's `content` array, in place. Returns nothing.
+
+```ts
+const msg = Message.text_message('Compare these two charts');
+
+msg.attach_media(new MediaRef('file_id', undefined, firstId, undefined, 'image/png'), 'image');
+msg.attach_media(new MediaRef('file_id', undefined, secondId, undefined, 'image/png'), 'image');
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `media` | `MediaRef` | The reference to attach. |
+| `as_type` | `'image' \| 'audio' \| 'video' \| 'document'` | Which block class to wrap it in. Any other value throws `Unsupported media type: <value>`. |
+
+The `MediaRef` constructor is positional — `(kind, url, file_id, data_base64, mime_type, ...)` — so a `file_id` reference needs `undefined` in the `url` slot. Assigning the fields by name is easier to read:
+
+```ts
+const media = new MediaRef('file_id');
+media.file_id = upload.data.file_id;
+media.mime_type = upload.data.mime_type;
+msg.attach_media(media, 'image');
+```
+
 ---
 
 ## `ContentBlock` union type
@@ -517,7 +623,9 @@ console.log(result.messages);
 - `Message.text_message()` is the easiest way to create a plain text message.
 - `RemoteToolCallBlock` arrives from the server when a remote tool needs executing — the `invoke()` loop handles this automatically.
 - Use `MediaRef` with `kind: 'file_id'` to reference files you have uploaded via `uploadFile()`.
+- `Message.withImage()`, `Message.withFile()`, and `Message.multimodal()` build multimodal messages without hand-assembling blocks; `attach_media()` adds one to a message you already have.
+- `message.text()` flattens content blocks to a string and is what you render for both final messages and streaming deltas.
 
 ## Next step
 
-See [`reference/client/invoke`](invoke.md) to learn how to send messages and receive responses.
+See [how-to/client/send-images-and-documents](../../how-to/client/send-images-and-documents.md) for the end-to-end upload-and-send flow, or [`reference/client/invoke`](invoke.md) to learn how to send messages and receive responses.

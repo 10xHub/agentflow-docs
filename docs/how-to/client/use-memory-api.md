@@ -101,7 +101,7 @@ async function invokeWithMemory(question: string, threadId: string) {
 
   // 3. Invoke
   return client.invoke([systemMsg, Message.text_message(question)], {
-    config: { configurable: { thread_id: threadId } },
+    config: { thread_id: threadId },
     response_granularity: 'low',
   });
 }
@@ -271,7 +271,7 @@ async function memoryChat(userInput: string) {
       Message.text_message(userInput),
     ],
     {
-      config: { configurable: { thread_id: THREAD_ID } },
+      config: { thread_id: THREAD_ID },
       response_granularity: 'low',
     }
   );

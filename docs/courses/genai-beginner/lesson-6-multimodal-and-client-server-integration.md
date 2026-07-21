@@ -308,14 +308,17 @@ def save_file(file: UploadFile) -> str:
 
 ```tsx
 import { useState } from 'react';
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
+
+// Local shape for what we render, distinct from the SDK's Message.
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000'
 });
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [threadId] = useState('user-123-thread-1');
 
@@ -328,18 +331,23 @@ export function ChatInterface() {
 
     try {
       // Streaming response
-      const stream = client.streamChat({
-        threadId,
-        message: input
-      });
+      const stream = client.stream(
+        [Message.text_message(input)],
+        { config: { thread_id: threadId } }
+      );
 
       const assistantMessage = { role: 'assistant' as const, content: '' };
       setMessages(prev => [...prev, assistantMessage]);
 
       for await (const chunk of stream) {
+        // StreamChunk has no `content` field. Check `event`, then read
+        // `message`, `state`, or `data`.
+        if (chunk.event !== 'message' || !chunk.message) continue;
+
+        const text = chunk.message.text();
         setMessages(prev => {
           const updated = [...prev];
-          updated[updated.length - 1].content += chunk.content;
+          updated[updated.length - 1].content += text;
           return updated;
         });
       }

@@ -42,7 +42,7 @@ This starts the server on `http://127.0.0.1:8000`. Auto-reload is enabled by def
 
 ### What the flags mean:
 
-- `--host 127.0.0.1` — Bind only to localhost (only accessible from your machine). Use instead `--host 0.0.0.0` to accept all network interfaces.
+- `--host 127.0.0.1` — Bind only to localhost (only accessible from your machine). This is the default, so the flag is optional here. Pass `--host 0.0.0.0` to accept all network interfaces, which is what a container needs.
 - `--port 8000` — Listen on port 8000. Change to any available port (8001, 8080, etc.).
 
 ## Verify it is running

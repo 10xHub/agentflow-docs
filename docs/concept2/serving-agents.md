@@ -14,13 +14,16 @@ This page covers how the API/CLI layer exposes your compiled graph over HTTP, ho
 
 `agentflow.json` is the single file that wires everything together. The CLI and API server read it at startup.
 
+Import paths are **dotted module paths** (`module.path:attribute`), resolved with `importlib` —
+not file paths.
+
 ```json
 {
-  "agent": "graph/agent.py:get_compiled_graph",
-  "auth": "auth/agent_auth.py:MyAuth",
-  "injectq": "graph/agent.py:container",
+  "agent": "graph.agent:get_compiled_graph",
+  "auth": { "method": "custom", "path": "auth.agent_auth:MyAuth" },
+  "injectq": "graph.agent:container",
   "evaluation": {
-    "evals_dir": "evals/",
+    "directory": "evals",
     "threshold": 0.8
   }
 }
@@ -29,7 +32,7 @@ This page covers how the API/CLI layer exposes your compiled graph over HTTP, ho
 | Key | Purpose |
 |---|---|
 | `agent` | `module:callable` that returns a `CompiledGraph` |
-| `auth` | Custom `BaseAuth` subclass (optional — omit to disable auth) |
+| `auth` | `null`, `"jwt"`, or `{"method": "custom", "path": "module:attr"}` for a `BaseAuth` subclass |
 | `injectq` | Services registered in the DI container |
 | `evaluation` | Eval directory and pass threshold |
 
@@ -115,23 +118,35 @@ export JWT_ALGORITHM="HS256"      # default; optional
 
 **Custom auth** — subclass `BaseAuth` and point `agentflow.json` to your class:
 
+`authenticate` is **synchronous** and takes `(request, response, credential)`; the bearer token
+arrives as `credential`. Declaring it `async def` returns an un-awaited coroutine and breaks auth.
+
 ```python
 # auth/agent_auth.py
-from agentflow_cli.src.app.core.auth.base_auth import BaseAuth
-from fastapi import Request
+from typing import Any
+
+from fastapi import Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
+
+from agentflow_cli import BaseAuth
 
 class FirebaseAuth(BaseAuth):
-    async def authenticate(self, request: Request) -> dict | None:
-        token = request.headers.get("Authorization", "").removeprefix("Bearer ")
+    def authenticate(
+        self, request: Request, response: Response,
+        credential: HTTPAuthorizationCredentials | None,
+    ) -> dict[str, Any] | None:
+        if credential is None:
+            return None   # → 401
         try:
-            return firebase_admin.auth.verify_id_token(token)
+            claims = firebase_admin.auth.verify_id_token(credential.credentials)
+            return {"user_id": claims["uid"], **claims}
         except Exception:
             return None   # returning None → 401
 ```
 
 ```json
 {
-  "auth": "auth/agent_auth.py:FirebaseAuth"
+  "auth": { "method": "custom", "path": "auth.agent_auth:FirebaseAuth" }
 }
 ```
 
@@ -143,22 +158,31 @@ Authorization is a separate extension point from authentication. After a user is
 
 ```python
 # auth/agent_auth.py
+from typing import Any
+
 from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
 
 class TenantAuthorizationBackend(AuthorizationBackend):
-    async def check(self, user: dict, operation: str, resource: str) -> bool:
-        # operation: "invoke" | "read_thread" | "delete_thread" | "store_memory" | ...
-        # resource:  thread_id, memory_id, etc.
-        return user["tenant_id"] == extract_tenant(resource)
+    async def authorize(
+        self, user: dict[str, Any], resource: str, action: str,
+        resource_id: str | None = None, **context: Any,
+    ) -> bool:
+        # resource: "graph" | "checkpointer" | "store" | "files" | "config"
+        # action:   "invoke" | "stream" | "read" | "write" | "delete" | ...
+        # resource_id: thread_id / memory_id when the path carries one
+        return user.get("tenant_id") == context.get("tenant")
 ```
 
 ```json
 {
-  "authorization": "auth/agent_auth.py:TenantAuthorizationBackend"
+  "authorization": "auth.agent_auth:TenantAuthorizationBackend"
 }
 ```
 
-The default `DefaultAuthorizationBackend` allows all authenticated users. Override it for RBAC, tenant scoping, or fine-grained permission checks.
+Without an `authorization` key the default is mode-based: `"ownership"` (owner-only threads) in
+production, `"allow_all"` in development. Set `"ownership"` explicitly, an RBAC config block
+(`{"backend": "rbac", "roles": {...}}`), or your own backend to override. See the
+[Authentication reference](/docs/reference/api-cli/auth) for scopes and the isolation policy.
 
 ---
 
@@ -304,11 +328,11 @@ When using `agentflow api`, point `injectq` to the exported `InjectQ` instance i
 
 ```json
 {
-  "injectq": "graph/agent.py:container"
+  "injectq": "graph.agent:container"
 }
 ```
 
-The value is a `module:attribute` path that resolves to an `InjectQ` instance — not a class, not a dict.
+The value is a dotted `module:attribute` path that resolves to an `InjectQ` instance — not a class, not a dict.
 
 ---
 

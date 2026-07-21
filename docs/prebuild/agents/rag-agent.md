@@ -246,7 +246,7 @@ from agentflow.core.graph import Agent
 from agentflow.prebuilt.agent import RAGAgent
 from agentflow.storage import create_local_qdrant_store
 from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.core.state import Message
 
 store = create_local_qdrant_store(
@@ -267,7 +267,7 @@ rag = RAGAgent(
     top_k=5,
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = rag.compile(checkpointer=checkpointer)
 
 

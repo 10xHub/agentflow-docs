@@ -85,51 +85,67 @@ for await (const chunk of client.stream(
   [Message.text_message("Explain neural networks")],
   { config: { thread_id: "demo-1" } }
 )) {
-  if (chunk.event === StreamEventType.TOKEN) {
-    process.stdout.write(chunk.content);
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
   }
 }
 ```
 
-## React streaming hooks
+## Streaming in a React UI
 
-For React UIs, AgentFlow's client ships hooks that manage the stream state:
+The client package exposes a single entry point and ships no React bindings, so wire `client.stream()` into your own state. The generator is an ordinary `AsyncGenerator`, so a `for await` inside an effect or an event handler is all you need:
 
 ```tsx
-import { useStream } from "@10xscale/agentflow-client/react";
+import { useCallback, useState } from "react";
+import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
+
+const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
 
 function Chat() {
-  const { messages, isStreaming, sendMessage } = useStream({
-    baseUrl: "http://localhost:8000",
-    threadId: "user-session-123",
-  });
+  const [text, setText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const send = useCallback(async (prompt: string) => {
+    setText("");
+    setIsStreaming(true);
+    try {
+      const stream = client.stream([Message.text_message(prompt)], {
+        config: { thread_id: "user-session-123" },
+      });
+      for await (const chunk of stream) {
+        if (chunk.event === StreamEventType.MESSAGE && chunk.message?.delta) {
+          setText((previous) => previous + chunk.message!.text());
+        }
+      }
+    } finally {
+      setIsStreaming(false);
+    }
+  }, []);
 
   return (
     <div>
-      {messages.map((msg) => (
-        <p key={msg.id}>{msg.text()}</p>
-      ))}
+      <p>{text}</p>
       {isStreaming && <span>...</span>}
-      <button onClick={() => sendMessage("Tell me more")}>Send</button>
+      <button onClick={() => send("Tell me more")}>Send</button>
     </div>
   );
 }
 ```
 
-The hook handles opening the SSE connection, appending tokens to the in-progress message, and closing when the stream ends.
+`chunk.message.delta === true` marks an incremental token; the same message arrives once more with `delta === false` when it is complete, so filter on `delta` to avoid printing the answer twice.
 
 ## Streaming with tool calls
 
 When an agent calls a tool during streaming, the stream pauses while the tool executes, then resumes with the next LLM response. AgentFlow streams tool-call events so the UI can show "calling search_web..." in real time:
 
+```json
+{"event": "message", "message": {"role": "assistant", "content": [{"type": "tool_call", "name": "search_web", "args": {"query": "latest AI news"}}]}}
+{"event": "message", "message": {"role": "tool", "content": [{"type": "tool_result", "call_id": "...", "output": "..."}]}}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": "Based"}]}}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": " on"}]}}
 ```
-data: {"event": "tool_call_start", "tool": "search_web", "args": {"query": "latest AI news"}}
-... (tool executes) ...
-data: {"event": "tool_call_end", "tool": "search_web", "result": "..."}
-data: {"event": "token", "content": "Based"}
-data: {"event": "token", "content": " on"}
-...
-```
+
+The server writes one JSON object per line (NDJSON). Tool activity is not a separate event type: it arrives as ordinary `message` chunks whose content blocks are `tool_call` and `tool_result`, so a UI showing "calling search_web..." watches for those block types.
 
 ## Streaming in the graph
 
@@ -137,16 +153,17 @@ You can also stream directly from a compiled graph in Python without the API ser
 
 ```python
 from agentflow.core.state import Message
-from agentflow.runtime.emitter import StreamEmitter
 
 async def stream_agent():
-    async for event in app.astream(
+    async for chunk in app.astream(
         {"messages": [Message.text_message("Tell me about Python")]},
         config={"thread_id": "demo"},
     ):
-        if event.get("event") == "token":
-            print(event["content"], end="", flush=True)
+        if chunk.event == "message" and chunk.message:
+            print(chunk.message.text(), end="", flush=True)
 ```
+
+`astream` yields `StreamChunk` objects, not dicts. To push progress out of a tool while it runs, take a `StreamEmitter` parameter in the tool; see [StreamEmitter](/docs/reference/python/stream-emitter) for the injection rules and `from agentflow.core.state.stream_emitter import StreamEmitter` as the import path.
 
 <FAQ items={[
   {

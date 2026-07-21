@@ -95,6 +95,11 @@ Why this is the production choice:
 - gives shared thread/message/state storage
 - separates fast access and durable storage concerns
 
+`PgCheckpointer` keeps a bounded, per-thread history of state snapshots and
+prunes older ones automatically. Tune how many are retained with
+`state_history_limit` (default `20`; set `1` to keep only the current state) —
+see [State history retention](../python/set-up-checkpointing.md#state-history-retention-state_history_limit).
+
 ## Deployment topology
 
 ```mermaid

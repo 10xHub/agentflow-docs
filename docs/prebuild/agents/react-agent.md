@@ -165,7 +165,7 @@ app = agent.compile()
 import asyncio
 from agentflow.prebuilt.agent import ReactAgent
 from agentflow.prebuilt.tools import fetch_url
-from agentflow.storage.checkpointer import PostgresCheckpointer
+from agentflow.storage.checkpointer import PgCheckpointer
 from agentflow.core.state import Message
 
 agent = ReactAgent(
@@ -174,7 +174,7 @@ agent = ReactAgent(
     tools=[fetch_url],
 )
 
-checkpointer = PostgresCheckpointer(dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
 app = agent.compile(checkpointer=checkpointer)
 
 

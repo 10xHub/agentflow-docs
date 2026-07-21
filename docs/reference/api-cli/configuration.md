@@ -34,6 +34,7 @@ keywords:
   "injectq": "graph.dependencies:container",
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
   "authorization": "graph.auth:my_authorization_backend",
+  "redis": "redis://localhost:6379/0",
   "env": ".env",
   "auth": "jwt",
   "rate_limit": {
@@ -43,6 +44,14 @@ keywords:
     "window": 60,
     "by": "ip",
     "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  },
+  "websocket": {
+    "max_connections": 100
+  },
+  "observability": {
+    "level": "standard",
+    "logfire": {"enabled": true, "service_name": "my-agent"},
+    "langsmith": {"enabled": false, "project": "my-agent"}
   }
 }
 ```
@@ -124,13 +133,42 @@ The class must implement a `generate(thread_id: str) -> str` method.
 
 ### `authorization`
 
-Import path to a custom authorization backend.
+Controls object-level access (thread ownership), per-endpoint scopes, and storage isolation.
+Accepted values:
+
+| Value | Behaviour |
+| --- | --- |
+| `null` (unset) | **Mode-based default**: `"ownership"` in production, `"allow_all"` in development. |
+| `"ownership"` | Owner-only: a thread is accessible only to the user who created it. |
+| `"allow_all"` (aliases `"default"`, `"none"`) | Any authenticated user may do anything. |
+| `"module:attr"` | A custom `AuthorizationBackend`. |
+| `{ "backend": "rbac", ... }` | Role-based access control (below). `"role_based"` and `"roles"` select the same backend, and `type` is an accepted alias for `backend`. |
+
+An unrecognised string, or an object whose backend name is not one of the RBAC spellings, raises a
+`ValueError` at startup rather than falling back to a permissive default.
+
+Built-in owner-only access (no code):
 
 ```json
-"authorization": "graph.auth:my_authorization_backend"
+"authorization": "ownership"
 ```
 
-See [Auth](./auth.md) for details on building a custom authorization backend.
+Role-based access control — maps roles to scopes on top of owner-only isolation:
+
+```json
+"authorization": {
+  "backend": "rbac",
+  "roles": {
+    "admin":  ["*"],
+    "member": ["graph:invoke", "graph:stream", "graph:read", "checkpointer:read"]
+  },
+  "default_scopes": ["graph:read"],
+  "isolation": "owner"
+}
+```
+
+See [Auth](./auth.md) for the scope catalog, the custom-backend interface, and how the isolation
+policy reaches the storage layer.
 
 ---
 
@@ -194,8 +232,72 @@ Sliding-window rate limiter configuration.
 
 Omit this field (or set it to `null`) to disable rate limiting entirely.
 
-For the full field reference, backend options, response headers, and custom backend
-interface see [Rate Limiting](./rate-limiting.md).
+Rate limiting also gates WebSocket handshakes on `/v1/graph/ws` and `/v1/graph/live`, sharing the
+same backend and bucket as REST requests.
+
+For the full field reference (including `by: "user"` and `trusted_proxy_hops`), backend options,
+response headers, and the custom backend interface see [Rate Limiting](./rate-limiting.md).
+
+---
+
+### `websocket`
+
+Per-process limits for the WebSocket endpoints.
+
+```json
+"websocket": {
+  "max_connections": 100
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `max_connections` | integer or `null` | `null` (unlimited) | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError` at startup. |
+
+Omit the block entirely to leave connections unlimited.
+
+Exceeding the cap refuses the handshake before `accept()` with WebSocket close code `1013`
+(Try Again Later), so the client gets a clean rejection instead of a half-open socket. The slot is
+released when the handler returns or the client disconnects.
+
+The counter is per process, like the in-memory rate-limit backend. With N workers the effective
+cluster-wide limit is `max_connections x N`, so size it per worker.
+
+---
+
+### `redis`
+
+A Redis connection URL used by the server itself, as a string.
+
+```json
+"redis": "redis://localhost:6379/0"
+```
+
+It currently backs the L2 tier of the thread-ownership cache used by the `ownership` and `rbac`
+authorization backends. When it is unset the server falls back to the `REDIS_URL` environment
+variable; when neither is set, or the `redis` package is not installed, the cache runs in-process
+only and logs a warning at startup.
+
+This is separate from `rate_limit.redis`, which configures the rate limiter's own connection. Set
+both if you want both features backed by Redis.
+
+---
+
+### `observability`
+
+Declarative tracing setup for Logfire and LangSmith.
+
+```json
+"observability": {
+  "level": "standard",
+  "logfire": {"enabled": true, "service_name": "my-agent"},
+  "langsmith": {"enabled": true, "project": "my-agent", "endpoint": null}
+}
+```
+
+The block is passed through to the core framework's observability setup. Secrets stay in the
+environment: `LOGFIRE_TOKEN` and `LANGSMITH_API_KEY` are read from there and are never read from
+this file.
 
 ---
 

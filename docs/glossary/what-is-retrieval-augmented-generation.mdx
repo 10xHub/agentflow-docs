@@ -54,7 +54,7 @@ The retrieval step turns a potentially infinite knowledge base into a focused, q
 AgentFlow ships a prebuilt `RAGAgent` that handles retrieval, context injection, and generation:
 
 ```python
-from agentflow.prebuild.agents.rag_agent import RAGAgent
+from agentflow.prebuilt import RAGAgent
 from agentflow.core.state import AgentState, Message
 
 agent = RAGAgent(
@@ -82,7 +82,6 @@ For a custom RAG pipeline with full control over the retrieval and injection ste
 from agentflow.core.graph import Agent, StateGraph, ToolNode
 from agentflow.core.state import AgentState, Message
 from agentflow.utils import END
-from agentflow.prebuilt.tools.memory_tools import search_memory
 
 # Retrieval as a tool
 def search_docs(query: str) -> str:

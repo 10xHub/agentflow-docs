@@ -213,7 +213,8 @@ The chat method passes user and session identity in config:
 ```python
 config = {
     "thread_id": session_id,
-    "configurable": {"user_id": user_id, "session_id": session_id},
+    "user_id": user_id,
+    "session_id": session_id,
 }
 ```
 

@@ -405,8 +405,8 @@ Always use `ainvoke` / `astream` inside an async context. `invoke` and `stream` 
 
 ```python
 async for chunk in compiled.astream({"messages": [...]}, {"thread_id": "abc"}):
-    if chunk.event == StreamEvent.MESSAGE and chunk.delta:
-        print(chunk.delta, end="", flush=True)
+    if chunk.event == StreamEvent.MESSAGE and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
 ```
 
 ---

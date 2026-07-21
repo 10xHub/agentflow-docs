@@ -30,7 +30,7 @@ agentflow version
 
 ## agentflow init
 
-Scaffold a new project with `agentflow.json` and a starter graph module.
+Scaffold a new project with `agentflow.json` and a starter graph module. The command is **interactive**: prompts choose the setup type (minimal development scaffold or the fuller production scaffold), whether to wire auth, and whether to add a rate-limit block. There is no flag for the setup type.
 
 ```bash
 agentflow init [OPTIONS]
@@ -40,47 +40,49 @@ agentflow init [OPTIONS]
 | --- | --- | --- |
 | `--path`, `-p` | `.` | Directory to initialize files in |
 | `--force`, `-f` | `false` | Overwrite existing files |
-| `--prod` | `false` | Add `pyproject.toml` and `.pre-commit-config.yaml` |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
 
-**Creates:**
+**Quick Start creates:**
 
 ```
 agentflow.json
+.env.example
 graph/
   __init__.py
-  react.py
-skills/
-  agent-skills/
-    SKILL.md
-    references/
-      skill-concepts.md
-      agentflow.md
-      claude.md
-      codex.md
-      github.md
+  agent.py
 ```
 
-**With `--prod`:**
+**Production creates:**
 
 ```
 agentflow.json
-graph/
-  __init__.py
-  react.py
-skills/
-  agent-skills/
-    SKILL.md
-    references/
-      skill-concepts.md
-      agentflow.md
-      claude.md
-      codex.md
-      github.md
-pyproject.toml
+.env.example
 .pre-commit-config.yaml
+.python-version
+pyproject.toml
+graph/
+  __init__.py
+  agent.py
+  state.py
+  thread_name_generator.py
+  tools/
+  validators/
+auth/                 # only when the auth prompt answers "Custom"
+  agent_auth.py
+evals/
+  weather_agents_eval.py
+  user_simulator_eval.py
+tests/
+  conftest.py
+  test_agent_eval.py
+  test_catalog_tools.py
+  test_graph_nodes.py
 ```
+
+The Production path also writes the answers to the auth and rate-limit prompts into the generated `agentflow.json` (`auth`, `authorization`, `rate_limit`, `thread_name_generator`, `injectq`).
+
+Assistant skill files are not part of `init`; install them separately with [`agentflow skills`](#agentflow-skills).
 
 **Example:**
 
@@ -108,7 +110,7 @@ agentflow api [OPTIONS]
 | Option | Default | Description |
 | --- | --- | --- |
 | `--config`, `-c` | `agentflow.json` | Path to config file |
-| `--host`, `-H` | `0.0.0.0` | Bind host (use `127.0.0.1` for localhost only) |
+| `--host`, `-H` | `127.0.0.1` | Bind host. The default is localhost only; pass `0.0.0.0` to bind all interfaces. |
 | `--port`, `-p` | `8000` | Bind port |
 | `--reload/--no-reload` | `--reload` | Enable auto-reload on file changes |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
@@ -117,11 +119,11 @@ agentflow api [OPTIONS]
 **Example:**
 
 ```bash
-# Start with defaults (binds to all interfaces)
+# Start with defaults (localhost only, port 8000)
 agentflow api
 
-# Start on localhost only
-agentflow api --host 127.0.0.1 --port 8000
+# Bind all interfaces (containers, LAN access)
+agentflow api --host 0.0.0.0 --port 8000
 
 # Disable auto-reload for production
 agentflow api --no-reload
@@ -140,7 +142,7 @@ Start the API server and open the hosted playground in a browser.
 agentflow play [OPTIONS]
 ```
 
-Accepts the same options as `agentflow api`. The `--host` and `--port` values are also used to build the `backendUrl` that is passed to the hosted playground.
+Accepts the same options as `agentflow api`, including the `127.0.0.1` default for `--host`. The `--host` and `--port` values are also used to build the `backendUrl` that is passed to the hosted playground.
 
 **Example:**
 
@@ -154,7 +156,7 @@ The CLI prints the playground URL. If the browser does not open automatically, o
 
 ## agentflow build
 
-Generate a `Dockerfile` (and optionally `docker-compose.yml`) for deployment.
+Generate a `Dockerfile` (and optionally `docker-compose.yml` and `k8s.yaml`) for deployment.
 
 ```bash
 agentflow build [OPTIONS]
@@ -163,13 +165,16 @@ agentflow build [OPTIONS]
 | Option | Default | Description |
 | --- | --- | --- |
 | `--output`, `-o` | `Dockerfile` | Output Dockerfile path |
-| `--force`, `-f` | `false` | Overwrite existing Dockerfile |
+| `--force`, `-f` | `false` | Overwrite existing `Dockerfile`, `docker-compose.yml`, or `k8s.yaml` |
 | `--python-version` | `3.13` | Python base image version |
 | `--port`, `-p` | `8000` | Port to expose in the container |
-| `--docker-compose/--no-docker-compose` | `--no-docker-compose` | Also generate `docker-compose.yml` |
-| `--service-name` | `agentflow-cli` | Service name in `docker-compose.yml` |
+| `--docker-compose/--no-docker-compose` | `--no-docker-compose` | Also generate `docker-compose.yml` and omit `CMD` from the Dockerfile |
+| `--k8s/--no-k8s` | `--no-k8s` | Also generate `k8s.yaml` (a `Deployment` plus a `Service`) |
+| `--service-name` | `agentflow-cli` | Service name used in `docker-compose.yml` and `k8s.yaml` |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
+
+`--k8s` always writes to `k8s.yaml` in the current directory (the path is not configurable). The generated `Deployment` sets a `terminationGracePeriodSeconds` long enough that a rolling deploy does not SIGKILL an agent run mid-LLM-call, plus a `preStop` hook. Kubernetes' own 30-second default is too short for agent workloads, which is the reason to generate the manifest instead of hand-rolling one.
 
 **Example:**
 
@@ -179,6 +184,9 @@ agentflow build
 
 # Dockerfile + docker-compose.yml
 agentflow build --docker-compose --service-name my-agent
+
+# Dockerfile + Kubernetes manifest
+agentflow build --k8s --service-name my-agent
 
 # Custom Python version
 agentflow build --python-version 3.12
@@ -310,6 +318,8 @@ agentflow eval [TARGET] [OPTIONS]
 | `--no-report` | `false` | Skip file report generation (console summary only) |
 | `--threshold`, `-t` | — | Fail if overall pass rate is below this value (0.0–1.0) |
 | `--open` | `false` | Open the HTML report in the default browser after the run |
+| `--parallel`, `-p` | `false` | Collect every case from every file into one flat pool and run them concurrently |
+| `--max-concurrency`, `-c` | `4` | Maximum cases running at once when `--parallel` is set (a single global semaphore) |
 | `--verbose`, `-v` | `false` | Enable verbose output |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
 
@@ -351,6 +361,9 @@ agentflow eval --no-report
 
 # Open the HTML report when done
 agentflow eval --open
+
+# Run every case concurrently, at most 8 at a time
+agentflow eval --parallel --max-concurrency 8
 ```
 
 ---

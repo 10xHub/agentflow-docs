@@ -28,6 +28,7 @@ graph TD
         GraphError["GraphError<br/>Base for graph errors"]
         NodeError["NodeError<br/>Node-specific errors"]
         GraphRecursionError["GraphRecursionError<br/>Recursion limit exceeded"]
+        NodeTimeoutError["NodeTimeoutError<br/>Node or tool deadline exceeded"]
     end
     
     subgraph Storage["Storage Exceptions"]
@@ -36,6 +37,7 @@ graph TD
         SerializationError["SerializationError<br/>(De)serialization failures"]
         SchemaVersionError["SchemaVersionError<br/>Schema migration errors"]
         ResourceNotFoundError["ResourceNotFoundError<br/>Resource not found"]
+        StaleStateError["StaleStateError<br/>Optimistic concurrency conflict"]
         MetricsError["MetricsError<br/>Metrics emission errors"]
     end
     
@@ -43,6 +45,10 @@ graph TD
         UnsupportedMediaInputError["UnsupportedMediaInputError<br/>Unsupported media format"]
     end
     
+    subgraph Control["Control Flow"]
+        GraphStopRequested["GraphStopRequested<br/>Stop requested mid-node"]
+    end
+
     subgraph Validation["Validation Exceptions"]
         ValidationError["ValidationError<br/>Input validation failures"]
     end
@@ -51,14 +57,17 @@ graph TD
     Exception --> StorageError
     Exception --> UnsupportedMediaInputError
     Exception --> ValidationError
+    Exception --> GraphStopRequested
     
     GraphError --> NodeError
+    NodeError --> NodeTimeoutError
     GraphError --> GraphRecursionError
     
     StorageError --> TransientStorageError
     StorageError --> SerializationError
     StorageError --> SchemaVersionError
     StorageError --> ResourceNotFoundError
+    StorageError --> StaleStateError
     StorageError --> MetricsError
 ```
 
@@ -149,6 +158,32 @@ raise NodeError(
 |-------|-------|
 | Codes | `NODE_001`, `NODE_002`, etc. |
 | Retryable | Depends on cause |
+
+---
+
+### NODE_TIMEOUT_000 — Node or Tool Timeout
+
+**A node or a tool call exceeded its allotted execution time.**
+
+| Field | Value |
+|-------|-------|
+| Code | `NODE_TIMEOUT_000` (default), `NODE_TIMEOUT_001` and above for specific cases |
+| Retryable | Sometimes (a transient hang is; a genuinely slow operation is not) |
+| Category | Node |
+| Base class | `NodeError` |
+
+```python
+from agentflow.core.exceptions import NodeTimeoutError
+```
+
+Without a deadline, a node that hangs on a half-open socket or an unresponsive MCP server blocks the graph forever: the loop never advances a step, so the recursion limit never trips and the between-nodes stop check is never reached. Timing the call out converts an indefinite hang into a normal node error the execution loop can persist, report, and recover from.
+
+**Common causes**:
+- A custom tool that never returns
+- An unresponsive MCP server
+- A node deliberately doing work longer than the 900s default
+
+**Fix**: Raise the relevant deadline through the `node_timeout` or `tool_timeout` run-config key, or fix the hanging call. Pass `None` or `0` to disable a deadline entirely. See the [graph reference](/docs/reference/python/graph#execution-deadlines).
 
 ---
 
@@ -323,6 +358,59 @@ raise ResourceNotFoundError(
 
 ---
 
+### STORAGE_CONFLICT_000 — Stale State
+
+**A durable state write lost its optimistic-concurrency check.**
+
+| Field | Value |
+|-------|-------|
+| Code | `STORAGE_CONFLICT_000` (default), `STORAGE_CONFLICT_001` for a version mismatch on write |
+| Retryable | Yes, after reloading the latest state |
+| Category | Storage |
+| Base class | `StorageError` |
+
+```python
+from agentflow.core.exceptions import StaleStateError
+```
+
+The writer based its update on a state version that is no longer current: another execution committed a newer state for the same thread in the meantime. Committing anyway would silently discard that other execution's work, so the write is rejected instead.
+
+**Context keys**: `thread_id`, `expected_version`, `current_version`.
+
+**Common causes**:
+- Two requests processing the same `thread_id` concurrently
+- Several server replicas serving the same thread
+- A retried request racing the original
+
+**Fix**: Treat it as a conflict (HTTP 409). Reload the latest state and retry the turn rather than overwriting blindly. On conflict the checkpointer invalidates its cache for the thread, so the next read comes from Postgres. See [Set up checkpointing](/docs/how-to/python/set-up-checkpointing#optimistic-concurrency-and-stalestateerror).
+
+---
+
+## Control Flow Signals
+
+### GraphStopRequested
+
+**A stop was requested while a node was still running.**
+
+| Field | Value |
+|-------|-------|
+| Code | None (plain `Exception` subclass, no error code) |
+| Retryable | Not applicable |
+| Category | Control flow |
+| Base class | `Exception` |
+
+```python
+from agentflow.core.exceptions import GraphStopRequested
+```
+
+This is control flow, not a failure. The execution loop catches it, marks the run stopped, persists that, and returns normally. It exists because a stop observed *during* a node cannot be handled by the between-nodes stop check: the node has to be cancelled first, and the loop needs to tell that cancellation apart from a genuine error.
+
+**Attributes**: `node_name` — the node that was running when the stop arrived.
+
+**Fix**: Nothing to fix. Do not catch it in node code or in a broad `except Exception` around `invoke`, or you will convert a clean stop into an error.
+
+---
+
 ## Media Errors
 
 ### MEDIA_000 — Unsupported Media Input
@@ -351,9 +439,15 @@ raise ResourceNotFoundError(
 - Model doesn't support document input
 - External URL not allowed for provider
 
+**Import path**: `UnsupportedMediaInputError` is **not** re-exported from `agentflow.core.exceptions`. Import it from its own module:
+
+```python
+from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
+```
+
 **Example**:
 ```python
-from agentflow.core.exceptions import UnsupportedMediaInputError
+from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
 
 raise UnsupportedMediaInputError(
     provider="openai",
@@ -423,11 +517,13 @@ raise ValidationError(
 | `GRAPH_000+` | Graph operations | No | `GraphError` |
 | `NODE_000+` | Node execution | Depends | `NodeError` |
 | `RECURSION_000` | Recursion limits | No | `GraphRecursionError` |
+| `NODE_TIMEOUT_000+` | Node or tool deadline exceeded | Sometimes | `NodeTimeoutError` |
 | `STORAGE_000` | Generic storage | No | `StorageError` |
 | `STORAGE_TRANSIENT_000+` | Retryable storage | Yes | `TransientStorageError` |
 | `STORAGE_SERIALIZATION_000` | Serialization | No | `SerializationError` |
 | `STORAGE_SCHEMA_000` | Schema/migration | No | `SchemaVersionError` |
 | `STORAGE_NOT_FOUND_000` | Resource not found | No | `ResourceNotFoundError` |
+| `STORAGE_CONFLICT_000+` | Optimistic concurrency conflict | Yes, after reloading state | `StaleStateError` |
 | `METRICS_000` | Metrics | No | `MetricsError` |
 | `MEDIA_000` | Media input | No | `UnsupportedMediaInputError` |
 | `VALIDATION_000` | Validation | No | `ValidationError` |

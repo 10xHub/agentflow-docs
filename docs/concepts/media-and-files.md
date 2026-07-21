@@ -44,7 +44,7 @@ All block types live in `agentflow.core.state` (re-exported from the top-level `
 `MediaRef` is how you tell a block *where* the binary data is. It has three `kind` values:
 
 ```python
-from agentflow import MediaRef
+from agentflow.core.state import MediaRef
 
 # 1. External URL — the agent fetches it per provider
 MediaRef(kind="url", url="https://example.com/photo.png", mime_type="image/png")
@@ -79,10 +79,10 @@ class MediaRef(BaseModel):
 
 ## Building multimodal messages
 
-Import all blocks from the top-level `agentflow` package:
+Importing `agentflow` itself only exposes `__version__`. Blocks live in `agentflow.core.state`:
 
 ```python
-from agentflow import (
+from agentflow.core.state import (
     AudioBlock,
     DocumentBlock,
     ImageBlock,
@@ -146,7 +146,8 @@ Upload the file once and reference it by key in any number of subsequent message
 
 ```python
 import asyncio
-from agentflow import InMemoryMediaStore, ImageBlock, MediaRef, Message, TextBlock
+from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
+from agentflow.storage.media import InMemoryMediaStore
 
 media_store = InMemoryMediaStore()
 
@@ -259,7 +260,7 @@ async def get_metadata(storage_key: str) -> dict | None                      # w
 #### InMemoryMediaStore
 
 ```python
-from agentflow import InMemoryMediaStore
+from agentflow.storage.media import InMemoryMediaStore
 
 store = InMemoryMediaStore()
 key = await store.store(data=image_bytes, mime_type="image/png")
@@ -305,8 +306,8 @@ Stores binary blobs in the cloud bucket. Supports generating signed URLs via `ge
 Pass `MultimodalConfig` to `Agent` to control how media is delivered to the LLM provider:
 
 ```python
-from agentflow import Agent, InMemoryMediaStore, MultimodalConfig
-from agentflow.storage.media.config import ImageHandling, DocumentHandling
+from agentflow.core.graph import Agent
+from agentflow.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
 
 agent = Agent(
     model="gemini-2.5-flash",
@@ -344,11 +345,16 @@ agent = Agent(
 
 ```python
 import asyncio
-from agentflow import (
-    Agent, StateGraph, InMemoryCheckpointer, InMemoryMediaStore,
-    ImageBlock, MediaRef, Message, MultimodalConfig, TextBlock, END,
+from agentflow.core.graph import Agent, StateGraph
+from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+from agentflow.storage.media import (
+    DocumentHandling,
+    ImageHandling,
+    InMemoryMediaStore,
+    MultimodalConfig,
 )
-from agentflow.storage.media.config import ImageHandling, DocumentHandling
+from agentflow.utils import END
 
 checkpointer = InMemoryCheckpointer()
 media_store = InMemoryMediaStore()

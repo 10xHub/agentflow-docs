@@ -46,49 +46,61 @@ The agent connects to the MCP server, discovers available tools, and calls them.
 
 AgentFlow supports MCP natively. You can mount any MCP server as a tool source:
 
-```python
-from agentflow.core.mcp import MCPClient
-from agentflow.prebuilt.agent import ReactAgent
+AgentFlow speaks MCP through the [`fastmcp`](https://gofastmcp.com) client. Install the extra with `pip install "10xscale-agentflow[mcp]"`, build a `Client`, and hand it to the node that owns tools:
 
-# Connect to an MCP server (stdio or SSE transport)
-mcp_client = MCPClient(
-    transport="stdio",
-    command=["python", "-m", "mcp_filesystem_server", "/data"],
-)
+```python
+from fastmcp import Client
+from agentflow.prebuilt import ReactAgent
+
+# Connect to an MCP server. A command string starts it over stdio;
+# a URL connects to a running HTTP server.
+mcp_client = Client("python -m mcp_filesystem_server /data")
 
 agent = ReactAgent(
     model="google/gemini-2.5-flash",
-    mcp_clients=[mcp_client],  # agent automatically discovers available tools
+    tools=[],                 # local Python tools, if any
+    client=mcp_client,        # MCP tools are discovered on top of them
     system_prompt=[{"role": "system", "content": "You can read files. Help the user."}],
 )
 
 app = agent.compile()
 ```
 
-The `ReactAgent` discovers all tools exposed by the MCP server at runtime and makes them available to the LLM automatically.
+For a hand-built graph, the client goes on the `ToolNode` instead:
+
+```python
+from agentflow.core.graph import ToolNode
+
+tool_node = ToolNode(tools=[], client=mcp_client)
+```
+
+Either way, the tool list is fetched from the MCP server before each LLM call, so tools added on the server show up without restarting the agent.
 
 ## Running your own MCP server
 
 AgentFlow lets you expose your Python functions as an MCP server:
 
+AgentFlow does not ship its own MCP server implementation. Write the server with `fastmcp` (the same package the client side uses) and point an AgentFlow `Client` at it:
+
 ```python
-from agentflow.mcp.server import MCPServer
+from fastmcp import FastMCP
 
-server = MCPServer(name="my-tools")
+mcp = FastMCP(name="my-tools")
 
-@server.tool()
+@mcp.tool()
 def read_file(path: str) -> str:
     """Read a file at the given path."""
     with open(path) as f:
         return f.read()
 
-@server.tool()
+@mcp.tool()
 def list_files(directory: str) -> list[str]:
     """List files in a directory."""
     import os
     return os.listdir(directory)
 
-server.run()
+if __name__ == "__main__":
+    mcp.run()
 ```
 
 Any MCP client — another agent, Claude Desktop, VS Code — can now call your tools through the standard protocol.
@@ -115,12 +127,27 @@ MCP supports two transports:
 AgentFlow supports both:
 
 ```python
-# stdio transport
-client = MCPClient(transport="stdio", command=["node", "my-server.js"])
+from fastmcp import Client
 
-# SSE transport
-client = MCPClient(transport="sse", url="http://localhost:3000/sse")
+# stdio transport: the command string is launched as a subprocess
+client = Client("node my-server.js")
+
+# HTTP transport: point at a running server
+client = Client("http://localhost:3000/mcp")
+
+# Several servers at once, with per-server headers
+client = Client({
+    "mcpServers": {
+        "github": {
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": {"Authorization": "Bearer ..."},
+            "transport": "streamable-http",
+        },
+    }
+})
 ```
+
+See [How to use MCP tools](/docs/how-to/python/use-mcp) for the full setup, including forwarding authenticated user context to the server and filtering MCP tools by tag.
 
 <FAQ items={[
   {

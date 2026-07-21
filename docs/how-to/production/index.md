@@ -23,8 +23,12 @@ The `agentflow api` command starts a FastAPI + Uvicorn server that exposes your 
 | **Store** | `/v1/store/...` | Semantic memory CRUD and search (requires store backend) |
 | **Files** | `/v1/files/...` | Multimodal file upload and retrieval |
 | **Config** | `/v1/config/...` | Read server configuration (e.g. multimodal settings) |
+| **Observability** | `/v1/observability/...` | Reconstructed run traces. Development only; returns an empty payload in production. |
+| **Evals** | `/v1/evals/...` | Eval report viewer. **Unauthenticated**; block or remove it on a public deployment. |
 
 Full endpoint reference: [API Reference](./api-reference.md)
+
+Sending images and documents to an agent: [Multimodal and vision](./multimodal-and-vision.md)
 
 ## Configuration
 

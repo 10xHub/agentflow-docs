@@ -487,7 +487,7 @@ Both files are discovered, cases and scenarios are collected into the same flat 
 
 **"Eval directory 'evals/' not found"**
 - Create an `evals/` directory or pass a path explicitly: `agentflow eval path/to/evals`
-- Run `agentflow init --prod` to scaffold the standard project layout.
+- Run `agentflow init` and choose the Production setup at the prompt to scaffold the standard project layout, which includes `evals/`.
 
 **"No eval cases found"**
 - Eval files must expose `get_eval_set()`, `get_scenarios()`, `SCENARIOS`, or functions annotated `-> EvalSet`.

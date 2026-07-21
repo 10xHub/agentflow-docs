@@ -137,24 +137,24 @@ pip install qdrant-client
 
 ```python
 from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbeddingService
+from agentflow.storage.store.embedding import OpenAIEmbedding
 
 # Local Qdrant (persisted to disk)
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     path="./qdrant_data",
 )
 
 # Remote Qdrant
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     host="localhost",
     port=6333,
 )
 
 # Qdrant Cloud
 store = QdrantStore(
-    embedding=OpenAIEmbeddingService(),
+    embedding=OpenAIEmbedding(),
     url="https://xyz.qdrant.io",
     api_key="your-api-key",
 )

@@ -73,8 +73,7 @@ Register a `GraphLifecycleHook` to react to structural events:
 
 ```python
 from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.state import AgentState
-from agentflow.state.message import Message
+from agentflow.core.state import AgentState, Message
 
 class MyLifecycleHook(GraphLifecycleHook):
     async def on_graph_start(self, context: GraphLifecycleContext, state: AgentState) -> AgentState | None:

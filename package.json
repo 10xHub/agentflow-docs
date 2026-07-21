@@ -2,6 +2,7 @@
   "name": "agentflow-docs",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Professional documentation site for AgentFlow.",
   "scripts": {
     "start": "NO_UPDATE_NOTIFIER=1 docusaurus clear && NO_UPDATE_NOTIFIER=1 docusaurus start",

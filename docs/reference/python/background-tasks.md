@@ -56,12 +56,32 @@ async def my_node(
 ### Constructor
 
 ```python
-manager = BackgroundTaskManager(default_shutdown_timeout=30.0)
+manager = BackgroundTaskManager(
+    default_shutdown_timeout=30.0,
+    max_pending_tasks=1000,
+)
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `default_shutdown_timeout` | `float` | `30.0` | Seconds to wait when draining tasks during `shutdown()`. |
+| `max_pending_tasks` | `int` | `1000` | Cap on in-flight tasks. Beyond this, new tasks are dropped rather than queued. Set to `0` to disable the cap and restore unbounded growth. |
+
+### Backpressure
+
+Background tasks are fire-and-forget telemetry: publisher writes, webhook posts, memory syncs. When the sink cannot keep up, an unbounded queue grows until the process runs out of memory. `max_pending_tasks` bounds it instead.
+
+Once `max_pending_tasks` tasks are in flight, `create_task` drops the **newest** task and returns `None`. Dropping the newest is deliberate: cancelling an already-running task would throw away work that is mid-flight, while shedding a new event only loses one event. The coroutine is closed so Python does not emit a "coroutine was never awaited" warning.
+
+Drops are counted on the `background_task_manager.tasks_dropped` metric and logged at warning level, rate-limited so a sustained overload does not flood the log.
+
+Because a task can be dropped, treat the return value as optional:
+
+```python
+task = manager.create_task(send_webhook(user_id), name="send_webhook")
+if task is None:
+    ...  # shed under backpressure
+```
 
 ### `create_task`
 
@@ -81,7 +101,7 @@ task = manager.create_task(
 | `timeout` | `float \| None` | `None` | Cancel the task after this many seconds. Logs a warning on timeout. |
 | `context` | `dict \| None` | `None` | Extra key/value pairs attached to log entries and task info for debugging. |
 
-Returns `asyncio.Task`.
+Returns the created `asyncio.Task`, or `None` when the task was dropped because `max_pending_tasks` was already in flight.
 
 ### `get_task_count`
 
