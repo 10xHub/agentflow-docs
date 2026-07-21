@@ -171,22 +171,28 @@ For more on SSE, see [streaming agent responses with FastAPI and SSE](/blog/stre
 
 ## Sharing dependencies
 
-Embed mode lets the agent share a database session with your service. Use AgentFlow's context manager to inject deps:
+Embed mode lets the agent share a database session with your service. AgentFlow uses [InjectQ](https://github.com/10xHub/injectq) for dependency injection: bind the shared service in the container, then declare it in the tool signature with `Inject[T]` as its default. The LLM never sees the injected parameter.
 
 ```python
-from agentflow.core.context import ContextManager
+from injectq import InjectQ, Inject
 
-# Bind a per-request context
-async def get_agent_context(user = Depends(current_user), db = Depends(get_db)):
-    return ContextManager(user_id=user.id, db_session=db)
+container = InjectQ.get_instance()
+container.bind_instance(Database, Database(DSN))
 
-# In your tools
-def lookup_order(order_id: str, ctx: ContextManager) -> str:
+# In your tools — `db` is resolved from the container, `order_id` comes from the LLM
+def lookup_order(
+    order_id: str,
+    config: dict = None,
+    db: Database = Inject[Database],
+) -> str:
     """Look up an order for the current user."""
-    return ctx.db_session.query(Order).filter_by(id=order_id, user_id=ctx.user_id).first()
+    user_id = config["user"]["user_id"]
+    return db.query(Order).filter_by(id=order_id, user_id=user_id).first()
 ```
 
-See [the context manager guide](/docs/how-to/python/use-context-manager).
+Per-request values such as the caller's identity arrive on the run `config` rather than through a bound object, so the same tool works under both the sidecar and embedded layouts.
+
+See [the dependency injection guide](/docs/how-to/python/use-dependency-injection).
 
 ## When to choose which
 

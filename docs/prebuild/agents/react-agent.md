@@ -1,3 +1,15 @@
+---
+title: ReactAgent — Prebuilt agents
+sidebar_label: ReactAgent
+description: ReactAgent runs the ReAct MAIN/TOOL loop, executing tool calls in parallel until the LLM returns a final answer.
+keywords:
+  - react agent
+  - reason and act pattern
+  - agentflow react agent
+  - tool calling loop
+  - parallel tool execution
+---
+
 # ReactAgent
 
 The simplest and most common prebuilt agent pattern: a single LLM that loops through tool calls until it has a final answer.

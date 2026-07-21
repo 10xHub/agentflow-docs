@@ -1,3 +1,15 @@
+---
+title: PlanActReflectAgent — Prebuilt agents
+sidebar_label: PlanActReflectAgent
+description: PlanActReflectAgent loops through PLAN, ACT, and REFLECT nodes, critiquing its own output before deciding to iterate or stop.
+keywords:
+  - plan act reflect agent
+  - self-critiquing agent
+  - agent reflection loop
+  - iterative planning agent
+  - agentflow reflect pattern
+---
+
 # PlanActReflectAgent
 
 A self-improving agent that plans before acting, then critically evaluates its own work before deciding whether to iterate or stop.

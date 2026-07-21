@@ -1,14 +1,15 @@
 {
   "extends": "@docusaurus/tsconfig",
   "compilerOptions": {
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0"
+    // Required for the `@site/*` path alias to resolve. TypeScript 7 will
+    // deprecate `baseUrl`; the replacement belongs in @docusaurus/tsconfig,
+    // and setting "ignoreDeprecations" here is rejected by TypeScript 5.7.
+    "baseUrl": "."
   },
   "exclude": [
     "build",
     ".docusaurus",
     "node_modules",
-    "site",
-    "docs-mkdocs-legacy"
+    "versioned_docs"
   ]
 }

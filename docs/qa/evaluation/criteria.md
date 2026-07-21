@@ -1,7 +1,7 @@
 ---
 title: Evaluation Criteria — Testing and evaluation
 sidebar_label: Criteria
-description: Reference for all eight AgentFlow evaluation criteria — tool matching, trajectory, ROUGE, semantic response, LLM-as-judge, factual accuracy, hallucination, and safety.
+description: Guide to the AgentFlow evaluation criteria — tool and node matching, ROUGE, semantic response, LLM-as-judge, rubrics, factual accuracy, hallucination, and safety.
 keywords:
   - agentflow criteria
   - CriterionConfig
@@ -17,7 +17,9 @@ keywords:
 
 Each `EvalCase` is scored against one or more criteria. A criterion receives the agent's execution trajectory and final response, then returns a score between `0.0` (fail) and `1.0` (pass). A case passes when every enabled criterion meets its threshold.
 
-AgentFlow ships eight built-in criteria split into two groups: **no-LLM** (deterministic, free, instant) and **LLM-judge** (semantic, costs API calls).
+The built-in criteria split into two groups: **no-LLM** (deterministic, free, instant) and **LLM-judge** (semantic, costs API calls). Each heading below is the criterion's reported name — the key you will see in the report and in `EvalSummary.criterion_stats`.
+
+For constructor signatures and how to write your own criterion, see the [criteria API reference](../../reference/python/evaluation-criteria.md).
 
 ---
 
@@ -27,7 +29,7 @@ These criteria do not call any LLM. They are deterministic, free, and run in mil
 
 ### tool_name_match_score — Tool name matching
 
-Checks that the set of tool names called by the agent matches the expected set. Order is not considered; only presence.
+Checks that the tool names called by the agent cover the expected ones. Order and arguments are ignored; only presence and count matter.
 
 ```python
 from agentflow.qa.evaluation import CriterionConfig
@@ -35,11 +37,13 @@ from agentflow.qa.evaluation import CriterionConfig
 CriterionConfig.tool_name_match(threshold=1.0)
 ```
 
-- Score `1.0` — all expected tools were called, no unexpected tools
+- Score `1.0` — every expected tool name was called
 - Score `0.0` — none of the expected tools were called
-- Partial scores — proportional to overlap
+- Partial scores — the fraction of expected names matched
 
-**Use when** you want a strict check that the right tools were selected but do not care about order or arguments.
+Extra tools the agent called on top of the expected ones do **not** reduce the score. The one exception: when the case expects no tools at all, calling any tool scores `0.5` and calling none scores `1.0`.
+
+**Use when** you want a check that the right tools were selected but do not care about order or arguments.
 
 ---
 
@@ -77,7 +81,7 @@ CriterionConfig.trajectory(
 
 ---
 
-### node_order_match_score — Node visit order
+### node_order_score — Node visit order
 
 Checks that the graph visited nodes in the expected sequence. Useful for verifying that routing logic is correct (e.g., `MAIN → TOOL → MAIN → END`).
 
@@ -129,15 +133,15 @@ CriterionConfig.contains_keywords(
 This criterion is not included in any preset because keywords are domain-specific. Add it manually to `EvalConfig.criteria`:
 
 ```python
-from agentflow.qa.evaluation import EvalConfig, CriterionConfig
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 
 config = EvalConfig(
-    criteria={
-        "contains_keywords": CriterionConfig.contains_keywords(
+    criteria=CriteriaConfig(
+        contains_keywords=CriterionConfig.contains_keywords(
             keywords=["refund", "policy"],
             threshold=1.0,
         ),
-    }
+    )
 )
 ```
 
@@ -169,9 +173,9 @@ CriterionConfig.response_match(
 
 ---
 
-### llm_judge — Overall quality scoring
+### final_response_match_v2 — LLM judge
 
-Asks the LLM to assign a quality score (0–1) based on relevance, helpfulness, and coherence. Does not compare against an expected response.
+Configured as `llm_judge`, reported as `final_response_match_v2`. It runs the **same** semantic-equivalence check as `response_match_score` — the two differ only in the name they report under, so you can run both a stricter and a looser threshold over the same question in one report.
 
 ```python
 CriterionConfig.llm_judge(
@@ -181,7 +185,9 @@ CriterionConfig.llm_judge(
 )
 ```
 
-**When to use:** for open-ended tasks where a fixed expected response is not practical. Combine with other criteria — `llm_judge` alone is too permissive.
+Like `response_match_score`, it skips with score `1.0` when the case defines no expected final response, so it is not a substitute for open-ended quality scoring. For open-ended tasks where no expected answer exists, write your own criteria with `rubric_based` instead.
+
+Its `details` include `individual_scores` (one per sample), `reasonings`, and `judge_model`.
 
 ---
 
@@ -197,7 +203,7 @@ CriterionConfig.factual_accuracy(
 )
 ```
 
-The judge looks for factual errors in the response relative to the query context. A score of `1.0` means all facts are correct.
+The judge compares the response against reference material: the case's expected final response, or `EvalCase.metadata["reference_facts"]` when no expected response is set. A score of `1.0` means all facts are correct. Errors the judge names are collected in `details["errors"]`.
 
 **When to use:** for agents that report real-world data (stock prices, weather, historical facts, medical information).
 
@@ -215,7 +221,7 @@ CriterionConfig.hallucination(
 )
 ```
 
-The evaluator provides both the tool results collected during execution and the final response to the judge. The judge then assesses whether claims in the response are supported by the evidence.
+The evaluator builds the grounding context from the tool results collected during execution plus `EvalCase.metadata["context"]`, then asks the judge whether the claims in the response are supported by that evidence. Anything the judge flags is listed in `details["hallucinations"]`.
 
 **When to use:** for RAG agents, research agents, or any agent that presents retrieved information as facts.
 
@@ -223,7 +229,7 @@ The evaluator provides both the tool results collected during execution and the 
 
 ### safety_v1 — Safety scoring
 
-Scores the response across five safety dimensions:
+The judge assesses the response across five safety dimensions:
 
 | Dimension | What it checks |
 |---|---|
@@ -233,7 +239,7 @@ Scores the response across five safety dimensions:
 | `misinformation` | Deliberately false or misleading claims |
 | `manipulation` | Psychological manipulation or deception |
 
-The overall score is the **minimum** across all five dimensions. A single unsafe category fails the criterion.
+The criterion score is the judge's **overall** safety score, averaged across `num_samples` calls. The five dimensions are scored separately and averaged into `details["category_scores"]`, so you can see which dimension pulled the score down without it changing the pass/fail decision. `details["issues"]` lists the specific problems the judge named.
 
 ```python
 CriterionConfig.safety(
@@ -272,7 +278,11 @@ CriterionConfig.rubric_based(
 )
 ```
 
-The final score is the weighted average of all rubric scores. `weight` controls relative importance — higher weight means the rubric has more influence on the outcome.
+All rubrics go into a single judge prompt as `"- {rubric_id}: {content}"` lines, and the judge returns one overall score for the response. That score is averaged across `num_samples` calls.
+
+`weight` is stored on the `Rubric` model but is **not** used by this criterion — it does not produce a weighted average. To weight criteria against each other, combine them with `WeightedCriterion` (see the [criteria API reference](../../reference/python/evaluation-criteria.md#weightedcriterion)). To make one rubric matter more, say so in its `content`.
+
+With no rubrics configured the criterion returns `1.0` and skips the judge call.
 
 **When to use:** for product-specific quality requirements that generic criteria cannot express (tone, brand voice, compliance language, format requirements).
 
@@ -294,62 +304,78 @@ config = CriterionConfig(
     keywords=[],
     check_args=False,
     enabled=True,
+    api_style="responses",
 )
 ```
 
 | Field | Default | Description |
 |---|---|---|
 | `threshold` | `0.8` | Minimum score to pass (0.0 – 1.0) |
-| `match_type` | `EXACT` | Match type for trajectory criteria |
+| `match_type` | `EXACT` | Match type for trajectory and node-order criteria |
 | `judge_model` | `gemini-2.5-flash` | LLM used for judge-based criteria |
 | `num_samples` | `3` | Number of judge calls (average reduces noise) |
 | `rubrics` | `[]` | Custom rubrics for `rubric_based` |
 | `keywords` | `[]` | Required keywords for `contains_keywords` |
 | `check_args` | `False` | Verify tool arguments in trajectory matching |
 | `enabled` | `True` | Set to `False` to disable without removing |
+| `api_style` | `"responses"` | OpenAI judge API style. Use `"chat"` for models that only support legacy Chat Completions |
 
 ---
 
 ## EvalConfig — combining criteria
 
-Wrap criteria in an `EvalConfig` to run them together:
+Wrap criteria in an `EvalConfig` to run them together. `EvalConfig.criteria` is a typed `CriteriaConfig` model with one named field per criterion — not a free-form dict. Unknown field names raise a validation error.
 
 ```python
-from agentflow.qa.evaluation import EvalConfig, CriterionConfig, MatchType
+from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, MatchType
 
 config = EvalConfig(
-    criteria={
-        "tool_trajectory_avg_score": CriterionConfig.trajectory(
+    criteria=CriteriaConfig(
+        trajectory=CriterionConfig.trajectory(
             threshold=1.0,
             match_type=MatchType.EXACT,
         ),
-        "rouge_match": CriterionConfig.rouge_match(threshold=0.5),
-        "hallucinations_v1": CriterionConfig.hallucination(threshold=0.8),
-    },
+        rouge_match=CriterionConfig.rouge_match(threshold=0.5),
+        hallucination=CriterionConfig.hallucination(threshold=0.8),
+    ),
     parallel=True,
     max_concurrency=4,
     timeout=120.0,
 )
 ```
 
+The available `CriteriaConfig` fields are `tool_name_match`, `trajectory`, `node_order`, `response_match`, `rouge_match`, `contains_keywords`, `llm_judge`, `rubric_based`, `factual_accuracy`, `hallucination`, `safety` and `simulation_goals`. Each defaults to `None`, meaning the criterion is off. The field name is the *configuration* key; the criterion still reports under its own name, as listed in the headings above.
+
 | EvalConfig field | Default | Description |
 |---|---|---|
-| `criteria` | `{}` | Dict of criterion key → `CriterionConfig` |
+| `criteria` | empty `CriteriaConfig()` | Which criteria run |
 | `parallel` | `False` | Run cases concurrently |
 | `max_concurrency` | `4` | Max parallel cases when `parallel=True` |
 | `timeout` | `300.0` | Seconds per case before timeout |
 | `verbose` | `False` | Extra logging during evaluation |
 | `mock_mode` | `False` | Skip actual execution (for config testing) |
+| `user_simulator_config` | `None` | Settings for user simulation |
+| `reporter` | default `ReporterConfig()` | Automatic report generation |
 
 ---
 
-## Disabling criteria
+## Enabling and disabling criteria
+
+These methods take the `CriteriaConfig` **field name**, not the reported criterion name:
 
 ```python
-config.disable_criterion("rouge_match")   # sets enabled=False
-config.enable_criterion("rouge_match")    # re-enables with existing config
-config.enable_criterion("rouge_match", CriterionConfig.rouge_match(0.4))  # re-enable with new config
+config.disable_criterion("rouge_match")   # sets enabled=False, keeps the config
+config.enable_criterion("rouge_match")    # attaches a default CriterionConfig()
+config.enable_criterion("rouge_match", CriterionConfig.rouge_match(0.4))  # with a specific config
 ```
+
+Note that `enable_criterion(name)` without a config **replaces** whatever was there with a fresh `CriterionConfig()` (threshold `0.8`, EXACT match). To re-enable a criterion you previously disabled without losing its settings, set the flag back directly:
+
+```python
+config.criteria.rouge_match.enabled = True
+```
+
+Passing a name that is not a `CriteriaConfig` field raises `ValueError`.
 
 ---
 
@@ -358,3 +384,4 @@ config.enable_criterion("rouge_match", CriterionConfig.rouge_match(0.4))  # re-e
 - [Presets](./presets.md) — ready-made configs for common scenarios
 - [Reports](./reports.md) — how scores are reported
 - [Eval sets](./eval-set.md) — building test cases
+- [Criteria API reference](../../reference/python/evaluation-criteria.md) — constructors, composition, custom criteria

@@ -1,6 +1,6 @@
 ---
-title: REST API — Threads — REST API reference
-sidebar_label: REST API
+title: Thread endpoints — REST API reference
+sidebar_label: Threads
 description: Reference for the thread state and messages endpoints.
 keywords:
   - rest api reference

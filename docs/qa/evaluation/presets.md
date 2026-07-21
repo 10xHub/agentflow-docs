@@ -71,9 +71,11 @@ config = EvalPresets.response_quality(
 
 Criteria included:
 - `response_match_score` — semantic match with expected response
-- `llm_judge` — overall quality score (when `use_llm_judge=True`)
+- `final_response_match_v2` — the `llm_judge` slot, added when `use_llm_judge=True` (single sample)
 
 **When to use:** Q&A agents, FAQ bots, or any agent where response accuracy matters but exact wording varies.
+
+Both criteria run the same semantic check; the second gives you a corroborating score under a separate name.
 
 ---
 
@@ -89,7 +91,7 @@ config = EvalPresets.conversation_flow(
 ```
 
 Criteria included:
-- `response_match_score` — semantic match (IN_ORDER tool matching)
+- `response_match_score` — semantic match with the expected response
 - `tool_trajectory_avg_score` — tool sequence with IN_ORDER matching
 
 **When to use:** agents with multi-turn dialogue where the conversation follows a predictable flow.
@@ -132,11 +134,13 @@ Criteria included (no-LLM):
 - `tool_trajectory_avg_score`
 - `rouge_match`
 
-Criteria included (LLM-judge):
-- `llm_judge`
+Criteria included (LLM-judge, when `use_llm_judge=True`):
+- `final_response_match_v2` (the `llm_judge` slot)
 - `factual_accuracy_v1`
 - `hallucinations_v1`
 - `safety_v1`
+
+Note that `comprehensive` uses `rouge_match` rather than `response_match_score` for response comparison.
 
 Note: `contains_keywords` is not included in `comprehensive` because keywords are domain-specific. Add it manually if needed (see [Criteria — contains_keywords](./criteria.md#contains_keywords)).
 
@@ -147,6 +151,8 @@ Note: `contains_keywords` is not included in `comprehensive` because keywords ar
 `EvalPresets.custom()` lets you enable exactly the criteria you need by passing threshold values. Any criterion whose threshold is `None` is excluded.
 
 ```python
+from agentflow.qa.evaluation import EvalPresets, MatchType
+
 config = EvalPresets.custom(
     response_threshold=0.7,
     tool_threshold=1.0,
@@ -182,16 +188,18 @@ config = EvalPresets.combine(
 ```python
 from agentflow.qa.evaluation import EvalConfig
 
-config = EvalConfig.default()   # tool trajectory (EXACT) + response match (ROUGE)
-config = EvalConfig.strict()    # EXACT trajectory with args + high-threshold LLM judge
+config = EvalConfig.default()   # EXACT trajectory + semantic response match
+config = EvalConfig.strict()    # EXACT trajectory with args + high-threshold judges
 config = EvalConfig.relaxed()   # IN_ORDER trajectory + lower response threshold
 ```
 
 | Preset | Trajectory | Response | Extra |
 |---|---|---|---|
-| `default()` | EXACT, threshold 1.0 | ROUGE, threshold 0.8 | — |
-| `strict()` | EXACT + args, threshold 1.0 | LLM judge, threshold 0.9 | LLM judge, 5 samples |
-| `relaxed()` | IN_ORDER, threshold 0.8 | LLM judge, threshold 0.6 | — |
+| `default()` | EXACT, threshold 1.0 | `response_match_score`, threshold 0.8 | — |
+| `strict()` | EXACT + `check_args=True`, threshold 1.0 | `response_match_score`, threshold 0.9 | `final_response_match_v2`, threshold 0.9, 5 samples |
+| `relaxed()` | IN_ORDER, `check_args=False`, threshold 0.8 | `response_match_score`, threshold 0.6 | — |
+
+All three use `response_match`, which is LLM-based. None of them use ROUGE — for a no-LLM config use `EvalPresets.quick_check()`.
 
 ---
 
@@ -209,33 +217,41 @@ config = EvalConfig.from_file("eval_config.json")
 
 ## Building a custom EvalConfig from scratch
 
+`EvalConfig.criteria` is a typed `CriteriaConfig` model with one named slot per criterion. It forbids unknown fields, so you cannot invent your own keys such as `"tone_check"` — each criterion goes in the slot that belongs to it.
+
 ```python
-from agentflow.qa.evaluation import EvalConfig, CriterionConfig, MatchType, Rubric
+from agentflow.qa.evaluation import (
+    CriteriaConfig,
+    CriterionConfig,
+    EvalConfig,
+    MatchType,
+    Rubric,
+)
 
 config = EvalConfig(
-    criteria={
+    criteria=CriteriaConfig(
         # No-LLM: tool correctness
-        "tool_trajectory_avg_score": CriterionConfig.trajectory(
+        trajectory=CriterionConfig.trajectory(
             threshold=1.0,
             match_type=MatchType.EXACT,
             check_args=True,
         ),
 
         # No-LLM: response overlap
-        "rouge_match": CriterionConfig.rouge_match(threshold=0.5),
+        rouge_match=CriterionConfig.rouge_match(threshold=0.5),
 
         # LLM: semantic accuracy
-        "response_match_score": CriterionConfig.response_match(
+        response_match=CriterionConfig.response_match(
             threshold=0.8,
             judge_model="gemini-2.5-flash",
             num_samples=3,
         ),
 
         # LLM: hallucination
-        "hallucinations_v1": CriterionConfig.hallucination(threshold=0.9),
+        hallucination=CriterionConfig.hallucination(threshold=0.9),
 
-        # LLM: domain-specific rubric
-        "tone_check": CriterionConfig.rubric_based(
+        # LLM: domain-specific rubrics — all rubrics share the one slot
+        rubric_based=CriterionConfig.rubric_based(
             rubrics=[
                 Rubric(
                     rubric_id="professional_tone",
@@ -243,23 +259,24 @@ config = EvalConfig(
                         "The response must use professional, formal language. "
                         "Avoid colloquialisms and slang."
                     ),
-                    weight=1.0,
-                )
+                ),
             ],
             threshold=0.8,
         ),
 
         # Keyword check
-        "has_disclaimer": CriterionConfig.contains_keywords(
+        contains_keywords=CriterionConfig.contains_keywords(
             keywords=["consult a professional", "not financial advice"],
             threshold=1.0,
         ),
-    },
+    ),
     parallel=True,
     max_concurrency=4,
     timeout=120.0,
 )
 ```
+
+Available slots: `tool_name_match`, `trajectory`, `node_order`, `response_match`, `rouge_match`, `contains_keywords`, `llm_judge`, `rubric_based`, `factual_accuracy`, `hallucination`, `safety`, `simulation_goals`. Because there is exactly one `rubric_based` slot, multiple named rubrics all go into the same `rubrics` list rather than into separate criteria.
 
 ### Add rubrics to an existing config
 

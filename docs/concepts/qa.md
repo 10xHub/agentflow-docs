@@ -1,6 +1,14 @@
 ---
 title: Quality & Observability
 sidebar_label: Quality & Observability
+description: AgentFlow's QA stack — model-free testing with TestAgent, LLM evaluation with AgentEvaluator, and LLM-as-user simulation with UserSimulator.
+keywords:
+  - agentflow testing
+  - agent evaluation
+  - testagent
+  - llm evaluation criteria
+  - user simulator
+  - agent qa
 sidebar_position: 7
 ---
 

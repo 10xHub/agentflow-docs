@@ -1,3 +1,15 @@
+---
+title: File Tools — Prebuilt tools
+sidebar_label: File Tools
+description: file_read, file_write, and file_search — workspace-scoped prebuilt tools for reading, writing, and searching files.
+keywords:
+  - file tools agentflow
+  - file_read
+  - file_write
+  - file_search
+  - workspace-scoped file access
+---
+
 # File Tools
 
 Prebuilt tools for reading, writing, and searching files within a configured workspace root.

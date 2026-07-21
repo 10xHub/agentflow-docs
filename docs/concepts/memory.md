@@ -1,6 +1,13 @@
 ---
 title: Memory
 sidebar_label: Memory
+description: AgentFlow's three memory layers — running context, Redis/Postgres conversational checkpoints, and long-term memory via memory_tool and BaseStore.
+keywords:
+  - agentflow memory
+  - agent state context
+  - checkpointing memory
+  - long-term memory tool
+  - qdrant store memory
 sidebar_position: 3
 ---
 

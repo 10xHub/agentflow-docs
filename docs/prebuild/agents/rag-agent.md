@@ -1,3 +1,15 @@
+---
+title: RAGAgent — Prebuilt agents
+sidebar_label: RAGAgent
+description: RAGAgent retrieves documents with vector search, optionally reranks with CohereReranker or CrossEncoderReranker, then synthesizes an answer.
+keywords:
+  - rag agent
+  - retrieval augmented generation
+  - agentflow rag
+  - reranker
+  - vector search agent
+---
+
 # RAGAgent
 
 A Retrieval-Augmented Generation agent that retrieves relevant documents from a knowledge base before generating an answer.

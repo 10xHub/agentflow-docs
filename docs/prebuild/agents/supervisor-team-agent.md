@@ -1,3 +1,15 @@
+---
+title: SupervisorTeamAgent — Prebuilt agents
+sidebar_label: SupervisorTeamAgent
+description: SupervisorTeamAgent routes work through a SUPERVISOR node to specialist worker agents, generating its routing prompt from the worker registry.
+keywords:
+  - supervisor agent
+  - multi-agent supervisor pattern
+  - agent team routing
+  - centralized multi-agent
+  - worker agent registry
+---
+
 # SupervisorTeamAgent
 
 A centralized multi-agent pattern where a dedicated supervisor LLM decides which specialist worker to invoke next.

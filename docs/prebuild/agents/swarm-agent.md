@@ -1,3 +1,15 @@
+---
+title: SwarmAgent — Prebuilt agents
+sidebar_label: SwarmAgent
+description: SwarmAgent lets peer agents hand off control directly via transfer_to_X tools, with no central supervisor coordinating routing.
+keywords:
+  - swarm agent
+  - peer-to-peer multi-agent
+  - agent handoff pattern
+  - decentralized multi-agent
+  - transfer_to tool
+---
+
 # SwarmAgent
 
 A peer-to-peer multi-agent pattern where agents hand off control to each other directly — no central coordinator.

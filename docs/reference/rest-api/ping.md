@@ -1,6 +1,6 @@
 ---
-title: REST API — Ping — REST API reference
-sidebar_label: REST API
+title: Health check endpoint — REST API reference
+sidebar_label: Ping
 description: Health check endpoint for the AgentFlow API server.
 keywords:
   - rest api reference

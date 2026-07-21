@@ -10,9 +10,11 @@
     "serve": "NO_UPDATE_NOTIFIER=1 docusaurus serve",
     "clear": "NO_UPDATE_NOTIFIER=1 docusaurus clear",
     "typecheck": "tsc --noEmit",
-    "seo:audit": "node scripts/audit-frontmatter.mjs",
-    "seo:fix": "node scripts/fix-frontmatter.mjs",
-    "seo:og-image": "node scripts/generate-og-image.mjs"
+    "lint:frontmatter": "node scripts/audit-frontmatter.mjs",
+    "lint:links": "node scripts/check-external-links.mjs",
+    "verify:api": "python3 scripts/verify_api_reference.py",
+    "og-image": "node scripts/generate-og-image.mjs",
+    "docs:cut-version": "docusaurus docs:version"
   },
   "dependencies": {
     "@docusaurus/core": "^3.8.1",

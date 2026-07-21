@@ -1,6 +1,12 @@
 ---
 title: Providers and Adapters
 description: Provider selection, model response conversion, reasoning options, and third-party tool adapters.
+keywords:
+  - agentflow providers
+  - model provider adapters
+  - openai provider
+  - google gemini provider
+  - vertex ai
 sidebar_position: 15
 ---
 

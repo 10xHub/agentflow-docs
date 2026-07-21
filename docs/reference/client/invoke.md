@@ -1,7 +1,7 @@
 ---
-title: `invoke()` — TypeScript client reference
+title: "`invoke()` — TypeScript client reference"
 sidebar_label: "`invoke()`"
-description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state.
+description: "Reference for the AgentFlowClient.invoke() method — send messages and receive the final state."
 keywords:
   - typescript client reference
   - agent client api

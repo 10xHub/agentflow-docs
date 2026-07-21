@@ -1,6 +1,12 @@
 ---
 title: Publishers and Runtime Adapters
 description: Structured execution events, external event buses, and AgentFlow runtime adapters.
+keywords:
+  - event publishers
+  - consolepublisher
+  - runtime adapters
+  - execution events
+  - observability agentflow
 sidebar_position: 16
 ---
 

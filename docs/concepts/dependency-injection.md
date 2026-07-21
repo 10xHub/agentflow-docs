@@ -15,7 +15,7 @@ sidebar_position: 11
 
 # Dependency injection
 
-AgentFlow uses a lightweight dependency injection system based on [`injectq`](https://github.com/10XScale-in/injectq). Both tool functions and pure async node functions can declare parameters that are automatically resolved and injected at runtime — without coupling your code to framework internals.
+AgentFlow uses a lightweight dependency injection system based on [`injectq`](https://github.com/Iamsdt/injectq). Both tool functions and pure async node functions can declare parameters that are automatically resolved and injected at runtime — without coupling your code to framework internals.
 
 ---
 

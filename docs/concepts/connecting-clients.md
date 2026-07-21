@@ -1,6 +1,13 @@
 ---
 title: Connecting Clients
 sidebar_label: Connecting Clients
+description: How the @10xscale/agentflow-client TypeScript SDK connects browser and Node.js apps to an AgentFlow API over REST, SSE, and WebSockets.
+keywords:
+  - agentflow client sdk
+  - agentflowclient
+  - typescript client
+  - connect to agentflow api
+  - sse streaming client
 sidebar_position: 5
 ---
 

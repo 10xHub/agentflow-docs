@@ -1,6 +1,12 @@
 ---
 title: Callbacks and Command
 description: Hook into invocations, validate inputs, recover from errors, and route from inside nodes.
+keywords:
+  - callback manager
+  - agentflow command
+  - invocation type
+  - node routing
+  - hook agent invocations
 sidebar_position: 12
 ---
 

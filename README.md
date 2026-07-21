@@ -50,13 +50,26 @@ Static output in `build/`.
 
 > **Windows + Git Bash note:** if `npm run build` mangles `BASE_URL=/` (you'll see broken links resolving to `C:/Program Files/Git/...`), run from PowerShell with `$env:MSYS_NO_PATHCONV='1'`.
 
-## SEO scripts
+## Checks
 
 ```bash
-npm run seo:audit       # lint per-page front matter (title, description, keywords)
-npm run seo:fix         # auto-fill missing/short SEO front matter (idempotent)
-npm run seo:og-image    # convert SVG social card to PNG (requires `sharp`)
+npm run build              # fails on any broken internal link
+npm run typecheck
+npm run lint:frontmatter   # every page needs title, description, keywords
+npm run lint:links         # every external URL must resolve
+npm run verify:api         # documented symbols, routes, and commands must exist
+npm run og-image           # regenerate the PNG social card from the SVG
 ```
+
+`verify:api` checks the docs against the packages published to PyPI, which is
+what readers actually install:
+
+```bash
+pip install 10xscale-agentflow 10xscale-agentflow-cli
+npm run verify:api
+```
+
+All of these run in CI (`.github/workflows/ci.yml`).
 
 ## Deploy
 
@@ -74,38 +87,54 @@ The site is configured for the custom domain **agentflow.10xscale.ai** (CNAME in
 ```text
 docs/
   get-started/         # golden path, beginner-friendly
-  concepts/            # mental models
-  beginner/            # tutorial path
+  beginner/            # guided tutorial path
+  concepts/            # mental models, with an "In depth" tier beneath
+  prebuild/            # prebuilt agents and tools
+  how-to/              # task-oriented guides (python, production, cli, client)
+  qa/                  # unit testing and evaluation
   tutorials/           # from-examples deep dives
-  how-to/              # task-oriented guides
-  reference/           # API reference (Python, REST, TS client)
-  compare/             # framework comparisons (LangGraph, CrewAI, AutoGen, etc.)
+  reference/           # API reference (Python, REST, CLI, TS client)
+  troubleshooting/
   use-cases/           # production reference architectures
   integrations/        # FastAPI / Next.js / Postgres
   providers/           # LLM provider configuration
-  troubleshooting/
+  glossary/            # definition pages
+  compare/             # framework comparisons (LangGraph, CrewAI, AutoGen, etc.)
   courses/             # GenAI beginner + advanced curriculum
+  project/             # changelog, upgrade guide, roadmap, security, support
 
-blog/                  # 10 cornerstone posts, RSS at /blog/rss.xml
+blog/                  # cornerstone posts, RSS at /blog/rss.xml
 src/
   components/          # CompareTable, FAQ, RelatedDocs, BlogStructuredData
   pages/               # Homepage
   theme/               # MDXComponents, Root swizzles
-static/                # CNAME, robots.txt, social card, favicon
-scripts/               # SEO automation (audit, fix, og-image)
-marketing/             # Launch kit (HN/Reddit/dev.to), measurement playbook
-SEO_PLAN.md            # Full SEO plan (Parts A–F)
+static/                # CNAME, robots.txt, llms.txt, social card, favicon
+scripts/               # front-matter, link, and API-drift checks
+COURSE_STYLE_GUIDE.md  # authoring rules for docs/courses (not published)
 ```
+
+Docs versions are cut only when a release line needs to stay available:
+
+```bash
+npm run docs:cut-version -- 1.0
+```
+
+That snapshots `docs/` into `versioned_docs/version-1.0`; the navbar version
+dropdown then appears automatically.
 
 ## Contributing
 
-PRs welcome. Before opening:
+PRs welcome. Before opening one, run the checks above.
 
-1. `npm run typecheck`
-2. `npm run build` (verify no broken links)
-3. `npm run seo:audit` (verify SEO front-matter)
+Writing conventions, where a page belongs, and the release process are
+documented on the site: [Contributing](https://agentflow.10xscale.ai/docs/project/contributing).
 
-For new doc pages, follow the front-matter pattern enforced by `scripts/audit-frontmatter.mjs` (title 25–60 chars, description 100–160 chars, keywords array).
+Two rules worth repeating here:
+
+- **Verify before asserting.** Read the source for the signature, the default,
+  and the error message. Documented APIs that never existed have shipped before;
+  `npm run verify:api` exists to stop that.
+- **Moving or renaming a page requires a redirect** in `docusaurus.config.ts`.
 
 ## Related repos
 

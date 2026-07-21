@@ -1,7 +1,7 @@
 ---
-title: `realtime()` — TypeScript client reference
+title: "`realtime()` — TypeScript client reference"
 sidebar_label: "`realtime()`"
-description: Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket.
+description: "Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket."
 keywords:
   - typescript client reference
   - realtime audio client

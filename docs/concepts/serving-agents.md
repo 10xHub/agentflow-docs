@@ -1,6 +1,13 @@
 ---
 title: Serving Agents
 sidebar_label: Serving Agents
+description: How agentflow.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
+keywords:
+  - agentflow.json
+  - serving agents
+  - agentflow api server
+  - auth configuration
+  - production deployment agentflow
 sidebar_position: 4
 ---
 
@@ -81,8 +88,12 @@ flowchart TB
 | Checkpointer | `/v1/threads` | Thread state CRUD, message CRUD |
 | Store | `/v1/store` | Memory store, search, get, update, delete, list, forget |
 | Media | `/v1/media` | File upload / download |
-| A2A | `/a2a` | Agent-to-Agent protocol (Coming soon) |
 | Health | `/ping` | Health check |
+
+There is no Agent-to-Agent (A2A) endpoint. The unmounted `a2a` routers were
+removed from the CLI package; agents compose in-process through handoffs, or
+across processes over the normal REST API. See the
+[roadmap](../project/roadmap.md).
 
 ---
 

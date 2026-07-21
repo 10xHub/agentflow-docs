@@ -23,7 +23,7 @@ const docTracks = [
     eyebrow: '02',
     title: 'Learn the core concepts',
     body: 'Understand agents, tools, state, memory, streaming, and production runtime boundaries before you scale up.',
-    href: '/docs/concepts/architecture',
+    href: '/docs/concepts',
   },
   {
     eyebrow: '03',
@@ -179,7 +179,7 @@ const tenxFeatures = [
   {icon: 'DatabaseZap' as const, text: 'Redis + Postgres dual-layer persistence'},
   {icon: 'Zap' as const, text: 'Multi-model: OpenAI, Gemini, and OpenAI-compatible endpoints'},
   {icon: 'Globe' as const, text: 'REST + SSE server included — zero extra config'},
-  {icon: 'Code2' as const, text: 'Typed TypeScript client with streaming and realtime audio'},
+  {icon: 'Code' as const, text: 'Typed TypeScript client with streaming and realtime audio'},
   {icon: 'Lock' as const, text: 'JWT auth, rate limiting, Snowflake IDs built in'},
 ];
 
@@ -202,7 +202,7 @@ const faqItems: FAQEntry[] = [
   },
   {
     q: 'Which AI models does AgentFlow support?',
-    a: 'AgentFlow has native clients for OpenAI (GPT-4o, o1, o3-mini) and Google Gemini (Gemini 2.5 Flash, Gemini 2.0), selected automatically from the model string. Any other provider that exposes an OpenAI-compatible endpoint, including Anthropic Claude, works by pointing the OpenAI client at its base URL. Switching between models leaves the graph and tools exactly the same.',
+    a: 'AgentFlow has native clients for OpenAI and Google Gemini, selected automatically from the model string (for example "google/gemini-2.5-flash" or "openai/gpt-4o-mini"). Any other provider exposing an OpenAI-compatible endpoint, including Anthropic Claude, works by pointing the OpenAI client at its base URL. Switching models leaves the graph and tools exactly the same.',
   },
   {
     q: 'Does AgentFlow support streaming?',
@@ -214,7 +214,7 @@ const faqItems: FAQEntry[] = [
   },
   {
     q: 'Is AgentFlow production-ready?',
-    a: 'AgentFlow is the runtime used in production by 10xScale for all their AI products. It ships with Postgres + Redis dual-layer persistence for durable threads, JWT authentication, rate limiting, Snowflake ID generation for distributed deployments, and Docker/Kubernetes build support via `agentflow build --docker-compose`.',
+    a: 'AgentFlow is the runtime used in production by 10xScale for all their AI products. The 1.0 release adds optimistic concurrency on durable state, an idempotent tool-execution ledger, real node and tool timeouts, and per-user isolation across storage. It ships Postgres + Redis dual-layer persistence, JWT authentication, rate limiting, Snowflake IDs, and Docker and Kubernetes builds via `agentflow build --docker-compose --k8s`.',
   },
   {
     q: 'How do I install AgentFlow?',
@@ -236,8 +236,12 @@ export default function Home() {
         <section className="hero hero--agentflow">
           <div className="container heroGrid">
             <div className="heroCopy">
+              {/* No version number here on purpose: a hard-coded one on the
+                  landing page goes stale on every release. Versions live on
+                  /docs/project/changelog, which is generated from the real
+                  release notes. */}
               <p className="eyebrow">
-                <Icon name="Sparkles" size={12} /> &nbsp;By 10xScale &nbsp;·&nbsp; v0.8 &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
+                <Icon name="Sparkles" size={12} /> &nbsp;By 10xScale &nbsp;·&nbsp; MIT &nbsp;·&nbsp; Python 3.12+
               </p>
               <Heading as="h1" className="heroTitle">
                 Production AI agents in Python. Ship in minutes.
@@ -432,7 +436,7 @@ export default function Home() {
           <div className="container">
             <div className="sectionHeader sectionHeader--center">
               <p className="eyebrow">
-                <Icon name="HelpCircle" size={12} /> &nbsp;FAQ
+                <Icon name="CircleQuestionMark" size={12} /> &nbsp;FAQ
               </p>
               <Heading as="h2">Questions about AgentFlow.</Heading>
               <p>

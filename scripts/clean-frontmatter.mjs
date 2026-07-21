@@ -98,7 +98,9 @@ for (const file of walk(docsDir)) {
     titlesFixed += 1;
     changed = true;
     // Re-quote when the value contains a colon, which YAML would misread.
-    const needsQuote = /:\s/.test(next) || next.includes('#');
+    // YAML needs quoting for ": ", "#", and any value opening with an
+    // indicator character (backtick, brace, bracket, and friends).
+    const needsQuote = /:\s/.test(next) || next.includes('#') || /^[`{}[\]*&!|>%@,'"]/.test(next);
     return `title: ${needsQuote ? JSON.stringify(next) : next}`;
   });
 
@@ -110,7 +112,9 @@ for (const file of walk(docsDir)) {
     const next = value.replace(DESC_BOILERPLATE, '').trim();
     descriptionsFixed += 1;
     changed = true;
-    const needsQuote = /:\s/.test(next) || next.includes('#');
+    // YAML needs quoting for ": ", "#", and any value opening with an
+    // indicator character (backtick, brace, bracket, and friends).
+    const needsQuote = /:\s/.test(next) || next.includes('#') || /^[`{}[\]*&!|>%@,'"]/.test(next);
     return `description: ${needsQuote ? JSON.stringify(next) : next}`;
   });
 

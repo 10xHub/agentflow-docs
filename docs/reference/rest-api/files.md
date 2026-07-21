@@ -1,6 +1,6 @@
 ---
-title: REST API — Files — REST API reference
-sidebar_label: REST API
+title: File upload endpoints — REST API reference
+sidebar_label: Files
 description: Reference for the file upload and retrieval endpoints.
 keywords:
   - rest api reference

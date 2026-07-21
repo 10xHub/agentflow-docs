@@ -21,7 +21,8 @@ export type ConversionEvent =
   | 'cta_compare_page'
   | 'cta_blog_get_started'
   | 'cta_github'
-  | 'cta_install_command_copy';
+  | 'cta_install_command_copy'
+  | 'cta_tenxscale';
 
 export function trackEvent(
   event: ConversionEvent,

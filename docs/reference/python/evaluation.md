@@ -1,7 +1,7 @@
 ---
 title: Evaluation — Python API reference
 sidebar_label: Evaluation
-description: AgentEvaluator, EvalConfig, CriterionConfig, EvalSet, EvalCase, TrajectoryCollector — run repeatable, scored evaluations of your agents.
+description: AgentEvaluator, EvalSet, EvalCase, EvalConfig, EvalReport and TrajectoryCollector — how a scored evaluation run is wired together.
 keywords:
   - agentflow python reference
   - agent api reference
@@ -21,9 +21,17 @@ Use the evaluation framework when you need to:
 - Score agent accuracy on a labelled dataset (golden answers).
 - Assert that the agent follows the correct tool-call sequence (trajectory matching).
 - Run LLM-as-judge scoring against a rubric.
-- Run automated red-teaming / adversarial simulation against the agent.
+- Run goal-driven user simulation against the agent.
 
-The evaluation runner is separate from unit tests. It is designed to run as a CI step or a recurring offline report.
+The evaluation runner is separate from unit tests. It is designed to run as a CI
+step or a recurring offline report.
+
+This page covers the data model and the runner. Two companion pages go deeper:
+
+- [Evaluation criteria](./evaluation-criteria.md) — every criterion class, its
+  constructor and its scoring behaviour.
+- [Evaluation harness](./evaluation-harness.md) — `EvaluationRunner`,
+  `ReporterManager`, and the pytest helpers.
 
 ## Import paths
 
@@ -31,11 +39,16 @@ The evaluation runner is separate from unit tests. It is designed to run as a CI
 from agentflow.qa.evaluation import (
     AgentEvaluator,
     EvalConfig,
+    CriteriaConfig,
     CriterionConfig,
     MatchType,
     Rubric,
     EvalSet,
+    EvalSetBuilder,
     EvalCase,
+    Invocation,
+    MessageContent,
+    SessionInput,
     ToolCall,
     TrajectoryStep,
     StepType,
@@ -47,20 +60,71 @@ from agentflow.qa.evaluation import (
 )
 ```
 
+Everything above is also re-exported from `agentflow.qa`.
+
+---
+
+## Wiring a run
+
+Evaluation needs two objects: a **compiled** graph and the `TrajectoryCollector`
+whose callback manager that graph was compiled with. Without that pairing the
+collector sees no events and every trajectory criterion scores zero.
+
+The short way:
+
+```python
+from agentflow.qa.evaluation import AgentEvaluator, create_eval_app
+
+app, collector = create_eval_app(build_my_graph())   # uncompiled StateGraph in
+evaluator = AgentEvaluator(app, collector)
+```
+
+The explicit way, when you need to control compilation yourself:
+
+```python
+from agentflow.qa.evaluation import TrajectoryCollector, make_trajectory_callback
+
+collector = TrajectoryCollector(capture_all_events=True)
+_, callback_mgr = make_trajectory_callback(collector, config={"thread_id": "eval-1"})
+
+app = my_state_graph.compile(callback_manager=callback_mgr)
+```
+
+`make_trajectory_callback()` returns a **tuple** `(collector, callback_manager)` —
+pass the second element to `compile()`.
+
 ---
 
 ## `EvalCase`
 
-A single labelled test case.
+A single labelled test case. Fields:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `eval_id` | `str` | random UUID | Unique ID for this case. |
+| `name` | `str` | `""` | Label shown in reports. |
+| `description` | `str` | `""` | Longer description. |
+| `conversation` | `list[Invocation]` | `[]` | One entry per turn. Expected tools, node order and responses live here. |
+| `session_input` | `SessionInput` | default instance | `app_name`, `user_id` (`"test_user"`), `state`, `config`. `config` is merged into the run config. |
+| `tags` | `list[str]` | `[]` | Used by `EvalSet.filter_by_tags()`. |
+| `metadata` | `dict[str, Any]` | `{}` | Free-form. `HallucinationCriterion` reads `metadata["context"]`; `FactualAccuracyCriterion` reads `metadata["reference_facts"]`. |
+
+There is no `expected_response` or `expected_tools` attribute on `EvalCase` itself —
+those are constructor arguments of the factory methods, stored on the `Invocation`
+objects inside `conversation`.
 
 ### `EvalCase.single_turn`
 
 ```python
+from agentflow.qa.evaluation import EvalCase, ToolCall
+
 case = EvalCase.single_turn(
     eval_id="weather-paris-001",
     user_query="What is the weather in Paris today?",
-    expected_response="sunny",      # substring or full string match
-    expected_tools=["get_weather"], # tool names that must be called
+    expected_response="It is sunny in Paris.",
+    expected_tools=[ToolCall(name="get_weather", args={"location": "Paris"})],
+    expected_node_order=["MAIN", "TOOL", "MAIN"],
+    name="Paris weather",
 )
 ```
 
@@ -68,32 +132,59 @@ case = EvalCase.single_turn(
 |---|---|---|---|
 | `eval_id` | `str` | required | Unique ID for this case. |
 | `user_query` | `str` | required | Input message from the user. |
-| `expected_response` | `str \| None` | `None` | Expected substring or full text response. |
-| `expected_tools` | `list[str] \| None` | `None` | Tool names that must appear in the trajectory. |
-| `expected_trajectory` | `list[TrajectoryStep] \| None` | `None` | Ordered node/tool execution steps. |
-| `config` | `dict \| None` | `None` | Runtime config merged into `ainvoke()` config. |
+| `expected_response` | `str \| None` | `None` | Expected final response. `None` means response criteria skip the case. |
+| `expected_tools` | `list[ToolCall] \| None` | `None` | Expected tool calls. `ToolCall` objects, not plain strings. |
+| `expected_node_order` | `list[str] \| None` | `None` | Expected node visit sequence. |
+| `name` | `str` | `""` | Label shown in reports. |
+| `description` | `str` | `""` | Longer description. |
 
-### Multi-turn case
-
-Multi-turn cases pass a list of `(user_message, expected_response)` tuples:
+### `EvalCase.multi_turn`
 
 ```python
-case = EvalCase(
+case = EvalCase.multi_turn(
     eval_id="multi-turn-001",
-    turns=[
+    conversation=[
         ("Hello", "Hi"),
         ("What can you do?", "I can answer questions"),
         ("Tell me about Python", "Python is a programming language"),
     ],
-    expected_tools=["search_docs"],
+    expected_tools=[ToolCall(name="search_docs")],
 )
 ```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `eval_id` | `str` | required | Unique ID for this case. |
+| `conversation` | `list[tuple[str, str]]` | required | `(user_query, expected_response)` per turn. |
+| `expected_tools` | `list[ToolCall] \| None` | `None` | Attached to the **first** invocation only. |
+| `name` | `str` | `""` | Label shown in reports. |
+| `description` | `str` | `""` | Longer description. |
+
+The evaluator feeds the agent one user message per turn and accumulates tool calls,
+node visits and messages across all turns. Criteria then score the accumulated
+execution once, not per turn.
+
+### `Invocation`
+
+One turn inside `EvalCase.conversation`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `invocation_id` | `str` | random UUID | Turn identifier. |
+| `user_content` | `MessageContent` | required | The user message for this turn. |
+| `expected_tool_trajectory` | `list[ToolCall]` | `[]` | Tools expected during this turn. |
+| `expected_node_order` | `list[str]` | `[]` | Node sequence expected during this turn. |
+| `expected_intermediate_responses` | `list[MessageContent]` | `[]` | Reserved for intermediate output. |
+| `expected_final_response` | `MessageContent \| None` | `None` | Expected reply for this turn. |
+
+`Invocation.simple(user_query, expected_response=None, expected_tools=None, expected_node_order=None)`
+builds one without touching `MessageContent` directly.
 
 ---
 
 ## `ToolCall`
 
-Represents an expected tool invocation for trajectory assertions.
+Represents an expected or actual tool invocation.
 
 ```python
 from agentflow.qa.evaluation import ToolCall
@@ -102,43 +193,53 @@ tc = ToolCall(
     name="get_weather",
     args={"location": "Paris", "units": "celsius"},
     call_id=None,   # optional
+    result=None,    # populated on actual calls
 )
 ```
 
 ### `ToolCall.matches`
 
 ```python
-tc.matches(actual_call_dict)  # → bool
+tc.matches(other, check_args=True, check_call_id=False)  # -> bool
 ```
 
-Compares name and any args you specified. Missing keys in `args` are ignored (partial match by default).
+Compares against another `ToolCall`. Names must always be equal. Arguments are only
+compared when `check_args=True` **and** the expected call defines non-empty `args` —
+an expected `ToolCall` with `args={}` accepts any arguments. Trajectory criteria call
+this with `check_call_id=False`.
 
 ---
 
 ## `TrajectoryStep`
 
-A step in the expected execution trajectory (node entry or tool call).
+A recorded step in the execution trajectory.
 
-### `TrajectoryStep.node`
+| Field | Type | Default |
+|---|---|---|
+| `step_type` | `StepType` | required |
+| `name` | `str` | required |
+| `args` | `dict[str, Any]` | `{}` |
+| `timestamp` | `float \| None` | `None` |
+| `metadata` | `dict[str, Any]` | `{}` |
 
 ```python
-step = TrajectoryStep.node("RESEARCH_NODE")
+from agentflow.qa.evaluation import TrajectoryStep
+
+node_step = TrajectoryStep.node("RESEARCH_NODE")
+tool_step = TrajectoryStep.tool("search", args={"query": "AI trends"})
 ```
 
-### `TrajectoryStep.tool`
-
-```python
-step = TrajectoryStep.tool(
-    ToolCall(name="search", args={"query": "AI trends"})
-)
-```
+Both factories take the step name as a plain string and accept extra keyword
+arguments, which are stored in `metadata`.
 
 ### `StepType`
 
 | Value | Description |
 |---|---|
-| `StepType.NODE` | An agent node was entered. |
+| `StepType.NODE` | A graph node was entered. |
 | `StepType.TOOL` | A tool was called. |
+| `StepType.MESSAGE` | A message step. |
+| `StepType.CONDITIONAL` | A conditional-edge step. |
 
 ---
 
@@ -146,93 +247,116 @@ step = TrajectoryStep.tool(
 
 A collection of `EvalCase` objects.
 
+| Field | Type | Default |
+|---|---|---|
+| `eval_set_id` | `str` | random UUID |
+| `name` | `str` | `""` |
+| `description` | `str` | `""` |
+| `eval_cases` | `list[EvalCase]` | `[]` |
+| `metadata` | `dict[str, Any]` | `{}` |
+
 ```python
-eval_set = EvalSet(cases=[case1, case2, case3])
+from agentflow.qa.evaluation import EvalSet
+
+eval_set = EvalSet(eval_set_id="capitals", name="Capitals", eval_cases=[case1, case2])
 ```
 
-Load from a JSONL file:
+| Method | Description |
+|---|---|
+| `EvalSet.from_file(path)` | Classmethod. Load from a JSON file matching the `EvalSet` schema. |
+| `to_file(path)` / `save(path)` | Write to a JSON file. |
+| `add_case(case)` | Append a case. |
+| `get_case(eval_id)` | Look up a case, or `None`. |
+| `filter_by_tags(tags)` | Cases carrying **all** of the given tags. |
+| `len(eval_set)` / iteration | Case count / iterate over cases. |
 
-```python
-eval_set = EvalSet.from_jsonl("path/to/dataset.jsonl")
-```
-
-Each JSONL line is a JSON object matching the `EvalCase` schema.
+The on-disk format is a single JSON object, not JSONL. `EvalSetBuilder` offers a
+fluent way to construct one — see
+[Building eval sets](../../qa/evaluation/eval-set.md).
 
 ---
 
-## `CriterionConfig`
+## `EvalConfig`
 
-Defines a single evaluation criterion. Use the factory methods.
+Holds the criteria to apply during evaluation, plus run-level settings.
 
-### `CriterionConfig.tool_name_match`
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `criteria` | `CriteriaConfig` | empty `CriteriaConfig()` | Which criteria run. |
+| `user_simulator_config` | `UserSimulatorConfig \| None` | `None` | Simulator settings. |
+| `parallel` | `bool` | `False` | Run cases concurrently. |
+| `max_concurrency` | `int` | `4` | Concurrency cap. |
+| `timeout` | `float` | `300.0` | Seconds per case. |
+| `verbose` | `bool` | `False` | Verbose logging. |
+| `mock_mode` | `bool` | `False` | Skip actual execution. |
+| `reporter` | `ReporterConfig` | default instance | Automatic report generation. |
+
+`criteria` is a **typed model**, not a free-form dict. `CriteriaConfig` forbids
+unknown fields, so each criterion goes in its own named slot:
 
 ```python
-criterion = CriterionConfig.tool_name_match(threshold=1.0)
-```
+from agentflow.qa.evaluation import (
+    CriteriaConfig,
+    CriterionConfig,
+    EvalConfig,
+    MatchType,
+)
 
-Checks that the tools called match `expected_tools`. `threshold` is the fraction of expected tools that must match (1.0 = all).
-
-### `CriterionConfig.trajectory`
-
-```python
-criterion = CriterionConfig.trajectory(
-    threshold=1.0,
-    match_type=MatchType.IN_ORDER,
-    check_args=True,
+config = EvalConfig(
+    criteria=CriteriaConfig(
+        tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+        trajectory=CriterionConfig.trajectory(match_type=MatchType.IN_ORDER),
+        llm_judge=CriterionConfig.llm_judge(),
+    ),
+    parallel=True,
+    max_concurrency=4,
 )
 ```
 
-Checks node + tool execution order against `expected_trajectory`.
+### `CriteriaConfig` fields
 
-### `CriterionConfig.node_order`
+Every field is `CriterionConfig | None`, defaulting to `None` (criterion off).
 
-```python
-criterion = CriterionConfig.node_order()
-```
+| Field | Criterion class | Reported as |
+|---|---|---|
+| `tool_name_match` | `ToolNameMatchCriterion` | `tool_name_match_score` |
+| `trajectory` | `TrajectoryMatchCriterion` | `tool_trajectory_avg_score` |
+| `node_order` | `NodeOrderMatchCriterion` | `node_order_score` |
+| `response_match` | `ResponseMatchCriterion` | `response_match_score` |
+| `rouge_match` | `RougeMatchCriterion` | `rouge_match` |
+| `contains_keywords` | `ContainsKeywordsCriterion` | `contains_keywords` |
+| `llm_judge` | `LLMJudgeCriterion` | `final_response_match_v2` |
+| `rubric_based` | `RubricBasedCriterion` | `rubric_based_final_response_quality_v1` |
+| `factual_accuracy` | `FactualAccuracyCriterion` | `factual_accuracy_v1` |
+| `hallucination` | `HallucinationCriterion` | `hallucinations_v1` |
+| `safety` | `SafetyCriterion` | `safety_v1` |
+| `simulation_goals` | `SimulationGoalsCriterion` | `simulation_goals` |
 
-Checks only node execution order (no tool args).
+The "reported as" column is the criterion's `name` — the key you will see in
+`EvalSummary.criterion_stats` and in `CriterionResult.criterion`.
 
-### `CriterionConfig.llm_judge`
+### Built-in configurations
 
-```python
-criterion = CriterionConfig.llm_judge(
-    prompt="Does the response correctly answer the user's query? Score 0-1.",
-    model="gemini-2.5-flash",  # default: DEFAULT_JUDGE_MODEL
-)
-```
+| Classmethod | Criteria enabled |
+|---|---|
+| `EvalConfig.default()` | `trajectory` (EXACT, threshold 1.0) + `response_match` (LLM, threshold 0.8) |
+| `EvalConfig.strict()` | `trajectory` (EXACT, `check_args=True`, 1.0) + `response_match` (0.9) + `llm_judge` (0.9, 5 samples) |
+| `EvalConfig.relaxed()` | `trajectory` (IN_ORDER, `check_args=False`, 0.8) + `response_match` (0.6) |
 
-Uses a second LLM to score the response qualitatively.
+### Methods
 
-### `CriterionConfig.rubric`
+| Method | Description |
+|---|---|
+| `EvalConfig.from_file(path)` | Classmethod. Load config from JSON. |
+| `to_file(path)` | Write config to JSON. |
+| `get_criterion_config(name)` | Fetch a `CriterionConfig` by `CriteriaConfig` field name. |
+| `enable_criterion(name, config=None)` | Enable by field name. Raises `ValueError` for unknown names. |
+| `disable_criterion(name)` | Set `enabled=False` on that criterion. |
+| `with_rubrics(rubrics)` | Return a deep copy with `rubric_based` configured. |
 
-```python
-criterion = CriterionConfig.rubric(
-    rubrics=[
-        Rubric(rubric_id="accuracy",   content="The answer is factually correct",   weight=0.5),
-        Rubric(rubric_id="conciseness", content="The answer is concise",             weight=0.3),
-        Rubric(rubric_id="tone",        content="The tone is friendly and helpful",  weight=0.2),
-    ]
-)
-```
-
-### `CriterionConfig.safety`
-
-```python
-criterion = CriterionConfig.safety()
-```
-
-Flags responses that contain harmful, toxic, or policy-violating content.
-
-### `CriterionConfig.simulation`
-
-```python
-criterion = CriterionConfig.simulation(
-    persona="an angry customer who asks about a delayed order",
-    max_turns=5,
-)
-```
-
-Runs an adversarial user simulation and scores the agent's handling.
+`CriterionConfig` fields and factory methods are documented in
+[Criteria](../../qa/evaluation/criteria.md#criterionconfig-reference); the criterion
+classes themselves in [Evaluation criteria](./evaluation-criteria.md).
 
 ---
 
@@ -240,9 +364,9 @@ Runs an adversarial user simulation and scores the agent's handling.
 
 | Value | Description |
 |---|---|
-| `MatchType.EXACT` | Steps must match exactly (same order, same count). |
-| `MatchType.IN_ORDER` | Expected steps must appear in the actual trajectory in order, but other steps are allowed between them. |
-| `MatchType.ANY_ORDER` | All expected steps must appear, in any order. |
+| `MatchType.EXACT` | Same items, same positions. |
+| `MatchType.IN_ORDER` | Expected items must appear in order; extras allowed between them. |
+| `MatchType.ANY_ORDER` | All expected items must appear, in any order. |
 
 ---
 
@@ -258,66 +382,61 @@ rubric = Rubric(
 )
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `rubric_id` | `str` | Unique ID for this rubric. |
-| `content` | `str` | The grading criterion text passed to the LLM judge. |
-| `weight` | `float` | Weight in the aggregate score (0.0–1.0). Weights across all rubrics should sum to 1. |
-
----
-
-## `EvalConfig`
-
-Holds the criteria to apply during evaluation.
-
-```python
-from agentflow.qa.evaluation import EvalConfig, CriterionConfig, MatchType
-
-config = EvalConfig(
-    criteria={
-        "tool_match": CriterionConfig.tool_name_match(threshold=1.0),
-        "trajectory": CriterionConfig.trajectory(match_type=MatchType.IN_ORDER),
-        "quality": CriterionConfig.llm_judge(),
-    }
-)
-```
-
-### `EvalConfig.default`
-
-```python
-config = EvalConfig.default()
-```
-
-Returns a default config with `tool_match` and `trajectory` criteria.
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `rubric_id` | `str` | required | Unique ID; shown in `details["rubrics"]`. |
+| `content` | `str` | required | Grading criterion text passed to the judge. |
+| `weight` | `float` | `1.0` | Relative importance. Weights do not have to sum to 1. |
 
 ---
 
 ## `TrajectoryCollector`
 
-Records node entries and tool calls during a graph run. Wire it in via `make_trajectory_callback()`.
+Records node visits, tool calls and per-node LLM output during a graph run. It is a
+`BasePublisher`, fed by `PublisherCallback`.
 
 ```python
 from agentflow.qa.evaluation import TrajectoryCollector, make_trajectory_callback
 
-collector = TrajectoryCollector()
-callback = make_trajectory_callback(collector)
+collector = TrajectoryCollector(capture_all_events=True)
+_, callback_mgr = make_trajectory_callback(collector)
 
-app = graph.compile(callback_manager=callback)
-
+app = graph.compile(callback_manager=callback_mgr)
 await app.ainvoke({"messages": [...]})
 
-# Inspect recorded trajectory:
 for step in collector.trajectory:
-    print(step.type, step.name)
+    print(step.step_type, step.name)
 ```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `capture_all_events` | `bool` | `False` | Also retain every raw `EventModel` on `collector.events`. |
+
+| Attribute | Type | Description |
+|---|---|---|
+| `trajectory` | `list[TrajectoryStep]` | Ordered node and tool steps. |
+| `tool_calls` | `list[ToolCall]` | Tool calls with args and results. |
+| `node_visits` | `list[str]` | Node names in visit order. |
+| `node_responses` | `list[NodeResponse]` | Per-node input/output snapshots. |
+| `final_response` | `str` | Text from the last non-tool-call node invocation. |
+| `events` | `list[EventModel]` | Raw events, when `capture_all_events=True`. |
+| `start_time` / `end_time` | `float \| None` | First and last event timestamps. |
+
+`AgentEvaluator` calls `collector.reset()` before every case.
 
 ### `make_trajectory_callback`
 
 ```python
-callback = make_trajectory_callback(collector: TrajectoryCollector) -> CallbackManager
+def make_trajectory_callback(
+    collector: TrajectoryCollector,
+    config: dict | None = None,
+) -> tuple[TrajectoryCollector, CallbackManager]
 ```
 
-Returns a `CallbackManager` that feeds events into the `TrajectoryCollector`.
+Builds a `CallbackManager` with a `PublisherCallback` registered for the `TOOL`,
+`MCP` and `AI` invocation types. `config` may carry `thread_id` and `run_id`, which
+are stamped onto every emitted event. Pass the returned callback manager to
+`graph.compile()`.
 
 ---
 
@@ -326,33 +445,49 @@ Returns a `CallbackManager` that feeds events into the `TrajectoryCollector`.
 Main evaluation runner.
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator, EvalConfig, EvalSet
+from agentflow.qa.evaluation import AgentEvaluator, EvalConfig
 
-evaluator = AgentEvaluator(
-    graph=app,
-    collector=collector,
-    config=EvalConfig.default(),
-)
-
+evaluator = AgentEvaluator(app, collector, config=EvalConfig.default())
 report = await evaluator.evaluate(eval_set)
 print(report.format_summary())
 ```
 
 ### Constructor parameters
 
-| Parameter | Type | Description |
-|---|---|---|
-| `graph` | `CompiledGraph` | The compiled graph to evaluate. |
-| `collector` | `TrajectoryCollector` | Trajectory collector wired into the graph. |
-| `config` | `EvalConfig` | Criteria configuration. |
-| `concurrency` | `int` | Number of cases to run in parallel (default: 1). |
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `graph` | `CompiledGraph` | required | Graph compiled with the collector's callback manager. |
+| `collector` | `TrajectoryCollector` | required | Collector wired into that graph. |
+| `config` | `EvalConfig \| None` | `None` | Falls back to `EvalConfig.default()`. |
 
-### Methods
+Concurrency is **not** a constructor argument — pass `parallel` and
+`max_concurrency` to `evaluate()`, or set them on `EvalConfig`.
+
+### `evaluate`
+
+```python
+async def evaluate(
+    eval_set: EvalSet | str,
+    parallel: bool = False,
+    max_concurrency: int = 4,
+    verbose: bool = False,
+    output_dir: str | None = None,
+) -> EvalReport
+```
+
+`eval_set` accepts an `EvalSet` or a path to an eval set JSON file (a missing file
+raises `FileNotFoundError`). After building the report, `evaluate()` runs the
+configured reporters unless `config.reporter.enabled` is `False`; `output_dir`
+overrides `ReporterConfig.output_dir` for that run. Parallel mode is only used when
+`parallel=True` and the set has more than one case.
+
+### Other methods
 
 | Method | Signature | Description |
 |---|---|---|
-| `evaluate` | `async (eval_set: EvalSet) → EvalReport` | Run all cases and return the full report. |
-| `evaluate_case` | `async (case: EvalCase) → EvalCaseResult` | Run a single case and return its result. |
+| `evaluate_case` | **async** `(case: EvalCase) -> EvalCaseResult` | Run one case. Useful for per-case pytest assertions. |
+| `evaluate_sync` | classmethod `(graph, collector, eval_set, config=None, verbose=False) -> EvalReport` | Blocking wrapper around `evaluate()` via `asyncio.run`. |
+| `evaluate_file` | classmethod **async** `(agent_module, eval_file, config_file=None) -> EvalReport` | Import a module exposing `graph` / `compiled_graph` / `agent_graph` / `app` and evaluate it. |
 
 ---
 
@@ -360,59 +495,103 @@ print(report.format_summary())
 
 ### `EvalReport`
 
-Returned by `evaluator.evaluate()`.
+Returned by `evaluate()`.
 
 | Attribute | Type | Description |
 |---|---|---|
-| `cases` | `list[EvalCaseResult]` | Individual case results. |
-| `overall_score` | `float` | Weighted average score across all cases and criteria. |
-| `pass_rate` | `float` | Fraction of cases that passed all criteria. |
-| `total_cases` | `int` | Total number of cases evaluated. |
-| `passed_cases` | `int` | Number of cases that passed. |
+| `eval_set_id` | `str` | ID of the evaluated set. |
+| `eval_set_name` | `str` | Human-readable name. |
+| `results` | `list[EvalCaseResult]` | Individual case results. |
+| `summary` | `EvalSummary` | Aggregate statistics. |
+| `config_used` | `dict[str, Any]` | Snapshot of the config for provenance. |
+| `timestamp` | `float` | When the run finished. |
+| `metadata` | `dict[str, Any]` | Free-form. |
+| `passed` | property `bool` | `True` when `summary.pass_rate == 1.0`. |
+| `failed_cases` | property `list[EvalCaseResult]` | Cases where `passed` is `False`, errors included. |
+| `passed_cases` | property `list[EvalCaseResult]` | Cases that passed. |
 
-```python
-report.format_summary()   # → str  — human-readable summary
-```
+| Method | Description |
+|---|---|
+| `get_case_result(eval_id)` | Fetch one case result, or `None`. |
+| `format_summary()` | Human-readable multi-line summary string. |
+| `to_file(path)` / `EvalReport.from_file(path)` | JSON round-trip. |
+| `EvalReport.create(eval_set_id, results, eval_set_name="", config_used=None)` | Build a report and compute its summary. |
+
+The report has no `overall_score` or `pass_rate` attribute of its own — the rate
+lives on `report.summary.pass_rate`. Full `EvalSummary` fields are documented in
+[Evaluation harness](./evaluation-harness.md#evalsummary).
 
 ### `EvalCaseResult`
 
 | Attribute | Type | Description |
 |---|---|---|
 | `eval_id` | `str` | The case ID. |
-| `passed` | `bool` | True if all criteria passed. |
-| `score` | `float` | Aggregate score for this case. |
-| `criteria_results` | `dict[str, CriterionResult]` | Per-criterion results keyed by criterion name. |
-| `actual_response` | `str` | The agent's actual response. |
-| `actual_trajectory` | `list[TrajectoryStep]` | Recorded trajectory for this case. |
-| `error` | `str \| None` | Error message if the run itself failed. |
+| `name` | `str` | The case name. |
+| `passed` | `bool` | `True` when every criterion passed. |
+| `criterion_results` | `list[CriterionResult]` | One entry per criterion, in evaluation order. |
+| `actual_trajectory` | `list[TrajectoryStep]` | Recorded trajectory. |
+| `actual_tool_calls` | `list[ToolCall]` | Recorded tool calls. |
+| `actual_response` | `str` | The agent's final response. |
+| `messages` | `list[dict[str, Any]]` | Flattened message history. |
+| `node_responses` / `node_visits` | `list[...]` | Per-node snapshots and visit order. |
+| `duration_seconds` | `float` | Time for this case. |
+| `error` | `str \| None` | Set when the run itself failed. |
+| `turn_results` | `list[dict[str, Any]]` | Per-turn data for multi-turn cases. |
+| `token_usage` / `agent_token_usage` | `TokenUsage` | Total (agent + judges) and agent-only. |
+| `node_details` | `list[NodeDetail]` | Per-node LLM input/output and tokens. |
+
+| Member | Description |
+|---|---|
+| `get_criterion_result(name)` | Fetch one `CriterionResult` by criterion name. |
+| `failed_criteria` / `passed_criteria` | Properties filtering `criterion_results`. |
+| `is_error` | Property; `True` when `error` is set. |
+
+`criterion_results` is a **list**, not a dict. Use `get_criterion_result(name)` for
+lookups by name.
 
 ### `CriterionResult`
 
 | Attribute | Type | Description |
 |---|---|---|
-| `criterion_name` | `str` | The criterion's key from `EvalConfig.criteria`. |
-| `passed` | `bool` | True if the criterion passed. |
+| `criterion` | `str` | The criterion's `name`. |
 | `score` | `float` | Score 0.0–1.0. |
-| `reason` | `str \| None` | Explanation from LLM judge or matcher. |
+| `passed` | `bool` | `score >= threshold`. |
+| `threshold` | `float` | Threshold used. |
+| `details` | `dict[str, Any]` | Criterion-specific detail. |
+| `error` | `str \| None` | Set when the criterion itself failed. |
+| `token_usage` | `TokenUsage` | Judge tokens for this criterion. |
+| `reason` | property `str \| None` | Shortcut for `details.get("reason")`. |
+| `is_error` | property `bool` | `True` when `error` is set. |
 
 ---
 
 ## Reporters
 
-Print the report to the console, export as JSON, or generate an HTML dashboard.
+Reporters run automatically after `evaluate()` unless disabled. To drive them
+yourself, use `ReporterManager` — see
+[Evaluation harness](./evaluation-harness.md#reporting). The individual reporters are
+also usable directly:
 
 ```python
-from agentflow.qa.evaluation import ConsoleReporter, JSONReporter, HTMLReporter
+from agentflow.qa.evaluation import (
+    ConsoleReporter,
+    HTMLReporter,
+    JSONReporter,
+    JUnitXMLReporter,
+    print_report,
+)
 
-# Console
-ConsoleReporter().print(report)
+print_report(report, verbose=False, use_color=True)   # console shortcut
+ConsoleReporter(verbose=True).report(report)          # console, full control
 
-# JSON file
-JSONReporter(output_path="eval-report.json").write(report)
-
-# HTML dashboard
-HTMLReporter(output_path="eval-report.html").write(report)
+JSONReporter(indent=2).save(report, "eval-report.json")
+HTMLReporter().save(report, "eval-report.html")
+JUnitXMLReporter().save(report, "eval-report_junit.xml")
 ```
+
+Every reporter implements `BaseReporter.generate(report, output_dir=None)`. The file
+reporters additionally offer `save(report, path)` and a string form
+(`JSONReporter.to_json`, `HTMLReporter.to_html`, `JUnitXMLReporter.to_xml`).
 
 ---
 
@@ -423,7 +602,8 @@ from agentflow.qa.evaluation.config.types import DEFAULT_JUDGE_MODEL
 # "gemini-2.5-flash"
 ```
 
-The default LLM used for `llm_judge` and `rubric` criteria. Override by passing `model=` to the criterion config.
+The default LLM for every judge-based criterion. Override per criterion with
+`judge_model=` on the relevant `CriterionConfig` factory method.
 
 ---
 
@@ -431,71 +611,67 @@ The default LLM used for `llm_judge` and `rubric` criteria. Override by passing 
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph
-from agentflow.core.state import Message
-from agentflow.utils import END
-from agentflow.qa.testing import TestAgent
+
 from agentflow.qa.evaluation import (
     AgentEvaluator,
+    CriteriaConfig,
+    CriterionConfig,
+    EvalCase,
     EvalConfig,
     EvalSet,
-    EvalCase,
-    CriterionConfig,
     MatchType,
-    TrajectoryCollector,
-    make_trajectory_callback,
+    ToolCall,
+    create_eval_app,
 )
+
+from my_project.graph import build_graph   # returns an uncompiled StateGraph
 
 
 async def main():
-    # 1. Build a test-mode graph
-    collector = TrajectoryCollector()
-    callback = make_trajectory_callback(collector)
-
-    agent = TestAgent(
-        responses=[
-            "The capital of France is Paris.",
-            "Berlin is the capital of Germany.",
-        ]
-    )
-    graph = StateGraph()
-    graph.add_node("MAIN", agent)
-    graph.set_entry_point("MAIN")
-    graph.add_edge("MAIN", END)
-
-    app = graph.compile(callback_manager=callback)
+    # 1. Compile with a collector attached
+    app, collector = create_eval_app(build_graph())
 
     # 2. Build the eval set
-    eval_set = EvalSet(cases=[
-        EvalCase.single_turn(
-            eval_id="capitals-001",
-            user_query="What is the capital of France?",
-            expected_response="Paris",
-        ),
-        EvalCase.single_turn(
-            eval_id="capitals-002",
-            user_query="What is the capital of Germany?",
-            expected_response="Berlin",
-        ),
-    ])
+    eval_set = EvalSet(
+        eval_set_id="capitals",
+        name="Capital cities",
+        eval_cases=[
+            EvalCase.single_turn(
+                eval_id="capitals-001",
+                user_query="What is the capital of France?",
+                expected_response="The capital of France is Paris.",
+                expected_tools=[ToolCall(name="lookup_capital")],
+            ),
+            EvalCase.single_turn(
+                eval_id="capitals-002",
+                user_query="What is the capital of Germany?",
+                expected_response="The capital of Germany is Berlin.",
+                expected_tools=[ToolCall(name="lookup_capital")],
+            ),
+        ],
+    )
 
     # 3. Configure criteria
     config = EvalConfig(
-        criteria={
-            "response_quality": CriterionConfig.llm_judge(
-                prompt="Does the response correctly identify the capital city? Score 0 or 1."
+        criteria=CriteriaConfig(
+            trajectory=CriterionConfig.trajectory(
+                threshold=1.0,
+                match_type=MatchType.IN_ORDER,
             ),
-        }
+            response_match=CriterionConfig.response_match(threshold=0.8),
+        ),
     )
 
-    # 4. Run evaluation
-    evaluator = AgentEvaluator(graph=app, collector=collector, config=config)
-    report = await evaluator.evaluate(eval_set)
+    # 4. Run
+    evaluator = AgentEvaluator(app, collector, config=config)
+    report = await evaluator.evaluate(eval_set, verbose=True)
 
-    # 5. Print results
+    # 5. Inspect
     print(report.format_summary())
-    print(f"Pass rate: {report.pass_rate:.0%}")
-    print(f"Overall score: {report.overall_score:.2f}")
+    print(f"Pass rate: {report.summary.pass_rate:.0%}")
+    for case in report.failed_cases:
+        for cr in case.failed_criteria:
+            print(f"{case.eval_id} · {cr.criterion}: {cr.score:.2f} < {cr.threshold}")
 
 
 asyncio.run(main())
@@ -507,8 +683,12 @@ asyncio.run(main())
 
 | Error | Cause | Fix |
 |---|---|---|
-| `ImportError: No module named 'google.generativeai'` | LLM judge requires Google GenAI SDK. | `pip install google-generativeai` |
-| `CriterionResult.score == 0.0` for `tool_name_match` | Agent didn't call any tools. | Check that `expected_tools` are reachable from the entry point. |
-| `EvalCase` with `expected_trajectory` never passes | `TrajectoryCollector` not wired into graph. | Use `make_trajectory_callback()` when calling `graph.compile()`. |
-| `MatchType.EXACT` failures when `IN_ORDER` expected | Too strict — actual trajectory has extra internal nodes. | Switch to `MatchType.IN_ORDER`. |
-| `report.pass_rate == 0.0` and all `error` fields are set | Graph raises exception on every case. | Run a single `evaluate_case()` to see the error detail. |
+| `ValidationError: Extra inputs are not permitted` on `EvalConfig` | `criteria` was given a free-form dict. `CriteriaConfig` has fixed field names and forbids extras. | Use `CriteriaConfig(trajectory=..., response_match=...)`. |
+| `AttributeError` on the object returned by `make_trajectory_callback()` | It returns `(collector, manager)`, not a manager. | `_, mgr = make_trajectory_callback(collector)`. |
+| Trajectory and node-order criteria always score `0.0` | The graph was compiled without the collector's callback manager. | Use `create_eval_app()`, or pass the manager to `compile()`. |
+| `FileNotFoundError: Eval set file not found` | Path passed to `evaluate()` does not exist. | Check the path relative to the working directory. |
+| `AttributeError: 'EvalReport' object has no attribute 'overall_score'` | No such attribute. | Use `report.summary.pass_rate` and `summary.criterion_stats`. |
+| `AttributeError: 'EvalCaseResult' object has no attribute 'case_id'` | The field is `eval_id`. | Use `result.eval_id`. |
+| Criterion score is `0.5` with reasoning `"No LLM provider available"` | The judge model could not be resolved to a configured provider. | Install the provider extra and set its API key. |
+| `MatchType.EXACT` failures when the run looks correct | The actual trajectory has extra tool calls. | Switch to `MatchType.IN_ORDER`. |
+| `report.summary.error_cases` equals the case count | The graph raises on every case. | Run one `evaluate_case()` and read `result.error`. |

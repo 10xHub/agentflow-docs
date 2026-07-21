@@ -1,6 +1,12 @@
 ---
 title: Testing and Evaluation
 description: Model-free tests, mock tools, trajectory checks, eval datasets, and reporting.
+keywords:
+  - agentflow testing
+  - testagent
+  - eval dataset
+  - trajectory testing
+  - mock tools
 sidebar_position: 17
 ---
 

@@ -1,6 +1,11 @@
 ---
 title: Rate Limiting
 description: Complete reference for the rate_limit block in agentflow.json.
+keywords:
+  - rate_limit config
+  - agentflow.json reference
+  - rate limiting backend
+  - sliding window limiter reference
 ---
 
 # Rate limiting reference

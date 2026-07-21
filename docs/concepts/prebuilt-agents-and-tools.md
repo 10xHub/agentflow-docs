@@ -1,6 +1,12 @@
 ---
 title: Prebuilt Agents and Tools
 description: Ready-made AgentFlow graph patterns, common tools, and handoff helpers.
+keywords:
+  - prebuilt agents
+  - reactagent
+  - ragagent
+  - planactreflectagent
+  - structuredoutputagent
 sidebar_position: 6
 ---
 

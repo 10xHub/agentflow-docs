@@ -1,6 +1,12 @@
 ---
 title: Emit Tool Progress Updates
 description: Learn how to send live progress, errors, and status updates from tools during streaming execution.
+keywords:
+  - streamemitter
+  - tool progress updates
+  - streaming tool status
+  - emit progress agentflow
+  - live tool updates
 ---
 
 # Emit Tool Progress Updates During Streaming

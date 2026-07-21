@@ -1,3 +1,15 @@
+---
+title: Memory Tools — Prebuilt tools
+sidebar_label: Memory Tools
+description: memory_tool, user_memory_tool, and agent_memory_tool give an agent long-term memory to store, search, update, and delete facts.
+keywords:
+  - memory tools agentflow
+  - memory_tool
+  - user_memory_tool
+  - agent_memory_tool
+  - long-term memory agent
+---
+
 # Memory Tools
 
 Prebuilt tools that give an agent access to long-term memory — the ability to store, search, update, and delete facts across conversations.

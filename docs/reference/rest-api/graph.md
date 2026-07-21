@@ -1,6 +1,6 @@
 ---
-title: REST API — Graph — REST API reference
-sidebar_label: REST API
+title: Graph endpoints — REST API reference
+sidebar_label: Graph
 description: Reference for the graph invoke, stream, stop and details endpoints.
 keywords:
   - rest api reference

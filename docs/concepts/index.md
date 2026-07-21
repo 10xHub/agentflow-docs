@@ -1,6 +1,13 @@
 ---
 title: The Big Picture
 sidebar_label: The Big Picture
+description: Overview of AgentFlow's three layers — the core Python library, the API/CLI server, and the TypeScript client SDK.
+keywords:
+  - agentflow architecture
+  - agentflow overview
+  - agentflow big picture
+  - multi-agent framework layers
+  - agentflow packages
 sidebar_position: 1
 ---
 

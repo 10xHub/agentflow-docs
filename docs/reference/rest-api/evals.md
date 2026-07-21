@@ -1,6 +1,6 @@
 ---
-title: REST API — Evals — REST API reference
-sidebar_label: REST API
+title: Eval endpoints — REST API reference
+sidebar_label: Evals
 description: Reference for the eval run listing and detail endpoints that serve agentflow eval reports over HTTP, including their public, unauthenticated status.
 keywords:
   - rest api reference

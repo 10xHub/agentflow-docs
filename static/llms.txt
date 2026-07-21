@@ -38,6 +38,19 @@ AgentFlow is free and open-source under the MIT license. There is no paid tier, 
 - [Memory and Checkpointing](https://agentflow.10xscale.ai/docs/concepts/checkpointing-and-threads): Durable threads with Redis + Postgres
 - [MCP Integration](https://agentflow.10xscale.ai/docs/how-to/python/use-mcp): Use MCP servers as tool sources
 - [Streaming](https://agentflow.10xscale.ai/docs/concepts/streaming): SSE streaming from Python to TypeScript
+- [API Reference](https://agentflow.10xscale.ai/docs/reference): Python library, REST API, CLI, and TypeScript client reference
+- [Deployment](https://agentflow.10xscale.ai/docs/how-to/production/deployment): Production model, checklist, and reverse proxy notes
+- [Kubernetes](https://agentflow.10xscale.ai/docs/how-to/production/kubernetes): Generated Deployment and Service, grace periods, scaling
+- [Backup and restore](https://agentflow.10xscale.ai/docs/how-to/production/backup-and-restore): What is durable, how to back it up, how to restore safely
+
+## Project
+
+- [Changelog](https://agentflow.10xscale.ai/docs/project/changelog): Release notes and the versioning and deprecation policy
+- [Upgrade to 1.0](https://agentflow.10xscale.ai/docs/project/upgrade-to-1.0): Breaking changes and migration steps
+- [Roadmap](https://agentflow.10xscale.ai/docs/project/roadmap): What is missing, partial, or deliberately out of scope
+- [Security](https://agentflow.10xscale.ai/docs/project/security): Vulnerability reporting and hardening checklist
+- [Support](https://agentflow.10xscale.ai/docs/project/support): Where to ask and how to file a useful bug report
+- [Contributing](https://agentflow.10xscale.ai/docs/project/contributing): Local setup, conventions, and merge checks
 
 ## Comparisons
 

@@ -312,11 +312,11 @@ tool_node = ToolNode([], client=mcp_client)
 tools = await tool_node.all_tools()
 print(tools)
 
-# Use tools in agent
-agent = ReactAgent(
-    tools=mcp_client.get_tools(),
-    model=OpenAIModel("gpt-4o")
-)
+# Or hand the same client to a prebuilt ReactAgent
+from agentflow.prebuilt.agent import ReactAgent
+
+agent = ReactAgent(model="gpt-4o", tools=[], client=mcp_client)
+app = agent.compile()
 ```
 
 ---
@@ -325,191 +325,170 @@ agent = ReactAgent(
 
 ### Step 1: Define Tool with Validation
 
+AgentFlow builds the JSON schema from the function signature itself: annotate each parameter and describe it in the docstring. There is no separate schema class to declare, and no result wrapper to return — return a plain value, and report failures as ordinary return values so the model can read and recover from them.
+
 ```python
-from agentflow.core.tools import tool, ToolResult
-from agentflow.core.tools.schema import ToolSchema
-from pydantic import BaseModel, Field
 from typing import Literal
 
-class CalculatorInput(BaseModel):
-    x: float = Field(description="First number")
-    y: float = Field(description="Second number")
-    operation: Literal["add", "subtract", "multiply", "divide"] = Field(
-        description="Arithmetic operation to perform"
-    )
+from agentflow.utils.decorators import tool
 
 @tool(
     name="calculator",
     description="Perform basic arithmetic operations. Use when the user asks for calculations.",
-    schema=CalculatorInput
 )
-def calculator(input_data: CalculatorInput) -> ToolResult:
-    """Safely perform calculations with validation."""
-    try:
-        match input_data.operation:
-            case "add":
-                result = input_data.x + input_data.y
-            case "subtract":
-                result = input_data.x - input_data.y
-            case "multiply":
-                result = input_data.x * input_data.y
-            case "divide":
-                if input_data.y == 0:
-                    return ToolResult(
-                        success=False,
-                        error="Division by zero not allowed"
-                    )
-                result = input_data.x / input_data.y
-        
-        return ToolResult(success=True, result=result)
-    
-    except Exception as e:
-        return ToolResult(success=False, error=str(e))
+def calculator(
+    x: float,
+    y: float,
+    operation: Literal["add", "subtract", "multiply", "divide"],
+) -> str:
+    """Safely perform calculations with validation.
+
+    Args:
+        x: First number.
+        y: Second number.
+        operation: Arithmetic operation to perform.
+    """
+    match operation:
+        case "add":
+            return str(x + y)
+        case "subtract":
+            return str(x - y)
+        case "multiply":
+            return str(x * y)
+        case "divide":
+            if y == 0:
+                return "Error: division by zero not allowed"
+            return str(x / y)
+    return f"Error: unknown operation {operation}"
 ```
+
+`Literal` annotations become an `enum` in the schema, so the model can only pick one of the four operations.
 
 ### Step 2: Define File Read Tool with Security
 
+Bounds that a Pydantic field would have enforced (`ge`, `le`) become explicit checks in the function body, since the model sees only the JSON schema types.
+
 ```python
 from pathlib import Path
-import hashlib
 
-class FileReadInput(BaseModel):
-    path: str = Field(description="Relative path to file")
-    max_lines: int = Field(default=100, ge=1, le=1000, description="Max lines to read")
+from agentflow.utils.decorators import tool
 
 @tool(
     name="file_read",
     description="Read content from a file in the allowed directories.",
-    schema=FileReadInput
 )
-def file_read(input_data: FileReadInput) -> ToolResult:
-    """Read file with path validation and limits."""
+def file_read(path: str, max_lines: int = 100) -> str:
+    """Read file with path validation and limits.
+
+    Args:
+        path: Relative path to file.
+        max_lines: Max lines to read (1-1000).
+    """
     # Security: Only allow reads in allowed directories
     allowed_dirs = ["/app/project", "/app/docs", "/app/data"]
     allowed_extensions = {".txt", ".md", ".py", ".json", ".csv"}
-    
+
+    max_lines = max(1, min(max_lines, 1000))
+
     try:
-        file_path = Path(input_data.path).resolve()
-        
+        file_path = Path(path).resolve()
+
         # Check directory
         if not any(str(file_path).startswith(d) for d in allowed_dirs):
-            return ToolResult(
-                success=False,
-                error=f"Access denied: {input_data.path} is outside allowed directories"
-            )
-        
+            return f"Error: {path} is outside allowed directories"
+
         # Check file exists
         if not file_path.exists():
-            return ToolResult(
-                success=False,
-                error=f"File not found: {input_data.path}"
-            )
-        
+            return f"Error: file not found: {path}"
+
         # Check extension
         if file_path.suffix not in allowed_extensions:
-            return ToolResult(
-                success=False,
-                error=f"File type not allowed: {file_path.suffix}"
-            )
-        
+            return f"Error: file type not allowed: {file_path.suffix}"
+
         # Read file
-        lines = file_path.read_text().splitlines()[:input_data.max_lines]
-        
-        return ToolResult(
-            success=True,
-            result="\n".join(lines),
-            metadata={"line_count": len(lines)}
-        )
-    
+        lines = file_path.read_text().splitlines()[:max_lines]
+        return "\n".join(lines)
+
     except PermissionError:
-        return ToolResult(success=False, error="Permission denied")
-    
+        return "Error: permission denied"
+
     except Exception as e:
-        return ToolResult(success=False, error=str(e))
+        return f"Error: {e}"
 ```
+
+AgentFlow also ships a hardened `file_read` in `agentflow.prebuilt.tools` if you would rather not write your own.
 
 ### Step 3: Register Tools with Agent
 
+`ReactAgent` builds the graph; `compile()` turns it into the runnable app. The model is a plain string.
+
 ```python
-from agentflow.core.graph import StateGraph, AgentState
+from agentflow.core.state import Message
 from agentflow.prebuilt.agent import ReactAgent
 
 # Create agent with tools
 agent = ReactAgent(
+    model="gpt-4o",
     tools=[calculator, file_read],
-    model=OpenAIModel("gpt-4o")
 )
+app = agent.compile()
 
 # Agent can now use these tools
-result = agent.invoke({
-    "messages": [Message(role="user", content="Calculate 15 * 23")]
-})
+result = app.invoke(
+    {"messages": [Message.text_message("Calculate 15 * 23")]},
+    config={"thread_id": "tools-1"},
+)
+print(result["messages"][-1].text())
 
 # Or with streaming
-for chunk in agent.stream({
-    "messages": [Message(role="user", content="What's in file.txt?")]
-}):
-    print(chunk, end="", flush=True)
+for chunk in app.stream(
+    {"messages": [Message.text_message("What's in file.txt?")]},
+    config={"thread_id": "tools-2"},
+):
+    if chunk.event == "message" and chunk.message:
+        print(chunk.message.text(), end="", flush=True)
 ```
 
 ### Complete Tool Example
 
 ```python
-from agentflow.core.tools import tool, ToolResult
-from agentflow.core.tools.schema import ToolSchema
-from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
+import re
 
-class SearchInput(BaseModel):
-    query: str = Field(description="Search query (not a URL)")
-    max_results: int = Field(default=5, ge=1, le=20)
-
-class SearchResult(BaseModel):
-    title: str
-    url: str
-    snippet: str
+from agentflow.utils.decorators import tool
 
 @tool(
     name="web_search",
     description="Search the web for information. Use when the user asks about current events or factual information.",
-    schema=SearchInput
+    tags=["search", "web"],
 )
-def web_search(input_data: SearchInput) -> ToolResult:
-    """Safe web search with input validation."""
-    import re
-    
+def web_search(query: str, max_results: int = 5) -> list[dict] | str:
+    """Safe web search with input validation.
+
+    Args:
+        query: Search query (not a URL).
+        max_results: Number of results to return (1-20).
+
+    Returns:
+        A list of results with 'title', 'url', and 'snippet' keys.
+    """
     # Security: Reject URLs as queries
-    url_pattern = r'^https?://'
-    if re.match(url_pattern, input_data.query):
-        return ToolResult(
-            success=False,
-            error="Please enter a search query, not a URL"
-        )
-    
+    if re.match(r"^https?://", query):
+        return "Error: please enter a search query, not a URL"
+
     # Security: Limit query length
-    if len(input_data.query) > 200:
-        return ToolResult(
-            success=False,
-            error="Query too long (max 200 characters)"
-        )
-    
+    if len(query) > 200:
+        return "Error: query too long (max 200 characters)"
+
+    max_results = max(1, min(max_results, 20))
+
     try:
         # Perform search (example with search API)
-        results = search_api.search(
-            query=input_data.query,
-            max_results=input_data.max_results
-        )
-        
-        return ToolResult(
-            success=True,
-            result=results,
-            metadata={"query": input_data.query, "count": len(results)}
-        )
-    
+        return search_api.search(query=query, max_results=max_results)
     except Exception as e:
-        return ToolResult(success=False, error=f"Search failed: {str(e)}")
+        return f"Error: search failed: {e}"
 ```
+
+The `tags` argument lets an `Agent` expose only a subset of registered tools via `tools_tags={"search"}`.
 
 ---
 
@@ -525,34 +504,45 @@ Build two safe tools:
 ### Requirements
 
 ```python
-# Tool 1: get_current_time
-class TimeInput(BaseModel):
-    timezone: str = Field(description="Timezone (e.g., 'America/New_York', 'UTC')")
+from typing import Literal
 
-@tool(name="get_current_time", description="...", schema=TimeInput)
-def get_current_time(input_data: TimeInput) -> ToolResult:
+from agentflow.utils.decorators import tool
+
+# Tool 1: get_current_time
+@tool(name="get_current_time", description="...")
+def get_current_time(timezone: str) -> str:
+    """Return the current time in a timezone.
+
+    Args:
+        timezone: Timezone (e.g., 'America/New_York', 'UTC').
+    """
     # Must:
     # - Validate timezone format
     # - Return readable time format
     # - Handle invalid timezones gracefully
-    pass
+    ...
 
 # Tool 2: unit_converter
-class ConverterInput(BaseModel):
-    value: float = Field(description="Value to convert")
-    from_unit: str = Field(description="Source unit")
-    to_unit: str = Field(description="Target unit")
-    category: Literal["length", "weight", "temperature", "time"] = Field(
-        description="Unit category"
-    )
+@tool(name="unit_converter", description="...")
+def unit_converter(
+    value: float,
+    from_unit: str,
+    to_unit: str,
+    category: Literal["length", "weight", "temperature", "time"],
+) -> str:
+    """Convert a value between units.
 
-@tool(name="unit_converter", description="...", schema=ConverterInput)
-def unit_converter(input_data: ConverterInput) -> ToolResult:
+    Args:
+        value: Value to convert.
+        from_unit: Source unit.
+        to_unit: Target unit.
+        category: Unit category.
+    """
     # Must:
     # - Validate units within category
     # - Handle invalid conversions
     # - Return clear result
-    pass
+    ...
 ```
 
 ### Test Cases

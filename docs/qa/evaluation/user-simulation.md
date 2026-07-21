@@ -117,11 +117,13 @@ The CLI detects `get_scenarios()` (or a `SCENARIOS` module-level constant), runs
 
 **What the CLI does internally:**
 1. Detects `get_scenarios()` or `SCENARIOS` in the file
-2. Reads `SIMULATOR_CONFIG` if present, otherwise uses defaults
-3. Attaches `SimulationGoalsCriterion` (threshold 0.7) automatically
-4. Runs scenarios through `BatchSimulator` under the shared asyncio event loop
+2. Reads `SIMULATOR_CONFIG` if present, otherwise uses `UserSimulatorConfig()` defaults
+3. Builds one shared `UserSimulator` per file with a `SimulationGoalsCriterion` (threshold 0.7, single sample) attached automatically
+4. Queues each scenario as a pending case and runs it with `simulator.run(graph, scenario)` in the same pool as regular eval cases, so `--parallel` applies to both
 5. Converts each `SimulationResult` to an `EvalCaseResult` — pass/fail based on goal score vs threshold
 6. Writes the report alongside all other eval cases
+
+`BatchSimulator` is for programmatic use; the CLI does not go through it.
 
 ---
 
@@ -187,10 +189,13 @@ result = await simulator.run(graph, scenario)
 | `model` | `gemini/gemini-2.5-flash` | LLM used to generate user messages and check goals |
 | `temperature` | `0.7` | Generation temperature — higher values produce more varied user messages |
 | `max_turns` | `10` | Default turn limit (overridden by `scenario.max_turns`) |
-| `config` | `None` | Pass a `UserSimulatorConfig` instead of individual parameters |
+| `config` | `None` | Pass a `UserSimulatorConfig` instead of individual parameters. When given, it overrides `model`, `temperature`, `max_turns` (from `max_invocations`) and `api_style` |
 | `criteria` | `[]` | List of `BaseCriterion` to run against the completed conversation |
+| `api_style` | `"responses"` | OpenAI API style. Use `"chat"` for models that only support legacy Chat Completions |
 
 ### Model support
+
+The provider is inferred from the model name.
 
 | Model string | Provider |
 |---|---|
@@ -199,7 +204,7 @@ result = await simulator.run(graph, scenario)
 | `gpt-4o` | OpenAI |
 | `gpt-4o-mini` | OpenAI |
 
-If the primary provider fails, it falls back to the other. If both fail, the simulator emits a neutral message and continues.
+There is no cross-provider fallback — one model name means one provider. If the call fails or returns nothing, the simulator substitutes the neutral message `"I have a follow-up question."` and continues the conversation, so a misconfigured key shows up as a bland transcript rather than an exception.
 
 ### Via UserSimulatorConfig
 
@@ -223,6 +228,7 @@ simulator = UserSimulator(config=config)
 | `temperature` | `0.7` | Generation temperature |
 | `thinking_enabled` | `False` | Enable reasoning/thinking mode if supported |
 | `thinking_budget` | `10240` | Token budget for thinking (when enabled) |
+| `api_style` | `"responses"` | OpenAI API style; `"chat"` for legacy Chat Completions |
 
 ---
 
@@ -257,6 +263,8 @@ print(result.criterion_details)   # {"simulation_goals": {"achieved_goals": [...
 | `error` | `str \| None` | Error message if simulation failed mid-way |
 | `criterion_scores` | `dict[str, float]` | Score per criterion (0.0–1.0) |
 | `criterion_details` | `dict[str, Any]` | Full criterion output including reasoning |
+| `criterion_results` | `list[CriterionResult]` | Full result objects, including per-criterion token usage |
+| `simulator_token_usage` | `TokenUsage` | Tokens spent generating the user turns |
 
 ---
 

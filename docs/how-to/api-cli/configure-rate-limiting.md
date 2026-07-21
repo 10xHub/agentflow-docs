@@ -1,6 +1,12 @@
 ---
 title: Configure Rate Limiting
 description: How to enable and configure the built-in sliding-window rate limiter in the AgentFlow API.
+keywords:
+  - rate limiting agentflow
+  - sliding window rate limiter
+  - agentflow.json rate_limit
+  - redis rate limiting
+  - 429 too many requests
 ---
 
 # Configure rate limiting

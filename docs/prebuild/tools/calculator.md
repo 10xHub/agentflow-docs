@@ -1,3 +1,15 @@
+---
+title: Calculator Tool — Prebuilt tools
+sidebar_label: Calculator Tool
+description: safe_calculator evaluates arithmetic expressions with Python's ast module, safely exposing math to an LLM without code execution.
+keywords:
+  - calculator tool
+  - safe_calculator
+  - agentflow arithmetic tool
+  - safe expression evaluator
+  - math tool for llm
+---
+
 # Calculator Tool
 
 A safe arithmetic expression evaluator that lets an agent perform math without executing arbitrary code.

@@ -24,3 +24,7 @@ User-agent: Bingbot
 Allow: /
 
 Sitemap: https://agentflow.10xscale.ai/sitemap.xml
+
+# Machine-readable documentation
+# /llms.txt       curated index of the most useful pages
+# /llms-full.txt  every documentation page as plain markdown, one file

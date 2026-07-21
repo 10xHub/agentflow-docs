@@ -323,15 +323,25 @@ agentflow eval [TARGET] [OPTIONS]
 | `--verbose`, `-v` | `false` | Enable verbose output |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
 
-Each eval file must expose one of the following:
+Each eval file must expose one of the following entry points. They are checked in
+this order, and the first match wins:
 
 | Symbol | Description |
 | --- | --- |
-| `get_eval_set()` | Required minimum. CLI loads agent, applies default criteria, runs evaluation, writes reports. |
-| `get_eval_config()` or `EVAL_CONFIG` | Optional. Override criteria/thresholds for this file. Used alongside `get_eval_set()`. |
-| `run()` | Full control. Module handles agent loading and evaluation. Returns an `EvalReport`. |
+| `get_scenarios()` or `SCENARIOS` | Simulator protocol. Returns user-simulation scenarios; the CLI drives a simulated user against your agent. See [user simulation](../../qa/evaluation/user-simulation.md). |
+| `get_eval_set()` | Standard protocol. Returns an `EvalSet`. The CLI loads the agent, applies the resolved criteria, runs the cases, and writes reports. |
+| Pytest-style functions | Any public module-level function annotated `-> EvalSet` is collected as an eval. A function annotated `-> EvalConfig` supplies that file's config. |
 
-Files not matching any protocol are skipped with a warning.
+Config is resolved per file, highest priority first:
+
+| Source | Notes |
+| --- | --- |
+| `get_eval_config()` or `EVAL_CONFIG` in the file | Overrides everything for that file. Used alongside any of the entry points above. |
+| `confeval.py` in the eval directory | Shared config, applied to files with no per-file config. Must expose `get_eval_config()` or `EVAL_CONFIG`. |
+| Built-in defaults | Used when neither is present. |
+
+Files matching no protocol are skipped with a warning:
+`Skipping <file> — no eval entry point found.`
 
 **Reports generated per run (unless `--no-report`):**
 

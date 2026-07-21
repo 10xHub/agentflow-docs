@@ -1,6 +1,6 @@
 ---
-title: REST API — Observability — REST API reference
-sidebar_label: REST API
+title: Observability endpoints — REST API reference
+sidebar_label: Observability
 description: Reference for the GET /v1/observability/{thread_id} endpoint that reconstructs a run trace with spans, events, and token usage.
 keywords:
   - rest api reference

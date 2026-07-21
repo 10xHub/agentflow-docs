@@ -244,30 +244,23 @@ class TicketClassification(BaseModel):
 
 ### Structured Output in AgentFlow
 
-```python
-from agentflow.core.llm import OpenAIModel
-from agentflow.core.graph import StateGraph
+Structured output is requested on the `Agent` node with `output_schema=`, a Pydantic model. The agent asks the provider for JSON matching that schema and validates the reply.
 
-# Initialize model with structured output
-llm = OpenAIModel(
-    "gpt-4o",
-    response_format=TicketClassification
+```python
+from agentflow.core.graph import StateGraph, Agent
+from agentflow.utils import START, END
+
+# Agent node with structured output
+classifier = Agent(
+    model="gpt-4o",
+    system_prompt=[{"role": "system", "content": "Classify the support ticket."}],
+    output_schema=TicketClassification,
 )
 
-# Create agent
-builder = StateGraph(AgentState)
-
-@builder.node
-def classify(state: AgentState) -> AgentState:
-    last_message = state.messages[-1].content if state.messages else ""
-    
-    # response is guaranteed to be TicketClassification
-    result = llm.generate(messages=[{"role": "user", "content": last_message}])
-    
-    return {
-        **state.dict(),
-        "classification": result.dict()
-    }
+builder = StateGraph()
+builder.add_node("classify", classifier)
+builder.add_edge(START, "classify")
+builder.add_edge("classify", END)
 
 app = builder.compile()
 ```
@@ -367,9 +360,9 @@ def parse_with_fallback(response: str, schema: type[BaseModel]) -> BaseModel:
 ```python
 from enum import Enum
 from pydantic import BaseModel, Field
-from agentflow.core.graph import StateGraph, AgentState
+from agentflow.core.graph import StateGraph, Agent
 from agentflow.core.state import Message
-from agentflow.core.llm import OpenAIModel
+from agentflow.utils import START, END
 
 # 1. Define the schema
 class TicketPriority(str, Enum):
@@ -398,51 +391,34 @@ Be conservative with HIGH and URGENT - only use when truly critical.
 """
 
 # 3. Create the classifier
-llm = OpenAIModel("gpt-4o", response_format=ClassificationResult)
+classifier = Agent(
+    model="gpt-4o",
+    system_prompt=[{"role": "system", "content": SYSTEM_PROMPT}],
+    output_schema=ClassificationResult,
+)
 
-builder = StateGraph(AgentState)
-
-@builder.node
-def classify_ticket(state: AgentState) -> AgentState:
-    messages = state.get("messages", [])
-    last_message = messages[-1].content if messages else ""
-    
-    # Generate with structured output
-    result = llm.generate(
-        system_instruction=SYSTEM_PROMPT,
-        messages=[Message(role="user", content=last_message)]
-    )
-    
-    # Add response to history
-    messages.append(Message(
-        role="assistant",
-        content=f"Category: {result.category}, Priority: {result.priority}"
-    ))
-    
-    return {
-        **state.dict(),
-        "messages": messages,
-        "classification": result.dict()
-    }
-
-builder.add_node("classify", classify_ticket)
-builder.set_entry_point("classify")
-builder.set_finish_point("classify")
+builder = StateGraph()
+builder.add_node("classify", classifier)
+builder.add_edge(START, "classify")
+builder.add_edge("classify", END)
 
 app = builder.compile()
 
 # 4. Safe wrapper with validation
 def classify_safe(message: str) -> dict:
     try:
-        result = app.invoke({
-            "messages": [Message(role="user", content=message)]
-        })
-        
+        result = app.invoke(
+            {"messages": [Message.text_message(message)]},
+            config={"thread_id": "classify-1"},
+        )
+
+        # The final message holds the JSON produced against ClassificationResult
+        raw = result["messages"][-1].text()
         return {
             "success": True,
-            "classification": result.get("classification")
+            "classification": ClassificationResult.model_validate_json(raw),
         }
-    
+
     except ValidationError as e:
         return {
             "success": False,
@@ -514,31 +490,31 @@ flowchart TB
 
 ### Automatic Context Truncation
 
+You do not count tokens or trim the message list by hand. Attach a context manager to the graph and set `trim_context=True` on the agent; the framework trims the history before every LLM call. System messages are never dropped.
+
+`MessageContextManager` keeps the most recent N user messages and discards the rest. `SummaryContextManager` instead summarizes what falls outside the window with an LLM call, and can be driven by a token budget:
+
 ```python
-from agentflow.core.utils import count_tokens
+from agentflow.core.graph import StateGraph, Agent
+from agentflow.core.state import SummaryContextManager
 
-MAX_CONTEXT = 8000  # Leave room for response
+ctx_mgr = SummaryContextManager(
+    model="gpt-4o-mini",     # model used to write the summary
+    token_budget=8000,       # leave room for the response
+    keep_recent=8,           # most recent messages kept verbatim
+)
 
-def build_prompt(state: AgentState, new_message: str) -> list[dict]:
-    """Build prompt with automatic truncation."""
-    
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
-    
-    # Add conversation history
-    for msg in state.messages:
-        messages.append({"role": msg.role, "content": msg.content})
-    
-    # Add new message
-    messages.append({"role": "user", "content": new_message})
-    
-    # Truncate if too long
-    while count_tokens(messages) > MAX_CONTEXT and len(messages) > 3:
-        messages.pop(1)  # Remove oldest non-system message
-    
-    return messages
+agent = Agent(
+    model="gpt-4o",
+    system_prompt=[{"role": "system", "content": SYSTEM_PROMPT}],
+    trim_context=True,       # required — the manager only runs when this is set
+)
+
+builder = StateGraph(context_manager=ctx_mgr)
+builder.add_node("classify", agent)
 ```
+
+The summary is stored in `state.context_summary` and injected ahead of the retained messages on the next call.
 
 ---
 

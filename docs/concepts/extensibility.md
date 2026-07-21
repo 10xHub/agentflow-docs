@@ -1,6 +1,13 @@
 ---
 title: Extensibility
 sidebar_label: Extensibility
+description: The abstract base classes — BaseCheckpointer, BaseStore, BaseAuth, BasePublisher, and more — used to extend AgentFlow's storage, auth, and event layers.
+keywords:
+  - agentflow extensibility
+  - base classes
+  - custom checkpointer
+  - custom auth backend
+  - extend agentflow
 sidebar_position: 6
 ---
 

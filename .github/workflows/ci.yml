@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  # Link rot is time-based, not commit-based, so also run on a schedule.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Fails on any broken internal link (onBrokenLinks: 'throw').
+      - name: Build site
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Errors (missing title/description/keywords) fail; length warnings do not.
+      - name: Lint front matter
+        run: npm run lint:frontmatter
+
+  verify-api:
+    name: Verify docs against published packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Deliberately installs from PyPI rather than a sibling checkout: the docs
+      # must match the packages readers actually get.
+      - name: Install AgentFlow
+        run: pip install 10xscale-agentflow 10xscale-agentflow-cli
+
+      - name: Verify documented symbols, routes, and commands exist
+        run: npm run verify:api
+
+  links:
+    name: External links
+    runs-on: ubuntu-latest
+    # A third-party outage should surface as a warning, not a red PR.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check external links
+        run: node scripts/check-external-links.mjs

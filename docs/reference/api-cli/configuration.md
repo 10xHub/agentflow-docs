@@ -127,7 +127,10 @@ Import path to a class that generates display names for threads.
 "thread_name_generator": "graph.thread_name_generator:MyNameGenerator"
 ```
 
-The class must implement a `generate(thread_id: str) -> str` method.
+The class must subclass `ThreadNameGenerator` and implement
+`async def generate_name(self, messages: list[str]) -> str`. An already-created
+instance is also accepted. See [thread name generator](thread-name-generator.md)
+for the full interface.
 
 ---
 

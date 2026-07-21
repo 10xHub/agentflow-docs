@@ -1,6 +1,14 @@
 ---
 title: Agents, Tools & Control
 sidebar_label: Agents, Tools & Control
+description: How Agent and ToolNode interact in the ReAct loop, how to write tools with @tool, and the Command, CallbackManager, and GraphLifecycleHook control surfaces.
+keywords:
+  - agentflow tools
+  - react loop
+  - tool decorator
+  - command routing
+  - callback manager
+  - graph lifecycle hook
 sidebar_position: 2
 ---
 

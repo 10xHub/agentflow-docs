@@ -3,10 +3,6 @@
 Standards and template for writing GenAI course lessons under `docs/courses/`.
 This file lives outside `docs/` on purpose: it is an authoring reference, not a published page.
 
-
-
-# Course Style Guide
-
 This guide defines the standards for writing lessons in the GenAI Beginner and Advanced courses.
 
 ## Page Structure

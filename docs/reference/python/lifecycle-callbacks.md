@@ -1,6 +1,12 @@
 ---
 title: Lifecycle Callbacks
 description: GraphLifecycleHook, GraphLifecycleContext — hook into graph-level events (start, end, error, interrupt, resume, checkpoint, state update).
+keywords:
+  - graphlifecyclehook
+  - graph lifecycle context
+  - on_state_update
+  - human in the loop hooks
+  - graph observability
 sidebar_position: 15
 ---
 
