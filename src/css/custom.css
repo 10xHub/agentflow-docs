@@ -69,7 +69,8 @@ body {
  * thicker stroke + `currentColor`, and add a real hover/active surface.
  */
 .navbar__toggle {
-  display: inline-flex;
+  /* Infima hides this above 996px; don't resurrect it with a bare `display`. */
+  display: none;
   align-items: center;
   justify-content: center;
   width: 40px;
@@ -93,6 +94,12 @@ body {
 .navbar__toggle:active {
   background: var(--af-bg-3);
   transform: scale(0.97);
+}
+
+@media screen and (max-width: 996px) {
+  .navbar__toggle {
+    display: inline-flex;
+  }
 }
 
 .navbar__toggle svg {
