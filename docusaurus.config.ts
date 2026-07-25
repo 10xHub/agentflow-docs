@@ -96,10 +96,64 @@ const config: Config = {
           customCss: './src/css/custom.css',
         },
         sitemap: {
+          // `lastmod` is derived from each page's last update time (docs have
+          // `showLastUpdateTime: true`, so it comes from git). A real lastmod
+          // tells Google which pages changed and are worth re-crawling — the
+          // single most useful signal for a new domain that is only getting a
+          // fraction of its pages indexed.
+          lastmod: 'date',
           changefreq: 'weekly',
           priority: 0.5,
           filename: 'sitemap.xml',
-          ignorePatterns: ['/tags/**'],
+          // Keep low-value, auto-generated routes out of the sitemap so the
+          // limited crawl budget lands on real content pages. Tag/author/
+          // archive/pagination pages have no standalone ranking value and only
+          // dilute the index.
+          ignorePatterns: [
+            '/tags/**',
+            '/blog/tags',
+            '/blog/tags/**',
+            '/blog/authors',
+            '/blog/authors/**',
+            '/blog/archive',
+            '/blog/page/**',
+            '/search',
+            '/search/**',
+          ],
+          // Flat priority tells Google nothing. Rank the sitemap so the pages
+          // that already earn impressions (comparisons, glossary, get-started)
+          // are marked most important, and deep reference/project pages least.
+          createSitemapItems: async (params) => {
+            const {defaultCreateSitemapItems, ...rest} = params;
+            const items = await defaultCreateSitemapItems(rest);
+            const base = siteUrl.replace(/\/$/, '');
+            const priorityFor = (loc: string): number => {
+              const path = loc.replace(base, '') || '/';
+              if (path === '/') return 1.0;
+              if (
+                /^\/docs\/(compare|glossary)(\/|$)/.test(path) ||
+                /^\/docs\/get-started(\/|$)/.test(path)
+              )
+                return 0.9;
+              if (
+                /^\/docs\/(concepts|use-cases|tutorials|prebuild|beginner)(\/|$)/.test(
+                  path,
+                )
+              )
+                return 0.8;
+              if (
+                /^\/docs\/(how-to|integrations|providers|skills|courses)(\/|$)/.test(
+                  path,
+                ) ||
+                /^\/blog(\/|$)/.test(path)
+              )
+                return 0.7;
+              if (/^\/docs\/(reference|project|troubleshooting|qa)(\/|$)/.test(path))
+                return 0.6;
+              return 0.5;
+            };
+            return items.map((item) => ({...item, priority: priorityFor(item.url)}));
+          },
         },
         gtag: googleAnalyticsId
           ? {
@@ -353,6 +407,7 @@ const config: Config = {
             {label: 'Beginner path', to: '/docs/beginner'},
             {label: 'Concepts', to: '/docs/concepts'},
             {label: 'Tutorials', to: '/docs/tutorials'},
+            {label: 'Compare frameworks', to: '/docs/compare'},
             {label: 'GenAI courses', to: '/docs/courses'},
           ],
         },
