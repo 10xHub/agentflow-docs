@@ -77,21 +77,11 @@ const config: Config = {
             },
           },
         },
-        blog: {
-          path: 'blog',
-          routeBasePath: 'blog',
-          showReadingTime: true,
-          blogSidebarTitle: 'Latest posts',
-          blogSidebarCount: 10,
-          postsPerPage: 10,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            title: 'AgentFlow Blog — Building Production AI Agents in Python',
-            description:
-              'Deep dives, patterns, and migration guides for building production AI agents with AgentFlow.',
-            xslt: true,
-          },
-        },
+        // Blog removed: 10 posts generated ~40 thin auto-pages (tags, authors,
+        // archive) that dominated the "not indexed" report without ranking. The
+        // posts' content lives on in the docs; old blog URLs 301 to their docs
+        // equivalents via the client-redirects plugin below.
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -109,17 +99,7 @@ const config: Config = {
           // limited crawl budget lands on real content pages. Tag/author/
           // archive/pagination pages have no standalone ranking value and only
           // dilute the index.
-          ignorePatterns: [
-            '/tags/**',
-            '/blog/tags',
-            '/blog/tags/**',
-            '/blog/authors',
-            '/blog/authors/**',
-            '/blog/archive',
-            '/blog/page/**',
-            '/search',
-            '/search/**',
-          ],
+          ignorePatterns: ['/tags/**', '/search', '/search/**'],
           // Flat priority tells Google nothing. Rank the sitemap so the pages
           // that already earn impressions (comparisons, glossary, get-started)
           // are marked most important, and deep reference/project pages least.
@@ -144,8 +124,7 @@ const config: Config = {
               if (
                 /^\/docs\/(how-to|integrations|providers|skills|courses)(\/|$)/.test(
                   path,
-                ) ||
-                /^\/blog(\/|$)/.test(path)
+                )
               )
                 return 0.7;
               if (/^\/docs\/(reference|project|troubleshooting|qa)(\/|$)/.test(path))
@@ -176,11 +155,10 @@ const config: Config = {
       {
         hashed: true,
         indexDocs: true,
-        indexBlog: true,
+        indexBlog: false,
         indexPages: true,
         language: ['en'],
         docsRouteBasePath: '/docs',
-        blogRouteBasePath: '/blog',
         highlightSearchTermsOnTargetPage: true,
         explicitSearchResultPath: true,
       },
@@ -215,6 +193,21 @@ const config: Config = {
           {from: '/docs/faq', to: '/docs/troubleshooting/installation'},
           // The production API page duplicated the REST reference; the reference wins.
           {from: '/docs/how-to/production/api-reference', to: '/docs/reference/rest-api/conventions'},
+          // The blog was removed (Jul 2026). 301 the old, already-indexed post
+          // URLs to their closest docs equivalent so nothing 404s and the
+          // relevance those pages earned (e.g. "langgraph alternatives") carries
+          // over to the docs that now own the topic.
+          {from: '/blog', to: '/docs/get-started'},
+          {from: '/blog/langgraph-alternatives-5-frameworks', to: '/docs/compare/best-python-agent-framework-2026'},
+          {from: '/blog/langgraph-to-agentflow-migration', to: '/docs/compare/agentflow-vs-langgraph'},
+          {from: '/blog/multi-agent-orchestration-python-7-patterns', to: '/docs/glossary/what-is-multi-agent-orchestration'},
+          {from: '/blog/react-agent-tools-real-apis', to: '/docs/glossary/what-is-a-react-agent'},
+          {from: '/blog/ai-agents-vs-workflows', to: '/docs/glossary/what-is-an-ai-agent'},
+          {from: '/blog/ai-agent-memory-checkpointing-python', to: '/docs/concepts/memory'},
+          {from: '/blog/streaming-agent-responses-fastapi-sse', to: '/docs/concepts/streaming'},
+          {from: '/blog/production-ai-agents-observability-retries', to: '/docs/concepts/production-runtime'},
+          {from: '/blog/deploy-ai-agent-docker-aws', to: '/docs/how-to/production/deployment'},
+          {from: '/blog/how-to-build-an-ai-agent-in-python', to: '/docs/get-started/first-agent'},
         ],
       },
     ],
@@ -378,7 +371,6 @@ const config: Config = {
         },
         {to: '/docs/concepts', label: 'Concepts', position: 'left'},
         {to: '/docs/reference', label: 'Reference', position: 'left'},
-        {to: '/blog', label: 'Blog', position: 'left'},
         // Explicit `search` slot — without this, Docusaurus appends the
         // SearchBar at the very end of the right cluster (after GitHub +
         // the color-mode toggle). Putting it first on the right places

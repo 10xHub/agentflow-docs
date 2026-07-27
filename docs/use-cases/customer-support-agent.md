@@ -34,7 +34,7 @@ Here is the production architecture we recommend with AgentFlow.
        [ If escalate: Human handoff (interrupt + checkpoint) ]
 ```
 
-This is a **hybrid workflow + agent** shape: a deterministic router up front, agents in each branch, human-in-the-loop on escalation. See [agents vs workflows](/blog/ai-agents-vs-workflows) for why.
+This is a **hybrid workflow + agent** shape: a deterministic router up front, agents in each branch, human-in-the-loop on escalation. See [agents vs workflows](/docs/glossary/what-is-an-ai-agent) for why.
 
 ## Why this shape
 
@@ -59,7 +59,7 @@ router = Agent(
 )
 ```
 
-For higher reliability, you can replace the LLM router with a deterministic Python classifier (regex, intent model, or a small fine-tuned head). See [multi-agent patterns](/blog/multi-agent-orchestration-python-7-patterns).
+For higher reliability, you can replace the LLM router with a deterministic Python classifier (regex, intent model, or a small fine-tuned head). See [multi-agent patterns](/docs/glossary/what-is-multi-agent-orchestration).
 
 ## The refund specialist
 
@@ -96,7 +96,7 @@ refund_agent = Agent(
 
 Notes:
 
-- **Idempotency keys** on every refund call. See [the production post](/blog/production-ai-agents-observability-retries).
+- **Idempotency keys** on every refund call. See [the production post](/docs/concepts/production-runtime).
 - **Mixed model sizes**. Small for routing, big for specialist work.
 - **Explicit escalation rules** in the system prompt. Models follow rules better than they decide on their own.
 
@@ -132,7 +132,7 @@ app = graph.compile(checkpointer=PgCheckpointer(...))
 ## Operational notes
 
 - **Persist threads from day one.** Support conversations span hours; `thread_id` makes them durable.
-- **Stream responses.** Users wait. See [SSE streaming](/blog/streaming-agent-responses-fastapi-sse).
+- **Stream responses.** Users wait. See [SSE streaming](/docs/concepts/streaming).
 - **Human handoff is a checkpoint.** When the agent calls `escalate_to_human`, the graph pauses; a human picks up the same thread.
 - **Per-user rate limits.** A buggy frontend or abusive user can rack up token costs fast.
 
@@ -149,6 +149,6 @@ app = graph.compile(checkpointer=PgCheckpointer(...))
 ## Further reading
 
 - [Multi-agent handoff patterns](/docs/how-to/python/handoff-between-agents)
-- [Multi-agent orchestration in Python](/blog/multi-agent-orchestration-python-7-patterns)
-- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis)
+- [Multi-agent orchestration in Python](/docs/glossary/what-is-multi-agent-orchestration)
+- [ReAct agent with real APIs](/docs/glossary/what-is-a-react-agent)
 - [Get started](/docs/get-started)

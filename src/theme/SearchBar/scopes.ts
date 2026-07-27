@@ -10,7 +10,7 @@
  * REST / CLI) based on the second path segment.
  */
 
-export type ScopeId = 'all' | 'docs' | 'tutorials' | 'reference' | 'blog'
+export type ScopeId = 'all' | 'docs' | 'tutorials' | 'reference'
 
 export interface Scope {
   id: ScopeId
@@ -31,7 +31,7 @@ export const SCOPES: Scope[] = [
   {
     id: 'docs',
     label: 'Docs',
-    // Anything under /docs/ that isn't tutorials, reference, or blog.
+    // Anything under /docs/ that isn't tutorials or reference.
     match: (url) =>
       url.startsWith('/docs/') &&
       !url.startsWith('/docs/tutorials/') &&
@@ -46,11 +46,6 @@ export const SCOPES: Scope[] = [
     id: 'reference',
     label: 'Reference',
     match: startsWith('/docs/reference/'),
-  },
-  {
-    id: 'blog',
-    label: 'Blog',
-    match: startsWith('/blog/'),
   },
 ]
 
@@ -89,6 +84,5 @@ export function categoryChip(url: string): string {
   if (url.startsWith('/docs/troubleshooting/')) return 'Troubleshooting'
   if (url.startsWith('/docs/beginner/')) return 'Beginner'
   if (url.startsWith('/docs/')) return 'Docs'
-  if (url.startsWith('/blog/')) return 'Blog'
   return 'Page'
 }

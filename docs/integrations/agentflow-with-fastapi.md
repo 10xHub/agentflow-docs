@@ -167,7 +167,7 @@ See [Auth and authorization](/docs/how-to/production/auth-and-authorization) for
 - **`Cache-Control: no-cache`** prevents browsers from caching the stream.
 - **Trailing `\n\n`** terminates SSE events. Required by spec.
 
-For more on SSE, see [streaming agent responses with FastAPI and SSE](/blog/streaming-agent-responses-fastapi-sse).
+For more on SSE, see [streaming agent responses with FastAPI and SSE](/docs/concepts/streaming).
 
 ## Sharing dependencies
 
@@ -209,6 +209,6 @@ Default to sidecar; embed when you have a real reason.
 ## Further reading
 
 - [Run with API](/docs/beginner/run-with-api).`agentflow api` standalone
-- [Streaming agent responses with SSE](/blog/streaming-agent-responses-fastapi-sse)
+- [Streaming agent responses with SSE](/docs/concepts/streaming)
 - [Deployment guide](/docs/how-to/production/deployment)
 - [Get started](/docs/get-started)

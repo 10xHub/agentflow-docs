@@ -32,7 +32,7 @@ Here is the production architecture.
        └─→ invalid? → retry with error feedback (max 3)
 ```
 
-This is mostly a **workflow** with a single agent loop for retries. See [agents vs workflows](/blog/ai-agents-vs-workflows).
+This is mostly a **workflow** with a single agent loop for retries. See [agents vs workflows](/docs/glossary/what-is-an-ai-agent).
 
 ## Why this shape
 
@@ -155,5 +155,5 @@ The graph shape is the same. Only the schema changes.
 
 - [ReAct agent validation tutorial](/docs/tutorials/from-examples/react-agent-validation)
 - [Custom state in AgentFlow](/docs/tutorials/from-examples/custom-state)
-- [Production observability](/blog/production-ai-agents-observability-retries)
+- [Production observability](/docs/concepts/production-runtime)
 - [Get started](/docs/get-started)

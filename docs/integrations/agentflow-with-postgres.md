@@ -189,6 +189,6 @@ Or run a periodic vacuum job. For tenant offboarding, delete by `thread_id LIKE 
 
 - [Checkpointing concept](/docs/concepts/checkpointing-and-threads)
 - [Production checkpointing guide](/docs/how-to/production/checkpointing)
-- [AI agent memory and checkpointing](/blog/ai-agent-memory-checkpointing-python)
-- [Deploy AI agent (Docker + AWS)](/blog/deploy-ai-agent-docker-aws)
+- [AI agent memory and checkpointing](/docs/concepts/memory)
+- [Deploy AI agent (Docker + AWS)](/docs/how-to/production/deployment)
 - [Get started](/docs/get-started)

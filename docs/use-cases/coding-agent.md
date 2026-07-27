@@ -151,7 +151,7 @@ Same graph shape; different system prompts and tool sets.
 
 ## Further reading
 
-- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis). Tool design patterns
-- [Production AI agents](/blog/production-ai-agents-observability-retries). Observability and retries
-- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
+- [ReAct agent with real APIs](/docs/glossary/what-is-a-react-agent). Tool design patterns
+- [Production AI agents](/docs/concepts/production-runtime). Observability and retries
+- [Multi-agent orchestration patterns](/docs/glossary/what-is-multi-agent-orchestration)
 - [Get started](/docs/get-started)

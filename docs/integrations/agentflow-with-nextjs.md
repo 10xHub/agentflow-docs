@@ -255,6 +255,6 @@ For non-streaming, vanilla Vercel is fine.
 ## Further reading
 
 - [TypeScript client guide](/docs/how-to/client/create-client)
-- [Streaming agent responses with FastAPI / SSE](/blog/streaming-agent-responses-fastapi-sse)
-- [Deploy AI agent to production](/blog/deploy-ai-agent-docker-aws)
+- [Streaming agent responses with FastAPI / SSE](/docs/concepts/streaming)
+- [Deploy AI agent to production](/docs/how-to/production/deployment)
 - [Get started](/docs/get-started)

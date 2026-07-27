@@ -158,7 +158,7 @@ Same shape; different search tools and validators.
 
 ## Further reading
 
-- [Multi-agent orchestration patterns](/blog/multi-agent-orchestration-python-7-patterns)
-- [AI agent memory](/blog/ai-agent-memory-checkpointing-python). Long-term recall for repeat research
-- [ReAct agent with real APIs](/blog/react-agent-tools-real-apis)
+- [Multi-agent orchestration patterns](/docs/glossary/what-is-multi-agent-orchestration)
+- [AI agent memory](/docs/concepts/memory). Long-term recall for repeat research
+- [ReAct agent with real APIs](/docs/glossary/what-is-a-react-agent)
 - [Get started](/docs/get-started)

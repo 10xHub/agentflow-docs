@@ -168,6 +168,6 @@ Same shape. Different documents and different filters.
 
 - [Memory and store](/docs/concepts/memory-and-store)
 - [Qdrant memory tutorial](/docs/tutorials/from-examples/qdrant-memory)
-- [AI agent memory and checkpointing](/blog/ai-agent-memory-checkpointing-python)
+- [AI agent memory and checkpointing](/docs/concepts/memory)
 - [Compare AgentFlow vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents). When to pair them
 - [Get started](/docs/get-started)
