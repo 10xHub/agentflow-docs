@@ -5,8 +5,22 @@ import styles from './styles.module.css';
  * Avatars are requested at 2x the rendered size so they stay sharp on retina
  * displays. GitHub serves any `s` value from the same CDN object.
  */
-const AVATAR_PX = 64;
+const AVATAR_PX = 44;
 const AVATAR_SRC = AVATAR_PX * 2;
+
+/**
+ * Repo names are long and share a prefix, which makes them useless as chips.
+ * These are the short forms the docs already use for the five packages.
+ */
+const REPO_LABELS: Record<string, string> = {
+  '10xHub/agentflow': 'core',
+  '10xHub/agentflow-cli': 'CLI',
+  '10xHub/agentflow-client': 'client',
+  '10xHub/agentflow-docs': 'docs',
+  '10xHub/agentflow-playground': 'playground',
+};
+
+const repoLabel = (repo: string) => REPO_LABELS[repo] ?? repo.split('/').pop();
 
 type Props = {
   heading?: string;
@@ -30,33 +44,47 @@ export default function ContributorWall({
       {blurb ? <p className={styles.blurb}>{blurb}</p> : null}
 
       <ul className={styles.grid}>
-        {contributors.map((c) => (
-          <li key={c.login}>
-            <a
-              className={styles.person}
-              href={c.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`${c.login} on GitHub`}
-            >
-              <img
-                className={styles.avatar}
-                src={`${c.avatar}?s=${AVATAR_SRC}&v=4`}
-                alt=""
-                width={AVATAR_PX}
-                height={AVATAR_PX}
-                loading="lazy"
-                decoding="async"
-              />
-              <span className={styles.login}>{c.login}</span>
-              {showCounts ? (
-                <span className={styles.count}>
-                  {c.contributions} commits
+        {contributors.map((c) => {
+          const repos = c.repos.map(repoLabel);
+          return (
+            <li key={c.login} className={styles.item}>
+              <a
+                className={styles.card}
+                href={c.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${c.login} on GitHub. Contributed to ${repos.join(', ')}.`}
+              >
+                <img
+                  className={styles.avatar}
+                  src={`${c.avatar}?s=${AVATAR_SRC}&v=4`}
+                  alt=""
+                  width={AVATAR_PX}
+                  height={AVATAR_PX}
+                  loading="lazy"
+                  decoding="async"
+                />
+
+                <span className={styles.body}>
+                  <span className={styles.login} title={c.login}>
+                    {c.login}
+                  </span>
+
+                  <span className={styles.repos}>
+                    {repos.map((label) => (
+                      <span className={styles.repo} key={label}>
+                        {label}
+                      </span>
+                    ))}
+                    {showCounts ? (
+                      <span className={styles.count}>{c.contributions}</span>
+                    ) : null}
+                  </span>
                 </span>
-              ) : null}
-            </a>
-          </li>
-        ))}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

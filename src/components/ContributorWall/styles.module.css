@@ -22,92 +22,118 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-  gap: 1.25rem 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
   margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
 }
 
-/* Docusaurus styles bare <ul> children in MDX; reset it for the grid items. */
-.grid li {
+/* Docusaurus gives <li> inside markdown a bottom margin; the grid owns spacing. */
+.item {
   margin: 0;
 }
 
-.person {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--af-text-dim);
-  text-align: center;
+/*
+ * Docs content sets `--ifm-link-decoration: underline`, which underlined the
+ * whole card. Two classes plus the element beat `.markdown a`, so the rule wins
+ * without !important.
+ */
+.wall a.card,
+.wall a.card:hover,
+.wall a.card:focus-visible {
   text-decoration: none;
-  transition: color 160ms ease;
 }
 
-.person:hover,
-.person:focus-visible {
-  color: var(--af-text-strong);
-  text-decoration: none;
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-lg);
+  background: var(--af-bg-0);
+  color: var(--af-text);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: var(--af-border-glow);
+  background: var(--af-bg-2);
 }
 
 .avatar {
-  width: 4rem;
-  height: 4rem;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 1px solid var(--af-border);
   border-radius: 50%;
   background: var(--af-bg-2);
   object-fit: cover;
-  transition: border-color 160ms ease, transform 160ms ease;
 }
 
-.person:hover .avatar,
-.person:focus-visible .avatar {
-  border-color: var(--af-border-glow);
-  transform: translateY(-2px);
+/* min-width:0 lets the ellipsis engage instead of the flex item refusing to shrink. */
+.body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .login {
-  font-size: 0.82rem;
-  font-weight: 500;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  color: var(--af-text-strong);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.repo,
+.count {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-pill);
+  background: var(--af-bg-2);
+  color: var(--af-text-dim);
+  font-family: var(--af-font-mono);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .count {
-  color: var(--af-text-dim);
-  font-family: var(--af-font-mono);
-  font-size: 0.72rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.card:hover .repo,
+.card:focus-visible .repo {
+  border-color: var(--af-border-hi);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .person,
-  .avatar {
+  .card,
+  .repo {
     transition: none;
-  }
-
-  .person:hover .avatar,
-  .person:focus-visible .avatar {
-    transform: none;
   }
 }
 
 @media (max-width: 640px) {
   .wall {
-    padding: 1.25rem;
+    padding: 1.1rem;
   }
 
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
-    gap: 1rem 0.5rem;
-  }
-
-  .avatar {
-    width: 3.25rem;
-    height: 3.25rem;
-  }
-
-  .login {
-    font-size: 0.75rem;
+    grid-template-columns: 1fr;
   }
 }

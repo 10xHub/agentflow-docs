@@ -8,6 +8,7 @@ import Icon from '@site/src/components/Icon';
 import Callout from '@site/src/components/Callout';
 import VsBanner from '@site/src/components/VsBanner';
 import ContributorWall from '@site/src/components/ContributorWall';
+import MaintainerCard from '@site/src/components/MaintainerCard';
 
 export default {
   ...MDXComponents,
@@ -20,4 +21,5 @@ export default {
   Callout,
   VsBanner,
   ContributorWall,
+  MaintainerCard,
 };

@@ -40,6 +40,10 @@ const IGNORE = [
   /^https:\/\/x\.com/,
   /^https:\/\/twitter\.com/,
   /^https:\/\/www\.linkedin\.com/,
+  // Both answer 200 from a developer machine and 403 from a CI runner, so the
+  // status says more about the requesting IP than about the link.
+  /^https:\/\/medium\.com/,
+  /^https:\/\/platform\.openai\.com/,
 ];
 
 async function walk(dir) {
