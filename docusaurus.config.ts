@@ -419,6 +419,7 @@ const config: Config = {
             {label: 'Changelog', to: '/docs/project/changelog'},
             {label: 'Roadmap', to: '/docs/project/roadmap'},
             {label: 'Contributing', to: '/docs/project/contributing'},
+            {label: 'Maintainers', to: '/docs/project/maintainers'},
             {label: 'Security', to: '/docs/project/security'},
             {label: 'Support', to: '/docs/project/support'},
           ],

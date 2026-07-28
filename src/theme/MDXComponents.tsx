@@ -7,6 +7,7 @@ import TerminalBlock from '@site/src/components/TerminalBlock';
 import Icon from '@site/src/components/Icon';
 import Callout from '@site/src/components/Callout';
 import VsBanner from '@site/src/components/VsBanner';
+import ContributorWall from '@site/src/components/ContributorWall';
 
 export default {
   ...MDXComponents,
@@ -18,4 +19,5 @@ export default {
   Icon,
   Callout,
   VsBanner,
+  ContributorWall,
 };
