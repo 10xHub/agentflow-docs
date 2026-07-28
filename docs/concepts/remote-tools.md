@@ -66,6 +66,31 @@ await client.setup();
 
 The `node` value must match the graph tool node that should expose the remote tool.
 
+:::warning `setup()` is unavailable on authenticated agents
+`POST /v1/graph/setup` returns `403` when `MODE=production` **or** when `agentflow.json` declares any `auth` method other than `none`. The auth condition alone is enough, so **every authenticated agent is affected, not only multi-tenant deployments** — the `registerTool()` + `setup()` flow above is a development-mode path.
+
+Dynamic registration mutates process-wide graph state shared by all callers, which is why it is gated. To use remote tools on an authenticated agent, attach the schemas statically at build time instead:
+
+```python
+graph = builder.compile(checkpointer=checkpointer)
+graph.attach_remote_tools(
+    [
+        {
+            "type": "function",
+            "function": {
+                "name": "read_clipboard",
+                "description": "Read the current clipboard text.",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        }
+    ],
+    "tools",  # the tool node name
+)
+```
+
+The client still calls `registerTool(...)` so it owns a handler for each name; it just skips `setup()`.
+:::
+
 ## Execution loop
 
 1. The client registers handlers with `client.registerTool(...)`.

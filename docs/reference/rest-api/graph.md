@@ -265,7 +265,9 @@ Register client-side (remote) tools with a tool node for the current process. Th
 ```
 
 :::warning Development only
-This endpoint returns `403 Dynamic tool setup is disabled in production/multi-tenant mode` when `MODE=production` **or** when any auth backend is configured. Registration mutates process-wide graph state, so it is unsafe to expose to multiple tenants.
+This endpoint returns `403` when `MODE=production` **or** when any auth backend is configured (that is, `agentflow.json` sets `auth` to anything other than `none`). Registration mutates process-wide graph state, so it is unsafe to expose to multiple tenants. The `detail` names which of the two conditions tripped.
+
+Note that the auth condition alone is enough: **every authenticated agent gets a 403 here, not just multi-tenant deployments**, so the TypeScript client's `registerTool()` + `setup()` flow is unavailable to them. Attach the tools statically with `CompiledGraph.attach_remote_tools()` at build time instead — see [Remote tools](/docs/concepts/remote-tools).
 :::
 
 ---
