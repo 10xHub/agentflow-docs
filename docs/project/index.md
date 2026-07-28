@@ -23,6 +23,7 @@ Everything about AgentFlow as a project rather than as an API.
 | [Security](security.md) | How to report a vulnerability, and what is by design |
 | [Support](support.md) | Where to ask, and how to file a report that gets fixed |
 | [Contributing](contributing.md) | Local setup, conventions, and the checks that gate a merge |
+| [Maintainers](maintainers.md) | Who maintains AgentFlow, and who has contributed to it |
 
 ## At a glance
 

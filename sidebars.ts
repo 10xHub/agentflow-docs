@@ -493,6 +493,7 @@ const sidebars: SidebarsConfig = {
         "project/security",
         "project/support",
         "project/contributing",
+        "project/maintainers",
       ],
     },
   ],
