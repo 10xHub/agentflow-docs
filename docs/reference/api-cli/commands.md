@@ -30,7 +30,7 @@ agentflow version
 
 ## agentflow init
 
-Scaffold a new project with `agentflow.json` and a starter graph module. The command is **interactive**: prompts choose the setup type (minimal development scaffold or the fuller production scaffold), whether to wire auth, and whether to add a rate-limit block. There is no flag for the setup type.
+Scaffold a new project with `agentflow.json` and a starter graph module. By default the command is **interactive**: prompts choose the setup type (minimal Quick Start scaffold or the fuller Production scaffold), whether to wire auth, and whether to add a rate-limit block. Every answer also has a flag, so the same scaffold can be reproduced non-interactively in CI or by a coding agent.
 
 ```bash
 agentflow init [OPTIONS]
@@ -40,6 +40,13 @@ agentflow init [OPTIONS]
 | --- | --- | --- |
 | `--path`, `-p` | `.` | Directory to initialize files in |
 | `--force`, `-f` | `false` | Overwrite existing files |
+| `--name` | prompt | Agent name; required only when a default cannot be inferred |
+| `--template` | prompt | `quick-start` or `production` |
+| `--auth` | prompt | Production authentication: `none`, `jwt`, or `custom` |
+| `--rate-limit` | prompt | Rate limiting: `none`, `memory`, or `redis` |
+| `--yes`, `-y` | `false` | Accept the recommended defaults instead of prompting |
+| `--non-interactive` | `false` | Fail instead of prompting; for CI and coding agents |
+| `--dry-run` | `false` | Preview the scaffold without writing files |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
 
@@ -95,7 +102,54 @@ agentflow init --path ./my-agent
 
 # Overwrite an existing project
 agentflow init --force
+
+# Reproducible, no prompts
+agentflow init --path ./my-agent --name MyAgent --template quick-start --non-interactive
+
+# Production scaffold with every answer supplied, previewed first
+agentflow init --template production --auth jwt --rate-limit redis --yes --dry-run
 ```
+
+---
+
+## agentflow dev
+
+Start the local development server and open the hosted playground once the API is
+reachable. This is the goal-oriented command for day-to-day development; it runs the
+same server as `agentflow api` and takes the same options, plus `--open/--no-open`.
+
+```bash
+agentflow dev [OPTIONS]
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--config`, `-c` | `agentflow.json` | Path to the project configuration file |
+| `--host`, `-H` | `127.0.0.1` | Host interface for the local development server |
+| `--port`, `-p` | `8000` | Port for the local development server |
+| `--reload/--no-reload` | `--reload` | Reload the server when project files change |
+| `--open/--no-open` | `--open` | Open the hosted playground when the API is ready |
+| `--verbose`, `-v` | `false` | Enable verbose logging |
+| `--quiet`, `-q` | `false` | Suppress output except errors |
+
+**Example:**
+
+```bash
+# Defaults: 127.0.0.1:8000, reload on, playground opens
+agentflow dev
+
+# Custom host and port
+agentflow dev --host 127.0.0.1 --port 9000
+
+# API only, no playground and no file watching
+agentflow dev --no-open --no-reload
+
+# A different config file
+agentflow dev --config production.json
+```
+
+`agentflow api` (server only) and `agentflow play` (server plus playground) remain
+available and behave exactly as before.
 
 ---
 
@@ -202,14 +256,20 @@ Install bundled AgentFlow skills into project-local assistant skill directories.
 agentflow skills [OPTIONS]
 ```
 
-When `--agent` is omitted in an interactive terminal, the command prompts:
+When `--agent` is omitted in an interactive terminal, the command shows a checklist —
+**space toggles, enter confirms** — instead of asking for a menu number:
 
 ```text
-Which agent?
-- 1. Codex
-- 2. Claude
-- 3. GitHub
+Which agents should get the Agentflow skill?
+ ◯ Codex     .agents/skills/agentflow
+ ◯ Claude    .claude/skills/agentflow
+ ◯ GitHub    .github/instructions/agentflow.instructions.md
 ```
+
+Each row shows where it installs. Agents that are already set up are labelled and
+pre-checked, and choosing one that exists offers to overwrite rather than failing.
+In a terminal that cannot host a prompt, the command asks for `--agent` or `--all`
+instead of raising.
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -380,20 +440,171 @@ agentflow eval --parallel --max-concurrency 8
 
 ## agentflow version
 
-Print the CLI and library versions.
+Print the CLI and core framework versions. Both are resolved from installed
+distribution metadata.
 
 ```bash
-agentflow version [--verbose]
+agentflow version [--verbose] [--quiet]
+```
+
+Example output:
+
+```
+10xscale-agentflow-cli
+  Version: 0.5.0
+10xscale-agentflow (core)
+  Version: 0.9.0
+```
+
+For a script-friendly single line, use the root flag instead:
+
+```bash
+agentflow --version    # prints just the CLI version
+```
+
+---
+
+## agentflow audit
+
+Read-only check of everything that has to be true before `dev`, `eval`, or `build`
+can work in the current directory. Nothing is written or changed, so it is always
+safe to run.
+
+```bash
+agentflow audit [OPTIONS]
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--verbose`, `-v` | `false` | Enable verbose logging |
+| `--quiet`, `-q` | `false` | Suppress output except errors |
+
+Six checks run in a fixed order and are reported twice: live through the step
+timeline, and again as a summary table.
+
+| Check | What it asserts |
+| --- | --- |
+| Python | The interpreter running the CLI (reported, never failed) |
+| CLI package | `10xscale-agentflow-cli` is installed and resolvable |
+| Core framework | `10xscale-agentflow` is installed and resolvable |
+| Evaluation API | The installed core still exposes the evaluation symbols `agentflow eval` imports, catching a CLI/core version skew before it becomes an `ImportError` mid-run |
+| Project configuration | `agentflow.json` exists here, parses, and declares an `agent` key in `module:attribute` form |
+| Port | The default API port (`8000`) is free to bind |
+
+Each check reports `PASS`, `WARN`, or `FAIL`. The command exits `1` if any check
+fails and `0` otherwise — warnings (no project config, port already bound) are
+surfaced without failing the run, which makes it usable as a CI gate.
+
+**Example:**
+
+```bash
+# Human-readable table
+agentflow audit
+
+# Machine-readable events, for CI
+agentflow --format json audit
+
+# Static output, no motion
+agentflow --no-animation audit
+```
+
+---
+
+## agentflow config
+
+Inspect and manage user-level CLI preferences. They are stored as JSON in the
+per-user config directory (`platformdirs`), for example
+`~/.config/agentflow/config.json` on Linux, and apply to every project.
+
+```bash
+agentflow config path       # print the configuration file path
+agentflow config list       # list every stored preference
+agentflow config get KEY    # read one preference
+agentflow config set KEY VALUE
+agentflow config unset KEY  # remove one preference
+agentflow config validate   # parse the file and check known keys
+```
+
+Keys are dot-separated. `set` parses `VALUE` as JSON and falls back to a plain
+string, so `agentflow config set output.format plain` and
+`agentflow config set rate_limit.requests 100` both work.
+
+These keys are read at startup as defaults for the root output flags:
+
+| Key | Values | Default |
+| --- | --- | --- |
+| `output.format` | `human`, `plain`, `json`, `jsonl` | `human` |
+| `output.color` | `auto`, `always`, `never` | `auto` |
+| `output.progress` | `auto`, `tty`, `plain`, `json`, `quiet` | `auto` |
+
+Command-line flags always win over stored values. If the file is unreadable or a
+key holds an unsupported value, commands fail with a pointer to
+`agentflow config validate` (the `config` sub-commands themselves still run, so
+the bad value can be fixed).
+
+---
+
+## agentflow demo
+
+Preview the terminal animations, step timelines, and progress states without
+touching project state. Useful for checking how the CLI will render in a given
+terminal, or over SSH and in CI.
+
+```bash
+agentflow demo [--style STYLE]
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--style` | `all` | Animation theme: `all`, `typing`, `network`, `init`, `build`, or `eval` (`play` and `api` are accepted as aliases for `typing` and `network`) |
+
+**Example:**
+
+```bash
+agentflow demo
+agentflow demo --style eval
 ```
 
 ---
 
 ## Global options
 
-All commands accept `--help` (`-h`) for usage information:
+These are **root** options: they are passed before the command name and apply to
+every command.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--format` | `human` | Output format: `human`, `plain`, `json`, or `jsonl` |
+| `--json` | `false` | Shorthand for `--format json` |
+| `--color` | `auto` | Color policy: `auto`, `always`, or `never` |
+| `--no-color` | `false` | Shorthand for `--color never` |
+| `--progress` | `auto` | Progress mode: `auto`, `tty`, `plain`, `json`, or `quiet` |
+| `--animation/--no-animation` | auto | Enable or disable decorative command animation |
+| `--fullscreen/--no-fullscreen` | full-screen on an interactive terminal | Run on a dedicated full-screen surface with a pinned header and footer |
+| `--cwd` | current directory | Run as if the CLI was started in this directory |
+| `--verbose`, `-v` | `0` | Increase diagnostic verbosity; repeat for more detail |
+| `--quiet`, `-q` | `false` | Suppress informational, progress, and success output |
+| `--debug` | `false` | Enable debug diagnostics |
+| `--yes`, `-y` | `false` | Accept recommended defaults for supported workflows |
+| `--non-interactive` | `false` | Never prompt for input |
+| `--version`, `-V` | — | Print the CLI version and exit |
+
+```bash
+agentflow --format json audit
+agentflow --no-fullscreen dev
+agentflow --cwd ../my-agent eval --parallel
+```
+
+Defaults for `--format`, `--color`, and `--progress` come from
+[`agentflow config`](#agentflow-config). Set `AGENTFLOW_NO_FULLSCREEN=1` to opt out
+of the full-screen surface for every invocation. Motion is disabled automatically
+for redirected output, CI, `TERM=dumb`, JSON/JSONL output, and
+`AGENTFLOW_NO_SPINNER=1`.
+
+All commands also accept `--help` (`-h`) for usage information:
 
 ```bash
 agentflow --help
-agentflow api --help
+agentflow dev --help
 agentflow init --help
 ```

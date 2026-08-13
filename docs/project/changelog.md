@@ -150,6 +150,31 @@ Recent work on `10xscale-agentflow-cli`:
 
 ### Added
 
+- **`agentflow dev`**, the goal-oriented local development command: it starts the
+  API server and opens the hosted playground when the API is ready
+  (`--open/--no-open`). `agentflow api` and `agentflow play` remain available.
+- **`agentflow audit`**, a read-only environment check: the Python interpreter,
+  the installed CLI and core packages, whether the installed core still exposes
+  the evaluation API `agentflow eval` imports, whether `agentflow.json` exists
+  and declares a valid `agent` key, and whether the default port is free. It
+  exits `1` on failure and `0` otherwise (warnings do not fail the run), so it
+  works as a CI gate; nothing is written or changed.
+- **`agentflow config path|list|get|set|unset|validate`** for cross-platform
+  user-level preferences. `output.format`, `output.color`, and `output.progress`
+  become the defaults for the matching root flags; explicit flags still win.
+- **`agentflow demo`**, a side-effect-free preview of the CLI animations,
+  timelines, and progress states.
+- **Root output options** — `--format` (`human`, `plain`, `json`, `jsonl`),
+  `--json`, `--color`/`--no-color`, `--progress`,
+  `--animation/--no-animation`, `--fullscreen/--no-fullscreen`, `--cwd`,
+  `--debug`, `--yes`, `--non-interactive`, and `-V/--version` — with CI, pipe,
+  `NO_COLOR`, and ASCII fallbacks, plus a versioned JSON/JSONL event stream.
+- **Reproducible scaffolding**: `agentflow init` accepts `--name`, `--template`,
+  `--auth`, `--rate-limit`, `--yes`, `--non-interactive`, and `--dry-run`, so a
+  project can be generated in CI or by a coding agent without prompts.
+- `agentflow skills` selects agents from a checklist (space toggles, enter
+  confirms) that shows each install path and pre-checks what is already
+  installed.
 - `py.typed` marker, so type information reaches consumers (PEP 561).
 - `--integration` pytest flag gating tests that need real Redis and Postgres, so
   a default `pytest` run requires no external services.

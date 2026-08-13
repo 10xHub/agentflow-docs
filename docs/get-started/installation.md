@@ -69,6 +69,12 @@ Verify the CLI is ready:
 agentflow version
 ```
 
+For a fuller check — interpreter, installed CLI and core packages, evaluation-API compatibility, project config, and the default port — run:
+
+```bash
+agentflow audit
+```
+
 ## Set your model provider key
 
 ```bash
@@ -166,10 +172,10 @@ The client covers all three API layers — graph execution, thread state, and lo
 
 ## Play with your agent
 
-Once `agentflow init` is done, start the interactive playground:
+Once `agentflow init` is done, start the development server and the interactive playground:
 
 ```bash
-agentflow play
+agentflow dev
 ```
 
 This launches a hosted UI where you can chat with your agent, inspect state, replay threads, and iterate on your logic — before writing a single line of client code.

@@ -64,9 +64,10 @@ flowchart TD
 pip install 10xscale-agentflow-cli
 which agentflow
 agentflow version
+agentflow audit          # interpreter, packages, project config, and port
 ```
 
-If `which agentflow` points somewhere unexpected, activate the correct environment first.
+If `which agentflow` points somewhere unexpected, activate the correct environment first. `agentflow audit` reports the interpreter it runs under and the installed CLI and core versions, so it is the fastest way to spot a wrong environment or a CLI/core version skew.
 
 ## Issue: imports fail even after install
 
