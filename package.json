@@ -15,6 +15,7 @@
     "verify:api": "python3 scripts/verify_api_reference.py",
     "og-image": "node scripts/generate-og-image.mjs",
     "contributors": "node scripts/fetch-contributors.mjs",
+    "release:prep": "node scripts/prepare-release.mjs",
     "docs:cut-version": "docusaurus docs:version"
   },
   "dependencies": {

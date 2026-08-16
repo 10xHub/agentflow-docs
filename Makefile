@@ -1,4 +1,4 @@
-.PHONY: docs-serve docs-build docs-typecheck docs-clear
+.PHONY: docs-serve docs-build docs-typecheck docs-clear docs-release-prep
 
 docs-serve:
 	npm run start
@@ -11,3 +11,6 @@ docs-typecheck:
 
 docs-clear:
 	npm run clear
+
+docs-release-prep:
+	npm run release:prep

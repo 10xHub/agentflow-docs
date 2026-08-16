@@ -124,7 +124,8 @@ dropdown then appears automatically.
 
 ## Contributing
 
-PRs welcome. Before opening one, run the checks above.
+PRs welcome. Before opening one, run the checks above and read
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 Writing conventions, where a page belongs, and the release process are
 documented on the site: [Contributing](https://agentflow.10xscale.ai/docs/project/contributing).
@@ -146,4 +147,5 @@ Two rules worth repeating here:
 
 ## License
 
-MIT.
+Agentflow is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
+are accepted under the same license.
