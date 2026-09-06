@@ -33,8 +33,11 @@ pip install "10xscale-agentflow[openai]"
 # Google Gemini
 pip install "10xscale-agentflow[google-genai]"
 
-# Both
-pip install "10xscale-agentflow[openai,google-genai]"
+# Anthropic (Claude)
+pip install "10xscale-agentflow[anthropic]"
+
+# All three
+pip install "10xscale-agentflow[openai,google-genai,anthropic]"
 ```
 
 ### Extras matrix
@@ -45,6 +48,9 @@ Every optional dependency of `10xscale-agentflow` is behind an extra. Combine th
 |---|---|---|
 | `openai` | `openai` | OpenAI provider (also any OpenAI-compatible endpoint). |
 | `google-genai` | `google-genai` | Google Gemini provider and Vertex AI. |
+| `anthropic` | `anthropic` | Anthropic provider (Claude Messages API). |
+| `anthropic-vertex` | `anthropic[vertex]` | Claude through Google Cloud Vertex AI (`anthropic_backend="vertex"`). |
+| `anthropic-bedrock` | `anthropic[bedrock]` | Claude through Amazon Bedrock (`anthropic_backend="bedrock"`). |
 | `realtime` | `google-genai` | Realtime audio sessions (`AudioAgent`, Gemini Live). |
 | `mcp` | `fastmcp`, `mcp` | MCP servers as tools through `ToolNode(client=...)`. |
 | `pg_checkpoint` | `asyncpg`, `redis` | `PgCheckpointer` (Postgres durable state + Redis hot cache). |
@@ -62,6 +68,7 @@ Every optional dependency of `10xscale-agentflow` is behind an extra. Combine th
 | `langsmith` | OTEL API/SDK + OTLP HTTP exporter | `LangsmithPublisher` and `setup_langsmith`. |
 | `observability` | `otel` + `logfire` + `langsmith` | All tracing backends at once. |
 | `a2a_sdk` | `a2a-sdk` | Declared for A2A tooling. The A2A protocol bridge is not active in this release. |
+| `all` | Every other extra in this table | One-shot install for development and CI. Not recommended for production images, where you want only what you use. |
 
 Verify the CLI is ready:
 
@@ -83,6 +90,9 @@ export OPENAI_API_KEY="sk-..."
 
 # Google Gemini
 export GEMINI_API_KEY="..."
+
+# Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ## Scaffold your project

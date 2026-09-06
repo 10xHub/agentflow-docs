@@ -6,7 +6,9 @@ keywords:
   - model provider adapters
   - openai provider
   - google gemini provider
+  - anthropic claude provider
   - vertex ai
+  - amazon bedrock
 sidebar_position: 15
 ---
 
@@ -16,13 +18,18 @@ An AgentFlow `Agent` talks to model providers through provider-specific internal
 
 ## Providers
 
-AgentFlow supports OpenAI and Google provider flows.
+AgentFlow supports OpenAI, Google, and Anthropic provider flows.
 
 | Provider | Environment |
 |---|---|
 | OpenAI | `OPENAI_API_KEY` |
 | Google Gemini API | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
-| Vertex AI | `GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, credentials |
+| Vertex AI (Gemini) | `GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, credentials |
+| Anthropic | `ANTHROPIC_API_KEY` (the SDK also resolves `ANTHROPIC_AUTH_TOKEN`, an auth profile, or workload identity federation) |
+| Vertex AI (Claude) | `anthropic_backend="vertex"`, plus the SDK's own project and region resolution |
+| Amazon Bedrock (Claude) | `anthropic_backend="bedrock"`, plus standard AWS credential resolution |
+
+Google switches to Vertex AI with the boolean `use_vertex_ai`; Anthropic reaches three distinct backends, so its selector is the string `anthropic_backend` (`None`, `"vertex"`, or `"bedrock"`) passed through `llm_kwargs`.
 
 ```python
 from agentflow.core.graph import Agent
@@ -48,7 +55,7 @@ agent = Agent(
 )
 ```
 
-OpenAI reasoning models and Google thinking budgets do not expose identical knobs. Keep provider docs and tests close when changing reasoning behavior.
+OpenAI reasoning models, Google thinking budgets, and Anthropic extended thinking do not expose identical knobs. Keep provider docs and tests close when changing reasoning behavior.
 
 ## LLM converters
 
@@ -59,6 +66,7 @@ Converters translate provider-native responses into AgentFlow runtime objects.
 | `OpenAIConverter` | OpenAI chat-style response conversion. |
 | `OpenAIResponsesConverter` | OpenAI Responses API response conversion. |
 | `GoogleGenAIConverter` | Google GenAI response conversion. |
+| `AnthropicConverter` | Anthropic Messages API response conversion. |
 | `ModelResponseConverter` | Shared conversion helpers. |
 
 Provider-native details should stay behind converter boundaries unless stored intentionally in `Message.raw`.
@@ -79,4 +87,5 @@ Tool adapters bridge third-party tool ecosystems.
 - [Providers](/docs/providers)
 - [OpenAI provider](/docs/providers/openai)
 - [Google provider](/docs/providers/google)
+- [Anthropic provider](/docs/providers/anthropic)
 - [Agents and tools](./agents-and-tools.md)

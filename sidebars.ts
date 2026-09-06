@@ -385,7 +385,7 @@ const sidebars: SidebarsConfig = {
         {
           type: "category",
           label: "Providers",
-          items: ["providers/index", "providers/openai", "providers/google"],
+          items: ["providers/index", "providers/openai", "providers/google", "providers/anthropic"],
         },
         {
           type: "category",
