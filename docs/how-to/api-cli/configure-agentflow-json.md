@@ -344,7 +344,39 @@ Three things that are easy to miss:
 Full reference: [Rate Limiting](../../reference/api-cli/rate-limiting.md). Step-by-step setup:
 [Configure rate limiting](./configure-rate-limiting.md).
 
-## WebSocket connection limits
+## Disable routers you do not use
+
+Every router is mounted by default. Drop the ones a deployment does not need:
+
+```json
+{
+  "agent": "graph.react:app",
+  "routers": {
+    "evals": false,
+    "media": false
+  }
+}
+```
+
+Toggleable names are `checkpointer` (`/v1/threads/*`), `store` (`/v1/store/*`), `evals`
+(`/v1/evals/*`), `media` (`/v1/files/*`), and `websocket` (`/v1/graph/ws`). A disabled router is never registered, so its
+paths return `404` and the server logs one line at startup naming the setting.
+
+`graph` and `ping` are always mounted. Two knock-on effects to weigh before turning these off
+in production:
+
+- `checkpointer` backs the playground's thread sidebar and the TypeScript client's thread
+  calls.
+- `media` backs file upload for multimodal agents.
+
+Bad entries never fail the boot: an unknown name, `graph`/`ping`, or a non-boolean value logs
+a warning and leaves the router mounted. A typo such as `"eval": false` therefore keeps
+`/v1/evals` serving, so check the startup log after editing this block.
+
+See [agentflow.json configuration](../../reference/api-cli/configuration.md#routers) for the
+full table.
+
+## WebSocket settings
 
 Cap how many WebSocket connections a single server process will hold open:
 
@@ -352,10 +384,33 @@ Cap how many WebSocket connections a single server process will hold open:
 {
   "agent": "graph.react:app",
   "websocket": {
+    "enabled": true,
     "max_connections": 100
   }
 }
 ```
+
+### Turning off the WebSocket endpoint
+
+If your clients only use REST and SSE, drop the streaming socket entirely:
+
+```json
+{
+  "agent": "graph.react:app",
+  "websocket": {
+    "enabled": false
+  }
+}
+```
+
+`enabled: false` leaves `/v1/graph/ws` unregistered, so the handshake fails with HTTP `403`
+before any handler or auth code runs. `/v1/graph/stream` (SSE) and `/v1/graph/live` (realtime
+audio) are unaffected. The default is `true`.
+
+The same switch is spelled `"routers": {"websocket": false}` -- write it wherever you prefer.
+Both is fine too: the endpoint is mounted only when neither says `false`, and a conflict
+between the two logs a warning at startup and leaves it unmounted. `max_connections` stays in
+the `websocket` block either way.
 
 `max_connections` counts `/v1/graph/ws` and `/v1/graph/live` together. `null`, `0`, or an absent
 block means unlimited. A negative value raises a `ValueError` at startup.

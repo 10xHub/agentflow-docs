@@ -126,6 +126,7 @@ flowchart TD
 | Close code `1003` | The init frame was not valid JSON, or not a JSON object. | Only relevant when driving the socket by hand; the client always sends a valid frame. |
 | Close code `1013` | The handshake exceeded the global rate limit or the `websocket.max_connections` cap. | Back off and retry; raise the cap on the server if the concurrency is legitimate. |
 | Close code `1011` | An unexpected server-side error ended the connection. | Read the server logs. |
+| Handshake fails with HTTP `403` on `/v1/graph/ws` (no close code) | The server has `websocket.enabled: false` in `agentflow.json`, so the route is not mounted. | Use `stream()` (SSE) instead, or enable the endpoint on the server. |
 
 **Auth**: the bearer token is never put in the URL. It travels as the second entry of the `agentflow-bearer` WebSocket subprotocol, with an `Authorization` header additionally set on Node. If a proxy strips `Sec-WebSocket-Protocol`, the handshake authenticates as anonymous and is rejected — configure the proxy to pass it through.
 

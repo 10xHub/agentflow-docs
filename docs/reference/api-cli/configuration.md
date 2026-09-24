@@ -45,7 +45,12 @@ keywords:
     "by": "ip",
     "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
   },
+  "routers": {
+    "evals": false,
+    "media": false
+  },
   "websocket": {
+    "enabled": true,
     "max_connections": 100
   },
   "observability": {
@@ -243,21 +248,104 @@ response headers, and the custom backend interface see [Rate Limiting](./rate-li
 
 ---
 
+### `routers`
+
+Which optional routers the server mounts. Every router is mounted by default, so an absent
+block keeps the full API; list a router as `false` to drop it.
+
+```json
+"routers": {
+  "evals": false,
+  "media": false
+}
+```
+
+| Name | Paths | Disabling it means |
+| --- | --- | --- |
+| `checkpointer` | `/v1/threads/*` | No thread list, history, state read/write, or message deletion. The playground's thread sidebar and the TypeScript client's `threads()` calls stop working. |
+| `store` | `/v1/store/*` | No long-term memory API: create, search, list, or forget memories. |
+| `evals` | `/v1/evals/*` | Eval runs cannot be listed or fetched over HTTP. `agentflow eval` on the machine itself is unaffected. |
+| `media` | `/v1/files/*`, `/v1/config/multimodal` | No file upload, download, or access URLs, and clients cannot read the multimodal config. Breaks multimodal agents that receive files through the API. |
+| `websocket` | `/v1/graph/ws` | No turn-based streaming socket. `POST /v1/graph/stream` (SSE) is the alternative. The realtime bridge `/v1/graph/live` is separate and stays mounted. |
+
+`graph` (`/v1/graph/*`) and `ping` (`/ping`) are always mounted and cannot be listed here.
+
+#### Two spellings for the WebSocket switch
+
+`/v1/graph/ws` can be switched off from either place, so neither is the wrong one to write:
+
+```json
+"routers": { "websocket": false }
+```
+
+```json
+"websocket": { "enabled": false }
+```
+
+Setting both is fine. The endpoint is mounted only when neither says `false`, so a config that
+says "off" anywhere never ends up serving. If the two are both written and disagree, the
+endpoint stays unmounted and the server logs a warning naming both keys; writing only one logs
+nothing. The `websocket` block is also where `max_connections` lives, which applies whichever
+spelling you use.
+
+A disabled router is never registered, so its paths return `404` with no handler, dependency,
+or auth code behind them. Each one logs a line at startup naming the setting that removed it.
+
+#### Bad entries warn, they do not fail the boot
+
+The block is parsed leniently. Each of these logs a `WARNING` at startup and leaves the
+router mounted:
+
+- an unknown name, including a typo such as `"eval": false`
+- `"graph"` or `"ping"`, which cannot be disabled
+- a value that is not a boolean (the strings `"true"`/`"false"` are accepted, as elsewhere in
+  this file)
+- a `routers` value that is not an object
+
+The consequence is worth stating plainly: `"eval": false` keeps `/v1/evals` serving, and the
+startup log is the only place that says so. Check the log after changing this block.
+
+---
+
 ### `websocket`
 
-Per-process limits for the WebSocket endpoints.
+Switch for the streaming WebSocket endpoint, plus per-process connection limits.
 
 ```json
 "websocket": {
+  "enabled": true,
   "max_connections": 100
 }
 ```
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Whether `/v1/graph/ws` is mounted. Set to `false` on a deployment that only uses REST and SSE to drop the endpoint entirely. Equivalent to [`routers.websocket`](#routers); if both are written and disagree, the endpoint stays unmounted and startup logs a warning. Values that are not booleans (the strings `"true"`/`"false"` included) raise a `ValueError` at startup. |
 | `max_connections` | integer or `null` | `null` (unlimited) | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError` at startup. |
 
-Omit the block entirely to leave connections unlimited.
+Omit the block entirely to keep the endpoint mounted with unlimited connections.
+
+#### Turning the WebSocket endpoint off
+
+```json
+"websocket": {
+  "enabled": false
+}
+```
+
+Or, equivalently, `"routers": {"websocket": false}` -- see
+[two spellings](#two-spellings-for-the-websocket-switch).
+
+With the endpoint off the route is never registered, so there is no handler, dependency, or
+auth code behind that path at all: the server refuses the handshake with HTTP `403` and logs
+one line at startup naming the setting. `enabled` does not affect:
+
+- `/v1/graph/stream`, the SSE streaming endpoint, which is the REST alternative to the socket.
+- `/v1/graph/live`, the realtime audio bridge, which already rejects non-live graphs with close
+  code `1008`.
+
+Clients get no capability hint before connecting -- a browser or the TypeScript client simply
+sees the handshake fail -- so switch it off only when nothing you ship uses `/v1/graph/ws`.
 
 Exceeding the cap refuses the handshake before `accept()` with WebSocket close code `1013`
 (Try Again Later), so the client gets a clean rejection instead of a half-open socket. The slot is

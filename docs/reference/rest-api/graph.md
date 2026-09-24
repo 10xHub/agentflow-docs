@@ -307,6 +307,8 @@ Repair a thread whose state contains messages with tool calls that have empty co
 
 Turn-based streaming over a WebSocket. Same payloads as `POST /v1/graph/stream`, but the connection stays open across runs, which is what makes client-side tool execution possible without a second HTTP request.
 
+**Can be disabled.** Setting [`websocket.enabled`](../api-cli/configuration.md#websocket) to `false` in `agentflow.json` leaves this endpoint unmounted; the handshake then fails with HTTP `403`. Use `POST /v1/graph/stream` instead. The default is enabled.
+
 **Authentication.** Bearer token via the `Authorization` header, the `agentflow-bearer` `Sec-WebSocket-Protocol` (preferred for browsers), or the `?token=` query fallback. Identical to the [live socket](./live.md#authentication).
 
 **Fresh run.** Client sends:
