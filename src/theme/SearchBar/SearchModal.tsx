@@ -150,7 +150,7 @@ export default function SearchModal({ open, onClose }: Props) {
         >
           {!query.trim() ? (
             <div className={styles.idle}>
-              Start typing to search across docs, tutorials, references, and blog.
+              Start typing to search across docs, tutorials, and references.
             </div>
           ) : loading ? (
             <div className={styles.idle}>Searching…</div>
@@ -217,7 +217,6 @@ function ScopeRow({ activeScope, onScopeChange, hits, query }: ScopeRowProps) {
       docs: 0,
       tutorials: 0,
       reference: 0,
-      blog: 0,
     }
     // For non-"all" counts we need to count against the unfiltered set.
     // `hits` is already filtered by the active scope — so counts only make
