@@ -145,8 +145,12 @@ Required when `"auth": "jwt"` is set in `agentflow.json`.
 | --- | --- | --- | --- |
 | `JWT_SECRET_KEY` | `string \| null` | `null` | **Required for JWT auth.** Secret used to verify token signatures. Use a random 32+ character string in production. |
 | `JWT_ALGORITHM` | `string` | `"HS256"` | JWT signing algorithm. Supports any algorithm accepted by PyJWT (`"HS256"`, `"HS384"`, `"HS512"`, `"RS256"`, etc.). |
+| `JWT_ISSUER` | `string \| null` | `null` | When set, every token must carry a matching `iss` claim. |
+| `JWT_AUDIENCE` | `string \| null` | `null` | When set, every token must carry a matching `aud` claim. Set it when the signing key is shared with other services, so their tokens are not accepted here. |
 
-The server raises `ValueError` at startup if `JWT_SECRET_KEY` or `JWT_ALGORITHM` is missing when JWT auth is configured.
+The server raises `ValueError` at startup if `JWT_SECRET_KEY` or `JWT_ALGORITHM` is missing when JWT auth is configured. With an `HS*` algorithm and `MODE=production`, it also refuses a `JWT_SECRET_KEY` shorter than 32 bytes; in development that is a warning.
+
+A missing, invalid or expired token returns `401` with a `WWW-Authenticate: Bearer` header. `403` is kept for an authenticated user who lacks a scope or does not own the thread.
 
 ---
 
@@ -195,7 +199,7 @@ These variables configure the media storage backend for file uploads (`/v1/files
 
 | Variable | Type | Default | Description |
 | --- | --- | --- | --- |
-| `MEDIA_STORAGE_TYPE` | `string` | `"local"` | Where files are stored: `"memory"` (no persistence), `"local"` (disk), `"cloud"` (S3/GCS), `"pg"` (PostgreSQL). |
+| `MEDIA_STORAGE_TYPE` | `string` | `"local"` | Where files are stored: `"memory"` (no persistence), `"local"` (disk), or `"cloud"` (S3/GCS). |
 | `MEDIA_STORAGE_PATH` | `string` | `"./uploads"` | Local directory path when `MEDIA_STORAGE_TYPE=local`. |
 | `MEDIA_MAX_SIZE_MB` | `float` | `25.0` | Maximum upload size in MB. Uploads exceeding this return 413. |
 | `DOCUMENT_HANDLING` | `string` | `"extract_text"` | How uploaded documents are processed: `"extract_text"` (extract for graph context), `"pass_raw"` (store raw), `"skip"` (store but do not process). |

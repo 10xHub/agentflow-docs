@@ -158,8 +158,8 @@ See [`reference/client/files`](files.md) for full details.
 
 | Method | Returns | Description |
 |---|---|---|
-| `registerTool(registration)` | `void` | Register a browser-side tool that the server can invoke during graph execution. |
-| `setup()` | `Promise<SetupGraphResponse>` | Send all registered tool definitions to the server. Must be called before `invoke` or `stream` when using remote tools. |
+| `registerToolHandler(name, handler)` | `void` | Register the client-side implementation for a schema declared in server `agentflow.json`. |
+| `registerTool(registration)` | `void` | Compatibility form; schema metadata remains local and is not sent to the server. |
 
 See [`reference/client/tools`](tools.md) for full details.
 

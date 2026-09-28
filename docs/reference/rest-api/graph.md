@@ -25,7 +25,6 @@ Base path: `/v1/graph`
 | `POST` | `/v1/graph/invoke` | `graph:invoke` |
 | `POST` | `/v1/graph/stream` | `graph:stream` |
 | `POST` | `/v1/graph/stop` | `graph:stop` |
-| `POST` | `/v1/graph/setup` | `graph:setup` |
 | `POST` | `/v1/graph/fix` | `graph:fix` |
 | `GET` | `/v1/graph` | `graph:read` |
 | `GET` | `/v1/graph/tools` | `graph:read` |
@@ -238,37 +237,10 @@ List the tools exposed by every `ToolNode` in the graph, grouped by node.
 | `node_count` | Number of `ToolNode`s in the graph |
 | `tool_count` | Total tools across all tool nodes |
 | `nodes[].node_name` | Name of the tool node in the graph |
-| `nodes[].tools[].source` | `local` (a Python function on the node), `mcp` (from a connected MCP server), or `remote` (a client-side tool registered via `POST /v1/graph/setup`) |
+| `nodes[].tools[].source` | `local` (a Python function on the node), `mcp` (from a connected MCP server), or `remote` (declared in `agentflow.json` and executed by a client) |
 | `nodes[].tools[].parameters` | JSON Schema for the tool's parameters, in OpenAI function-calling shape |
 
 Tool collection is best-effort per node: an MCP server that fails to respond is logged and its node contributes no tools, rather than failing the whole request.
-
----
-
-## POST /v1/graph/setup
-
-Register client-side (remote) tools with a tool node for the current process. The model then sees these tools and emits calls for them; your client executes them and resumes the run with the result.
-
-**Request body:**
-
-```json
-{
-  "tools": [
-    {
-      "node_name": "TOOL",
-      "name": "get_user_location",
-      "description": "Read the browser's geolocation.",
-      "parameters": {"type": "object", "properties": {}}
-    }
-  ]
-}
-```
-
-:::warning Development only
-This endpoint returns `403` when `MODE=production` **or** when any auth backend is configured (that is, `agentflow.json` sets `auth` to anything other than `none`). Registration mutates process-wide graph state, so it is unsafe to expose to multiple tenants. The `detail` names which of the two conditions tripped.
-
-Note that the auth condition alone is enough: **every authenticated agent gets a 403 here, not just multi-tenant deployments**, so the TypeScript client's `registerTool()` + `setup()` flow is unavailable to them. Attach the tools statically with `CompiledGraph.attach_remote_tools()` at build time instead — see [Remote tools](/docs/concepts/remote-tools).
-:::
 
 ---
 

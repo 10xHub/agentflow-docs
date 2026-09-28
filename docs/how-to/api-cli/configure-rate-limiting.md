@@ -37,7 +37,7 @@ worker and requires no extra dependencies.
     "requests": 100,
     "window": 60,
     "by": "ip",
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
   }
 }
 ```
@@ -79,7 +79,7 @@ pip install "10xscale-agentflow-cli[redis]"
     "window": 60,
     "by": "ip",
     "trusted_proxy_headers": true,
-    "exclude_paths": ["/health", "/metrics", "/docs", "/redoc", "/openapi.json"],
+    "exclude_paths": ["/ping", "/metrics", "/docs", "/redoc", "/openapi.json"],
     "redis": {
       "url": "${RATE_LIMIT_REDIS_URL}",
       "prefix": "agentflow:rate-limit"
@@ -250,7 +250,7 @@ count against the rate limit:
 ```json
 {
   "rate_limit": {
-    "exclude_paths": ["/health", "/metrics", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/metrics", "/docs", "/redoc", "/openapi.json"]
   }
 }
 ```

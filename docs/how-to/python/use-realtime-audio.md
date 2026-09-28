@@ -402,6 +402,8 @@ First frame from the client must be a JSON object. Present fields override the a
 {"model": "gemini-live-2.5-flash-preview", "thread_id": "abc", "voice": "Puck"}
 ```
 
+Two fields are limited by the server. `model` is honoured only when it is listed in `websocket.realtime_models` in `agentflow.json`, and `tools_tags` can only narrow the agent's own tag filter. The live agent also refuses a tool call for any tool it did not advertise to the model in this session.
+
 **Upstream (client -> server)**
 
 | Frame | Content |

@@ -151,7 +151,7 @@ const result = await client.invoke([userMsg], {
 
 ## Remote tool call loop
 
-When you have registered remote tools with `client.registerTool()` and the agent requests one, the loop works like this:
+When server-configured remote tools have matching `client.registerToolHandler()` handlers and the agent requests one, the loop works like this:
 
 1. Client sends the initial messages to `POST /v1/graph/invoke`.
 2. Server responds. If any `RemoteToolCallBlock` is in the response messages, the client intercepts them.
@@ -254,7 +254,7 @@ const result = await client.invoke(
 - The `config.thread_id` option enables persistent conversations with checkpointing.
 - `response_granularity: 'low'` is the most efficient setting for chat UIs.
 - The `onPartialResult` callback lets you react to each iteration without requiring full streaming.
-- The remote tool call loop is handled automatically — just register your handlers with `registerTool()`.
+- The remote tool call loop is handled automatically — register matching handlers with `registerToolHandler()`.
 
 ## Next step
 

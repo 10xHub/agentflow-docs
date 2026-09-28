@@ -213,7 +213,7 @@ Sent by the server to the TypeScript client when a tool needs to run in the brow
 |---|---|---|
 | `type` | `"remote_tool_call"` | Discriminator. |
 | `id` | `str` | Call ID. |
-| `name` | `str` | Tool name registered via `client.registerTool()`. |
+| `name` | `str` | Configured remote-tool name with a matching client handler. |
 | `args` | `dict` | Arguments. |
 | `tool_type` | `str` | Always `"remote"`. |
 

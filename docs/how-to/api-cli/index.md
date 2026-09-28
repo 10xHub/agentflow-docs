@@ -40,7 +40,7 @@ agentflow --help
 | [`agentflow test`](./run-tests.md) | Run the project test suite via pytest |
 | [`agentflow eval`](./run-evals.md) | Run agent evaluations and generate HTML + JSON reports |
 | `agentflow audit` | Check the interpreter, packages, project config, and port |
-| `agentflow config` | Manage user-level CLI preferences |
+| `agentflow config` | Edit, validate, and save `agentflow.json` in a browser UI |
 | `agentflow demo` | Preview the CLI animations with no side effects |
 | `agentflow version` | Print CLI and core framework version |
 
@@ -188,7 +188,8 @@ See [Run evaluations](./run-evals.md) for the full guide.
 Read-only check of everything that has to be true before `dev`, `eval`, or `build` can work here: the Python interpreter, the installed `10xscale-agentflow-cli` and `10xscale-agentflow` packages, whether the installed core still exposes the evaluation API the CLI imports, whether `agentflow.json` is present and declares a valid `agent` key, and whether the default port is free.
 
 ```bash
-agentflow audit                        # table of six checks
+agentflow audit                        # table of six checks, including remote_tools format
+agentflow audit --config custom.json   # validate a nondefault project config
 agentflow --format json audit          # machine-readable, for CI
 ```
 
@@ -198,16 +199,19 @@ Nothing is written or changed. It exits `1` if any check fails and `0` otherwise
 
 ### `agentflow config`
 
-Manages user-level CLI preferences, stored as JSON in the per-user config directory (for example `~/.config/agentflow/config.json` on Linux) and applied to every project. `output.format`, `output.color`, and `output.progress` become the defaults for the matching root flags; explicit flags still win.
+Opens a local web editor for `agentflow.json`. Every supported key is listed in the page: optional sections such as authentication, authorization, rate limiting, and observability have an on/off switch, and their fields are filled in with inputs instead of hand-written JSON.
 
 ```bash
-agentflow config path
-agentflow config list
-agentflow config set output.format plain
-agentflow config get output.format
-agentflow config unset output.format
-agentflow config validate
+agentflow config                      # edit ./agentflow.json (created on first save)
+agentflow config -c path/to/agentflow.json
+agentflow config --port 8765 --no-open
 ```
+
+- **Validate** checks the current form with the same parsers the API server uses and lists errors and warnings per section. Nothing is written.
+- **Save** validates again and refuses to write while there are errors. The previous file is kept as `agentflow.json.bak`, keys the editor does not know about are preserved, and the save is rejected if the file changed on disk after the page loaded.
+- Secrets such as `JWT_SECRET_KEY` or `LOGFIRE_TOKEN` stay in your `.env` file; the editor never asks for them.
+
+The editor only listens on `127.0.0.1` and each run uses a random session token in the printed link. Press Ctrl+C to stop it. The page loads Tailwind CSS from the jsDelivr CDN, so without internet access it still works but is unstyled.
 
 ---
 

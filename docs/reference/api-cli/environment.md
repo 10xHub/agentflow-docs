@@ -120,6 +120,8 @@ before it does.
 | --- | --- | --- |
 | `JWT_SECRET_KEY` | Secret key for JWT signing and verification. No default. | `auth: "jwt"` |
 | `JWT_ALGORITHM` | JWT algorithm. Default `HS256`. | `auth: "jwt"` |
+| `JWT_ISSUER` | Required `iss` claim. Unset means not checked. | Optional |
+| `JWT_AUDIENCE` | Required `aud` claim. Unset means not checked. | Optional |
 
 Both must be set when `agentflow.json` has `"auth": "jwt"`; the config load raises a `ValueError`
 otherwise and the server does not start. JWT support also needs the extra:
@@ -199,7 +201,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `MEDIA_STORAGE_TYPE` | `local` | `memory`, `local`, `cloud`, or `pg` |
+| `MEDIA_STORAGE_TYPE` | `local` | `memory`, `local`, or `cloud` |
 | `MEDIA_STORAGE_PATH` | `./uploads` | Directory used by the `local` store |
 | `MEDIA_MAX_SIZE_MB` | `25.0` | Maximum upload size in megabytes |
 | `DOCUMENT_HANDLING` | `extract_text` | `extract_text`, `pass_raw`, or `skip` |

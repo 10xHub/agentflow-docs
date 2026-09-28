@@ -50,11 +50,10 @@ button in the chat composer is inert.
 **Today:** file upload works over the REST API and the TypeScript client. See
 [send images and documents](../how-to/client/send-images-and-documents.md).
 
-### Server-side registration of client tools
+### Server-owned schemas for client tools
 
-`registerTool()` on the TypeScript client stores a handler locally; it does not
-yet inform the server. Tools the browser can execute must still be declared on
-the Python side.
+`registerToolHandler()` stores a handler locally. Tools the browser can execute
+must be declared under `remote_tools` in server `agentflow.json`.
 
 See [register remote tools](../how-to/client/register-remote-tools.md).
 

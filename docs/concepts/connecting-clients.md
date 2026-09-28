@@ -138,8 +138,8 @@ sequenceDiagram
   participant API as AgentFlow API
   participant G as Python Graph
 
-  C->>C: register tool "read_clipboard" with local handler
-  C->>API: client.setup() — sends tool schemas to server
+  API->>G: attach schemas from agentflow.json at startup
+  C->>C: register handler "read_clipboard"
   C->>API: client.invoke(message)
   API->>G: run graph (server knows schema, not handler)
   G-->>API: RemoteToolCallBlock — needs client execution
@@ -156,20 +156,12 @@ import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-c
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-// 1. Register the tool with its local handler. `node` is the tool node in your
-//    graph that is allowed to call it.
-client.registerTool({
-  node: 'TOOL',
-  name: 'read_clipboard',
-  description: 'Read text from the user clipboard',
-  parameters: { type: 'object', properties: {}, required: [] },
-  handler: async () => ({ content: await navigator.clipboard.readText() }),
-});
+// Schema is declared under remote_tools in server agentflow.json.
+client.registerToolHandler('read_clipboard', async () => ({
+  content: await navigator.clipboard.readText(),
+}));
 
-// 2. Send the schemas to the server. Once per client, before the first run.
-await client.setup();
-
-// 3. Run. invoke() and stream() both drive the tool loop for you: when the
+// invoke() and stream() both drive the tool loop for you: when the
 //    server asks for read_clipboard, the client runs the handler and sends the
 //    result back automatically.
 const stream = client.stream([Message.text_message('What is on my clipboard?')], {

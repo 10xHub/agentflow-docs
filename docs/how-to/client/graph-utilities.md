@@ -151,22 +151,14 @@ interface GraphToolsResponse {
 |---|---|
 | `local` | A Python function registered on the tool node in your graph. |
 | `mcp` | Discovered at runtime from an MCP server attached to the node. |
-| `remote` | Registered by a client through `registerTool()` + `setup()`, and executed back on that client. |
+| `remote` | Declared in server `agentflow.json` and executed by a matching client handler. |
 
-### Use case: confirm your remote tools actually landed
+### Use case: confirm configured remote tools loaded
 
-`setup()` reports how many tools it registered, but `graphTools()` is what the graph will really offer the model. Check the two agree before you rely on a browser-side tool:
+`graphTools()` reports what the graph offers the model. Check it after server startup:
 
 ```ts
-client.registerTool({
-  node: 'TOOL',
-  name: 'get_location',
-  description: 'Read the browser geolocation',
-  parameters: { type: 'object', properties: {}, required: [] },
-  handler: async () => readGeolocation(),
-});
-
-await client.setup();
+client.registerToolHandler('get_location', async () => readGeolocation());
 
 const { data } = await client.graphTools();
 const remote = data.nodes
@@ -175,7 +167,7 @@ const remote = data.nodes
   .map(t => t.name);
 
 if (!remote.includes('get_location')) {
-  throw new Error('get_location did not register — did setup() run against this server?');
+  throw new Error('get_location is missing from agentflow.json');
 }
 ```
 

@@ -24,7 +24,7 @@ The `agentflow api` command starts a FastAPI + Uvicorn server that exposes your 
 | **Files** | `/v1/files/...` | Multimodal file upload and retrieval |
 | **Config** | `/v1/config/...` | Read server configuration (e.g. multimodal settings) |
 | **Observability** | `/v1/observability/...` | Reconstructed run traces. Development only; returns an empty payload in production. |
-| **Evals** | `/v1/evals/...` | Eval report viewer. **Unauthenticated**; block or remove it on a public deployment. |
+| **Evals** | `/v1/evals/...` | Eval report viewer. **Unauthenticated**, so it is not mounted when `MODE=production`. |
 
 Full endpoint reference: [REST API reference](../../reference/rest-api/conventions.md), starting with the shared conventions, auth model, and permission table.
 

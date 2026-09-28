@@ -39,8 +39,7 @@ The limits belong to the server, not the client, so read them rather than hardco
 const config = await client.getMultimodalConfig();
 
 const {
-  media_storage_type,   // 'memory' | 'local' | 'cloud' | 'pg'
-  media_storage_path,
+  media_storage_type,   // 'memory' | 'local' | 'cloud'
   media_max_size_mb,    // server default is 25
   document_handling,    // 'extract_text' | 'pass_raw' | 'skip'
 } = config.data;

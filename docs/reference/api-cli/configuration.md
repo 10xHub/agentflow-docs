@@ -37,13 +37,21 @@ keywords:
   "redis": "redis://localhost:6379/0",
   "env": ".env",
   "auth": "jwt",
+  "remote_tools": [
+    {
+      "node": "tools",
+      "name": "read_clipboard",
+      "description": "Read clipboard text from the client.",
+      "parameters": {"type": "object", "properties": {}, "required": []}
+    }
+  ],
   "rate_limit": {
     "enabled": true,
     "backend": "memory",
     "requests": 100,
     "window": 60,
     "by": "ip",
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
   },
   "routers": {
     "evals": false,
@@ -136,6 +144,28 @@ The class must subclass `ThreadNameGenerator` and implement
 `async def generate_name(self, messages: list[str]) -> str`. An already-created
 instance is also accepted. See [thread name generator](thread-name-generator.md)
 for the full interface.
+
+---
+
+### `remote_tools`
+
+Trusted schemas for tools whose handlers run in the TypeScript client. Schemas are validated and
+attached once at startup; clients cannot mutate them.
+
+```json
+"remote_tools": [
+  {
+    "node": "tools",
+    "name": "read_clipboard",
+    "description": "Read clipboard text from the client.",
+    "parameters": {"type": "object", "properties": {}, "required": []}
+  }
+]
+```
+
+`node_name` is an accepted alias for `node`. Unknown fields and duplicate names fail startup.
+Run `agentflow audit` in the project directory to check these schemas before starting the API;
+it exits with status `1` when validation fails.
 
 ---
 
@@ -234,7 +264,7 @@ Sliding-window rate limiter configuration.
   "requests": 100,
   "window": 60,
   "by": "ip",
-  "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+  "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
 }
 ```
 
@@ -321,9 +351,11 @@ Switch for the streaming WebSocket endpoint, plus per-process connection limits.
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `enabled` | boolean | `true` | Whether `/v1/graph/ws` is mounted. Set to `false` on a deployment that only uses REST and SSE to drop the endpoint entirely. Equivalent to [`routers.websocket`](#routers); if both are written and disagree, the endpoint stays unmounted and startup logs a warning. Values that are not booleans (the strings `"true"`/`"false"` included) raise a `ValueError` at startup. |
-| `max_connections` | integer or `null` | `null` (unlimited) | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError` at startup. |
+| `max_connections` | integer or `null` | `1000` | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError` at startup. |
+| `max_connections_per_user` | integer or `null` | `10` | How many of those connections one verified user may hold, so a single account cannot take every slot. `null` or `0` means unlimited. |
+| `realtime_models` | list of strings | `[]` | Models a `/v1/graph/live` client may request with `model` in its init frame. Any other requested model is ignored and the live agent's own model is used. Empty means clients cannot choose the model. |
 
-Omit the block entirely to keep the endpoint mounted with unlimited connections.
+Omit the block entirely to keep the endpoint mounted with the default limits.
 
 #### Turning the WebSocket endpoint off
 

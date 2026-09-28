@@ -123,7 +123,6 @@ pip install "10xscale-agentflow-cli[media]"
   "success": true,
   "data": {
     "media_storage_type": "local",
-    "media_storage_path": "./uploads",
     "media_max_size_mb": 25.0,
     "document_handling": "extract_text"
   }
@@ -140,7 +139,7 @@ All media settings are read from the environment at startup.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `MEDIA_STORAGE_TYPE` | `local` | Where binaries live: `memory`, `local`, `cloud`, or `pg` |
+| `MEDIA_STORAGE_TYPE` | `local` | Where binaries live: `memory`, `local`, or `cloud` |
 | `MEDIA_STORAGE_PATH` | `./uploads` | Directory for the `local` store |
 | `MEDIA_MAX_SIZE_MB` | `25.0` | Maximum upload size in megabytes. Exceeding it returns `413`. |
 | `DOCUMENT_HANDLING` | `extract_text` | `extract_text`, `pass_raw`, or `skip` |
@@ -192,7 +191,7 @@ Used only when `MEDIA_STORAGE_TYPE=cloud`.
 
 - Set `MEDIA_ALLOWED_CONTENT_TYPES` to the types your agent actually handles.
 - Set `MEDIA_MAX_SIZE_MB` to the smallest value that works. It is independent of `MAX_REQUEST_SIZE`, which the middleware applies to non-chunked request bodies.
-- Use `cloud` or `pg` storage for multi-worker deployments. The `local` store assumes a shared filesystem and `memory` loses everything on restart.
+- Use `cloud` storage for multi-worker deployments. The `local` store assumes a shared filesystem and `memory` loses everything on restart.
 - Configure a checkpointer so the document extraction cache is shared across workers instead of being re-extracted per process.
 - Set `MEDIA_REQUIRE_OWNER=true` if you need a hard guarantee that no file without a recorded owner can be read. Files uploaded before ownership tracking existed carry no owner and are otherwise allowed through with a warning.
 

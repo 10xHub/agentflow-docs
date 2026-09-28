@@ -45,17 +45,17 @@ client.realtime(
 
 ### `init: RealtimeInit`
 
-The session configuration, sent to the server as the first frame. Only `model` is required; every other field overrides the live agent's build-time `RealtimeConfig` for this session.
+The session configuration, sent to the server as the first frame. Every field is optional and overrides the live agent's build-time `RealtimeConfig` for this session, within the limits the server sets.
 
 | Field | Type | Description |
 |---|---|---|
-| `model` | `string` | **Required.** The realtime model, e.g. `'gemini-2.5-flash-live'`. |
+| `model` | `string` | The realtime model, e.g. `'gemini-2.5-flash-live'`. Honoured only when the server lists it in `websocket.realtime_models`; otherwise the agent's own model is used. |
 | `thread_id` | `string` | Conversation/thread id. If omitted, the session generates one (`session.threadId`) and reuses it for reconnects so the conversation resumes from its checkpoint. |
 | `voice` | `string` | Provider voice name (e.g. `'Puck'`). |
 | `modalities` | `'AUDIO' \| 'TEXT' \| ('AUDIO' \| 'TEXT')[]` | Response modality. A realtime session is single-modality; a bare string is accepted and coerced server-side. Defaults to the agent's config (usually `'AUDIO'`). |
 | `vad` | `RealtimeVADConfig` | Voice-activity-detection overrides. Disable for push-to-talk and drive turns with `activityStart()` / `activityEnd()`. |
 | `system_prompt` | `string` | Per-session system instruction override. |
-| `tools_tags` | `string[]` | Restrict which tagged tools are available this session. |
+| `tools_tags` | `string[]` | Restrict which tagged tools are available this session. It can only narrow the agent's own tag filter; tags outside it are dropped. |
 
 Unknown keys are forwarded verbatim and ignored by servers that do not understand them, so the type is forward-compatible (`[k: string]: unknown`).
 

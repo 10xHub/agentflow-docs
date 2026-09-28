@@ -23,7 +23,7 @@ to turn it off.
 | `requests` | integer | `100` | Maximum requests allowed within each window. |
 | `window` | integer | `60` | Window size in seconds. |
 | `by` | string | `"ip"` | Bucket key. `"ip"`, `"user"`, or `"global"`. See [Bucket keys](#bucket-keys). |
-| `exclude_paths` | string array | `[]` | Request paths that bypass rate limiting entirely. |
+| `exclude_paths` | string array | `[]` | Request paths that bypass rate limiting entirely. The `/ping` health check is always exempt, so a probe never gets `429`, even when the backend is down and `fail_open` is `false`. |
 | `trusted_proxy_headers` | boolean | `false` | Use `X-Forwarded-For` to resolve the client IP. Only enable behind a proxy you control. |
 | `trusted_proxy_hops` | integer | `1` | How many proxies of your own sit in front of the app. See [Proxy hops](#proxy-hops). Must be `>= 1`. |
 | `redis.url` | string | `null` | Redis connection URL. Required for the `"redis"` backend. Supports `${ENV_VAR}` expansion. |
@@ -69,7 +69,7 @@ The separate [`websocket.max_connections`](./configuration.md#websocket) cap is 
     "requests": 100,
     "window": 60,
     "by": "ip",
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
   }
 }
 ```
@@ -86,7 +86,7 @@ The separate [`websocket.max_connections`](./configuration.md#websocket) cap is 
     "window": 60,
     "by": "ip",
     "trusted_proxy_headers": true,
-    "exclude_paths": ["/health", "/metrics", "/docs", "/redoc", "/openapi.json"],
+    "exclude_paths": ["/ping", "/metrics", "/docs", "/redoc", "/openapi.json"],
     "redis": {
       "url": "${RATE_LIMIT_REDIS_URL}",
       "prefix": "agentflow:rate-limit"

@@ -476,6 +476,7 @@ agentflow audit [OPTIONS]
 
 | Option | Default | Description |
 | --- | --- | --- |
+| `--config`, `-c` | `agentflow.json` | Project configuration file to validate |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
 
@@ -488,7 +489,7 @@ timeline, and again as a summary table.
 | CLI package | `10xscale-agentflow-cli` is installed and resolvable |
 | Core framework | `10xscale-agentflow` is installed and resolvable |
 | Evaluation API | The installed core still exposes the evaluation symbols `agentflow eval` imports, catching a CLI/core version skew before it becomes an `ImportError` mid-run |
-| Project configuration | `agentflow.json` exists here, parses, and declares an `agent` key in `module:attribute` form |
+| Project configuration | `agentflow.json` exists here, declares a valid `agent` key, and validates every `remote_tools` schema and tool name |
 | Port | The default API port (`8000`) is free to bind |
 
 Each check reports `PASS`, `WARN`, or `FAIL`. The command exits `1` if any check
@@ -500,6 +501,7 @@ surfaced without failing the run, which makes it usable as a CI gate.
 ```bash
 # Human-readable table
 agentflow audit
+agentflow audit --config custom.json
 
 # Machine-readable events, for CI
 agentflow --format json audit
@@ -512,35 +514,34 @@ agentflow --no-animation audit
 
 ## agentflow config
 
-Inspect and manage user-level CLI preferences. They are stored as JSON in the
-per-user config directory (`platformdirs`), for example
-`~/.config/agentflow/config.json` on Linux, and apply to every project.
+Open a local browser editor for `agentflow.json`.
 
 ```bash
-agentflow config path       # print the configuration file path
-agentflow config list       # list every stored preference
-agentflow config get KEY    # read one preference
-agentflow config set KEY VALUE
-agentflow config unset KEY  # remove one preference
-agentflow config validate   # parse the file and check known keys
+agentflow config [--config PATH] [--port PORT] [--open/--no-open]
 ```
 
-Keys are dot-separated. `set` parses `VALUE` as JSON and falls back to a plain
-string, so `agentflow config set output.format plain` and
-`agentflow config set rate_limit.requests 100` both work.
-
-These keys are read at startup as defaults for the root output flags:
-
-| Key | Values | Default |
+| Option | Default | Description |
 | --- | --- | --- |
-| `output.format` | `human`, `plain`, `json`, `jsonl` | `human` |
-| `output.color` | `auto`, `always`, `never` | `auto` |
-| `output.progress` | `auto`, `tty`, `plain`, `json`, `quiet` | `auto` |
+| `--config`, `-c` | `agentflow.json` | File to edit. Created on first save if it does not exist. |
+| `--port`, `-p` | `0` | Port for the editor. `0` picks any free port. |
+| `--open/--no-open` | `--open` | Open the editor in the default browser. |
 
-Command-line flags always win over stored values. If the file is unreadable or a
-key holds an unsupported value, commands fail with a pointer to
-`agentflow config validate` (the `config` sub-commands themselves still run, so
-the bad value can be fixed).
+The page lists every key described in [Configuration](./configuration.md).
+Optional sections (`auth`, `authorization`, `rate_limit`, `websocket`,
+`observability`, `remote_tools`, `test`, `evaluation`) have an on/off switch;
+turning one off removes the key from the file.
+
+- **Validate** runs the same parsers the API server uses (`RateLimitConfig`,
+  `WebSocketConfig`, `validate_remote_tools`, the auth and authorization rules)
+  and reports errors and warnings per section, without writing anything.
+- **Save** refuses to write while there are errors. It keeps the previous file as
+  `agentflow.json.bak`, preserves keys the editor does not know about and the
+  existing key order, and rejects the save if the file changed on disk after
+  the page loaded.
+
+The server binds to `127.0.0.1` only, and every API call needs the random
+session token carried in the printed link. Secrets stay in `.env`; the editor
+never asks for them. Stop it with Ctrl+C.
 
 ---
 

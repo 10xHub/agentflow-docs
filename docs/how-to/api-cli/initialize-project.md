@@ -168,7 +168,7 @@ Production example with JWT auth and memory rate limiting:
     "window": 60,
     "by": "ip",
     "trusted_proxy_headers": false,
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"]
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
   }
 }
 ```

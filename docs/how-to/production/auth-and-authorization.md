@@ -366,10 +366,15 @@ Exactly three paths are public: `/ping`, `/v1/evals/runs`, and `/v1/evals/runs/{
 
 :::warning The eval endpoints are unauthenticated
 `/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port,
-regardless of your `auth` setting. Before deploying, either keep `eval_reports/` out of the image
-and working directory, or block `/v1/evals/*` at your ingress. See
+regardless of your `auth` setting. For that reason they are not mounted when `MODE=production`,
+and the `.dockerignore` from `agentflow build` keeps `eval_reports/` and `uploads/` out of the
+image. On any other deployment reachable by others, block `/v1/evals/*` at your ingress. See
 [REST API: Evals](/docs/reference/rest-api/evals).
 :::
+
+With `MODE=production`, `/docs`, `/redoc` and `/openapi.json` are also off unless you set
+`DOCS_PATH` or `REDOCS_PATH` explicitly. The OpenAPI schema is served only while one of them is
+set.
 
 ## Production recommendations
 

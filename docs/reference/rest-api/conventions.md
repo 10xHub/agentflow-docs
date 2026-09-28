@@ -88,7 +88,6 @@ The table below lists every `(resource, action)` pair enforced by the server. Wh
 | `GET /v1/observability/{thread_id}` | `graph` | `read` |
 | `GET /v1/graph:StateSchema` | `graph` | `read` |
 | `POST /v1/graph/stop` | `graph` | `stop` |
-| `POST /v1/graph/setup` | `graph` | `setup` |
 | `POST /v1/graph/fix` | `graph` | `fix` |
 | `GET /v1/threads/{id}/state` | `checkpointer` | `read` |
 | `PUT /v1/threads/{id}/state` | `checkpointer` | `write` |

@@ -327,7 +327,7 @@ Add a `rate_limit` block to turn on the sliding-window limiter. It is off until 
     "by": "ip",
     "trusted_proxy_headers": false,
     "trusted_proxy_hops": 1,
-    "exclude_paths": ["/health", "/docs", "/redoc", "/openapi.json"],
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"],
     "fail_open": true
   }
 }

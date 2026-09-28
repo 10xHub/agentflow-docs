@@ -197,7 +197,7 @@ Fetch the server's multimodal configuration — which storage backend is active,
 
 ```ts
 const config = await client.getMultimodalConfig();
-console.log(config.data.media_storage_type);  // 'memory' | 'local' | 'cloud' | 'pg'
+console.log(config.data.media_storage_type);  // 'memory' | 'local' | 'cloud'
 console.log(config.data.media_max_size_mb);   // 25 by default
 console.log(config.data.document_handling);   // 'extract_text' | 'pass_raw' | 'skip'
 ```
@@ -208,7 +208,6 @@ console.log(config.data.document_handling);   // 'extract_text' | 'pass_raw' | '
 interface MultimodalConfigResponse {
   data: {
     media_storage_type: string;   // Storage backend identifier
-    media_storage_path: string;   // Base path or bucket name
     media_max_size_mb: number;    // Maximum file size in megabytes
     document_handling: string;    // 'extract_text' | 'pass_raw' | 'skip'
   };

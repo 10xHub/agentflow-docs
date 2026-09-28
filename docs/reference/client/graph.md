@@ -15,7 +15,7 @@ sidebar_position: 2.5
 
 # Graph control
 
-Eight methods on `AgentFlowClient` describe or control the graph itself rather than a single conversation: what the graph is, what tools it has, what its state looks like, what a run did, and how to stop or repair one.
+Seven methods on `AgentFlowClient` describe or control the graph itself rather than a single conversation: what the graph is, what tools it has, what its state looks like, what a run did, and how to stop or repair one.
 
 **Source:** `src/client.ts`, `src/endpoints/`
 
@@ -28,7 +28,6 @@ Eight methods on `AgentFlowClient` describe or control the graph itself rather t
 | `graphStateSchema()` | `GET /v1/graph:StateSchema` | `Promise<StateSchemaResponse>` |
 | `stopGraph(threadId, config?)` | `POST /v1/graph/stop` | `Promise<StopGraphResponse>` |
 | `fixGraph(threadId, config?)` | `POST /v1/graph/fix` | `Promise<FixGraphResponse>` |
-| `setup()` | `POST /v1/graph/setup` | `Promise<SetupGraphResponse>` |
 
 Every response follows the same envelope: the payload under `data`, and `{ request_id, timestamp, message }` under `metadata`.
 
@@ -151,7 +150,7 @@ interface GraphToolsResponse {
 |---|---|
 | `local` | A Python function registered on the tool node. |
 | `mcp` | Discovered from an MCP server attached to the node. |
-| `remote` | Registered by a client via `registerTool()` and `setup()`, executed back on that client. |
+| `remote` | Declared in server `agentflow.json`, executed by a matching client handler. |
 
 A graph with no tool nodes returns `nodes: []` and `tool_count: 0`. That is a valid graph, not an error.
 
@@ -319,38 +318,6 @@ interface FixGraphResponse {
 ```
 
 `removed_count: 0` means the thread was already valid.
-
----
-
-## `setup()`
-
-```ts
-setup(): Promise<SetupGraphResponse>
-```
-
-Sends every tool registered with `registerTool()` to the server, so the graph knows those tools exist and can ask this client to execute them.
-
-```ts
-interface RemoteTool {
-  node_name: string;                 // from registration.node
-  name: string;
-  description: string;               // '' when the registration omitted it
-  parameters: Record<string, any>;   // {} when the registration omitted it
-}
-
-interface SetupGraphResponse {
-  data: {
-    success: boolean;
-    message: string;
-    registered_tools?: number;
-  };
-  metadata: ResponseMetadata;
-}
-```
-
-Call `setup()` after all `registerTool()` calls and before the first `invoke()`, `stream()`, or `wsStream()`. Registration is per connection, so a new client instance must call it again. `setup()` sends only the schema — the handler function stays in your process, which is the point.
-
-`setup()` does not use `toolExecutor.all_tools()`; see [`reference/client/tools`](tools.md).
 
 ---
 

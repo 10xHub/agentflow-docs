@@ -86,12 +86,12 @@ Search memories by semantic similarity. Requires `store:read`.
 | `query` | string | yes | | Search query. Empty or whitespace-only returns `422` |
 | `memory_type` | string | no | `null` | Filter by memory type |
 | `category` | string | no | `null` | Filter by category |
-| `limit` | integer | no | `10` | Maximum results. Must be greater than 0 |
+| `limit` | integer | no | `10` | Maximum results. Must be between 1 and 100 |
 | `score_threshold` | float | no | `null` | Minimum similarity score for a result to be returned |
 | `filters` | object | no | `null` | Additional store-specific filters |
 | `retrieval_strategy` | string | no | `similarity` | Retrieval strategy used by the backend |
 | `distance_metric` | string | no | `cosine` | Distance metric applied during similarity search |
-| `max_tokens` | integer | no | `4000` | Token budget used for truncation during similarity search |
+| `max_tokens` | integer | no | `4000` | Token budget used for truncation during similarity search. At most 16000 |
 
 **Response:**
 
@@ -131,7 +131,7 @@ This is a `POST` because the request carries a `config` object; there is no
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `limit` | integer | no | `100` | Maximum memories to return. Values `<= 0` return `422` |
+| `limit` | integer | no | `100` | Maximum memories to return, between 1 and 1000. Other values return `422` |
 
 Sending no body at all is valid and applies the defaults.
 
