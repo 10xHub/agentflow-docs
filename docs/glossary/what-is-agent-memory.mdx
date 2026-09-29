@@ -111,12 +111,15 @@ The agent can then decide to save facts ("user prefers Python over JavaScript") 
 
 ## Memory and the API server
 
-When running via `agentflow api`, memory is automatic. The checkpointer is configured in `agentflow.json`:
+When running via `agentflow api`, memory is automatic once the graph is compiled with a checkpointer. The server uses the checkpointer the compiled graph carries:
+
+```python title="graph/agent.py"
+app = graph.compile(checkpointer=my_checkpointer)
+```
 
 ```json title="agentflow.json"
 {
-  "agent": "graph.agent:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
+  "agent": "graph.agent:app"
 }
 ```
 
@@ -147,7 +150,7 @@ agent = ReactAgent(
   },
   {
     q: "Does AgentFlow support persistent memory out of the box?",
-    a: "Yes. AgentFlow ships with InMemoryCheckpointer for development (state is lost when the process stops) and PgCheckpointer for production (dual-layer Redis + Postgres persistence). When running via agentflow api, the checkpointer is configured in agentflow.json and applied automatically to all requests."
+    a: "Yes. AgentFlow ships with InMemoryCheckpointer for development (state is lost when the process stops) and PgCheckpointer for production (dual-layer Redis + Postgres persistence). When running via agentflow api, the checkpointer the graph is compiled with is applied automatically to all requests."
   },
   {
     q: "How does AgentFlow handle multiple users in the same agent?",

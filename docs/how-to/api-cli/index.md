@@ -36,7 +36,7 @@ agentflow --help
 | [`agentflow api`](./run-api-server.md) | Start the FastAPI development server |
 | [`agentflow play`](./open-playground.md) | Start the server and open the hosted playground |
 | [`agentflow build`](./generate-docker-files.md) | Generate a Dockerfile (and optionally docker-compose.yml / k8s.yaml) |
-| [`agentflow skills`](./install-skills.md) | Install bundled coding-agent skills (Codex, Claude, GitHub) |
+| [`agentflow skills`](./install-skills.md) | Install bundled coding-agent skills (Codex, Claude, GitHub), or validate skills against the Agent Skills spec |
 | [`agentflow test`](./run-tests.md) | Run the project test suite via pytest |
 | [`agentflow eval`](./run-evals.md) | Run agent evaluations and generate HTML + JSON reports |
 | `agentflow audit` | Check the interpreter, packages, project config, and port |
@@ -141,6 +141,7 @@ agentflow skills --agent github
 agentflow skills --all                 # install for every supported agent
 agentflow skills --list                # list supported agents
 agentflow skills --force               # overwrite existing installation
+agentflow skills --validate ./.agents/skills  # check skills against the Agent Skills spec
 ```
 
 See [Install skills](./install-skills.md) for the full guide.

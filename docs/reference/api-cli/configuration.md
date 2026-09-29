@@ -29,7 +29,6 @@ keywords:
 ```json
 {
   "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer",
   "store": "graph.dependencies:my_store",
   "injectq": "graph.dependencies:container",
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
@@ -51,23 +50,37 @@ keywords:
     "requests": 100,
     "window": 60,
     "by": "ip",
-    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
-  },
-  "routers": {
-    "evals": false,
-    "media": false
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"],
+    "fail_open": true
   },
   "websocket": {
-    "enabled": true,
-    "max_connections": 100
+    "max_connections": 100,
+    "max_connections_per_user": 10,
+    "realtime_models": ["gemini-2.5-flash-live"]
+  },
+  "ag_ui": {
+    "enabled": false
   },
   "observability": {
     "level": "standard",
     "logfire": {"enabled": true, "service_name": "my-agent"},
     "langsmith": {"enabled": false, "project": "my-agent"}
+  },
+  "test": {
+    "path": "tests",
+    "coverage": true,
+    "coverage_threshold": 80
+  },
+  "evaluation": {
+    "directory": "evals",
+    "output_dir": "eval_reports",
+    "threshold": 0.75
   }
 }
 ```
+
+`checkpointer` is also a recognised key, but the API server does not apply it yet; see
+[`checkpointer`](#checkpointer).
 
 ---
 
@@ -96,15 +109,20 @@ Import path to a `BaseCheckpointer` instance.
 "checkpointer": "graph.dependencies:my_checkpointer"
 ```
 
-If omitted, the graph uses no checkpointer and each request is stateless.
-
-In `graph/dependencies.py`:
+The key is recognised, but the API server does **not** apply it yet: the loader never imports
+it, so setting it has no effect on the running graph. `agentflow config` shows a warning for it.
+Pass the checkpointer to `compile()` in your graph module instead, and the server uses whatever
+the compiled graph carries:
 
 ```python
 from agentflow.storage.checkpointer import InMemoryCheckpointer
 
-my_checkpointer = InMemoryCheckpointer()
+checkpointer = InMemoryCheckpointer()
+app = graph.compile(checkpointer=checkpointer)
 ```
+
+If you pass none, `compile()` falls back to an `InMemoryCheckpointer`: threads work, but they
+live only in that process and are lost on restart.
 
 ---
 
@@ -164,6 +182,8 @@ attached once at startup; clients cannot mutate them.
 ```
 
 `node_name` is an accepted alias for `node`. Unknown fields and duplicate names fail startup.
+AG-UI clients do not need entries here: the [`ag_ui`](#ag_ui) endpoint offers each client's own
+tools to the model for that run.
 Run `agentflow audit` in the project directory to check these schemas before starting the API;
 it exits with status `1` when validation fails.
 
@@ -268,123 +288,97 @@ Sliding-window rate limiter configuration.
 }
 ```
 
-Omit this field (or set it to `null`) to disable rate limiting entirely.
+Omit this field (or set it to `null`) to disable rate limiting entirely. A block with
+`"enabled": false` keeps the settings without enforcing them.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Whether the limiter runs. The strings `"true"`/`"false"` (and `"1"`/`"0"`, `"yes"`/`"no"`, `"on"`/`"off"`) are accepted. |
+| `requests` | integer | `100` | Requests allowed per window. Must be positive. |
+| `window` | integer | `60` | Window length in seconds. Must be positive. |
+| `by` | string | `"ip"` | Bucket key: `"ip"`, `"user"`, or `"global"`. |
+| `backend` | string | `"memory"` | `"memory"`, `"redis"`, or `"custom"`. `custom` needs a `BaseRateLimitBackend` bound in InjectQ. |
+| `exclude_paths` | string array | `[]` | Paths that bypass the limiter. |
+| `trusted_proxy_headers` | boolean | `false` | Key by `X-Forwarded-For` instead of the peer address. Enable only behind a proxy you control. |
+| `trusted_proxy_hops` | integer | `1` | How many of your own proxies append to `X-Forwarded-For`; the entry that many places from the right is used. Must be `>= 1`. |
+| `trusted_proxies` | string array | `[]` | IPs or CIDR ranges your proxies connect from. When set, `X-Forwarded-For` is honoured only for requests whose peer is in one of them. An invalid network raises a `ValueError`. |
+| `redis` | object or string | none | Redis connection for the `redis` backend: `{"url": "...", "prefix": "..."}`, or the URL as a bare string. `url` supports `$VAR`/`${VAR}`. Not needed when a Redis client is bound in InjectQ. |
+| `redis.prefix` | string | `"agentflow:rate-limit"` | Key prefix for all Redis entries. |
+| `fail_open` | boolean | `true` | What the Redis backend does when Redis errors: `true` allows the request, `false` denies it. |
+
+The block is parsed when the app is built, so an invalid value stops the server from starting.
 
 Rate limiting also gates WebSocket handshakes on `/v1/graph/ws` and `/v1/graph/live`, sharing the
 same backend and bucket as REST requests.
 
-For the full field reference (including `by: "user"` and `trusted_proxy_hops`), backend options,
-response headers, and the custom backend interface see [Rate Limiting](./rate-limiting.md).
-
----
-
-### `routers`
-
-Which optional routers the server mounts. Every router is mounted by default, so an absent
-block keeps the full API; list a router as `false` to drop it.
-
-```json
-"routers": {
-  "evals": false,
-  "media": false
-}
-```
-
-| Name | Paths | Disabling it means |
-| --- | --- | --- |
-| `checkpointer` | `/v1/threads/*` | No thread list, history, state read/write, or message deletion. The playground's thread sidebar and the TypeScript client's `threads()` calls stop working. |
-| `store` | `/v1/store/*` | No long-term memory API: create, search, list, or forget memories. |
-| `evals` | `/v1/evals/*` | Eval runs cannot be listed or fetched over HTTP. `agentflow eval` on the machine itself is unaffected. |
-| `media` | `/v1/files/*`, `/v1/config/multimodal` | No file upload, download, or access URLs, and clients cannot read the multimodal config. Breaks multimodal agents that receive files through the API. |
-| `websocket` | `/v1/graph/ws` | No turn-based streaming socket. `POST /v1/graph/stream` (SSE) is the alternative. The realtime bridge `/v1/graph/live` is separate and stays mounted. |
-
-`graph` (`/v1/graph/*`) and `ping` (`/ping`) are always mounted and cannot be listed here.
-
-#### Two spellings for the WebSocket switch
-
-`/v1/graph/ws` can be switched off from either place, so neither is the wrong one to write:
-
-```json
-"routers": { "websocket": false }
-```
-
-```json
-"websocket": { "enabled": false }
-```
-
-Setting both is fine. The endpoint is mounted only when neither says `false`, so a config that
-says "off" anywhere never ends up serving. If the two are both written and disagree, the
-endpoint stays unmounted and the server logs a warning naming both keys; writing only one logs
-nothing. The `websocket` block is also where `max_connections` lives, which applies whichever
-spelling you use.
-
-A disabled router is never registered, so its paths return `404` with no handler, dependency,
-or auth code behind them. Each one logs a line at startup naming the setting that removed it.
-
-#### Bad entries warn, they do not fail the boot
-
-The block is parsed leniently. Each of these logs a `WARNING` at startup and leaves the
-router mounted:
-
-- an unknown name, including a typo such as `"eval": false`
-- `"graph"` or `"ping"`, which cannot be disabled
-- a value that is not a boolean (the strings `"true"`/`"false"` are accepted, as elsewhere in
-  this file)
-- a `routers` value that is not an object
-
-The consequence is worth stating plainly: `"eval": false` keeps `/v1/evals` serving, and the
-startup log is the only place that says so. Check the log after changing this block.
+For bucket keys, proxy hops, backend options, response headers, and the custom backend interface
+see [Rate Limiting](./rate-limiting.md).
 
 ---
 
 ### `websocket`
 
-Switch for the streaming WebSocket endpoint, plus per-process connection limits.
+Per-process limits for the WebSocket endpoints, plus the realtime models a client may pick.
 
 ```json
 "websocket": {
-  "enabled": true,
-  "max_connections": 100
+  "max_connections": 1000,
+  "max_connections_per_user": 10,
+  "realtime_models": ["gemini-2.5-flash-live"]
 }
 ```
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `enabled` | boolean | `true` | Whether `/v1/graph/ws` is mounted. Set to `false` on a deployment that only uses REST and SSE to drop the endpoint entirely. Equivalent to [`routers.websocket`](#routers); if both are written and disagree, the endpoint stays unmounted and startup logs a warning. Values that are not booleans (the strings `"true"`/`"false"` included) raise a `ValueError` at startup. |
-| `max_connections` | integer or `null` | `1000` | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError` at startup. |
-| `max_connections_per_user` | integer or `null` | `10` | How many of those connections one verified user may hold, so a single account cannot take every slot. `null` or `0` means unlimited. |
+| `max_connections` | integer or `null` | `1000` | Maximum concurrent WebSocket connections this server **process** accepts, counted across `/v1/graph/ws` and `/v1/graph/live` together. `null` or `0` means unlimited. Negative values raise a `ValueError`. |
+| `max_connections_per_user` | integer or `null` | `10` | How many of those connections one verified user may hold, so a single account cannot take every slot. Applies only when the caller's credential verifies. `null` or `0` means unlimited. |
 | `realtime_models` | list of strings | `[]` | Models a `/v1/graph/live` client may request with `model` in its init frame. Any other requested model is ignored and the live agent's own model is used. Empty means clients cannot choose the model. |
 
-Omit the block entirely to keep the endpoint mounted with the default limits.
+Omit the block entirely to use the default limits. A missing field gets its default; only an
+explicit `0` or `null` removes a cap. Both WebSocket endpoints are always mounted; there is no
+setting that turns them off.
 
-#### Turning the WebSocket endpoint off
+The block is read when a WebSocket connection is opened, not at startup, so an invalid value
+(a negative limit, or `realtime_models` that is not a list of strings) surfaces on the first
+handshake. Run `agentflow config` to check the block before deploying.
 
-```json
-"websocket": {
-  "enabled": false
-}
-```
-
-Or, equivalently, `"routers": {"websocket": false}` -- see
-[two spellings](#two-spellings-for-the-websocket-switch).
-
-With the endpoint off the route is never registered, so there is no handler, dependency, or
-auth code behind that path at all: the server refuses the handshake with HTTP `403` and logs
-one line at startup naming the setting. `enabled` does not affect:
-
-- `/v1/graph/stream`, the SSE streaming endpoint, which is the REST alternative to the socket.
-- `/v1/graph/live`, the realtime audio bridge, which already rejects non-live graphs with close
-  code `1008`.
-
-Clients get no capability hint before connecting -- a browser or the TypeScript client simply
-sees the handshake fail -- so switch it off only when nothing you ship uses `/v1/graph/ws`.
-
-Exceeding the cap refuses the handshake before `accept()` with WebSocket close code `1013`
+Exceeding either cap refuses the handshake before `accept()` with WebSocket close code `1013`
 (Try Again Later), so the client gets a clean rejection instead of a half-open socket. The slot is
 released when the handler returns or the client disconnects.
 
 The counter is per process, like the in-memory rate-limit backend. With N workers the effective
 cluster-wide limit is `max_connections x N`, so size it per worker.
+
+---
+
+### `ag_ui`
+
+Switch for the [AG-UI](https://docs.ag-ui.com) protocol endpoint, which lets AG-UI clients such
+as CopilotKit use your graph. Off by default.
+
+```json
+"ag_ui": {
+  "enabled": true
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `false` | Whether `POST /v1/ag-ui` is mounted. The strings `"true"`/`"false"` (and `"1"`/`"0"`, `"yes"`/`"no"`, `"on"`/`"off"`) are accepted; any other non-boolean raises a `ValueError` at startup. |
+
+The endpoint needs the `ag-ui` extra:
+
+```bash
+pip install "10xscale-agentflow-cli[ag-ui]"
+```
+
+If `enabled` is `true` and the package is missing, the server refuses to start and prints that
+install command. With the key absent or `enabled: false`, the route is never registered and the
+package is never imported.
+
+`POST /v1/ag-ui` uses the same permission as `/v1/graph/stream` (`graph:stream`), and checks that
+the caller owns the `threadId` when auth is configured. See
+[AgentFlow with CopilotKit](/docs/integrations/agentflow-with-copilotkit) for the full flow.
 
 ---
 
@@ -400,6 +394,10 @@ It currently backs the L2 tier of the thread-ownership cache used by the `owners
 authorization backends. When it is unset the server falls back to the `REDIS_URL` environment
 variable; when neither is set, or the `redis` package is not installed, the cache runs in-process
 only and logs a warning at startup.
+
+The value is used as-is: `$VAR` and `${VAR}` are **not** expanded here, unlike
+`rate_limit.redis`. To take the URL from the environment, leave this key unset and set
+`REDIS_URL`.
 
 This is separate from `rate_limit.redis`, which configures the rate limiter's own connection. Set
 both if you want both features backed by Redis.
@@ -417,6 +415,10 @@ Declarative tracing setup for Logfire and LangSmith.
   "langsmith": {"enabled": true, "project": "my-agent", "endpoint": null}
 }
 ```
+
+`level` is `"spans"`, `"standard"` (default), or `"full"`; an unknown value logs a warning and
+falls back to `"standard"`. Nothing is set up unless `logfire.enabled` or `langsmith.enabled` is
+`true`.
 
 The block is passed through to the core framework's observability setup. Secrets stay in the
 environment: `LOGFIRE_TOKEN` and `LANGSMITH_API_KEY` are read from there and are never read from
@@ -438,9 +440,9 @@ Default settings for `agentflow test`. All fields are optional. CLI flags always
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `path` | string | — | Default path passed to pytest when no `PATH` argument is given on the CLI. Omit to let pytest auto-discover tests. |
+| `path` | string | none | Default path passed to pytest when no `PATH` argument is given on the CLI. Omit to let pytest auto-discover tests. |
 | `coverage` | boolean | `false` | Enable coverage collection by default (equivalent to `--coverage` flag) |
-| `coverage_threshold` | integer | — | Minimum coverage percentage required for a passing run. Adds `--cov-fail-under=N` to the pytest command. Omit to skip threshold enforcement. |
+| `coverage_threshold` | integer | none | Minimum coverage percentage (0 to 100) required for a passing run. Adds `--cov-fail-under=N` to the pytest command, so it only applies when coverage is on. Omit to skip threshold enforcement. |
 
 **Example — enforce 80 % coverage on every run:**
 
@@ -466,7 +468,8 @@ Default settings for `agentflow eval`. All fields are optional. CLI flags always
   "directory": "evals",
   "output_dir": "eval_reports",
   "threshold": 0.75,
-  "timestamp_files": true
+  "parallel": true,
+  "max_concurrency": 4
 }
 ```
 
@@ -474,8 +477,12 @@ Default settings for `agentflow eval`. All fields are optional. CLI flags always
 | --- | --- | --- | --- |
 | `directory` | string | `"evals"` | Directory scanned for eval files when no `TARGET` argument is given |
 | `output_dir` | string | `"eval_reports"` | Directory where HTML and JSON report files are written |
-| `threshold` | float | — | Minimum pass rate (0.0–1.0) required for a passing run. Omit to skip threshold enforcement. |
-| `timestamp_files` | boolean | `true` | Append a timestamp to report filenames so runs do not overwrite each other |
+| `threshold` | float | none | Minimum pass rate (0.0 to 1.0) required for a passing run. Omit to skip threshold enforcement. |
+| `parallel` | boolean | `false` | Run eval cases concurrently by default (equivalent to `--parallel`) |
+| `max_concurrency` | integer | `4` | How many cases run at once when `parallel` is on (equivalent to `--max-concurrency`). Must be `>= 1`. |
+
+Report filenames always carry a timestamp, so runs do not overwrite each other; there is no
+setting for it.
 
 **Example — enforce 75 % pass rate and write reports to `ci/reports/`:**
 
@@ -494,26 +501,33 @@ Default settings for `agentflow eval`. All fields are optional. CLI flags always
 
 ## File discovery
 
-The CLI resolves the config file in this order and uses the first one it finds:
+`agentflow api`, `agentflow play`, and `agentflow dev` read the file named by `--config`
+(default `agentflow.json`). A relative path is looked up in the current directory and then in
+each parent directory. If it is not found, startup fails with a message listing every location
+searched. The resolved path is passed to the server as the `GRAPH_PATH` environment variable;
+a server started directly (for example with `gunicorn` from the generated Dockerfile) reads
+`GRAPH_PATH`, or `agentflow.json` in the working directory when it is unset.
 
-1. The path passed to `--config`
-2. `agentflow.json`
-3. `.agentflow.json`
-4. `agentflow.config.json`
+`agentflow test` and `agentflow eval`, which only read the `test` and `evaluation` blocks, look
+for the first of these names in the current directory and its parents:
 
-If none exists, startup fails with a message listing those names.
+1. `agentflow.json`
+2. `.agentflow.json`
+3. `agentflow.config.json`
+
+If none exists they run with their built-in defaults.
 
 ---
 
 ## Environment variable expansion
 
-Expansion is **not** applied to every string in the file. It applies to the
-Redis URL in two places: the top-level `redis` value and `rate_limit.redis`.
+Expansion is **not** applied to every string in the file. It applies only to the
+rate limiter's Redis URL, `rate_limit.redis`. The top-level `redis` value is used
+as-is.
 
 ```json
 {
-  "redis": {"url": "${REDIS_URL}"},
-  "rate_limit": {"redis": {"url": "$RATE_LIMIT_REDIS_URL"}}
+  "rate_limit": {"redis": {"url": "${RATE_LIMIT_REDIS_URL}"}}
 }
 ```
 
@@ -522,7 +536,7 @@ string or as an object with a `url` key. If the variable is not set in the
 environment, startup fails with:
 
 ```text
-ValueError: Unresolved environment variable in value: ${REDIS_URL}
+ValueError: Unresolved environment variable in value: ${RATE_LIMIT_REDIS_URL}
 ```
 
 Every other secret belongs in the environment rather than in this file. Use the
@@ -533,10 +547,14 @@ own code.
 
 ## Loading order
 
-When the CLI starts:
+When the server starts:
 
-1. Reads the config file resolved above
-2. Loads `.env` if `env` is set
-3. Imports the module specified in `agent` and gets the compiled graph
-4. Imports and configures `checkpointer`, `store`, `injectq`, and `authorization` if set
-5. Starts the FastAPI server
+1. Reads the config file resolved above and loads `.env` if `env` is set
+2. Loads the `injectq` container, if set
+3. Builds the app: sets up `observability`, parses `rate_limit`, then mounts the routers
+   (the AG-UI endpoint only when `ag_ui.enabled` is `true`)
+4. On startup, imports the module specified in `agent`, attaches `remote_tools`, and binds
+   `store`, `auth`, `thread_name_generator`, and `authorization` (with `redis`) if set
+5. Starts serving requests
+
+`websocket` is read per connection, and `checkpointer` is not read at all.

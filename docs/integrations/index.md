@@ -19,4 +19,5 @@ Reference patterns for plugging AgentFlow into the stacks teams already run.
 
 - [**AgentFlow with FastAPI**](/docs/integrations/agentflow-with-fastapi). Embed an AgentFlow graph in your existing FastAPI service
 - [**AgentFlow with Next.js**](/docs/integrations/agentflow-with-nextjs). Call your agent from a Next.js frontend with streaming
+- [**AgentFlow with CopilotKit**](/docs/integrations/agentflow-with-copilotkit). Serve your graph over the AG-UI protocol to a CopilotKit frontend
 - [**AgentFlow with Postgres**](/docs/integrations/agentflow-with-postgres). Durable threads with `PgCheckpointer`

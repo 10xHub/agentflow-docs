@@ -84,7 +84,7 @@ flowchart LR
 ```
 
 1. Subclass the ABC and implement its abstract methods.
-2. Pass the instance at compile time (`graph.compile(checkpointer=...)`) or set the path in `agentflow.json` for server-layer ABCs.
+2. Pass the instance at compile time (`graph.compile(checkpointer=...)`) or set the path in `agentflow.json` for server-layer ABCs. A checkpointer always goes to `compile()`: the server does not apply the `checkpointer` key in `agentflow.json` yet.
 3. The framework picks it up — graph logic, routing, and API endpoints are unchanged.
 
 ---

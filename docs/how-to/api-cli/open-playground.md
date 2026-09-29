@@ -106,7 +106,7 @@ Live is gated twice. Without a connection it asks you to connect. Connected to a
 
 Lists saved threads with their id, user, message count, and last-updated time. Selecting one opens three tabs: **Messages**, **State & checkpoint**, and **Raw JSON**. This is where you confirm that a `thread_id` really persisted and see exactly what the checkpointer stored. Threads can also be deleted from here.
 
-Everything on this page needs a checkpointer configured in `agentflow.json`. Without one there is nothing to list.
+Everything on this page needs the graph to be compiled with a checkpointer (`compile(checkpointer=...)`). Without one there is nothing to list.
 
 ### Observability
 

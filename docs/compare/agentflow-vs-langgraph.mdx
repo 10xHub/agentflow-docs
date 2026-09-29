@@ -151,12 +151,11 @@ agentflow init
 agentflow api --host 0.0.0.0 --port 8000
 ```
 
-The `agentflow.json` points the CLI at your compiled graph:
+The `agentflow.json` points the CLI at your compiled graph (compiled with its checkpointer):
 
 ```json
 {
   "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer",
   "auth": "jwt"
 }
 ```

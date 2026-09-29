@@ -170,7 +170,7 @@ async def review_node(state: MyState) -> Command:
 | `InvocationType.TOOL` | Before/after each local tool function |
 | `InvocationType.MCP` | Before/after each MCP server call |
 | `InvocationType.INPUT_VALIDATION` | Before messages are sent to the LLM |
-| `InvocationType.SKILL` | Before/after each skill invocation |
+| `InvocationType.SKILL` | Before/after each `activate_skill` / `read_skill_resource` call (these do not fire `TOOL`) |
 
 Each callback receives a `CallbackContext` (`invocation_type`, `node_name`, `function_name`, `metadata`) as its first argument:
 

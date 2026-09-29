@@ -282,7 +282,7 @@ AudioAgent(
 )
 ```
 
-`system_instruction` is fixed for the session (Gemini Live does not allow mid-session instruction updates). State-dependent content is a connect-time snapshot. For mid-session dynamic behavior, use `set_skill` or memory tools.
+`system_instruction` is fixed for the session (Gemini Live does not allow mid-session instruction updates). State-dependent content is a connect-time snapshot. For mid-session dynamic behavior, use `activate_skill` or memory tools.
 
 ---
 
@@ -366,7 +366,6 @@ When the configured graph is rooted at a `LiveAgent` (i.e. built with `AudioAgen
 ```json
 {
   "agent": "graph:app",
-  "checkpointer": "graph:checkpointer",
   "env": ".env"
 }
 ```

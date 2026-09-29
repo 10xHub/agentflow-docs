@@ -296,18 +296,26 @@ GET /v1/threads
 
 See [REST API: Threads](../reference/rest-api/threads.md) for request/response schemas.
 
-## Configuring via agentflow.json
+## Using a checkpointer with the API server
 
-In the API layer the checkpointer is declared in `agentflow.json` — the graph module stays storage-agnostic:
+The API server uses the checkpointer the compiled graph carries, so pass it to `compile()` in the
+module that `agent` points at:
+
+```python
+# graph/react.py
+from graph.dependencies import my_checkpointer
+
+app = state_graph.compile(checkpointer=my_checkpointer)
+```
 
 ```json
 {
-  "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
+  "agent": "graph.react:app"
 }
 ```
 
-See [Configure agentflow.json](../how-to/api-cli/configure-agentflow-json.md).
+`agentflow.json` also recognises a `checkpointer` key, but the server does not apply it yet, so
+setting it has no effect. See [Configure agentflow.json](../how-to/api-cli/configure-agentflow-json.md).
 
 ---
 

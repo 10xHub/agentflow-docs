@@ -278,8 +278,11 @@ instead of raising.
 | `--force`, `-f` | `false` | Overwrite the existing installed AgentFlow skill directory |
 | `--all` | `false` | Install skills for every supported agent |
 | `--list`, `-l` | `false` | List supported agents and exit |
+| `--validate` | none | Validate a skill directory, or a folder of skills, against the [Agent Skills specification](https://agentskills.io/specification) and exit `1` on errors. Repeatable. Nothing is installed. |
 | `--verbose`, `-v` | `false` | Enable verbose logging |
 | `--quiet`, `-q` | `false` | Suppress output except errors |
+
+Every agent receives the same spec-conformant `agentflow` skill folder (`SKILL.md` + `references/`).
 
 Install locations:
 
@@ -309,6 +312,9 @@ agentflow skills --list
 
 # Overwrite an existing install
 agentflow skills --agent github --force
+
+# Validate your own skills
+agentflow skills --validate ./.agents/skills
 ```
 
 ---

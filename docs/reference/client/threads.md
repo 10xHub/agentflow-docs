@@ -18,7 +18,7 @@ sidebar_position: 5
 AgentFlow organises conversation history into **threads**. Each thread has a unique `thread_id` and stores a sequence of messages and a state snapshot (checkpoint). The client provides methods to list, inspect, update, and delete threads and their messages.
 
 :::info Requires checkpointer
-Thread endpoints require the `checkpointer` field to be configured in `agentflow.json`. Without a checkpointer the server returns empty results or 404 for single-thread operations.
+Thread endpoints use the checkpointer the server's graph was compiled with (`compile(checkpointer=...)`). When none is passed, `compile()` falls back to an `InMemoryCheckpointer`, so threads live only in that server process and are lost on restart.
 :::
 
 **Source:** `src/client.ts`, `src/endpoints/threads*.ts`, `src/endpoints/threadState.ts`
@@ -381,7 +381,7 @@ await client.threadState(threadId as unknown as number);
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id`, and confirm `checkpointer` is set in `agentflow.json`. |
+| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id`, and confirm the graph is compiled with a checkpointer. |
 | TypeScript error passing a string id to `threadState` / `updateThreadState` / `clearThreadState` | Those three are typed `threadId: number`. | Cast at the call site; the server accepts strings. See the caution above. |
 | `AgentFlowError` status `422` | Validation failure — invalid `thread_id`, empty `message_id`, bad pagination values. | Check the field constraints listed in [Validation rules](#validation-rules). |
 
@@ -392,7 +392,7 @@ await client.threadState(threadId as unknown as number);
 - Threads persist conversation history and state between `invoke()` calls when `config.thread_id` is set.
 - `threadMessages()` supports search and pagination.
 - `clearThreadState()` removes the state snapshot but not the thread or messages.
-- All thread operations require the checkpointer to be configured in `agentflow.json`.
+- All thread operations require the graph to be compiled with a checkpointer.
 - `threadState`, `updateThreadState`, and `clearThreadState` are typed `threadId: number` while their siblings accept `string | number`; the server accepts both.
 
 ## Next step

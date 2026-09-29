@@ -217,6 +217,26 @@ app.invoke({"messages": [...]}, config={"thread_id": "t3"})
 app.invoke({}, config={"thread_id": "t3"})
 ```
 
+### Pausing from inside a node or tool
+
+`interrupt()` pauses the graph from inside a node or tool and returns the value the thread is resumed with. Use it for approvals and questions that depend on what the node is doing:
+
+```python
+from agentflow.utils import interrupt
+
+
+async def refund(amount: int) -> str:
+    decision = interrupt({"amount": amount}, message=f"Approve a refund of ${amount}?")
+    return "refunded" if decision and decision.get("approved") else "declined"
+
+
+app.invoke({"messages": [...]}, config={"thread_id": "t4"})   # pauses at interrupt()
+app.invoke({"resume": {"approved": True}}, config={"thread_id": "t4"})
+```
+
+The node runs again on resume and `interrupt()` returns the value. See
+[Pause for human input](/docs/how-to/python/add-human-approval).
+
 ---
 
 ## Execution lifecycle

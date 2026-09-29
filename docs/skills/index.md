@@ -12,6 +12,15 @@ slug: /skills
 
 # Skills
 
+AgentFlow uses skills in two places. Both follow the [Agent Skills specification](https://agentskills.io/specification), so a skill folder is portable between them:
+
+| You want to | Go to |
+|---|---|
+| Give **your own AgentFlow agents** skills they load on demand, with bundled scripts and references | [How to give an agent skills](/docs/how-to/python/use-skills) and the [Skills reference](/docs/reference/python/skills) |
+| Teach **your coding assistant** (Codex, Claude, GitHub Copilot) how to build with AgentFlow | The rest of this page |
+
+## The AgentFlow skill for coding assistants
+
 AgentFlow skills are bundled assistant instructions for coding agents such as Codex, Claude, and GitHub Copilot. They are copied from:
 
 ```text
@@ -36,11 +45,13 @@ The same base skill bundle is copied into the assistant-specific location.
 | Claude | `.claude/skills/agentflow/` |
 | GitHub Copilot | `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow/` |
 
-For Codex and Claude, the installed folder is copied from:
+Every assistant gets the same folder, copied from:
 
 ```text
-agentflow-api/agentflow_cli/cli/templates/skills/agent-skills
+agentflow-api/agentflow_cli/cli/templates/skills/agentflow
 ```
+
+The bundle follows the [Agent Skills specification](https://agentskills.io/specification). Paths inside `SKILL.md` are relative to the skill folder, so one copy works in every install location. Check it, or your own skills, with `agentflow skills --validate <path>`.
 
 For GitHub Copilot, AgentFlow also copies:
 
@@ -55,7 +66,7 @@ That file points Copilot at the installed skill bundle under `.github/skills/age
 The base bundle contains:
 
 ```text
-agent-skills/
+agentflow/
 +-- SKILL.md
 +-- references/
     +-- architecture.md

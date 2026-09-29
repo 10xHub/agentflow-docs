@@ -49,12 +49,17 @@ from agentflow.storage.checkpointer import InMemoryCheckpointer
 my_checkpointer = InMemoryCheckpointer()
 ```
 
-```json
-{
-  "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
-}
+Pass it to `compile()` in the module that `agentflow.json`'s `agent` points at:
+
+```python
+# graph/react.py
+from graph.dependencies import my_checkpointer
+
+app = state_graph.compile(checkpointer=my_checkpointer)
 ```
+
+The API server uses the checkpointer the compiled graph carries. The `checkpointer` key in
+`agentflow.json` is recognised but not applied yet, so do not rely on it.
 
 This is perfect when you want:
 
@@ -79,13 +84,10 @@ my_checkpointer = PgCheckpointer(
 )
 ```
 
-Then point `agentflow.json` to it:
+Then compile the graph with it, as above:
 
-```json
-{
-  "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
-}
+```python
+app = state_graph.compile(checkpointer=my_checkpointer)
 ```
 
 Why this is the production choice:

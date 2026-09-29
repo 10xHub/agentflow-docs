@@ -24,9 +24,8 @@ covers only what changes when you move from a laptop to a deployment.
   "env": ".env",
   "auth": "jwt",
   "authorization": "ownership",
-  "checkpointer": "graph.dependencies:checkpointer",
   "store": "graph.dependencies:store",
-  "redis": {"url": "${REDIS_URL}"},
+  "redis": "redis://redis:6379/0",
   "rate_limit": {
     "enabled": true,
     "backend": "redis",
@@ -56,12 +55,14 @@ development. Set it explicitly rather than relying on `MODE` being correct in
 every environment. Under `"allow_all"`, anyone who knows a `thread_id` can read
 that conversation.
 
-### `checkpointer` must be shared, not in-memory
+### The checkpointer must be shared, not in-memory
 
 `InMemoryCheckpointer` loses every thread on restart and is invisible to other
 replicas, so the same user hits a different history depending on which pod
 answers. Production means `PgCheckpointer` with a Postgres and Redis that all
-replicas share. See [checkpointing](checkpointing.md).
+replicas share. Pass it to `compile()` in the module `agent` points at; the
+server uses the compiled graph's checkpointer and does not apply a `checkpointer`
+key in this file yet. See [checkpointing](checkpointing.md).
 
 ### `rate_limit.backend` must be `redis` with more than one replica
 
@@ -88,8 +89,9 @@ traced is a production agent you cannot debug. See
 
 ## Secrets
 
-Environment expansion applies only to the Redis URL fields, `redis` and
-`rate_limit.redis`. Both `$VAR` and `${VAR}` forms work. Everything else in this
+Environment expansion applies only to `rate_limit.redis`. Both `$VAR` and
+`${VAR}` forms work. The top-level `redis` value is used as-is; leave it unset to
+fall back to the `REDIS_URL` environment variable. Everything else in this
 file is read literally, so no other secret belongs in it: keep credentials in
 the environment, point `env` at a `.env` for local runs, and inject real secrets
 through your platform in production.

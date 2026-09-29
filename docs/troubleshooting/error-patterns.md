@@ -104,7 +104,7 @@ app = graph.compile(recursion_limit=50)
 **Debugging Steps**:
 
 1. Verify `thread_id` is correct and valid
-2. Check if checkpointer is configured in `agentflow.json`
+2. Check that the graph is compiled with a checkpointer (`compile(checkpointer=...)`)
 3. Verify storage backend is accessible
 4. Check for checkpoint TTL settings
 

@@ -1,7 +1,7 @@
 ---
 title: Install Skills — CLI how-to
 sidebar_label: Install Skills
-description: How to use agentflow skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot.
+description: How to use agentflow skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot, and to validate skills against the Agent Skills specification.
 keywords:
   - agentflow skills
   - agentflow cli
@@ -20,6 +20,8 @@ keywords:
 ## What skills are
 
 Skills are collections of documentation and instructions that coding agents read to understand your project's patterns, conventions, and APIs. Installing skills gives your AI coding assistant knowledge of AgentFlow's graph model, tool patterns, and project layout without having to explain it from scratch every session.
+
+The bundled skill follows the [Agent Skills specification](https://agentskills.io/specification): a folder with a `SKILL.md` entry point and a `references/` directory. Paths inside `SKILL.md` are relative to the skill folder, so the same folder works for every agent.
 
 ## Supported agents
 
@@ -88,7 +90,7 @@ agentflow skills --all --force
 
 ### Codex and Claude
 
-A folder named `agentflow` is copied into the agent's skills directory (`.agents/skills/` or `.claude/skills/`). It contains a `SKILL.md` entry point and a `references/` directory with topic-specific documentation.
+A folder named `agentflow` is copied into the agent's skills directory (`.agents/skills/` or `.claude/skills/`). It contains a `SKILL.md` entry point and a `references/` directory with topic-specific documentation. Every agent receives an identical folder.
 
 A manifest file (`.agentflow-skill.json`) is written into the installed directory recording the target agent, CLI version, and installation timestamp.
 
@@ -110,6 +112,7 @@ A manifest is written into the skills folder.
 | `--force` | `-f` | off | Overwrite an existing installation |
 | `--all` | | off | Install for every supported agent |
 | `--list` | `-l` | off | Print supported agents and exit |
+| `--validate` | | | Validate a skill directory, or a folder of skill directories, against the Agent Skills specification and exit. Repeatable. Nothing is installed. |
 | `--verbose` | `-v` | off | Enable verbose logging |
 | `--quiet` | `-q` | off | Suppress all output except errors |
 
@@ -123,6 +126,22 @@ To update skills after a CLI upgrade, re-run the install with `--force`:
 pip install --upgrade 10xscale-agentflow-cli
 agentflow skills --agent claude --force
 ```
+
+## Validate skills
+
+`--validate` checks skills you write yourself, for your coding agent or for an AgentFlow `Agent` (see the [Skills reference](/docs/reference/python/skills)), against the [Agent Skills specification](https://agentskills.io/specification):
+
+```bash
+agentflow skills --validate ./.agents/skills
+agentflow skills --validate ./skills/pdf-processing --validate ./shared-skills
+```
+
+Each path can be a single skill directory or a folder whose subdirectories are skills. The command prints a table with each skill's status and lists every problem:
+
+- **Errors** break the specification: missing or invalid `name` / `description`, a name that does not match its folder, unknown frontmatter fields, non-string `metadata` values, invalid YAML.
+- **Warnings** are recommendations: a `SKILL.md` body over 500 lines, or a `references/...`, `scripts/...` or `assets/...` path that does not exist.
+
+The command exits with status `1` when any skill has an error, so it can run in CI. It needs a `10xscale-agentflow` release that includes `agentflow.core.skills.validate_skill`.
 
 ## Troubleshooting
 

@@ -89,6 +89,16 @@ agent = Agent(
 # At runtime the placeholder is replaced with state.user_name, state.occasion
 ```
 
+### Skills
+
+A skill is a folder with a `SKILL.md` (instructions plus a short description) and optional bundled files such as scripts and reference docs. Skills follow the [Agent Skills specification](https://agentskills.io/specification). With `skills=SkillConfig(skills_dir=...)`:
+
+- The agent lists each skill's name and description in the system prompt.
+- The model calls `activate_skill` to load a skill's instructions only when a task matches the description.
+- The model calls `read_skill_resource` to read a bundled file when the instructions point to one.
+
+Unused skills cost only their one-line description. See [How to give an agent skills](/docs/how-to/python/use-skills).
+
 ### Retry and fallback
 
 ```python

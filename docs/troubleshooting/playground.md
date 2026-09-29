@@ -139,7 +139,7 @@ Denial is handled, not fatal: the session stays open and the turn is ended clean
 
 **Likely causes**
 
-- Thread Inspector and the checkpoint views need a checkpointer configured in `agentflow.json`
+- Thread Inspector and the checkpoint views need the graph to be compiled with a checkpointer
 - Observability reads the active thread, and shows a placeholder until a run has been recorded for it
 - Memory Inspector needs a store configured on the server
 

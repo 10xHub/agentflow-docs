@@ -148,16 +148,10 @@ same as no scopes.
 | `1003` | Invalid init frame on `/v1/graph/live`: not JSON, or JSON that is not an object | Send the init control frame as a JSON object first, before any audio |
 | `1011` | Unexpected server error during the session | Check server logs; this is not an auth or config rejection |
 
-A `404` on a path that should exist -- `/v1/threads`, `/v1/store/*`, `/v1/evals/*`,
-`/v1/files/*` -- means that router is switched off by the
-[`routers`](../reference/api-cli/configuration.md#routers) block in `agentflow.json`. The
-server logs one line per disabled router at startup. If you meant to disable a different one,
-check for a typo in the block: an unknown name warns and leaves its router mounted.
-
-An HTTP `403` on the handshake itself (no close code, the socket never opens) on
-`/v1/graph/ws` means the route is not mounted: `websocket.enabled` is `false` in
-`agentflow.json`. The server logs one line at startup when that is the case. Set it to `true`,
-or use `POST /v1/graph/stream`.
+A `404` on `/v1/evals/*` means the server runs with `MODE=production`: the eval report viewer
+has no auth, so it is mounted only outside production. A `404` on `POST /v1/ag-ui` means
+[`ag_ui.enabled`](../reference/api-cli/configuration.md#ag_ui) is not `true`. The threads,
+store, and files routers are always mounted.
 
 A `1008` accompanied by an `error` event with `code: "not_live"` or `"not_authorized"` tells you
 which of the two `1008` causes applies.

@@ -338,16 +338,16 @@ DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mydb
 REDIS_URL=redis://localhost:6379/0
 ```
 
-When using `agentflow api` (the CLI server), configure the checkpointer in `agentflow.json` rather than in code. The server handles `setup()` automatically on startup.
+When using `agentflow api` (the CLI server), build the checkpointer in code the same way and pass it to `compile()` in the module that `agentflow.json`'s `agent` points at. The server uses the checkpointer the compiled graph carries. `agentflow.json` has no object form for a checkpointer, and its `checkpointer` import-path key is not applied by the server yet.
+
+```python
+# graph.py
+app = graph.compile(checkpointer=checkpointer)
+```
 
 ```json
 {
-    "agent": "graph:app",
-    "checkpointer": {
-        "type": "pg_checkpoint",
-        "postgres_dsn": "${DATABASE_URL}",
-        "redis_url": "${REDIS_URL}"
-    }
+    "agent": "graph:app"
 }
 ```
 

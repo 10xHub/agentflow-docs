@@ -26,11 +26,13 @@ to turn it off.
 | `exclude_paths` | string array | `[]` | Request paths that bypass rate limiting entirely. The `/ping` health check is always exempt, so a probe never gets `429`, even when the backend is down and `fail_open` is `false`. |
 | `trusted_proxy_headers` | boolean | `false` | Use `X-Forwarded-For` to resolve the client IP. Only enable behind a proxy you control. |
 | `trusted_proxy_hops` | integer | `1` | How many proxies of your own sit in front of the app. See [Proxy hops](#proxy-hops). Must be `>= 1`. |
-| `redis.url` | string | `null` | Redis connection URL. Required for the `"redis"` backend. Supports `${ENV_VAR}` expansion. |
+| `trusted_proxies` | string array | `[]` | IPs or CIDR ranges your proxies connect from. When set, `X-Forwarded-For` is honoured only for requests whose peer address is in one of them. See [Proxy hops](#proxy-hops). An invalid network raises a `ValueError`. |
+| `redis` | object or string | `null` | Redis connection for the `"redis"` backend, as `{"url": ..., "prefix": ...}` or the URL as a bare string (which keeps the default prefix). |
+| `redis.url` | string | `null` | Redis connection URL. Required for the `"redis"` backend unless a Redis client is already bound in InjectQ. Supports `$ENV_VAR` and `${ENV_VAR}` expansion; an unset variable stops the server from starting. |
 | `redis.prefix` | string | `"agentflow:rate-limit"` | Key prefix used for all Redis entries. |
 | `fail_open` | boolean | `true` | When `true`, requests are allowed if the Redis backend is unreachable. When `false`, they are denied. Only applies to the `"redis"` backend. |
 
-Invalid values are rejected at config load: `by` outside `ip`/`user`/`global`, `backend` outside `memory`/`redis`/`custom`, a non-positive `requests` or `window`, or `trusted_proxy_hops` below `1` all raise a `ValueError` and stop the server from starting.
+Invalid values are rejected at config load: `by` outside `ip`/`user`/`global`, `backend` outside `memory`/`redis`/`custom`, a non-positive `requests` or `window`, `trusted_proxy_hops` below `1`, or an entry in `trusted_proxies` that is not an IP or CIDR range all raise a `ValueError` and stop the server from starting.
 
 ## Bucket keys
 
@@ -51,6 +53,19 @@ Invalid values are rejected at config load: `by` outside `ip`/`user`/`global`, `
 `trusted_proxy_hops` is how many entries, counted from the **right**, your own infrastructure appended. With the default of `1` (one proxy in front of the app) the last entry is the address that proxy actually observed. If the header carries fewer entries than the configured hop count, the header is ignored entirely and the peer address is used, with a warning.
 
 `trusted_proxy_hops` only has an effect when `trusted_proxy_headers` is `true`.
+
+The hop count assumes every request comes through your proxy. A client that can reach the app
+directly would otherwise be free to send its own `X-Forwarded-For`. Set `trusted_proxies` to the
+networks your proxies connect from, and the header is honoured only for requests whose peer
+address is in one of them; anyone else is keyed by their peer address.
+
+```json
+"rate_limit": {
+  "trusted_proxy_headers": true,
+  "trusted_proxy_hops": 1,
+  "trusted_proxies": ["10.0.0.0/8"]
+}
+```
 
 ## WebSocket handshakes
 

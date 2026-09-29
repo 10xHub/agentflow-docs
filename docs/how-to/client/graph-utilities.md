@@ -548,7 +548,7 @@ printGraphDashboard().catch(console.error);
 | Error | Cause | Fix |
 |---|---|---|
 | `AgentFlowError` status `404` on `stopGraph` | Thread not found. | Verify the `threadId`. |
-| `AgentFlowError` status `404` on `fixGraph` | Thread not found or no checkpointer configured. | Check `agentflow.json` for a checkpointer. |
+| `AgentFlowError` status `404` on `fixGraph` | Thread not found or no checkpointer configured. | Check that the graph is compiled with a checkpointer (`compile(checkpointer=...)`). |
 | `AgentFlowError` status `403` | Caller does not have permission to stop/fix this thread. | Check the `AuthorizationBackend` on the server. |
 | `fixGraph` returns `removed_count: 0` | Thread was already in a valid state. | No action needed. |
 | `graphTools` returns an empty `nodes` array | The graph has no tool nodes. | Not an error. Add a `ToolNode` if the agent is meant to call tools. |

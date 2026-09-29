@@ -62,6 +62,34 @@ any release.
 
 ---
 
+## Core: next release (unreleased)
+
+### Skills follow the Agent Skills specification
+
+Skills written for Claude Code, Codex or GitHub Copilot now load in an `Agent`
+unchanged. See [How to give an agent skills](/docs/how-to/python/use-skills).
+
+- The model sees an `<available_skills>` catalog, loads a skill with
+  `activate_skill`, and reads bundled files (references, `.py` / `.sh` scripts,
+  data) with `read_skill_resource`.
+- Activated skills are re-injected if context trimming drops them.
+- Skill tool calls fire `InvocationType.SKILL` callbacks.
+- `validate_skill()` and `agentflow skills --validate` check skills.
+
+### Fixed
+
+- Parallel tool calls lost writes to `execution_meta.internal_data`.
+
+### Breaking
+
+`set_skill` is replaced by `activate_skill` and `read_skill_resource`, and
+`inject_trigger_table` is renamed `inject_catalog`. The frontmatter `resources:`
+list is removed, and `triggers` / `tags` / `priority` move into `metadata` as
+strings. The full list, with migration steps, is in the
+[Skills reference](/docs/reference/python/skills#migrating-from-earlier-versions).
+
+---
+
 ## Core: 1.0.0
 
 **First stable release.** The public API is now covered by the deprecation policy
@@ -175,6 +203,12 @@ Recent work on `10xscale-agentflow-cli`:
 - `agentflow skills` selects agents from a checklist (space toggles, enter
   confirms) that shows each install path and pre-checks what is already
   installed.
+- **`agentflow skills --validate PATH`** checks skills against the
+  [Agent Skills specification](https://agentskills.io/specification) and exits
+  `1` on errors. It needs the next core release.
+- The bundled AgentFlow skill now conforms to the specification. Its description
+  was invalid YAML before. Codex, Claude and GitHub all receive one identical
+  folder whose paths are relative to the skill directory.
 - `py.typed` marker, so type information reaches consumers (PEP 561).
 - `--integration` pytest flag gating tests that need real Redis and Postgres, so
   a default `pytest` run requires no external services.

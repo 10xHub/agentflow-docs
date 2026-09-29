@@ -59,10 +59,12 @@ Run the graph and return the complete result when all nodes finish.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `messages` | array | yes | One or more messages to append to state before invoking. Must not be empty. |
+| `messages` | array | yes, unless `resume` is set | One or more messages to append to state before invoking. |
+| `resume` | any | no | Answer for a thread paused by [`interrupt()`](/docs/how-to/python/add-human-approval). The paused node runs again and `interrupt()` returns this value; `null` means cancelled. Send it only to resume a paused thread. |
 | `initial_state` | object | no | Initial state for the run |
 | `config` | object | no | Run configuration |
 | `config.thread_id` | string | no | Conversation identifier. When absent or blank, the server generates one and persists the thread; the id comes back in `data.meta.thread_id`. |
+| `config.remote_tools` | - | - | Server-owned: dropped from client config, along with `user`, `user_id`, `authz` and `_`-prefixed keys. |
 | `recursion_limit` | integer | no | Maximum graph iterations. Default `25`, range `1`-`100`. |
 | `response_granularity` | string | no | `full`, `partial`, or `low`. Default `low`. |
 
@@ -279,7 +281,7 @@ Repair a thread whose state contains messages with tool calls that have empty co
 
 Turn-based streaming over a WebSocket. Same payloads as `POST /v1/graph/stream`, but the connection stays open across runs, which is what makes client-side tool execution possible without a second HTTP request.
 
-**Can be disabled.** Setting [`websocket.enabled`](../api-cli/configuration.md#websocket) to `false` in `agentflow.json` leaves this endpoint unmounted; the handshake then fails with HTTP `403`. Use `POST /v1/graph/stream` instead. The default is enabled.
+**Always mounted.** There is no setting that turns this endpoint off. Concurrent connections are capped per process by [`websocket.max_connections`](../api-cli/configuration.md#websocket) and `max_connections_per_user`; a refused handshake closes with code `1013`.
 
 **Authentication.** Bearer token via the `Authorization` header, the `agentflow-bearer` `Sec-WebSocket-Protocol` (preferred for browsers), or the `?token=` query fallback. Identical to the [live socket](./live.md#authentication).
 

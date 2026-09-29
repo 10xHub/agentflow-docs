@@ -62,7 +62,7 @@ agent = Agent(
     tools=[get_weather],
     skills=SkillConfig(
         skills_dir=SKILLS_DIR,
-        inject_trigger_table=True,
+        inject_catalog=True,
         hot_reload=True,
     ),
     trim_context=True,
@@ -72,7 +72,7 @@ agent = Agent(
 Two nice details here:
 
 - the example passes `tools=[get_weather]` directly
-- skills still inject `set_skill` automatically behind the scenes
+- skills still inject `activate_skill` automatically behind the scenes
 
 Then it gets the merged tool node:
 
@@ -116,7 +116,7 @@ sequenceDiagram
     User->>REPL: enter message
     REPL->>Graph: invoke(message, thread_id)
     Graph->>Main: run agent step
-    Main->>Tool: optional get_weather / set_skill
+    Main->>Tool: optional get_weather / activate_skill
     Tool-->>Main: tool result
     Main-->>Graph: final assistant reply
     Graph-->>REPL: messages
@@ -145,18 +145,18 @@ This is a small touch, but it makes the example much easier to explore because t
 After each invocation, the script walks through the returned messages:
 
 ```python
+SKILL_CONTENT_RE = re.compile(r'<skill_content name="([^"]+)">')
+
 for msg in result["messages"]:
     if msg.role == "tool":
-        text = msg.text() or ""
-        if text.startswith("## SKILL:"):
-            skill_line = text.split("\n")[0]
-            skill_name = skill_line.replace("## SKILL:", "").strip()
-            print(f"  >> Skill loaded: {skill_name}")
+        match = SKILL_CONTENT_RE.match(msg.text() or "")
+        if match:
+            print(f"  >> Skill loaded: {match.group(1)}")
 ```
 
 This is a practical debugging technique.
 
-Instead of guessing whether the model used a skill, the script watches for the tool result payload returned by `set_skill`.
+Instead of guessing whether the model used a skill, the script watches for the `<skill_content name="...">` tag that `activate_skill` wraps around every skill it loads.
 
 That gives you immediate feedback like:
 
@@ -217,7 +217,7 @@ The one-shot skills example proves the feature works. This chat example shows th
 
 - Creating a new `thread_id` on every message and then wondering why the conversation feels stateless.
 - Printing every tool message directly, which makes the REPL noisy.
-- Treating skills as permanent mode switches. In practice, the model decides turn by turn whether to call `set_skill`.
+- Treating skills as permanent mode switches. In practice, the model decides turn by turn whether to call `activate_skill`.
 - Forgetting to handle `KeyboardInterrupt` and `EOFError` in terminal apps.
 
 ## Design summary

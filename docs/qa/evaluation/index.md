@@ -371,8 +371,7 @@ agentflow eval --no-report
     "output_dir": "eval_reports",
     "threshold": 0.75,
     "parallel": false,
-    "max_concurrency": 4,
-    "timestamp_files": true
+    "max_concurrency": 4
   }
 }
 ```
@@ -384,7 +383,9 @@ agentflow eval --no-report
 | `threshold` | Minimum pass rate for a zero exit code |
 | `parallel` | Run all cases from all files in a flat parallel pool |
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
-| `timestamp_files` | Append timestamp to filenames so runs do not overwrite each other |
+
+Report filenames from `agentflow eval` always carry a timestamp; `agentflow.json` has no
+setting for it.
 
 **Config priority (highest first):** CLI flags → `agentflow.json` → per-file `get_eval_config()` → built-in defaults
 

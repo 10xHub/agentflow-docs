@@ -115,7 +115,8 @@ agentflow api --no-reload
 
 ### Without a checkpointer
 
-Each API request is stateless. There is no conversation history. The next request forgets all prior context.
+If you do not pass one, `compile()` falls back to an `InMemoryCheckpointer`. Threads work while
+the process runs, but every conversation is lost on restart and is not shared across workers.
 
 ### With a checkpointer
 
@@ -139,6 +140,11 @@ curl -X POST http://localhost:8000/v1/graph/invoke \
 
 ### Adding a checkpointer
 
+Pass the checkpointer to `compile()` in your graph module. The server uses whatever the compiled
+graph named in `agent` carries. Do not rely on the `checkpointer` key in `agentflow.json`: it is
+recognised, but the API server does not apply it yet, so setting it has no effect (see
+[`checkpointer`](../../reference/api-cli/configuration.md#checkpointer)).
+
 **Development (in-memory, lost on restart):**
 
 ```python
@@ -148,10 +154,16 @@ from agentflow.storage.checkpointer import InMemoryCheckpointer
 my_checkpointer = InMemoryCheckpointer()
 ```
 
+```python
+# graph/react.py
+from graph.dependencies import my_checkpointer
+
+app = state_graph.compile(checkpointer=my_checkpointer)
+```
+
 ```json
 {
-  "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
+  "agent": "graph.react:app"
 }
 ```
 
@@ -172,17 +184,18 @@ Create the checkpointer:
 from agentflow.storage.checkpointer import PgCheckpointer
 
 my_checkpointer = PgCheckpointer(
-    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    postgres_dsn="postgresql://user:password@localhost/agentflow",
     redis_url="redis://localhost:6379/0",
-    table="state_checkpoints",  # Optional: customize table name
 )
 ```
 
-```json
-{
-  "agent": "graph.react:app",
-  "checkpointer": "graph.dependencies:my_checkpointer"
-}
+Then compile the graph with it, exactly as above:
+
+```python
+# graph/react.py
+from graph.dependencies import my_checkpointer
+
+app = state_graph.compile(checkpointer=my_checkpointer)
 ```
 
 This persists all state to a PostgreSQL database, enabling:
@@ -344,38 +357,6 @@ Three things that are easy to miss:
 Full reference: [Rate Limiting](../../reference/api-cli/rate-limiting.md). Step-by-step setup:
 [Configure rate limiting](./configure-rate-limiting.md).
 
-## Disable routers you do not use
-
-Every router is mounted by default. Drop the ones a deployment does not need:
-
-```json
-{
-  "agent": "graph.react:app",
-  "routers": {
-    "evals": false,
-    "media": false
-  }
-}
-```
-
-Toggleable names are `checkpointer` (`/v1/threads/*`), `store` (`/v1/store/*`), `evals`
-(`/v1/evals/*`), `media` (`/v1/files/*`), and `websocket` (`/v1/graph/ws`). A disabled router is never registered, so its
-paths return `404` and the server logs one line at startup naming the setting.
-
-`graph` and `ping` are always mounted. Two knock-on effects to weigh before turning these off
-in production:
-
-- `checkpointer` backs the playground's thread sidebar and the TypeScript client's thread
-  calls.
-- `media` backs file upload for multimodal agents.
-
-Bad entries never fail the boot: an unknown name, `graph`/`ping`, or a non-boolean value logs
-a warning and leaves the router mounted. A typo such as `"eval": false` therefore keeps
-`/v1/evals` serving, so check the startup log after editing this block.
-
-See [agentflow.json configuration](../../reference/api-cli/configuration.md#routers) for the
-full table.
-
 ## WebSocket settings
 
 Cap how many WebSocket connections a single server process will hold open:
@@ -384,38 +365,35 @@ Cap how many WebSocket connections a single server process will hold open:
 {
   "agent": "graph.react:app",
   "websocket": {
-    "enabled": true,
-    "max_connections": 100
+    "max_connections": 100,
+    "max_connections_per_user": 5
   }
 }
 ```
 
-### Turning off the WebSocket endpoint
+`max_connections` counts `/v1/graph/ws` and `/v1/graph/live` together. `max_connections_per_user`
+caps how many of those one verified user may hold. A missing field keeps its default (`1000` and
+`10`); only an explicit `0` or `null` removes a cap. A negative value raises a `ValueError`.
 
-If your clients only use REST and SSE, drop the streaming socket entirely:
+Both WebSocket endpoints are always mounted. There is no switch to turn `/v1/graph/ws` off; clients
+that only need REST can use `POST /v1/graph/stream` (SSE) and simply never open the socket.
+
+To let `/v1/graph/live` clients pick their realtime model, list the allowed ones in
+`realtime_models`. Any other requested model is ignored and the agent's own model is used:
 
 ```json
 {
   "agent": "graph.react:app",
   "websocket": {
-    "enabled": false
+    "realtime_models": ["gemini-2.5-flash-live"]
   }
 }
 ```
 
-`enabled: false` leaves `/v1/graph/ws` unregistered, so the handshake fails with HTTP `403`
-before any handler or auth code runs. `/v1/graph/stream` (SSE) and `/v1/graph/live` (realtime
-audio) are unaffected. The default is `true`.
+The block is read when a connection opens rather than at startup, so a bad value shows up on the
+first handshake. `agentflow config` validates it ahead of time.
 
-The same switch is spelled `"routers": {"websocket": false}` -- write it wherever you prefer.
-Both is fine too: the endpoint is mounted only when neither says `false`, and a conflict
-between the two logs a warning at startup and leaves it unmounted. `max_connections` stays in
-the `websocket` block either way.
-
-`max_connections` counts `/v1/graph/ws` and `/v1/graph/live` together. `null`, `0`, or an absent
-block means unlimited. A negative value raises a `ValueError` at startup.
-
-When the cap is reached the handshake is refused before `accept()` with close code `1013`, so the
+When a cap is reached the handshake is refused before `accept()` with close code `1013`, so the
 client sees a clean rejection rather than a socket that opens and immediately dies. The slot is
 released when the handler returns or the client disconnects.
 
@@ -738,13 +716,12 @@ config/
 }
 ```
 
-**config/staging.json** (pre-production, with checkpointer):
+**config/staging.json** (pre-production):
 
 ```json
 {
   "agent": "graph.react:app",
   "env": ".env.staging",
-  "checkpointer": "graph.dependencies:pg_checkpointer",
   "store": "graph.dependencies:qdrant_store",
   "auth": "jwt"
 }
@@ -756,7 +733,6 @@ config/
 {
   "agent": "graph.react:app",
   "env": ".env.prod",
-  "checkpointer": "graph.dependencies:pg_checkpointer_prod",
   "store": "graph.dependencies:qdrant_store_prod",
   "thread_name_generator": "graph.thread_name_generator:ProductionNameGenerator",
   "auth": "jwt",

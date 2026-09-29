@@ -1,7 +1,7 @@
 ---
 title: Skills — AgentFlow tutorial
 sidebar_label: Skills
-description: Build an AgentFlow graph that loads SKILL.md instructions dynamically and combines them with normal tools.
+description: Build an AgentFlow graph that loads Agent Skills (SKILL.md) on demand and combines them with normal tools.
 keywords:
   - ai agent tutorial
   - multi-agent tutorial
@@ -18,13 +18,13 @@ keywords:
 
 ## What you will build
 
-A graph where one assistant can switch into specialized modes at runtime by loading `SKILL.md` files from disk.
+A graph where one assistant can switch into specialized modes at runtime by loading `SKILL.md` files from disk. The skills follow the [Agent Skills specification](https://agentskills.io/specification), so the same folders also work in Claude Code, Codex and GitHub Copilot.
 
 In this tutorial the agent can:
 
 - answer normal questions directly
 - call a regular Python tool like `get_weather`
-- call the auto-injected `set_skill` tool when a request matches a skill
+- call the auto-injected `activate_skill` tool when a request matches a skill
 - return to the main loop after the skill content has been loaded
 
 ## Prerequisites
@@ -47,7 +47,7 @@ flowchart TD
     A[User message] --> B[MAIN agent]
     B -->|normal reply| G[END]
     B -->|tool call: get_weather| C[TOOL node]
-    B -->|tool call: set_skill| C
+    B -->|tool call: activate_skill| C
     C -->|tool result message| B
     C -->|skill instructions returned| B
     H[skills directory] --> C
@@ -56,10 +56,10 @@ flowchart TD
 The key idea is simple:
 
 1. you keep reusable instructions in `SKILL.md` files
-2. `SkillConfig` makes those skills discoverable to the agent
-3. AgentFlow injects a `set_skill` tool automatically
-4. when the model decides a skill fits, it calls `set_skill("skill-name")`
-5. the skill content comes back as a tool result and becomes part of the next model turn
+2. `SkillConfig` makes those skills discoverable: each skill's name and description go into an `<available_skills>` catalog in the system prompt
+3. AgentFlow injects an `activate_skill` tool automatically, plus `read_skill_resource` when a skill bundles extra files
+4. when the model decides a skill fits, it calls `activate_skill("skill-name")`
+5. the skill content comes back as a tool result, wrapped in `<skill_content>` tags, and becomes part of the next model turn
 
 ## Step 1 - Create a skills directory
 
@@ -87,14 +87,11 @@ Example shape:
 ```markdown
 ---
 name: code-review
-description: Perform thorough code reviews
+description: "Perform thorough code reviews, identify bugs, suggest improvements, and explain code quality issues. Use when the user shares code and asks for a review, bug hunt, or quality feedback."
 metadata:
-  triggers:
-    - review my code
-    - find bugs
-  tags:
-    - engineering
-  priority: 10
+  triggers: "review my code; find bugs"
+  tags: "engineering, development"
+  priority: "10"
 ---
 
 You are now in CODE REVIEW mode.
@@ -102,10 +99,12 @@ You are now in CODE REVIEW mode.
 
 The frontmatter gives the runtime enough structure to:
 
-- identify the skill
-- expose it to the model
-- decide which trigger phrases should activate it
-- order multiple matching skills by priority
+- identify the skill (`name` must match the folder name)
+- tell the model what the skill does and when to use it (`description`)
+- add example requests as hints in the catalog (`metadata.triggers`, an Agentflow extension)
+- order skills in the catalog (`metadata.priority`, highest first)
+
+The specification requires `metadata` values to be strings, so the triggers are a `;`-separated string and the priority is quoted. Check a skill with `agentflow skills --validate agentflow/examples/skills/skills`.
 
 ## Step 2 - Point `SkillConfig` at the directory
 
@@ -127,7 +126,7 @@ agent = Agent(
     tool_node=ToolNode([get_weather]),
     skills=SkillConfig(
         skills_dir=SKILLS_DIR,
-        inject_trigger_table=True,
+        inject_catalog=True,
         hot_reload=True,
     ),
     trim_context=True,
@@ -139,8 +138,8 @@ What these options do:
 | Field | Effect |
 |---|---|
 | `skills_dir` | Tells AgentFlow where to find `SKILL.md` files |
-| `inject_trigger_table=True` | Adds a summary of available skills and triggers to the prompt |
-| `hot_reload=True` | Re-reads skill files on each call so edits are picked up immediately |
+| `inject_catalog=True` | Adds the `<available_skills>` catalog (name, description, trigger hints) to the prompt |
+| `hot_reload=True` | Re-reads a `SKILL.md` when it changes on disk, so edits are picked up without a restart |
 
 `hot_reload=True` is especially useful while authoring skills because you can edit a file and retry without restarting the process.
 
@@ -167,10 +166,10 @@ Then the agent is created with that tool node:
 tool_node = ToolNode([get_weather])
 ```
 
-When skills are enabled, AgentFlow augments that tool node by injecting `set_skill` into it. The final tool node therefore contains both kinds of capability:
+When skills are enabled, AgentFlow augments that tool node by injecting `activate_skill` into it (and `read_skill_resource` if a skill bundles files). The final tool node therefore contains both kinds of capability:
 
 - hand-written Python tools
-- the automatically generated `set_skill` loader
+- the automatically generated skill tools
 
 The example makes that explicit:
 
@@ -210,18 +209,18 @@ sequenceDiagram
     participant Files as SKILL.md files
 
     User->>Main: "Review this Python function"
-    Main->>Tools: call set_skill("code-review")
+    Main->>Tools: call activate_skill("code-review")
     Tools->>Files: load code-review/SKILL.md
     Files-->>Tools: markdown instructions
     Tools-->>Main: tool result containing skill content
     Main-->>User: review written using the loaded skill
 ```
 
-The same loop also handles regular tools. If the user asks for weather, the agent can call `get_weather` instead of `set_skill`.
+The same loop also handles regular tools. If the user asks for weather, the agent can call `get_weather` instead of `activate_skill`.
 
 ## Step 5 - Understand what the model actually sees
 
-With `inject_trigger_table=True`, the model gets a compact map of skills in the prompt. That helps it decide whether a request like:
+With `inject_catalog=True`, the model gets a compact catalog of skills in the prompt. That helps it decide whether a request like:
 
 - `review this code`
 - `analyse this data`
@@ -230,12 +229,13 @@ With `inject_trigger_table=True`, the model gets a compact map of skills in the 
 
 should trigger a skill.
 
-When the skill is loaded, the tool returns the full markdown instructions. That means the next assistant turn is grounded in the exact contents of the relevant `SKILL.md` file.
+When the skill is loaded, the tool returns the full markdown instructions. That means the next assistant turn is grounded in the exact contents of the relevant `SKILL.md` file. If context trimming later drops that tool result, the agent puts the instructions back into the system prompt on its own.
 
 A useful mental model is:
 
-- the trigger table helps the model choose
-- `set_skill` delivers the full instructions
+- the catalog helps the model choose
+- `activate_skill` delivers the full instructions
+- `read_skill_resource` fetches bundled files (references, scripts) only when the instructions point to them
 - the next assistant step applies those instructions
 
 ## Step 6 - Compile and run the graph
@@ -280,8 +280,8 @@ python graph.py "What's the weather in Tokyo?"
 
 When the example starts, it prints the registered tools. You should see:
 
-- `set_skill`
 - `get_weather`
+- `activate_skill`
 
 Then test these scenarios:
 
@@ -304,9 +304,9 @@ That separation is valuable because non-engineers can often improve a skill file
 
 ## Common mistakes
 
-- Registering the original `ToolNode` instead of `agent.get_tool_node()`. That drops the injected `set_skill` tool.
+- Registering the original `ToolNode` instead of `agent.get_tool_node()`. That drops the injected `activate_skill` tool.
 - Putting all domain instructions in the base system prompt instead of splitting them into focused skills.
-- Forgetting that skill selection is still model-driven. Good trigger phrases matter.
+- Forgetting that skill selection is model-driven. The `description` must say when to use the skill; trigger phrases are only hints.
 - Leaving `hot_reload=True` in a production environment where you want more predictable file loading behavior.
 
 ## Skills architecture recap
@@ -316,7 +316,7 @@ flowchart LR
     A[Graph code] --> B[Agent]
     C[SkillConfig] --> B
     D[SKILL.md files] --> C
-    B --> E[Injected set_skill tool]
+    B --> E[Injected activate_skill tool]
     F[Custom Python tools] --> G[ToolNode]
     E --> G
     G --> B
@@ -331,7 +331,7 @@ flowchart LR
 ## What you learned
 
 - How AgentFlow discovers `SKILL.md` files.
-- How `SkillConfig` injects a `set_skill` tool into the tool node.
+- How `SkillConfig` injects `activate_skill` (and `read_skill_resource`) into the tool node.
 - How to combine skill loading with normal Python tools in one graph.
 
 ## Next step

@@ -38,7 +38,7 @@ Tools are registered through a `ToolNode` at build time and advertised to the Ge
 
 ### System prompt and skills
 
-`system_prompt`, `skills`, and `memory` are all supported. At connect time, the agent flattens them — including any `{field}` placeholder interpolation from `AgentState` — into a single `system_instruction` string sent to Gemini Live. This snapshot is fixed for the session; the model cannot receive a new system prompt mid-session. Dynamic behavior after connect goes through `set_skill` or memory tools.
+`system_prompt`, `skills`, and `memory` are all supported. At connect time, the agent flattens them — including any `{field}` placeholder interpolation from `AgentState` — into a single `system_instruction` string sent to Gemini Live. This snapshot is fixed for the session; the model cannot receive a new system prompt mid-session. Dynamic behavior after connect goes through `activate_skill` or memory tools.
 
 ### Execution path
 

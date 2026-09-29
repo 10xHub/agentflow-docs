@@ -52,7 +52,7 @@ agent = Agent(
 | `tools_tags` | `set[str] \| None` | `None` | Filter `ToolNode` tools by tag. Only tools with matching tags are presented to the LLM. |
 | `api_style` | `str` | `"chat"` | API calling style. `"chat"` for chat completions, `"responses"` for the Responses API (OpenAI only). |
 | `reasoning_config` | `dict \| bool \| None` | default | Reasoning configuration for models that support extended thinking (e.g. `o1`, `gemini`). Pass `True` to enable with defaults, `False` to disable, or a dict with model-specific options. |
-| `skills` | `SkillConfig \| None` | `None` | Skills configuration for injecting skill documents into the system prompt. See [`skills`](skills.md). |
+| `skills` | `SkillConfig \| None` | `None` | [Agent Skills](https://agentskills.io) configuration. Adds the skill catalog to the system prompt and the `activate_skill` / `read_skill_resource` tools. See [`skills`](skills.md). |
 | `memory` | `MemoryConfig \| None` | `None` | Memory configuration for retrieving relevant long-term memories before each LLM call. |
 | `retry_config` | `RetryConfig \| bool \| None` | `True` | Retry, back-off, and circuit-breaker configuration for transient API errors. `True` enables defaults, `False` disables. See [Retry configuration](#retry-configuration). |
 | `fallback_models` | `list[str \| tuple[str, str]] \| None` | `None` | Ordered list of fallback model identifiers (or `(model, provider)` tuples) to try if the primary model fails. |

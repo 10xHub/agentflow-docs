@@ -83,7 +83,7 @@ Selects which invocation type a callback fires on.
 | `InvocationType.TOOL` | A local Python tool function is called. |
 | `InvocationType.MCP` | An MCP tool call is made. |
 | `InvocationType.INPUT_VALIDATION` | Input validation phase (validators). |
-| `InvocationType.SKILL` | A skill is injected and executed. |
+| `InvocationType.SKILL` | The model calls a skill tool: `activate_skill` or `read_skill_resource`. `function_name` is the tool name. Skill tools fire `SKILL` instead of `TOOL`. Session-mode preloading is not a tool call and fires nothing. |
 
 ---
 

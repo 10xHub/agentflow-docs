@@ -18,7 +18,7 @@ sidebar_position: 4
 AgentFlow stores conversation history and state in **threads**. This guide shows you how to list threads, inspect their messages and state, update state directly, and delete threads when they are no longer needed.
 
 :::info Requires checkpointer
-All thread operations require the `checkpointer` field to be configured in `agentflow.json`. Without a checkpointer, endpoints return empty results or 404.
+All thread operations use the checkpointer the server's graph was compiled with (`compile(checkpointer=...)`). When none is passed, `compile()` falls back to an `InMemoryCheckpointer`, so threads live only in that server process and are lost on restart.
 :::
 
 ## Prerequisites
@@ -249,7 +249,7 @@ await showThreadHistory('thread-abc123');
 |---|---|---|
 | `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id` and check `agentflow.json`. |
 | `AgentFlowError` status `422` | Invalid `thread_id` (empty string or zero), `message_id` (empty), `offset` (< 0), or `limit` (≤ 0). | Check the values you pass to each method. |
-| Empty `threads` list | Checkpointer not configured or no threads created yet. | Configure `checkpointer` in `agentflow.json`. |
+| Empty `threads` list | Checkpointer not configured or no threads created yet. | Compile the graph with a checkpointer (`compile(checkpointer=...)`). |
 
 ---
 
