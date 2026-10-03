@@ -1,0 +1,13 @@
+---
+// Callout for MDX content. Replaces Docusaurus ":::note" style admonitions.
+interface Props {
+  type?: 'note' | 'tip' | 'warning' | 'danger';
+  title?: string;
+}
+const { type = 'note', title } = Astro.props;
+const labels = { note: 'Note', tip: 'Tip', warning: 'Warning', danger: 'Danger' } as const;
+---
+<aside class={`callout callout-${type}`} role="note">
+  <p class="callout-title">{title ?? labels[type]}</p>
+  <div class="callout-body"><slot /></div>
+</aside>

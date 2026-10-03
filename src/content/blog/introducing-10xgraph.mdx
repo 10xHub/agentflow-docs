@@ -1,0 +1,26 @@
+---
+title: Agentflow is now 10xGraph
+description: Agentflow has a new name. Why we renamed it to 10xGraph, what changes for your installs, and what stays exactly the same in your code.
+date: 2026-10-03
+author: Shudipto Trafder
+tags: [announcement, rename]
+---
+import Callout from '../../components/Callout.astro';
+
+Agentflow is now **10xGraph**. The framework, the license and the team stay the same. The name changes because many unrelated projects share the Agentflow name, which made the project hard to find.
+
+## What changes
+
+| Before | After |
+|---|---|
+| `pip install 10xscale-agentflow` | `pip install 10xgraph` |
+| `pip install 10xscale-agentflow-cli` | `pip install 10xgraph-api` |
+| `npm install @10xscale/agentflow-client` | `npm install 10xgraph-client` |
+
+## What stays the same
+
+Your imports. `from agentflow import StateGraph` keeps working, so existing code needs no changes beyond the package names.
+
+<Callout type="note">
+Pin your versions and read the changelog before you switch package names.
+</Callout>

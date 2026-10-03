@@ -1,0 +1,99 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import AiActions from '../components/AiActions.astro';
+import { DOC_SECTIONS, SITE } from '../lib/site';
+import { absolute, docHref, docMarkdownHref, formatDate, type Doc } from '../lib/content';
+
+interface Props {
+  entry: Doc;
+  headings: MarkdownHeading[];
+  docs: Doc[];
+}
+const { entry, headings, docs } = Astro.props;
+const { title, description, section, updated } = entry.data;
+const href = docHref(entry.id);
+const markdownHref = docMarkdownHref(entry.id);
+
+const i = docs.findIndex((d) => d.id === entry.id);
+const prev = i > 0 ? docs[i - 1] : undefined;
+const next = i < docs.length - 1 ? docs[i + 1] : undefined;
+const groups = DOC_SECTIONS.map((s) => ({ section: s, items: docs.filter((d) => d.data.section === s) })).filter(
+  (g) => g.items.length > 0,
+);
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: title,
+    description,
+    url: absolute(href),
+    ...(updated && { dateModified: updated.toISOString() }),
+    proficiencyLevel: 'Beginner',
+    about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    isPartOf: { '@type': 'WebSite', name: SITE.name, url: SITE.url },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Docs', item: absolute('/docs') },
+      { '@type': 'ListItem', position: 2, name: title, item: absolute(href) },
+    ],
+  },
+];
+---
+<BaseLayout title={title} description={description} ogType="article" jsonLd={jsonLd} markdownHref={markdownHref} modifiedTime={updated}>
+  <div class="wrap docs-grid">
+    <nav class="docs-sidebar" aria-label="Documentation">
+      {groups.map((g) => (
+        <div class="side-group">
+          <p class="side-title">{g.section}</p>
+          <ul>
+            {g.items.map((d) => (
+              <li>
+                <a href={docHref(d.id)} aria-current={d.id === entry.id ? 'page' : undefined}>{d.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+
+    <article class="docs-article" data-pagefind-body>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="/docs">Docs</a><span aria-hidden="true">/</span><span>{section}</span>
+      </nav>
+      <h1>{title}</h1>
+      <p class="lede">{description}</p>
+      <div class="page-meta">
+        {updated && <span>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></span>}
+        <span>v{SITE.version}</span>
+      </div>
+      <AiActions markdownHref={markdownHref} />
+      <div class="prose">
+        <slot />
+      </div>
+      <nav class="pager" aria-label="Previous and next page" data-pagefind-ignore>
+        {prev ? <a class="pager-prev" href={docHref(prev.id)}><span>Previous</span>{prev.data.title}</a> : <span />}
+        {next && <a class="pager-next" href={docHref(next.id)}><span>Next</span>{next.data.title}</a>}
+      </nav>
+    </article>
+
+    <aside class="docs-toc" aria-label="On this page">
+      {toc.length > 0 && (
+        <>
+          <p class="side-title">On this page</p>
+          <ul>
+            {toc.map((h) => (
+              <li class={`toc-d${h.depth}`}><a href={`#${h.slug}`}>{h.text}</a></li>
+            ))}
+          </ul>
+        </>
+      )}
+    </aside>
+  </div>
+</BaseLayout>

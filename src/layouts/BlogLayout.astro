@@ -1,0 +1,68 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import AiActions from '../components/AiActions.astro';
+import { SITE } from '../lib/site';
+import { absolute, formatDate, postHref, postMarkdownHref, readingMinutes, type Post } from '../lib/content';
+
+interface Props {
+  entry: Post;
+}
+const { entry } = Astro.props;
+const { title, description, date, updated, author, tags } = entry.data;
+const href = postHref(entry.id);
+const markdownHref = postMarkdownHref(entry.id);
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    url: absolute(href),
+    datePublished: date.toISOString(),
+    dateModified: (updated ?? date).toISOString(),
+    author: { '@type': 'Person', name: author },
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    keywords: tags.join(', '),
+    isPartOf: { '@type': 'Blog', name: `${SITE.name} blog`, url: absolute('/blog') },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: absolute('/blog') },
+      { '@type': 'ListItem', position: 2, name: title, item: absolute(href) },
+    ],
+  },
+];
+---
+<BaseLayout
+  title={title}
+  description={description}
+  ogType="article"
+  jsonLd={jsonLd}
+  markdownHref={markdownHref}
+  publishedTime={date}
+  modifiedTime={updated ?? date}
+>
+  <article class="wrap post" data-pagefind-body>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/blog">Blog</a></nav>
+    <h1>{title}</h1>
+    <p class="lede">{description}</p>
+    <div class="page-meta">
+      <span>{author}</span>
+      <span><time datetime={date.toISOString()}>{formatDate(date)}</time></span>
+      {updated && <span>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></span>}
+      <span>{readingMinutes(entry.body)} min read</span>
+    </div>
+    <AiActions markdownHref={markdownHref} />
+    <div class="prose">
+      <slot />
+    </div>
+    {tags.length > 0 && (
+      <ul class="tags" aria-label="Tags">
+        {tags.map((t) => <li>{t}</li>)}
+      </ul>
+    )}
+  </article>
+</BaseLayout>

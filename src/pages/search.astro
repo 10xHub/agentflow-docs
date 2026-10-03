@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Search" description="Search the 10xGraph documentation and blog: concepts, how-to guides, API reference and engineering notes." noindex>
+  <section class="wrap listing">
+    <h1>Search</h1>
+    <div id="search" class="search-box">
+      <p class="muted">Search runs on the built site. Run <code>npm run build</code> then <code>npm run preview</code>.</p>
+    </div>
+  </section>
+  <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
+  <script is:inline>
+    (function () {
+      var s = document.createElement('script');
+      s.src = '/pagefind/pagefind-ui.js';
+      s.onload = function () {
+        document.getElementById('search').innerHTML = '';
+        new window.PagefindUI({ element: '#search', showSubResults: true, showImages: false });
+      };
+      document.body.appendChild(s);
+    })();
+  </script>
+</BaseLayout>

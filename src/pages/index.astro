@@ -1,0 +1,615 @@
+---
+// Homepage. Ported from design/10xgraph/v4-runtime.html (v3 layout with the premium white CTA and
+// cobalt accent). Styles live in src/styles/home.css, scoped to .home. This file is now the source of
+// truth for the homepage; edit it here, not in the design prototype.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/home.css';
+
+const title = "10xGraph: Production-Ready Python Multi-Agent Framework";
+const description = "Open-source Python multi-agent framework that generates the production server: auth, per-tool permissions, rate limits, replay-safe tools, Docker and k8s. MIT.";
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "10xScale",
+    "url": "https://10xscale.ai/"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "10xGraph",
+    "url": "https://10xgraph.com/"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "10xGraph",
+    "alternateName": "Agentflow",
+    "description": "10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "softwareVersion": "0.9.2",
+    "programmingLanguage": "Python",
+    "license": "https://opensource.org/licenses/MIT",
+    "url": "https://10xgraph.com/",
+    "codeRepository": "https://github.com/10xGraph/10xgraph",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "10xScale"
+    }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is 10xGraph?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, per-tool permissions, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What happens if a run crashes mid-way?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "With a checkpointer configured, 10xGraph records the current node before running it and keeps a ledger of every completed tool call. When the run resumes, the interrupted node runs again, but any tool call already in the ledger is skipped instead of executed. A payment tool that finished before the crash does not charge the card a second time."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does 10xGraph handle authentication and multi-user isolation?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The API server supports JWT or a custom auth class. The production template sets authorization to ownership, so a thread is accessible only to the user who created it, and owner checks are cached in process and in Redis. You can also restrict individual tools by role and add rate limits backed by memory or Redis."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is 10xGraph different from LangGraph?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Both model agents as graphs. With 10xGraph, the API server, authentication, rate limits and Docker and Kubernetes manifests come from the same MIT-licensed install, and you host them yourself. LangGraph offers its managed server through LangSmith Deployment. LangGraph also requires langchain-core, while 10xGraph has no LangChain dependency."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which LLM providers does 10xGraph support?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "10xGraph picks the provider from the model string. It supports OpenAI, Google Gemini including Vertex AI, and Anthropic through the direct API, Vertex AI or Amazon Bedrock. Any OpenAI-compatible endpoint also works. Changing the model string does not change your graph, your tools or your API endpoints."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is 10xGraph free and open source?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. 10xGraph is released under the MIT license, including the API server and the CLI. You can use it in commercial products, self-host it on your own infrastructure and modify it. There is no hosted platform you have to buy and no account to create before you start building."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is 10xGraph production-ready?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "10xScale runs its own AI products on 10xGraph in production. It includes replay-safe tool calls, versioned state writes, node and tool timeouts, JWT auth, owner-only threads, rate limiting and Kubernetes manifests. The core is at version 0.9.2, before 1.0, so pin your versions and read the changelog when you upgrade."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I install 10xGraph?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Run pip install 10xgraph 10xgraph-api on Python 3.12 or newer. Then run 10xgraph init --template production to scaffold a project with auth, validators, tests and config, 10xgraph api to serve it on port 8000, and 10xgraph build --docker-compose --k8s to generate deployment files. The TypeScript client installs with npm install 10xgraph-client."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Was 10xGraph previously called Agentflow?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python import path stays the same, so existing code that imports from agentflow keeps working after you switch to the new package names."
+        }
+      }
+    ]
+  }
+];
+---
+<BaseLayout title={title} description={description} exactTitle jsonLd={jsonLd}>
+<div class="home">
+<!-- HERO -->
+<section class="hero" aria-labelledby="h1">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Open source · MIT · Python 3.12+</p>
+        <h1 id="h1">Write the Python agent. 10xGraph builds the production server around it.</h1>
+        <p class="sub">Authentication, per-tool permissions, rate limits, two-tier memory, replay-safe tools, and Docker and Kubernetes manifests come generated with your graph. MIT licensed and self-hosted, so the production layer is in the box.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="/docs/get-started/installation">Build your first agent <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        </div>
+        <div class="cta-sub">
+          <button class="pill" type="button" data-copy="pip install 10xgraph 10xgraph-api" aria-label="Copy install command"><span class="prompt">$</span><code>pip install 10xgraph 10xgraph-api</code><span class="cp" aria-live="polite">Copy</span></button>
+          <a class="link" href="https://github.com/10xGraph/10xgraph">Star on GitHub</a>
+        </div>
+      </div>
+
+      <div class="stage" id="stage" aria-label="From code to production in five steps">
+        <div class="stage-bar"><span class="live"><span class="dot"></span>code to production</span><span class="legend" aria-label="Color key"><span><i style="background:var(--you)"></i>you write</span><span><i style="background:var(--accent)"></i>10xGraph generates</span><span><i style="background:var(--infra)"></i>your infra</span></span></div>
+        <ol class="rail" aria-label="Steps">
+          <li><button type="button" data-go="0"><span class="n">01</span>Write<span class="bar"><i></i></span></button></li>
+          <li><button type="button" data-go="1"><span class="n">02</span>Configure<span class="bar"><i></i></span></button></li>
+          <li><button type="button" data-go="2"><span class="n">03</span>Serve<span class="bar"><i></i></span></button></li>
+          <li><button type="button" data-go="3"><span class="n">04</span>Ship<span class="bar"><i></i></span></button></li>
+          <li><button type="button" data-go="4"><span class="n">05</span>Production<span class="bar"><i></i></span></button></li>
+        </ol>
+        <div class="canvas">
+          <svg class="flow-svg" viewBox="0 0 640 404" role="img" aria-label="From agent code to a production deployment" aria-describedby="flow-desc">
+            
+            <desc id="flow-desc">agent.py defines a ReactAgent, which compiles to a StateGraph with an Agent node, a ToolNode and a loop between them. agent.py then feeds 10xgraph init, which generates JWT auth, owner-only threads, a Redis rate limit and a prompt-injection validator. These plug into the generated API server on port 8000, which receives requests from a TypeScript client and runs your graph with replay-safe tools and timeouts. 10xgraph build produces Docker and Kubernetes files. State lives in a Redis hot cache and PostgreSQL cold history, and a tool ledger keeps tools replay-safe.</desc>
+            <defs><pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1" style="fill:var(--dot)"/></pattern><filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="halo" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="4"/></filter></defs>
+            <rect width="640" height="404" fill="url(#dots)"/><text class="zone" x="20" y="16">build time</text><line class="zone-line" x1="20" x2="620" y1="254" y2="254"/><text class="zone" x="20" y="272">run time</text><g class="nd c-you" data-s="1" data-o="1" data-only=""><rect class="frame" x="200" y="24" width="424" height="216" rx="12"/><text class="frame-t" x="216" y="44">StateGraph</text><text class="elab" x="290" y="44">built by ReactAgent · compile() → CompiledGraph</text></g><path class="ed" data-s="1" data-o="0" data-only="" d="M170 59 H198"/><path class="ed flow" data-s="1" data-o="3" data-only="" d="M268 125 H288"/><path class="ed flow" data-s="1" data-o="4" data-only="" d="M402 92 C424 62 448 62 470 92"/><path class="ed flow" data-s="1" data-o="5" data-only="" d="M470 156 C448 186 424 186 402 156"/><path class="ed dash" data-s="1" data-o="5" data-only="" d="M330 156 V190"/><g transform="translate(214 113)"><g class="nd pilln" data-s="1" data-o="2" data-only=""><rect class="bg" width="54" height="24" rx="12"/><text class="t tc" x="27.0" y="16">START</text></g></g><g transform="translate(290 92)"><g class="nd c-you" data-s="1" data-o="3" data-only=""><rect class="halo" x="-3" y="-3" width="126" height="70" rx="11"/><rect class="bg" width="120" height="64" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H111 A9 9 0 0 1 120 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">Agent</text><text class="b" x="10" y="38">LLM call</text><text class="b" x="10" y="52">any provider</text></g></g><g transform="translate(470 92)"><g class="nd c-you" data-s="1" data-o="4" data-only=""><rect class="halo" x="-3" y="-3" width="142" height="70" rx="11"/><rect class="bg" width="136" height="64" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H127 A9 9 0 0 1 136 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">ToolNode</text><text class="b" x="10" y="38">lookup_order</text><text class="b a" x="10" y="52">parallel calls</text></g></g><g transform="translate(304 192)"><g class="nd c-you pilln" data-s="1" data-o="6" data-only=""><rect class="bg" width="52" height="24" rx="12"/><text class="t tc" x="26.0" y="16">END</text></g></g><g class="nd c-you" data-s="1" data-o="5" data-only=""><text class="elab" x="436" y="60" text-anchor="middle">tool_calls?</text></g><g class="nd" data-s="1" data-o="5" data-only=""><text class="elab" x="436" y="198" text-anchor="middle">results</text></g><g class="nd" data-s="1" data-o="6" data-only=""><text class="elab" x="338" y="176" text-anchor="start">done</text></g><g transform="translate(470 200)"><g class="nd chipn" data-s="1" data-o="6" data-only=""><rect class="bg" width="136" height="26" rx="13"/><circle cx="13" cy="13" r="3" style="fill:var(--c)"/><text class="t" x="24" y="17">AgentState</text></g></g><path class="ed" data-s="2" data-o="0" d="M170 59 H243"/><path class="ed" data-s="2" data-o="2" d="M262 90 C249 96 249 119 255 127"/><path class="ed" data-s="2" data-o="3" d="M262 90 C247 100 247 151 255 159"/><path class="ed" data-s="2" data-o="4" d="M262 90 C245 104 245 183 255 191"/><path class="ed" data-s="2" data-o="5" d="M262 90 C243 108 243 215 255 223"/><path class="ed flow" data-s="3" data-o="1" d="M140 327 H198"/><path class="ed flow" data-s="3" data-o="2" d="M325 236 C325 260 280 258 280 280"/><path class="ed flow" data-s="3" data-o="3" d="M360 327 H398"/><path class="ed" data-s="4" data-o="0" d="M405 59 H476"/><path class="ed" data-s="4" data-o="2" d="M512 90 V110"/><path class="ed" data-s="4" data-o="2" d="M586 90 V110"/><path class="ed dash" data-s="4" data-o="4" d="M586 142 C586 215 455 215 455 280"/><path class="ed flow" data-s="5" data-o="0" d="M510 312 C526 312 526 290 538 290"/><path class="ed flow" data-s="5" data-o="0" d="M510 344 C526 344 526 354 538 354"/><g transform="translate(20 28)"><g class="nd c-you" data-s="1" data-o="0"><rect class="halo" x="-3" y="-3" width="156" height="68" rx="11"/><rect class="bg" width="150" height="62" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H141 A9 9 0 0 1 150 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">agent.py</text><text class="b" x="10" y="38">ReactAgent</text><text class="b" x="10" y="52">tools=[lookup_order]</text></g></g><g transform="translate(245 28)"><g class="nd c-gen" data-s="2" data-o="1"><rect class="halo" x="-3" y="-3" width="166" height="68" rx="11"/><rect class="bg" width="160" height="62" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H151 A9 9 0 0 1 160 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">10xgraph init</text><text class="b" x="10" y="38">--template production</text><text class="b a" x="10" y="52">jwt · redis limits</text></g></g><g transform="translate(255 114)"><g class="nd c-gen chipn" data-s="2" data-o="3"><rect class="halo" x="-3" y="-3" width="146" height="32" rx="15"/><rect class="bg" width="140" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">JWT auth</text></g></g><g transform="translate(255 146)"><g class="nd c-gen chipn" data-s="2" data-o="4"><rect class="halo" x="-3" y="-3" width="146" height="32" rx="15"/><rect class="bg" width="140" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">owner-only threads</text></g></g><g transform="translate(255 178)"><g class="nd c-gen chipn" data-s="2" data-o="5"><rect class="halo" x="-3" y="-3" width="146" height="32" rx="15"/><rect class="bg" width="140" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">rate limit 100/60s</text></g></g><g transform="translate(255 210)"><g class="nd c-gen chipn" data-s="2" data-o="6"><rect class="halo" x="-3" y="-3" width="146" height="32" rx="15"/><rect class="bg" width="140" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">prompt-injection</text></g></g><g transform="translate(20 296)"><g class="nd c-infra" data-s="3" data-o="0"><rect class="halo" x="-3" y="-3" width="126" height="68" rx="11"/><rect class="bg" width="120" height="62" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H111 A9 9 0 0 1 120 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">Client</text><text class="b" x="10" y="38">TypeScript SDK</text><text class="b" x="10" y="52">Bearer JWT</text></g></g><g transform="translate(200 282)"><g class="nd c-gen" data-s="3" data-o="2"><rect class="halo" x="-3" y="-3" width="166" height="96" rx="11"/><rect class="bg" width="160" height="90" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H151 A9 9 0 0 1 160 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">API server :8000</text><text class="b" x="10" y="38">REST · SSE</text><text class="b" x="10" y="52">WebSocket · audio</text><text class="b a" x="10" y="66">auth · rbac · limits</text></g></g><g transform="translate(400 282)"><g class="nd c-you" data-s="3" data-o="4"><rect class="halo" x="-3" y="-3" width="116" height="96" rx="11"/><rect class="bg" width="110" height="90" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H101 A9 9 0 0 1 110 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">Your graph</text><text class="b" x="10" y="38">ReactAgent</text><text class="b a" x="10" y="52">replay-safe tools</text><text class="b" x="10" y="66">timeouts</text></g></g><g transform="translate(478 28)"><g class="nd c-gen" data-s="4" data-o="1"><rect class="halo" x="-3" y="-3" width="148" height="68" rx="11"/><rect class="bg" width="142" height="62" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H133 A9 9 0 0 1 142 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">10xgraph build</text><text class="b" x="10" y="38">--docker-compose</text><text class="b" x="10" y="52">--k8s</text></g></g><g transform="translate(478 112)"><g class="nd c-gen chipn" data-s="4" data-o="3"><rect class="halo" x="-3" y="-3" width="74" height="32" rx="15"/><rect class="bg" width="68" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">Docker</text></g></g><g transform="translate(552 112)"><g class="nd c-gen chipn" data-s="4" data-o="3"><rect class="halo" x="-3" y="-3" width="74" height="32" rx="15"/><rect class="bg" width="68" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">k8s</text></g></g><g transform="translate(540 266)"><g class="nd c-infra" data-s="5" data-o="1"><rect class="halo" x="-3" y="-3" width="102" height="54" rx="11"/><rect class="bg" width="96" height="48" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H87 A9 9 0 0 1 96 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">Redis</text><text class="b a" x="10" y="38">hot cache</text></g></g><g transform="translate(540 330)"><g class="nd c-infra" data-s="5" data-o="1"><rect class="halo" x="-3" y="-3" width="102" height="54" rx="11"/><rect class="bg" width="96" height="48" rx="9"/><path class="hd" d="M0 9 A9 9 0 0 1 9 0 H87 A9 9 0 0 1 96 9 V22 H0 Z"/><circle class="led" cx="12" cy="11" r="3"/><text class="t" x="22" y="15">PostgreSQL</text><text class="b" x="10" y="38">cold history</text></g></g><g transform="translate(400 376)"><g class="nd c-gen chipn" data-s="5" data-o="2"><rect class="halo" x="-3" y="-3" width="116" height="32" rx="15"/><rect class="bg" width="110" height="26" rx="13"/><path class="ck" d="M10 13.5l3 3 6-6.5" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><text class="t" x="26" y="17">tool ledger</text></g></g><g id="particles"></g>
+          </svg>
+        </div>
+        <div class="caption">
+          <div class="cap-cmd"><span class="ps">$</span> <span class="typed">10xgraph init --template production</span><span class="caret" aria-hidden="true"></span></div>
+          <p class="cap-txt" aria-live="polite">Write the agent, generate the secured server, ship it to your own cluster.</p>
+        </div>
+        <div class="stage-ctl">
+          <div class="grp">
+            <button type="button" data-act="prev" aria-label="Previous step"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Prev</button>
+            <button type="button" data-act="pause" aria-pressed="false">Pause</button>
+          </div>
+          <span class="pos">Step 1 of 5</span>
+          <button type="button" data-act="next" aria-label="Next step">Next<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5L8 6 4.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <p class="provider"><span class="eyebrow">Works with</span>OpenAI, Anthropic, Google Gemini, Vertex AI, Amazon Bedrock and any MCP server</p>
+  </div>
+</section>
+
+<!-- MOAT INDEX -->
+<section class="moats" aria-label="What only 10xGraph ships">
+  <div class="wrap">
+    <ul class="moat-list">
+      <li><a href="#in-the-box"><span>Production layer</span><b>In the box</b>Auth, permissions, rate limits and deploy files, generated.</a></li>
+      <li><a href="#replay"><span>Reliability</span><b>Replay-safe tools</b>A crash and resume never runs a finished tool twice.</a></li>
+      <li><a href="#memory"><span>Scale</span><b>Two-tier memory</b>Hot data in a Redis cache, cold data in PostgreSQL.</a></li>
+      <li><a href="#stack"><span>Full stack</span><b>Python to TypeScript</b>Typed client, browser tools, realtime audio.</a></li>
+      <li><a href="#yours"><span>Ownership</span><b>Yours to run</b>MIT, self-hosted, any model, no LangChain.</a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- WHAT IS -->
+<section aria-labelledby="what">
+  <div class="wrap">
+    <div class="def-grid">
+      <div>
+        <h2 id="what">What is 10xGraph?</h2>
+        <p class="def">10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.</p>
+        <p class="fresh">Updated October 2026 · v0.9.2 · <a href="/docs/concepts">Read the concepts</a></p>
+      </div>
+      <dl class="facts">
+        <div><dt>License</dt><dd>MIT, including the API server and CLI. Use it commercially, self-host it, fork it.</dd></div>
+        <div><dt>Runtime</dt><dd>Python 3.12+. Core 0.9.2, API and CLI 0.5.1, TypeScript client 0.4.0.</dd></div>
+        <div><dt>Memory</dt><dd>Hot: active thread state cached in Redis and read first. Cold: full history in PostgreSQL with versioned writes.</dd></div>
+        <div><dt>Dependencies</dt><dd>No LangChain. Dependency injection through InjectQ.</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- PILLAR 1 -->
+<section id="in-the-box" aria-labelledby="p1h">
+  <div class="wrap">
+    <div class="two">
+      <div>
+        <span class="kicker">Production layer, in the box</span>
+        <h2 id="p1h">The production server ships with the framework</h2>
+        <p class="lede" style="margin-bottom:24px">Most agent frameworks stop at the graph. Serving it, securing it and deploying it becomes your project or a paid platform. 10xGraph generates that layer from your project config, under the same MIT license.</p>
+        <ul class="points">
+          <li><b>One install, one config file</b><code>pip install 10xgraph 10xgraph-api</code>, then <code>agentflow.json</code> drives the server.</li>
+          <li><b>Secure defaults</b>The production template turns on JWT auth, owner-only threads and a prompt-injection validator.</li>
+          <li><b>Built for many users</b>Owner checks are cached in process and in Redis, so authorization does not cost a database round trip per request.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="cfg">
+          <div class="cfg-head"><span>agentflow.json key</span><span>what you get</span></div>
+          <div class="cfg-row"><code>"auth": "jwt"</code><div><b>JWT authentication</b> on every endpoint, or plug in your own auth class.</div></div>
+          <div class="cfg-row"><code>"authorization": "ownership"</code><div><b>Owner-only threads.</b> A thread is readable only by the user who created it.</div></div>
+          <div class="cfg-row"><code>"rate_limit": &#123; "backend": "redis" &#125;</code><div><b>Rate limiting</b> shared across workers, or in memory for one process.</div></div>
+          <div class="cfg-row"><code>build --docker-compose --k8s</code><div><b>Deployment files:</b> Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service.</div></div>
+          <div class="cfg-row"><code>POST /v1/graph/stream</code><div><b>Streaming</b> over SSE, plus WebSocket and a realtime audio endpoint.</div></div>
+        </div>
+        <div class="perm" aria-label="Per-tool permission example">
+          <div class="cfg-head"><span>Per-tool permissions</span><span class="tag-ill">illustrative</span></div>
+          <div class="perm-row"><span>user <b>maya</b> · role support · calls <b>refund_order</b></span><span class="st no">403 denied</span></div>
+          <div class="perm-row"><span>user <b>sam</b> · role billing · calls <b>refund_order</b></span><span class="st ok">200 allowed</span></div>
+          <div class="perm-row"><span>user <b>maya</b> · reads a thread owned by <b>sam</b></span><span class="st no">403 denied</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILLAR 2 -->
+<section id="replay" aria-labelledby="p2h">
+  <div class="wrap">
+    <span class="kicker">Reliability</span>
+    <h2 id="p2h">Crash mid-run. Resume without charging the card twice.</h2>
+    <p class="lede">A process can die between two tool calls. When the run resumes, 10xGraph replays the interrupted step but checks a tool ledger first, so tools that already finished are skipped instead of executed again.</p>
+    <div class="replay" role="group" aria-label="Replay example">
+      <div class="lane">
+        <div class="who">Run 1<small>thread order-1042</small></div>
+        <div class="tc ran"><code>lookup_order</code><span>ran · recorded</span></div>
+        <div class="tc ran"><code>charge_card</code><span>ran · recorded</span></div>
+        <div class="tc kill"><code>send_receipt</code><span>process killed</span></div>
+      </div>
+      <div class="lane">
+        <div class="who">Resume<small>same thread</small></div>
+        <div class="tc skip"><code>lookup_order</code><span>skipped · in ledger</span></div>
+        <div class="tc skip"><code>charge_card</code><span>skipped · in ledger</span></div>
+        <div class="tc ran"><code>send_receipt</code><span>ran · recorded</span></div>
+      </div>
+      <div class="replay-foot">Requires a checkpointer. Ledger entries are keyed by the assistant message that issued the call plus the tool call id.</div>
+    </div>
+    <ul class="points" style="margin-top:32px">
+      <li><b>Tool ledger</b>Each completed tool call is recorded as soon as it returns. Keys include the issuing message, so models that reuse ids like <code>call_1</code> never collide across turns.</li>
+      <li><b>Versioned state writes</b>Durable writes use an optimistic version check, so two runs on the same thread cannot overwrite each other. The Redis cache is version-guarded too.</li>
+      <li><b>Real timeouts</b><code>node_timeout</code> and <code>tool_timeout</code> stop a hung tool from holding a worker forever.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- PILLAR 3 -->
+<section id="memory" aria-labelledby="p3h">
+  <div class="wrap">
+    <span class="kicker">Scale</span>
+    <h2 id="p3h">Two-tier memory that scales with your users</h2>
+    <p class="lede">Active conversations need fast reads. History needs to be durable. 10xGraph keeps each kind of data in the store built for it.</p>
+    <div class="tiers">
+      <div class="tier hotc">
+        <div class="lab"><span>Hot data</span><span>Redis cache</span></div>
+        <h3>Active thread state</h3>
+        <ul>
+          <li>Written on every step of a run and read first.</li>
+          <li>Expires after 24 hours by default, configurable.</li>
+          <li>Version-guarded writes, so a stale run cannot move state backwards.</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <div class="lab"><span>Cold data</span><span>PostgreSQL</span></div>
+        <h3>Durable history</h3>
+        <ul>
+          <li>Full thread history with versioned writes.</li>
+          <li>Recent state snapshots kept per thread (20 by default).</li>
+          <li>Threads resume after restarts and after the cache expires.</li>
+        </ul>
+      </div>
+      <p class="tier-flow"><span>Also included:</span><span>SQLite for local work</span><span>Qdrant and Mem0 for long-term memory</span><span>events to Kafka, Redis Pub/Sub, RabbitMQ, OpenTelemetry</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- PILLAR 4 -->
+<section id="stack" aria-labelledby="p4h">
+  <div class="wrap">
+    <div class="two">
+      <div>
+        <span class="kicker">Full stack</span>
+        <h2 id="p4h">One stack, Python backend to TypeScript frontend</h2>
+        <ul class="points">
+          <li><b>Typed TypeScript client</b>Invoke, stream, threads, memory and files. Works in Next.js, Vite and Node.</li>
+          <li><b>Tools that run in the browser</b>Remote tools execute on the client, for things only the user's device can do, with validated schemas.</li>
+          <li><b>Realtime audio</b>A WebSocket endpoint at <code>/v1/graph/live</code> for voice agents.</li>
+          <li><b>Playground</b><code>10xgraph play</code> starts the server and a React UI to chat with your agent.</li>
+        </ul>
+      </div>
+      <div class="code"><div class="cap"><span>support-chat.ts</span><span>typescript</span></div><pre tabindex="0"><code><span class="k">import</span> &#123; AgentFlowClient, Message &#125; <span class="k">from</span> <span class="s">'10xgraph-client'</span>;
+
+<span class="k">const</span> client = <span class="k">new</span> AgentFlowClient(&#123;
+  baseUrl: <span class="s">'https://agents.example.com'</span>,
+  authToken: userJwt,  <span class="c">// same JWT the API checks</span>
+&#125;);
+
+<span class="k">const</span> question = Message.text_message(<span class="s">'Where is order A-1042?'</span>, <span class="s">'user'</span>);
+
+<span class="k">for await</span> (<span class="k">const</span> chunk <span class="k">of</span> client.stream([question])) &#123;
+  <span class="k">if</span> (chunk.event === <span class="s">'message'</span>) render(chunk.message?.content);
+&#125;</code></pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- PILLAR 5 -->
+<section id="yours" aria-labelledby="p5h">
+  <div class="wrap">
+    <div class="two" style="align-items:center">
+      <div>
+        <span class="kicker">Ownership</span>
+        <h2 id="p5h">Yours to run, on any model</h2>
+        <p class="lede" style="margin-bottom:0">MIT licensed, self-hosted, no LangChain dependency. Pick the provider with one model string; the graph, tools and endpoints stay the same. 10xScale runs its own production AI products on 10xGraph.</p>
+        <div class="seg" role="group" aria-label="Choose a provider" hidden>
+          <button type="button" aria-pressed="true" data-m="google/gemini-2.5-flash">Google</button>
+          <button type="button" aria-pressed="false" data-m="openai/gpt-4o">OpenAI</button>
+          <button type="button" aria-pressed="false" data-m="anthropic/claude-opus-5">Anthropic</button>
+        </div>
+      </div>
+      <div class="code"><div class="cap"><span>agent.py</span><span>python</span></div><pre tabindex="0"><code>agent = ReactAgent(
+<span class="mline">    model=<span class="s" id="mstr">"google/gemini-2.5-flash"</span>,</span>    system_prompt=[&#123;<span class="s">"role"</span>: <span class="s">"system"</span>, <span class="s">"content"</span>: <span class="s">"You are a support agent."</span>&#125;],
+    tools=[lookup_order],
+)</code></pre><div class="same">same graph · same tools · same endpoints</div></div>
+    </div>
+    <div class="own">
+      <div class="limits">
+        <h3>When 10xGraph is not the right choice</h3>
+        <ul>
+          <li><b>You need a large plugin marketplace today.</b> The community is smaller than LangGraph's or CrewAI's.</li>
+          <li><b>You need a 1.0 API guarantee.</b> The core is at 0.9.2. Pin versions and read the changelog.</li>
+          <li><b>You want visual tooling first.</b> LangGraph Studio and LangSmith are stronger for visual debugging.</li>
+          <li><b>You are on Python older than 3.12</b>, or you want a no-code builder.</li>
+        </ul>
+      </div>
+      <div class="placeholder" role="note">
+        <span class="tag">Placeholder: real user quote goes here</span>
+        <p class="q">"Quote from a named engineer or team, with permission."</p>
+        <span class="tag">Name, role, company</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- START HERE -->
+<section aria-labelledby="start">
+  <div class="wrap">
+    <h2 id="start">Start here</h2>
+    <ul class="starts">
+      <li><a href="/docs/get-started/installation">Get started <span>install, first agent</span></a></li>
+      <li><a href="/docs/concepts">Concepts <span>graphs, state, memory</span></a></li>
+      <li><a href="/docs/tutorials">Tutorials <span>end-to-end builds</span></a></li>
+      <li><a href="/docs/how-to">How-to guides <span>production tasks</span></a></li>
+      <li><a href="/docs/reference">Reference <span>Python, REST, TypeScript</span></a></li>
+      <li><a href="/docs/compare">Compare <span>LangGraph, CrewAI, AutoGen</span></a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section aria-labelledby="faq">
+  <div class="wrap">
+    <h2 id="faq">Frequently asked questions</h2>
+    <div class="faq">
+<details><summary><span>What is 10xGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, per-tool permissions, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale.</p></details>
+<details><summary><span>What happens if a run crashes mid-way?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>With a checkpointer configured, 10xGraph records the current node before running it and keeps a ledger of every completed tool call. When the run resumes, the interrupted node runs again, but any tool call already in the ledger is skipped instead of executed. A payment tool that finished before the crash does not charge the card a second time.</p></details>
+<details><summary><span>How does 10xGraph handle authentication and multi-user isolation?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>The API server supports JWT or a custom auth class. The production template sets authorization to ownership, so a thread is accessible only to the user who created it, and owner checks are cached in process and in Redis. You can also restrict individual tools by role and add rate limits backed by memory or Redis.</p></details>
+<details><summary><span>How is 10xGraph different from LangGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Both model agents as graphs. With 10xGraph, the API server, authentication, rate limits and Docker and Kubernetes manifests come from the same MIT-licensed install, and you host them yourself. LangGraph offers its managed server through LangSmith Deployment. LangGraph also requires langchain-core, while 10xGraph has no LangChain dependency.</p></details>
+<details><summary><span>Which LLM providers does 10xGraph support?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xGraph picks the provider from the model string. It supports OpenAI, Google Gemini including Vertex AI, and Anthropic through the direct API, Vertex AI or Amazon Bedrock. Any OpenAI-compatible endpoint also works. Changing the model string does not change your graph, your tools or your API endpoints.</p></details>
+<details><summary><span>Is 10xGraph free and open source?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Yes. 10xGraph is released under the MIT license, including the API server and the CLI. You can use it in commercial products, self-host it on your own infrastructure and modify it. There is no hosted platform you have to buy and no account to create before you start building.</p></details>
+<details><summary><span>Is 10xGraph production-ready?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xScale runs its own AI products on 10xGraph in production. It includes replay-safe tool calls, versioned state writes, node and tool timeouts, JWT auth, owner-only threads, rate limiting and Kubernetes manifests. The core is at version 0.9.2, before 1.0, so pin your versions and read the changelog when you upgrade.</p></details>
+<details><summary><span>How do I install 10xGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Run pip install 10xgraph 10xgraph-api on Python 3.12 or newer. Then run 10xgraph init --template production to scaffold a project with auth, validators, tests and config, 10xgraph api to serve it on port 8000, and 10xgraph build --docker-compose --k8s to generate deployment files. The TypeScript client installs with npm install 10xgraph-client.</p></details>
+<details><summary><span>Was 10xGraph previously called Agentflow?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python import path stays the same, so existing code that imports from agentflow keeps working after you switch to the new package names.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final" aria-labelledby="final">
+  <div class="wrap">
+    <h2 id="final">Ship your first agent with auth, memory and deployment already done.</h2>
+    <div class="cta-row" style="margin-top:32px">
+      <a class="btn btn-primary" href="/docs/get-started/installation">Build your first agent <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <button class="pill" type="button" data-copy="pip install 10xgraph 10xgraph-api" aria-label="Copy install command"><span class="prompt">$</span><code>pip install 10xgraph 10xgraph-api</code><span class="cp" aria-live="polite">Copy</span></button>
+    </div>
+    <ul class="risk">
+      <li>MIT licensed</li>
+      <li>Runs on your machine</li>
+      <li>No account needed</li>
+      <li>Self-hosted in production</li>
+    </ul>
+  </div>
+</section>
+</div>
+<script is:inline>
+(function () {
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* copy buttons */
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      var label = btn.querySelector(".cp");
+      function done(msg) { if (label) { label.textContent = msg; setTimeout(function () { label.textContent = "Copy"; }, 1600); } }
+      function fallback() {
+        var code = btn.querySelector("code");
+        if (code && window.getSelection) {
+          var r = document.createRange(); r.selectNodeContents(code);
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        }
+        done("Selected");
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { done("Copied"); }, fallback);
+        } else { fallback(); }
+      } catch (e) { fallback(); }
+    });
+  });
+
+  /* model switch */
+  var seg = document.querySelector(".seg");
+  var mstr = document.getElementById("mstr");
+  if (seg && mstr) {
+    seg.hidden = false;
+    seg.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        seg.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        mstr.textContent = '"' + b.getAttribute("data-m") + '"';
+      });
+    });
+  }
+
+  /* code-to-production stage: node canvas */
+  var stage = document.getElementById("stage");
+  if (!stage) return;
+  var svg = stage.querySelector(".flow-svg");
+  var els = Array.prototype.slice.call(svg.querySelectorAll("[data-s]"));
+  var railBtns = Array.prototype.slice.call(stage.querySelectorAll(".rail button"));
+  var pos = stage.querySelector(".pos");
+  var pauseBtn = stage.querySelector('[data-act="pause"]');
+  var typed = stage.querySelector(".typed");
+  var ps = stage.querySelector(".cap-cmd .ps");
+  var capTxt = stage.querySelector(".cap-txt");
+  var STEPS = [
+    { cmd: "agent.py  ·  ReactAgent(...).compile()", ps: false, txt: "Plain Python. ReactAgent compiles your tool into a StateGraph: an Agent node, a ToolNode and the loop between them." },
+    { cmd: "10xgraph init --template production --auth jwt --rate-limit redis", ps: true, txt: "JWT auth, owner-only threads, a Redis rate limit and a prompt-injection validator are generated." },
+    { cmd: "10xgraph api", ps: true, txt: "The generated pieces plug into the API server on :8000. REST, SSE, WebSocket and audio, already secured." },
+    { cmd: "10xgraph build --docker-compose --k8s", ps: true, txt: "Dockerfile, docker-compose.yml and k8s.yaml come from your project. Run them on your own cluster." },
+    { cmd: "production", ps: false, txt: "Requests pass auth into your graph. Hot state in Redis, history in PostgreSQL, a tool ledger for replay-safe tools." }
+  ];
+  var STEP_MS = 6500, HOLD_LAST = 9000;
+  var cur = 0, timer = null, T = [], typeT = null, userPaused = false, hoverPaused = false;
+
+  stage.classList.add("js", "anim");
+  if (reduce) stage.classList.add("still");
+  stage.style.setProperty("--dur", STEP_MS + "ms");
+  els.forEach(function (el) {
+    if (el.classList.contains("ed") && el.getTotalLength) {
+      el.style.setProperty("--len", Math.ceil(el.getTotalLength()) + 1);
+    }
+  });
+
+  function clearT() { T.forEach(clearTimeout); T = []; clearTimeout(typeT); }
+
+  function typeCmd(step) {
+    ps.hidden = !step.ps;
+    capTxt.classList.add("fade");
+    if (reduce) { typed.textContent = step.cmd; capTxt.textContent = step.txt; capTxt.classList.remove("fade"); return; }
+    var i = 0; typed.textContent = "";
+    (function tick() {
+      typed.textContent = step.cmd.slice(0, ++i);
+      if (i < step.cmd.length) { typeT = setTimeout(tick, 18); }
+      else { capTxt.textContent = step.txt; capTxt.classList.remove("fade"); }
+    })();
+  }
+
+  function apply(i) {
+    els.forEach(function (el) {
+      var s = parseInt(el.getAttribute("data-s"), 10) - 1;
+      el.classList.toggle("cur", s === i);
+      if (s < i) { el.classList.toggle("on", !el.hasAttribute("data-only")); }
+      else if (s > i) { el.classList.remove("on"); }
+      else {
+        el.classList.remove("on");
+        if (reduce) { el.classList.add("on"); }
+        else {
+          var o = parseInt(el.getAttribute("data-o") || "0", 10);
+          T.push(setTimeout(function () { el.classList.add("on"); }, 120 + o * 190));
+        }
+      }
+    });
+  }
+
+  function restartBar(btn) {
+    var bar = btn.querySelector(".bar i");
+    if (!bar) return;
+    bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+  }
+
+  function show(i) {
+    clearT();
+    cur = (i + STEPS.length) % STEPS.length;
+    railBtns.forEach(function (b, k) {
+      b.classList.toggle("cur", k === cur);
+      b.classList.toggle("done", k < cur);
+      if (k === cur) { b.setAttribute("aria-current", "step"); restartBar(b); } else { b.removeAttribute("aria-current"); }
+    });
+    if (pos) pos.textContent = "Step " + (cur + 1) + " of " + STEPS.length;
+    apply(cur);
+    typeCmd(STEPS[cur]);
+    schedule();
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    if (reduce || userPaused || hoverPaused) return;
+    timer = setTimeout(function () { show(cur + 1); }, cur === STEPS.length - 1 ? HOLD_LAST : STEP_MS);
+  }
+
+  function setPaused() {
+    var p = userPaused || hoverPaused;
+    stage.classList.toggle("paused", p);
+    if (p) clearTimeout(timer); else { restartBar(railBtns[cur]); schedule(); }
+  }
+
+  railBtns.forEach(function (b) {
+    b.addEventListener("click", function () { show(parseInt(b.getAttribute("data-go"), 10)); });
+  });
+  stage.querySelector('[data-act="prev"]').addEventListener("click", function () { show(cur - 1); });
+  stage.querySelector('[data-act="next"]').addEventListener("click", function () { show(cur + 1); });
+  pauseBtn.addEventListener("click", function () {
+    userPaused = !userPaused;
+    pauseBtn.setAttribute("aria-pressed", userPaused ? "true" : "false");
+    pauseBtn.textContent = userPaused ? "Play" : "Pause";
+    setPaused();
+  });
+  if (reduce) { pauseBtn.hidden = true; }
+  stage.addEventListener("mouseenter", function () { hoverPaused = true; setPaused(); });
+  stage.addEventListener("mouseleave", function () { hoverPaused = false; setPaused(); });
+  stage.addEventListener("focusin", function () { hoverPaused = true; setPaused(); });
+  stage.addEventListener("focusout", function (e) { if (!stage.contains(e.relatedTarget)) { hoverPaused = false; setPaused(); } });
+  stage.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") { show(cur + 1); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { show(cur - 1); e.preventDefault(); }
+  });
+
+  /* particles flowing along live edges */
+  if (!reduce) {
+    var NS = "http://www.w3.org/2000/svg";
+    var layer = svg.querySelector("#particles");
+    var parts = [];
+    Array.prototype.slice.call(svg.querySelectorAll(".ed.flow")).forEach(function (path) {
+      var len = path.getTotalLength();
+      for (var k = 0; k < 2; k++) {
+        var c = document.createElementNS(NS, "circle");
+        c.setAttribute("r", "2.6"); c.setAttribute("class", "particle"); c.setAttribute("opacity", "0");
+        layer.appendChild(c);
+        parts.push({ el: c, path: path, len: len, t: k / 2 });
+      }
+    });
+    var visible = true, last = 0;
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    }
+    (function frame(now) {
+      var dt = last ? Math.min(now - last, 50) : 16; last = now;
+      if (visible && !document.hidden) {
+        parts.forEach(function (p) {
+          if (!p.path.classList.contains("on")) { p.el.setAttribute("opacity", "0"); return; }
+          p.t += dt * 0.07 / p.len;
+          if (p.t > 1) p.t -= 1;
+          var pt = p.path.getPointAtLength(p.t * p.len);
+          p.el.setAttribute("cx", pt.x.toFixed(1)); p.el.setAttribute("cy", pt.y.toFixed(1));
+          var edgeFade = Math.min(1, p.t * 6, (1 - p.t) * 6);
+          p.el.setAttribute("opacity", edgeFade.toFixed(2));
+        });
+      }
+      requestAnimationFrame(frame);
+    })(0);
+  }
+
+  show(0);
+})();
+</script>
+</BaseLayout>

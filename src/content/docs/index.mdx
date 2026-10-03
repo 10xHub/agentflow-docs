@@ -1,0 +1,32 @@
+---
+title: Introduction
+description: What 10xGraph is, what it generates for you, and where to start. An open-source Python framework for production multi-agent AI.
+section: Get started
+order: 0
+updated: 2026-10-03
+---
+import Callout from '../../components/Callout.astro';
+
+10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL.
+
+## What you write
+
+A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for the common tool-calling loop, or build your own `StateGraph`.
+
+## What 10xGraph generates
+
+| Piece | What you get |
+|---|---|
+| API server | REST, SSE streaming, WebSocket and realtime audio endpoints on port 8000 |
+| Security | JWT or custom auth, owner-only threads, per-tool permissions, rate limits |
+| Reliability | Replay-safe tools, versioned state writes, node and tool timeouts |
+| Deployment | Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service |
+
+<Callout type="tip" title="Formerly Agentflow">
+10xGraph was published as Agentflow until 2026. The Python import path is unchanged, so `from agentflow import StateGraph` keeps working.
+</Callout>
+
+## Where to go next
+
+- [Install 10xGraph](/docs/get-started/installation)
+- [How replay-safe tools work](/docs/concepts/replay-safe-tools)

@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../lib/site';
+import { absolute, formatDate, getPosts, postHref } from '../../lib/content';
+
+const posts = await getPosts();
+const description = 'Engineering notes from the 10xGraph team on production AI agents: replay-safe tools, two-tier memory, auth, deployment and release news.';
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: `${SITE.name} blog`,
+    description,
+    url: absolute('/blog'),
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    blogPost: posts.map((p) => ({
+      '@type': 'BlogPosting',
+      headline: p.data.title,
+      url: absolute(postHref(p.id)),
+      datePublished: p.data.date.toISOString(),
+    })),
+  },
+];
+---
+<BaseLayout title="Blog" description={description} jsonLd={jsonLd}>
+  <section class="wrap listing">
+    <h1>Blog</h1>
+    <p class="lede">{description} <a href="/rss.xml">Subscribe via RSS</a>.</p>
+    <ol class="post-list">
+      {posts.map((p) => (
+        <li>
+          <a href={postHref(p.id)}>
+            <time datetime={p.data.date.toISOString()}>{formatDate(p.data.date)}</time>
+            <h2>{p.data.title}</h2>
+            <p>{p.data.description}</p>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </section>
+</BaseLayout>

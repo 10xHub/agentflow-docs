@@ -1,0 +1,30 @@
+---
+// "Read this page as Markdown" controls. Every doc and post has a plain-markdown twin
+// (see src/pages/**/[...slug].md.ts) so AI agents and LLM tools can read clean text.
+interface Props {
+  markdownHref: string;
+}
+const { markdownHref } = Astro.props;
+---
+<div class="ai-actions" role="group" aria-label="This page for AI tools">
+  <span class="ai-label">For AI tools</span>
+  <a href={markdownHref}>View as Markdown</a>
+  <button type="button" data-md={markdownHref}>Copy page as Markdown</button>
+  <a href="/llms.txt">llms.txt</a>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.ai-actions button[data-md]').forEach((btn) => {
+    const label = btn.textContent;
+    btn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(btn.dataset.md!);
+        await navigator.clipboard.writeText(await res.text());
+        btn.textContent = 'Copied';
+      } catch {
+        btn.textContent = 'Copy failed. Use View as Markdown';
+      }
+      setTimeout(() => (btn.textContent = label), 1800);
+    });
+  });
+</script>

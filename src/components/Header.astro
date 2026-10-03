@@ -1,0 +1,22 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import { NAV } from '../lib/site';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => href.startsWith('/') && (path === href || path.startsWith(`${href}/`));
+---
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="wordmark" href="/" aria-label="10xGraph home">10xGraph</a>
+    <nav aria-label="Primary">
+      <ul>
+        {NAV.map((item) => (
+          <li>
+            <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>{item.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <ThemeToggle />
+  </div>
+</header>

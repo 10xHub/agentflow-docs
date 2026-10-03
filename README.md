@@ -1,151 +1,87 @@
-# AgentFlow Docs
+# 10xgraph-docs
 
-> **Build multi-agent AI systems that actually ship.** Agentflow is the production-grade framework that takes you from prototype to production without rewriting your stack.
+Docs and blog for 10xGraph. Static Astro site, custom design, built for search engines and AI answer engines. Replaces `agentflow-docs/` (Docusaurus) once the content is migrated.
 
-Most agent frameworks stop at a demo. Agentflow ships the whole thing — orchestration, memory, API, auth, SDK, and UI — so you spend your time on agents, not plumbing.
+## Commands
 
-- 🧠 **Memory that remembers** — a 3-layer system: working state → Redis hot cache → Postgres durable → vector recall (Qdrant/Mem0). Your agents have short-term speed and long-term knowledge.
-- 🔌 **Any model, no lock-in** — OpenAI, Google GenAI, Anthropic, or your own. Swap providers with a config change, not a rewrite.
-- ⚡ **Live agents, real-time** — token-by-token streaming, live state inspection, and parallel tool execution by default.
-- 🕸️ **Graph-based orchestration** — model complex, cyclic agent workflows with `StateGraph`. LangGraph power, far less ceremony.
-- 🛠️ **Production from day one** — auto-generated FastAPI backend, JWT/RBAC auth, rate limiting, dual-layer checkpointing, and Docker/Kubernetes builds.
-- 🤝 **MCP native** — plug into the Model Context Protocol ecosystem out of the box.
-- 📦 **Batteries included** — backend, REST API + CLI, typed TypeScript SDK, and a visual React playground. One framework, end to end.
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies (Node 22.12+) |
+| `npm run dev` | Dev server at http://localhost:4321 |
+| `npm run build` | Static build to `dist/`, then the Pagefind search index |
+| `npm run preview` | Serve `dist/` locally (search works here, not in dev) |
+| `npm run check` | Type-check `.astro` and `.ts` files |
 
-**From `pip install` to a streaming multi-agent API in minutes.**
+## Structure
 
-This repo holds the documentation for that ecosystem.
-
-📖 **Read the docs:** https://agentflow.10xscale.ai
-
-Built with [Docusaurus 3](https://docusaurus.io). Deployed to **agentflow.10xscale.ai** via GitHub Pages.
-
-## 🧩 The Agentflow Ecosystem
-
-| Package | What it does | Install |
-|---|---|---|
-| **Core framework** (`10xscale-agentflow`) | Graph-based agent orchestration, 3-layer memory, parallel tools, MCP | `pip install 10xscale-agentflow` |
-| **API + CLI** (`10xscale-agentflow-cli`) | FastAPI server auto-generated from your graph, auth, RBAC, rate limiting | `pip install 10xscale-agentflow-cli` |
-| **Client SDK** (`@10xscale/agentflow-client`) | Typed TypeScript/React client with streaming hooks | `npm install @10xscale/agentflow-client` |
-| **Playground** | Visual React UI to test agents against a local server | `agentflow play` |
-| **Docs** (this repo) | Tutorials, how-to guides, reference, and concepts | https://agentflow.10xscale.ai |
-
-## Local development
-
-```bash
-npm install
-npm run start
 ```
-
-Dev server: `http://localhost:3000`.
-
-## Build
-
-```bash
-npm run build
-npm run serve
-```
-
-Static output in `build/`.
-
-> **Windows + Git Bash note:** if `npm run build` mangles `BASE_URL=/` (you'll see broken links resolving to `C:/Program Files/Git/...`), run from PowerShell with `$env:MSYS_NO_PATHCONV='1'`.
-
-## Checks
-
-```bash
-npm run build              # fails on any broken internal link
-npm run typecheck
-npm run lint:frontmatter   # every page needs title, description, keywords
-npm run lint:links         # every external URL must resolve
-npm run verify:api         # documented symbols, routes, and commands must exist
-npm run og-image           # regenerate the PNG social card from the SVG
-```
-
-`verify:api` checks the docs against the packages published to PyPI, which is
-what readers actually install:
-
-```bash
-pip install 10xscale-agentflow 10xscale-agentflow-cli
-npm run verify:api
-```
-
-All of these run in CI (`.github/workflows/ci.yml`).
-
-## Deploy
-
-`.github/workflows/deploy.yml` builds and deploys to GitHub Pages on push to `main`.
-
-Required GitHub repo secrets (optional but recommended):
-
-- `GOOGLE_ANALYTICS_ID` — e.g. `G-XXXXXXXXXX`
-- `MICROSOFT_CLARITY_ID` — for heatmaps / session replay
-
-The site is configured for the custom domain **agentflow.10xscale.ai** (CNAME in `static/`).
-
-## Repo layout
-
-```text
-docs/
-  get-started/         # golden path, beginner-friendly
-  beginner/            # guided tutorial path
-  concepts/            # mental models, with an "In depth" tier beneath
-  prebuild/            # prebuilt agents and tools
-  how-to/              # task-oriented guides (python, production, cli, client)
-  qa/                  # unit testing and evaluation
-  tutorials/           # from-examples deep dives
-  reference/           # API reference (Python, REST, CLI, TS client)
-  troubleshooting/
-  use-cases/           # production reference architectures
-  integrations/        # FastAPI / Next.js / Postgres
-  providers/           # LLM provider configuration
-  glossary/            # definition pages
-  compare/             # framework comparisons (LangGraph, CrewAI, AutoGen, etc.)
-  courses/             # GenAI beginner + advanced curriculum
-  project/             # changelog, upgrade guide, roadmap, security, support
-
-blog/                  # cornerstone posts, RSS at /blog/rss.xml
 src/
-  components/          # CompareTable, FAQ, RelatedDocs, BlogStructuredData
-  pages/               # Homepage
-  theme/               # MDXComponents, Root swizzles
-static/                # CNAME, robots.txt, llms.txt, social card, favicon
-scripts/               # front-matter, link, and API-drift checks
-COURSE_STYLE_GUIDE.md  # authoring rules for docs/courses (not published)
+  content.config.ts        Collection schemas (docs, blog). Frontmatter is validated at build time.
+  content/docs/            Docs, .md or .mdx. Folder path = URL path.
+  content/blog/            Blog posts, .md or .mdx.
+  lib/site.ts              Site facts, nav, docs sections. Keep in sync with POSITIONING.md.
+  lib/content.ts           Collection helpers, URLs, markdown export.
+  layouts/BaseLayout.astro All SEO head tags, JSON-LD, theme script, header and footer.
+  layouts/DocsLayout.astro Sidebar, breadcrumb, table of contents, prev/next, TechArticle JSON-LD.
+  layouts/BlogLayout.astro Post header, reading time, BlogPosting JSON-LD.
+  components/              Header, Footer, ThemeToggle, AiActions, Callout.
+  pages/                   Routes (see below).
+  styles/global.css        Design tokens (dark default, full light theme) and all styles.
 ```
 
-Docs versions are cut only when a release line needs to stay available:
+## Routes
 
-```bash
-npm run docs:cut-version -- 1.0
+| URL | Source | For |
+|---|---|---|
+| `/` | `pages/index.astro` + `styles/home.css` | Homepage (animated code-to-production hero, moat sections, FAQ) |
+| `/docs`, `/docs/<id>` | `pages/docs/[...slug].astro` | Docs |
+| `/docs/<id>.md` | `pages/docs/[...slug].md.ts` | Plain-markdown copy of each doc, for AI agents |
+| `/blog`, `/blog/<id>` | `pages/blog/` | Blog |
+| `/blog/<id>.md` | `pages/blog/[...slug].md.ts` | Plain-markdown copy of each post |
+| `/llms.txt` | `pages/llms.txt.ts` | LLM index of the site ([llmstxt.org](https://llmstxt.org)) |
+| `/llms-full.txt` | `pages/llms-full.txt.ts` | All docs and posts in one file |
+| `/rss.xml` | `pages/rss.xml.ts` | Blog feed |
+| `/sitemap-index.xml` | `@astrojs/sitemap` | Sitemap (excludes noindex pages) |
+| `/robots.txt` | `pages/robots.txt.ts` | Allows search and AI crawlers, points to the sitemap |
+| `/search` | `pages/search.astro` | Pagefind search (noindex) |
+
+## SEO and AI-readability built in
+
+- Canonical URL, Open Graph and Twitter tags on every page; canonical paths have no `.html` or trailing slash.
+- JSON-LD: Organization, WebSite and SoftwareApplication on the homepage; TechArticle + BreadcrumbList on docs; BlogPosting + BreadcrumbList on posts; Blog on the blog index.
+- Each doc and post links its markdown copy with `<link rel="alternate" type="text/markdown">` and shows "View as Markdown" / "Copy page as Markdown" buttons.
+- `description` frontmatter is required (50-170 characters). It becomes the meta description and the summary in `llms.txt`.
+- Static HTML with no client JS except the theme toggle, copy button and search.
+
+## Writing content
+
+Docs frontmatter:
+
+```yaml
+---
+title: Replay-safe tools
+description: 50-170 characters. Used for search results and llms.txt.
+section: Concepts        # one of: Get started, Concepts, How-to guides, Reference
+order: 1                 # position within the section
+updated: 2026-10-03      # optional; shown on the page and in JSON-LD
+draft: false             # optional
+---
 ```
 
-That snapshots `docs/` into `versioned_docs/version-1.0`; the navbar version
-dropdown then appears automatically.
+Blog frontmatter: `title`, `description`, `date`, `author`, optional `updated`, `tags`, `draft`.
 
-## Contributing
+In `.mdx`, import components from `src/components/`, for example:
 
-PRs welcome. Before opening one, run the checks above and read
-[CONTRIBUTING.md](CONTRIBUTING.md).
+```mdx
+import Callout from '../../components/Callout.astro';
 
-Writing conventions, where a page belongs, and the release process are
-documented on the site: [Contributing](https://agentflow.10xscale.ai/docs/project/contributing).
+<Callout type="tip">Text</Callout>
+```
 
-Two rules worth repeating here:
+Callout types: `note`, `tip`, `warning`, `danger`.
 
-- **Verify before asserting.** Read the source for the signature, the default,
-  and the error message. Documented APIs that never existed have shipped before;
-  `npm run verify:api` exists to stop that.
-- **Moving or renaming a page requires a redirect** in `docusaurus.config.ts`.
+## Before launch
 
-## Related repos
-
-- [`10xHub/Agentflow`](https://github.com/10xHub/Agentflow) — the core Python framework (`10xscale-agentflow`)
-- [`10xscale-agentflow-cli`](https://pypi.org/project/10xscale-agentflow-cli/) — FastAPI server + CLI
-- [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client) — TypeScript/React client SDK
-- Playground — visual React UI for testing agents (`agentflow play`)
-- **Docs:** https://agentflow.10xscale.ai
-
-## License
-
-Agentflow is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
-are accepted under the same license.
+- Set the final domain in `astro.config.mjs` (`site`) and `src/lib/site.ts`.
+- Add an Open Graph image and a favicon (waiting on the logo).
+- Migrate content from `agentflow-docs/docs/` and add redirects for old URLs in `astro.config.mjs`.
