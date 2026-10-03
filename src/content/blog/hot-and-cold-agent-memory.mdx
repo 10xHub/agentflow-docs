@@ -1,0 +1,93 @@
+---
+title: "Hot and cold agent memory: why 10xGraph puts Redis in front of Postgres"
+description: Why reading agent state from Postgres on every step is slow, why Redis alone loses data, and how PgCheckpointer splits hot and durable storage.
+date: 2026-09-24
+author: Shudipto Trafder
+tags: [memory, redis, postgres]
+faq:
+  - q: How long does 10xGraph keep agent state in Redis?
+    a: PgCheckpointer caches state in Redis for 86400 seconds (24 hours) by default. You can change it with the cache_ttl option. Postgres holds the durable copy regardless of the TTL.
+  - q: What happens if Redis is down?
+    a: Cache reads and writes are best-effort. A failed cache read falls back to Postgres, and a failed cache write is logged without raising, so the run continues on the durable store.
+---
+
+Agent state is read on every step of a run and written after most of them. Postgres is durable but adds a round trip per step. Redis is fast but not a system of record. 10xGraph's `PgCheckpointer` uses both: Redis holds the hot copy with a TTL, and Postgres holds the durable one.
+
+## Why not read everything from Postgres?
+
+An agent run is a loop. At the start of a run the state is loaded. After each node it is saved.
+
+Imagine a thread with a long message history and a run of twenty steps. If every read is a query against Postgres, the database sits on the critical path of each step, and it does so while the model is the slow part you were trying to wait on. Reads are also the common case: many more reads than durable commits.
+
+## Why not use Redis alone?
+
+Redis is the right place for state you read often and can afford to rebuild. It is the wrong place for the only copy. A restart, an eviction or a TTL expiry removes the thread, and the conversation goes with it. An agent that forgets a customer's order after a day is a bug, not a cache miss.
+
+The source says as much. An earlier version of the run loop wrote only the cache between terminal points, so a pod killed mid-run resumed from the last terminal checkpoint, or from the very beginning once the 24 hour TTL had lapsed or Redis had restarted. That is why the loop now persists each completed step durably.
+
+## What goes where?
+
+| Data | Redis | Postgres |
+|---|---|---|
+| Latest thread state | Yes, JSON with a TTL | Yes, versioned rows in a `states` table |
+| Messages (as rows) | Only inside the cached state payload | Yes, `messages` table |
+| Thread metadata | No | Yes, `threads` table |
+| Tool-call ledger | No | Yes, `tool_executions` table |
+| State version | Embedded in the cached payload | `version` column |
+
+State snapshots in Postgres are an append-only log per thread. Each write adds a row with the next version number, and `state_history_limit` (default 20) controls how many snapshots are retained. Older rows are deleted in the same transaction that writes the new one.
+
+## How does a write work?
+
+The run loop writes the durable store first and the cache second. The comment in the source explains the order: a failure should surface before the cache is updated, so the cache can never hold state that was never persisted.
+
+```python title="agentflow/core/graph/utils/utils.py (abridged)"
+if checkpointer:
+    # Durable store is the source of truth: state + messages, atomically, first.
+    await checkpointer.aput_checkpoint(config, new_state, messages)
+    # Then refresh the cache with the same state we just persisted.
+    await checkpointer.aput_state_cache(config, new_state)
+```
+
+`aput_checkpoint` writes the state row and the messages in one transaction. Only messages not yet persisted are sent on each step, so a long run does not re-write its whole history.
+
+The cache write stores the state as JSON under a per-thread key with the configured TTL, and embeds the durable version in the payload. It runs as a single Lua script so the compare and the set are atomic, and it only writes when the incoming version is at least the cached one.
+
+```python title="app.py"
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost/app",
+    redis_url="redis://localhost:6379/0",
+    cache_ttl=3600,          # default is 86400 (24 hours)
+    state_history_limit=20,  # default
+)
+app = graph.compile(checkpointer=checkpointer)
+```
+
+## How does a read work?
+
+`aget_state_cache` tries Redis first. On a hit it restores the embedded version into the run config, so the next write can still do its version check. On a miss it reads the highest-version row from Postgres and seeds the cache for next time. If Redis raises an error, it falls back to Postgres.
+
+<Callout type="note" title="Cache failures never fail the run">
+
+Cache writes are best-effort: a failure is logged and returns without raising. Durable writes are the opposite. They raise, because losing one is a correctness problem and losing a cache entry is only a slower read.
+
+</Callout>
+
+### Why does the cache carry a version?
+
+Because reads prefer the cache, a stale cache entry would seed the next write with an old expected version, and every later write on that thread would fail its version check. Two guards prevent that. The Lua script refuses to move the cache backwards, and a `StaleStateError` on the durable write deletes the cache entry so the next read goes back to Postgres.
+
+## Does the API server use the same idea?
+
+Yes, for a different question: who owns a thread. The API server resolves thread ownership with a two-tier cache in `ownership_resolver.py`. L1 is a bounded in-process LRU per worker with a 30 second default TTL. L2 is an optional shared Redis with a 3600 second default TTL, so workers do not each query the database. Only positive results are cached, and deleting a thread evicts it from the local L1 and from L2.
+
+The same trade applies as with state: a fast cache in front, the database as the authority, and a TTL that bounds how long a stale answer can live.
+
+## Try it
+
+- [Memory](/docs/concepts/memory) describes the layers in more detail.
+- [Replay-safe tools](/docs/concepts/replay-safe-tools) covers the tool ledger stored beside the state.
+- [Installation](/docs/get-started/installation) lists the extras to install for Postgres and Redis.
+- [Deploy with Docker](/docs/how-to/deploy-with-docker) shows running them together.

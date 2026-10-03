@@ -1,0 +1,21 @@
+---
+// Visible FAQ for a doc or post. The FAQPage JSON-LD is built from the same frontmatter
+// (faqJsonLd in lib/content.ts), so the two never drift apart.
+interface Props {
+  faq: { q: string; a: string }[];
+}
+const { faq } = Astro.props;
+---
+{faq.length > 0 && (
+  <section class="faq" aria-labelledby="faq">
+    <h2 id="faq">Frequently asked questions</h2>
+    <dl>
+      {faq.map((f) => (
+        <div class="faq-item">
+          <dt>{f.q}</dt>
+          <dd>{f.a}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+)}

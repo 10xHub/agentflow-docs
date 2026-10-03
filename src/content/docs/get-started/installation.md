@@ -19,10 +19,10 @@ pip install 10xgraph 10xgraph-api
 ## Scaffold a production project
 
 ```bash
-10xgraph init --template production --auth jwt --rate-limit redis
+10xgraph init --yes --template production --auth jwt --rate-limit redis
 ```
 
-The production template creates your graph, an auth module, a prompt-injection validator, evals, tests and an `agentflow.json` config with owner-only threads turned on.
+The production template creates your graph, a prompt-injection validator, evals, tests and an `agentflow.json` config with JWT auth and owner-only threads turned on. Use `--auth custom` instead to also get an `auth/` module with a `BaseAuth` subclass to fill in.
 
 ## Serve it
 

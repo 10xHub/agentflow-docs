@@ -5,8 +5,10 @@
   "type": "module",
   "description": "Documentation and blog for 10xGraph. Static Astro site built for search and AI readability.",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "npm run search:index && astro dev",
+    "dev:fast": "astro dev",
     "build": "astro build && pagefind --site dist",
+    "search:index": "astro build && pagefind --site dist --output-path public/pagefind",
     "preview": "astro preview",
     "check": "astro check"
   },

@@ -1,9 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostList from '../../components/PostList.astro';
 import { SITE } from '../../lib/site';
-import { absolute, formatDate, getPosts, postHref } from '../../lib/content';
+import { AUTHORS, initials } from '../../lib/authors';
+import { absolute, formatDate, getPosts, getTags, postHref, readingMinutes, tagHref } from '../../lib/content';
 
 const posts = await getPosts();
+const featured = posts.find((p) => p.data.featured) ?? posts[0];
+const rest = posts.filter((p) => p !== featured);
+const tags = getTags(posts);
 const description = 'Engineering notes from the 10xGraph team on production AI agents: replay-safe tools, two-tier memory, auth, deployment and release news.';
 const jsonLd = [
   {
@@ -24,18 +29,39 @@ const jsonLd = [
 ---
 <BaseLayout title="Blog" description={description} jsonLd={jsonLd}>
   <section class="wrap listing">
-    <h1>Blog</h1>
-    <p class="lede">{description} <a href="/rss.xml">Subscribe via RSS</a>.</p>
-    <ol class="post-list">
-      {posts.map((p) => (
-        <li>
-          <a href={postHref(p.id)}>
-            <time datetime={p.data.date.toISOString()}>{formatDate(p.data.date)}</time>
-            <h2>{p.data.title}</h2>
-            <p>{p.data.description}</p>
-          </a>
-        </li>
-      ))}
-    </ol>
+    <p class="eyebrow">Blog</p>
+    <h1>Engineering notes</h1>
+    <p class="lede">{description}</p>
+    <p class="listing-links"><a href="/rss.xml">RSS feed</a><span aria-hidden="true">·</span><a href="/llms.txt">llms.txt</a></p>
+
+    {featured && (
+      <article class="featured">
+        <p class="featured-label">Featured</p>
+        <h2><a href={postHref(featured.id)}>{featured.data.title}</a></h2>
+        <p class="featured-desc">{featured.data.description}</p>
+        <div class="byline">
+          <span class="avatar" aria-hidden="true">{initials(featured.data.author)}</span>
+          <span class="byline-text">
+            <span class="byline-name">{featured.data.author}</span>
+            <span class="byline-meta">
+              {AUTHORS[featured.data.author] && <span>{AUTHORS[featured.data.author].role}</span>}
+              <time datetime={featured.data.date.toISOString()}>{formatDate(featured.data.date)}</time>
+              <span>{readingMinutes(featured.body)} min read</span>
+            </span>
+          </span>
+        </div>
+      </article>
+    )}
+
+    {tags.length > 0 && (
+      <nav class="tag-filter" aria-label="Topics">
+        <span class="side-title">Topics</span>
+        <ul class="tags tags-sm">
+          {tags.map(({ tag, count }) => <li><a href={tagHref(tag)}>{tag} <span class="tag-count">{count}</span></a></li>)}
+        </ul>
+      </nav>
+    )}
+
+    {rest.length > 0 && <PostList posts={rest} />}
   </section>
 </BaseLayout>

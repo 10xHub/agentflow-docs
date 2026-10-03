@@ -16,7 +16,6 @@ export const SITE = {
 export const NAV = [
   { label: 'Docs', href: '/docs' },
   { label: 'Blog', href: '/blog' },
-  { label: 'Search', href: '/search' },
   { label: 'GitHub', href: SITE.github },
 ] as const;
 

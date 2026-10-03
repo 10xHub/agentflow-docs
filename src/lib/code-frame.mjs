@@ -16,6 +16,7 @@ const LANG_LABELS = {
   js: 'JavaScript',
   javascript: 'JavaScript',
   json: 'JSON',
+  jsonc: 'JSON',
   yaml: 'YAML',
   yml: 'YAML',
   toml: 'TOML',

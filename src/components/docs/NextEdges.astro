@@ -1,0 +1,54 @@
+---
+// End of page as outgoing edges: the next page in order, plus branches into other sections,
+// labelled like conditional edges ("to understand", "to ship").
+import { DOC_SECTIONS } from '../../lib/site';
+import { docHref, type Doc } from '../../lib/content';
+
+interface Props {
+  docs: Doc[];
+  current: Doc;
+}
+const { docs, current } = Astro.props;
+const i = docs.findIndex((d) => d.id === current.id);
+const prev = i > 0 ? docs[i - 1] : undefined;
+const next = i < docs.length - 1 ? docs[i + 1] : undefined;
+
+const INTENT: Record<string, string> = {
+  'Get started': 'to start',
+  Concepts: 'to understand',
+  'How-to guides': 'to ship',
+  Reference: 'to look up',
+};
+// One branch per other section: its first page, skipping the page that is already "next".
+const branches = DOC_SECTIONS.filter((s) => s !== current.data.section)
+  .map((s) => docs.find((d) => d.data.section === s && d.id !== next?.id))
+  .filter((d): d is Doc => !!d)
+  .slice(0, 2);
+---
+<nav class="edges" aria-label="Where to go next" data-pagefind-ignore>
+  <div class="edges-from">
+    <span class="edges-dot" aria-hidden="true" />
+    <span>You finished <strong>{current.data.title}</strong></span>
+  </div>
+  <ul class="edges-list">
+    {next && (
+      <li class="edge edge-main">
+        <a href={docHref(next.id)} data-next>
+          <span class="edge-label">next</span>
+          <span class="edge-title">{next.data.title}</span>
+          <span class="edge-desc">{next.data.description}</span>
+        </a>
+      </li>
+    )}
+    {branches.map((d) => (
+      <li class="edge">
+        <a href={docHref(d.id)}>
+          <span class="edge-label">{INTENT[d.data.section] ?? d.data.section.toLowerCase()}</span>
+          <span class="edge-title">{d.data.title}</span>
+          <span class="edge-desc">{d.data.description}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+  {prev && <a class="edges-back" href={docHref(prev.id)} data-prev>Back to {prev.data.title}</a>}
+</nav>

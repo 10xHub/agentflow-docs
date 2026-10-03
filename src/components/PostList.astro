@@ -1,0 +1,27 @@
+---
+import { formatDate, postHref, readingMinutes, tagHref, type Post } from '../lib/content';
+
+interface Props {
+  posts: Post[];
+}
+const { posts } = Astro.props;
+---
+<ol class="post-list">
+  {posts.map((p) => (
+    <li>
+      <article class="post-row">
+        <div class="post-row-meta">
+          <time datetime={p.data.date.toISOString()}>{formatDate(p.data.date)}</time>
+          <span>{readingMinutes(p.body)} min read</span>
+        </div>
+        <h2><a href={postHref(p.id)}>{p.data.title}</a></h2>
+        <p>{p.data.description}</p>
+        {p.data.tags.length > 0 && (
+          <ul class="tags tags-sm" aria-label="Tags">
+            {p.data.tags.map((t) => <li><a href={tagHref(t)}>{t}</a></li>)}
+          </ul>
+        )}
+      </article>
+    </li>
+  ))}
+</ol>

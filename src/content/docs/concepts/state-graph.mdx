@@ -1,0 +1,161 @@
+---
+title: StateGraph
+description: How StateGraph models an agent as nodes, edges and shared state, how compile() produces a runnable graph, and when to use invoke or stream.
+section: Concepts
+order: 0
+updated: 2026-10-03
+faq:
+  - q: What is the difference between StateGraph and ReactAgent?
+    a: ReactAgent is a prebuilt that creates a StateGraph for you, with one agent node, one tool node and a conditional edge between them. Build a StateGraph yourself when you need your own nodes, routing or several agents.
+  - q: What happens if a graph loops forever?
+    a: Each run has a recursion limit, 25 steps by default. When a run exceeds it, execution stops with a GraphRecursionError. Raise the limit with recursion_limit in the run config, or fix the routing function.
+  - q: Do I need a checkpointer to use a StateGraph?
+    a: No, a graph runs without one. But without a checkpointer nothing is saved between calls, so every invoke starts from the graph's initial state and a thread cannot be resumed.
+---
+
+A `StateGraph` describes an agent as a set of nodes (Python functions, agents or tool nodes) joined by edges, all reading and writing one shared state object. You build it, call `compile()` to get a runnable `CompiledGraph`, then run it with `invoke` or `stream`.
+
+## What are the parts of a graph?
+
+| Part | What it is | How you add it |
+|---|---|---|
+| Node | A function, `Agent` or `ToolNode` that receives state and returns an update | `add_node(name, func)` |
+| Static edge | Always go from node A to node B | `add_edge(a, b)` |
+| Conditional edge | A function inspects state and picks the next node | `add_conditional_edges(a, fn, path_map)` |
+| `START` | Virtual node where a run begins | `add_edge(START, "first")` or `set_entry_point("first")` |
+| `END` | Virtual node that finishes the run | `add_edge("last", END)` |
+| State | An `AgentState` (or subclass) shared by all nodes | `StateGraph(MyState())` |
+
+`START` and `END` live in `agentflow.utils.constants`. Nodes you register may return a `Message`, a list of messages, a plain string (stored as an assistant message), an `AgentState`, a dict or a `Command`.
+
+## How do I build a graph?
+
+This graph routes a support ticket. It uses no model, so you can run it as is:
+
+```python title="triage.py"
+from agentflow.core import StateGraph
+from agentflow.core.state import AgentState, Message
+from agentflow.storage.checkpointer import InMemoryCheckpointer
+from agentflow.utils.constants import END
+
+
+def intake(state: AgentState, config: dict) -> str:
+    return "Ticket received."
+
+
+def urgent(state: AgentState, config: dict) -> str:
+    return "Paging the on-call engineer."
+
+
+def backlog(state: AgentState, config: dict) -> str:
+    return "Filed in the backlog."
+
+
+def route(state: AgentState) -> str:
+    user_messages = [m for m in state.context if m.role == "user"]
+    return "urgent" if "outage" in user_messages[-1].text().lower() else "backlog"
+
+
+graph = StateGraph()
+graph.add_node("intake", intake)
+graph.add_node("urgent", urgent)
+graph.add_node("backlog", backlog)
+
+graph.set_entry_point("intake")  # [!code highlight]
+graph.add_conditional_edges("intake", route, {"urgent": "urgent", "backlog": "backlog"})  # [!code highlight]
+graph.add_edge("urgent", END)
+graph.add_edge("backlog", END)
+
+app = graph.compile(checkpointer=InMemoryCheckpointer())
+
+result = app.invoke(
+    {"messages": [Message.text_message("Checkout outage in EU")]},
+    config={"thread_id": "ticket-1"},
+)
+print(result["messages"][-1].text())
+```
+
+`set_entry_point("intake")` adds the edge from `START`. The routing function returns a key, and the `path_map` turns that key into a node name. If you omit `path_map`, the function must return the node name itself.
+
+## How does state work?
+
+Every run starts from an `AgentState`. Its main field is `context`, the list of messages, and it uses a reducer (`add_messages`) so new messages are appended rather than replacing the list. `AgentState` also carries `context_summary` and internal `execution_meta` that the runtime uses for steps, interrupts and resume.
+
+Add your own fields by subclassing, then pass an instance to the graph:
+
+```python title="state.py"
+from agentflow.core.state import AgentState
+
+
+class TicketState(AgentState):
+    customer_tier: str = "free"
+```
+
+```python
+graph = StateGraph(TicketState())
+```
+
+`StateGraph(state=None, ...)` creates a plain `AgentState` when you pass nothing. It also accepts `context_manager`, `publisher`, `id_generator` and `container` (an InjectQ container) for trimming context, emitting events, generating ids and dependency injection.
+
+## What does compile() do?
+
+`compile()` checks the graph and returns a `CompiledGraph`. It fails early on two mistakes: no entry point (`GraphError`, code `GRAPH_002`) and nodes that no edge touches (orphans). It also rejects an edge that targets a node you never added.
+
+```python
+app = graph.compile(
+    checkpointer=checkpointer,      # persist state per thread
+    store=store,                    # long-term memory store
+    interrupt_before=["urgent"],    # pause before a node
+    interrupt_after=None,           # pause after a node
+)
+```
+
+The remaining arguments are `media_store`, `callback_manager` and `shutdown_timeout` (30 seconds by default).
+
+<Callout type="warning" title="No checkpointer, no memory between calls">
+
+A graph compiled without a checkpointer keeps nothing after a run. The next call with the same `thread_id` begins from the initial state, so the agent forgets the conversation, and an interrupted run cannot be resumed. Pass a checkpointer to `compile()`. See [Memory: hot and cold](/docs/concepts/memory).
+
+</Callout>
+
+## Should I use invoke or stream?
+
+Both take the same `input_data`, `config` and `response_granularity`. Each has an async twin, `ainvoke` and `astream`.
+
+| | `invoke` | `stream` |
+|---|---|---|
+| Returns | One dict when the run finishes | A generator of `StreamChunk` objects |
+| Use when | A script or job needs the final answer | A UI should show tokens and progress as they arrive |
+| Server endpoint | `POST /v1/graph/invoke` | `POST /v1/graph/stream` |
+| In async code | `await app.ainvoke(...)` | `async for chunk in app.astream(...)` |
+
+`invoke` calls `asyncio.run` internally, so call `ainvoke` from inside an event loop.
+
+```python
+for chunk in app.stream(
+    {"messages": [Message.text_message("Checkout outage in EU")]},
+    config={"thread_id": "ticket-2"},
+):
+    print(chunk.event, chunk.message.text() if chunk.message else "")
+```
+
+A chunk has an `event` (`message`, `state`, `updates` or `error`) and carries a `message` or `state` accordingly.
+
+## What goes in the run config?
+
+| Key | Meaning |
+|---|---|
+| `thread_id` | Which conversation to load and save. A random id is generated, with a warning, if you omit it. |
+| `user_id` | Owner of the thread. Defaults to `anonymous`. |
+| `recursion_limit` | Maximum steps per run. Default 25. |
+
+`response_granularity` is a separate argument: `LOW` returns only messages, `PARTIAL` adds context and summary, `FULL` adds the complete state.
+
+## Related pages
+
+<CardGrid>
+
+<LinkCard title="Quickstart" href="/docs/get-started/quickstart" description="Run a ReactAgent locally and over HTTP." eyebrow="Get started" />
+<LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="How checkpointers persist threads." eyebrow="Concept" />
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="Resume a crashed run without repeating tools." eyebrow="Concept" />
+</CardGrid>

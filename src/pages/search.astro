@@ -4,20 +4,23 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 <BaseLayout title="Search" description="Search the 10xGraph documentation and blog: concepts, how-to guides, API reference and engineering notes." noindex>
   <section class="wrap listing">
     <h1>Search</h1>
-    <div id="search" class="search-box">
-      <p class="muted">Search runs on the built site. Run <code>npm run build</code> then <code>npm run preview</code>.</p>
+    <div class="search-panel search-page" data-search>
+      <div class="search-field">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2" /><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+        <input type="search" name="q" placeholder="Search docs and blog" aria-label="Search docs and blog" autocomplete="off" spellcheck="false" autofocus />
+      </div>
+      <p class="sr-status" role="status" aria-live="polite">Search needs JavaScript. You can also browse the <a href="/docs">docs</a> or read <a href="/llms.txt">llms.txt</a>.</p>
+      <ul class="sr-list"></ul>
     </div>
   </section>
-  <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
-  <script is:inline>
-    (function () {
-      var s = document.createElement('script');
-      s.src = '/pagefind/pagefind-ui.js';
-      s.onload = function () {
-        document.getElementById('search').innerHTML = '';
-        new window.PagefindUI({ element: '#search', showSubResults: true, showImages: false });
-      };
-      document.body.appendChild(s);
-    })();
-  </script>
 </BaseLayout>
+
+<script>
+  import { mountSearch } from '../scripts/search';
+
+  const { input, run } = mountSearch(document.querySelector('.search-page')!);
+  const q = new URLSearchParams(location.search).get('q') ?? '';
+  input.value = q;
+  run(q);
+  input.addEventListener('input', () => history.replaceState(null, '', input.value ? `?q=${encodeURIComponent(input.value)}` : location.pathname));
+</script>

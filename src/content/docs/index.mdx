@@ -5,7 +5,6 @@ section: Get started
 order: 0
 updated: 2026-10-03
 ---
-import Callout from '../../components/Callout.astro';
 
 10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL.
 
@@ -28,5 +27,11 @@ A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for t
 
 ## Where to go next
 
-- [Install 10xGraph](/docs/get-started/installation)
-- [How replay-safe tools work](/docs/concepts/replay-safe-tools)
+<CardGrid>
+<LinkCard eyebrow="5 min" title="Quickstart" href="/docs/get-started/quickstart" description="Build an agent with a tool, run it, then serve it over HTTP." />
+<LinkCard eyebrow="Get started" title="Project structure" href="/docs/get-started/project-structure" description="Every file the production template generates and what it does." />
+<LinkCard eyebrow="Concept" title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How a resumed run skips tools that already finished." />
+<LinkCard eyebrow="Concept" title="Memory: hot and cold" href="/docs/concepts/memory" description="Redis for the hot path, PostgreSQL for durable history." />
+<LinkCard eyebrow="How-to" title="Add JWT authentication" href="/docs/how-to/add-jwt-auth" description="Turn on auth and owner-only threads in agentflow.json." />
+<LinkCard eyebrow="Reference" title="CLI reference" href="/docs/reference/cli" description="Every command and flag of the 10xgraph CLI." />
+</CardGrid>

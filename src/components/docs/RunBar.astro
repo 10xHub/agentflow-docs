@@ -1,0 +1,50 @@
+---
+// Sticky bar above the article. Middle: the page's sections as a run of graph nodes that fill
+// in as you read (click to jump). Left: reading lenses. Right: the page for AI tools.
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+  hasFaq: boolean;
+  markdownHref: string;
+}
+const { headings, hasFaq, markdownHref } = Astro.props;
+const nodes = headings.filter((h) => h.depth === 2).map((h) => ({ slug: h.slug, text: h.text }));
+if (hasFaq) nodes.push({ slug: 'faq', text: 'FAQ' });
+---
+<div class="run-bar" data-pagefind-ignore>
+  <div class="lens" role="radiogroup" aria-label="Reading lens">
+    <button type="button" role="radio" aria-checked="true" data-lens="read" title="Read everything (1)">Read</button>
+    <button type="button" role="radio" aria-checked="false" data-lens="skim" title="Headings, first paragraphs and callouts (2)">Skim</button>
+    <button type="button" role="radio" aria-checked="false" data-lens="code" title="Only headings and code (3)">Code</button>
+  </div>
+
+  {nodes.length > 0 && (
+    <nav class="run" aria-label="On this page">
+      <span class="run-now" aria-hidden="true"><span class="run-now-num">01</span><span class="run-now-text">{nodes[0].text}</span></span>
+      <div class="run-track">
+      <span class="run-fill" aria-hidden="true" />
+      <ol class="run-nodes">
+        {nodes.map((n, i) => (
+          <li>
+            <a href={`#${n.slug}`} data-run={n.slug} data-label={n.text}>
+              <span class="sr-only">{String(i + 1).padStart(2, '0')} {n.text}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+      </div>
+    </nav>
+  )}
+
+  <details class="ai-menu">
+    <summary>For AI</summary>
+    <div class="ai-menu-panel">
+      <a href={markdownHref}>View as Markdown<span>Clean text of this page</span></a>
+      <button type="button" data-copy-md={markdownHref}>Copy page as Markdown<span>Paste into any assistant</span></button>
+      <a href="/llms.txt">llms.txt<span>Index of the whole site</span></a>
+      <a href="/llms-full.txt">llms-full.txt<span>Every page in one file</span></a>
+    </div>
+  </details>
+</div>
+<p class="lens-note" hidden data-lens-note></p>

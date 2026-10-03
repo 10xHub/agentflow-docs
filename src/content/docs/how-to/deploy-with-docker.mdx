@@ -1,0 +1,135 @@
+---
+title: Deploy with Docker and Kubernetes
+description: Generate a Dockerfile, docker-compose.yml and Kubernetes manifest with 10xgraph build, then ship them with a production environment checklist.
+section: How-to guides
+order: 2
+updated: 2026-10-03
+faq:
+  - q: Why does the generated config wait so long to shut down?
+    a: An agent run can take minutes, and Gunicorn's default 30 second graceful timeout would kill runs mid-flight on every rolling deploy. The generated files use a 600 second graceful timeout, a 660 second worker timeout, and a 660 second Kubernetes grace period.
+  - q: Can I change the image name in k8s.yaml?
+    a: Yes. The manifest uses the placeholder image agentflow-cli:latest. Build and push your own image, then edit the image field before applying.
+  - q: Does build read my agentflow.json?
+    a: No. It looks for a requirements file or pyproject.toml, and the container reads agentflow.json at runtime, so your code and config must be copied into the image.
+---
+
+`10xgraph build` writes a production `Dockerfile` and `.dockerignore` for your agent, and with flags also a `docker-compose.yml` and a `k8s.yaml` (Deployment plus Service). The images run Gunicorn with Uvicorn workers in `MODE=production`. Build, set your secrets at runtime, and start the container.
+
+<Steps>
+
+1. **Generate the deployment files**
+
+   Run it in the project root, next to `agentflow.json`.
+
+   ```bash
+   10xgraph build --docker-compose --k8s
+   ```
+
+2. **Pin your dependencies**
+
+   The Dockerfile installs from the first of `requirements.txt`, `requirements/requirements.txt`, `requirements/base.txt` or `requirements/production.txt` that exists. With none of those, it reads `pyproject.toml` dependencies. With neither, it installs only `10xscale-agentflow-cli`, so your own packages would be missing.
+
+3. **Build and run**
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Check health**
+
+   ```bash
+   curl http://localhost:8000/ping
+   ```
+
+</Steps>
+
+## Which flags does build take?
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--output`, `-o` | `Dockerfile` | Dockerfile path |
+| `--force`, `-f` | off | Overwrite existing files |
+| `--python-version` | `3.13` | Base image `python:<version>-slim` |
+| `--port`, `-p` | `8000` | Port to expose |
+| `--docker-compose / --no-docker-compose` | off | Also write `docker-compose.yml` and omit `CMD` from the Dockerfile |
+| `--k8s / --no-k8s` | off | Also write `k8s.yaml` |
+| `--service-name` | `agentflow-cli` | Service name in compose and Kubernetes files |
+
+Without `--force`, `build` stops if the Dockerfile exists. It skips an existing `.dockerignore`, but errors on an existing `docker-compose.yml` or `k8s.yaml`.
+
+## What files does it generate?
+
+<FileTree>
+
+- your-project/
+  - agentflow.json
+  - **Dockerfile** python:3.13-slim, non-root user, healthcheck on /ping
+  - .dockerignore excludes .env, caches, venvs, .git, eval_reports
+  - docker-compose.yml with `--docker-compose`
+  - k8s.yaml with `--k8s`
+
+</FileTree>
+
+The Dockerfile sets `MODE=production`, `IS_DEBUG=false` and `WEB_CONCURRENCY=2`, installs `gunicorn` and `uvicorn`, copies your project, drops to a non-root `appuser`, and defines a `HEALTHCHECK` that calls `/ping`. Its `CMD` runs `agentflow_cli.src.app.main:app` under Gunicorn with `--graceful-timeout 600` and `--timeout 660`.
+
+## How do I run it in Docker Compose or Kubernetes?
+
+<Tabs syncKey="target">
+
+<TabItem label="Docker Compose">
+
+The compose file defines one service with `build: .`, the production environment, a port mapping, the same Gunicorn command, `stop_grace_period: 600s` and `restart: unless-stopped`. It sets no secrets, so pass them with `--env-file` or an `environment` block.
+
+```bash
+docker compose --env-file prod.env up --build -d
+```
+
+</TabItem>
+
+<TabItem label="Kubernetes">
+
+`k8s.yaml` holds a Deployment with 2 replicas and a Service on port 80 that targets your container port.
+
+```bash
+docker build -t registry.example.com/my-agent:1.0 .
+docker push registry.example.com/my-agent:1.0
+# edit the image field in k8s.yaml, then:
+kubectl apply -f k8s.yaml
+```
+
+The settings that protect running agents:
+
+| Setting | Value | Why |
+|---|---|---|
+| `terminationGracePeriodSeconds` | 660 | Longer than the 600 second Gunicorn drain |
+| `preStop` | `sleep 15` | Lets the load balancer stop sending new requests first |
+| `readinessProbe` | `/ping`, every 10s | Removes the pod from rotation |
+| `livenessProbe` | `/ping`, every 30s, 5 failures | Slack enough that a busy worker is not restarted mid-run |
+| Resources | request 500m CPU and 512Mi, limit 2 CPU and 2Gi | Starting point, tune for your load |
+
+The manifest sets only `MODE`, `IS_DEBUG` and a placeholder `ORIGINS`. Add the rest of your configuration from a Secret.
+
+</TabItem>
+
+</Tabs>
+
+## What should I set before going live?
+
+<Callout type="warning" title="Production checklist">
+
+Replace the placeholder `ORIGINS` and never ship `*` with credentials. In production the server refuses to start with wildcard origins while `CORS_ALLOW_CREDENTIALS` is true.
+
+</Callout>
+
+| Variable | Set to | Why |
+|---|---|---|
+| `MODE` | `production` | Already set by the generated files. Disables the local telemetry store and the `/docs` and `/redocs` pages |
+| `IS_DEBUG` | `false` | Already set by the generated files |
+| `ORIGINS` | Comma-separated list of your frontend origins | Wildcard is refused with credentials |
+| `ALLOWED_HOST` | Your hostnames | `*` triggers a startup warning in production |
+| `JWT_SECRET_KEY` | 32+ bytes, from a secret manager | Required if `auth` is `jwt`. See [Add JWT authentication](/docs/how-to/add-jwt-auth) |
+| `JWT_ALGORITHM` | `HS256` or your choice | Required with `jwt` |
+| `REDIS_URL` | Your Redis URL | Shared rate limiting and ownership cache across workers |
+| `WEB_CONCURRENCY` | Workers per container | Default 2 |
+
+Also use a durable checkpointer (for example `PgCheckpointer`) in your graph code, since the in-memory checkpointer loses threads on restart. With more than one worker or replica, use the `redis` rate-limit backend, because the memory backend counts per process. Full lists are in the [configuration reference](/docs/reference/configuration).

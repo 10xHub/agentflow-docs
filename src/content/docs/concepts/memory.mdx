@@ -1,0 +1,135 @@
+---
+title: "Memory: hot and cold"
+description: How PgCheckpointer keeps thread state in a Redis hot cache and PostgreSQL durable history, what is written when, and how the long-term store fits in.
+section: Concepts
+order: 2
+updated: 2026-10-03
+faq:
+  - q: What happens when the Redis cache expires or Redis restarts?
+    a: Nothing is lost. PostgreSQL holds the authoritative state, so the next read misses the cache, loads the latest version from PostgreSQL and writes it back to Redis. The cache TTL defaults to 86400 seconds (24 hours).
+  - q: How much history does PgCheckpointer keep?
+    a: It keeps the 20 most recent state snapshots per thread by default and prunes older ones on every durable write. Change this with the state_history_limit argument. Messages are stored in their own table.
+  - q: Do I need Redis if I already use PostgreSQL?
+    a: PgCheckpointer requires both and raises a ValueError at construction if either connection is missing. If you want a single database and no cache, SqliteCheckpointer is a separate option for single-user agents.
+---
+
+`PgCheckpointer` stores each thread twice. Redis holds the latest state as a fast cache with a TTL (24 hours by default). PostgreSQL holds the durable, versioned history and the messages. Reads try Redis first and fall back to PostgreSQL. Writes go to PostgreSQL first, then refresh Redis.
+
+## What are the memory layers?
+
+| Layer | Backed by | Lifetime | Holds |
+|---|---|---|---|
+| Working state | `AgentState` in the running process | One run | Context messages, summary, your custom fields |
+| Hot cache | Redis | TTL, 86400 s by default | Latest state per thread and user |
+| Durable history | PostgreSQL | Until you delete the thread | Threads, versioned state rows, messages, tool-call records |
+| Long-term store | Qdrant or Mem0 | Until you delete the memory | Semantic memories shared across threads |
+
+The first three layers are the checkpointer and are scoped to a thread. The last one is the store and is not.
+
+## How do I create a PgCheckpointer?
+
+Install the drivers, then pass connection details. Both a PostgreSQL connection and a Redis connection are required.
+
+```bash
+pip install asyncpg "redis>=4.2"
+```
+
+```python title="graph/agent.py"
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost:5432/agents",
+    redis_url="redis://localhost:6379/0",
+    cache_ttl=3600,             # seconds, default 86400  # [!code highlight]
+    state_history_limit=20,     # snapshots per thread, default 20
+)
+
+checkpointer.setup()  # create tables and apply migrations, once at startup
+
+app = agent.compile(checkpointer=checkpointer)
+```
+
+Constructor arguments:
+
+| Argument | Meaning |
+|---|---|
+| `postgres_dsn` or `pg_pool` | A DSN, or an existing `asyncpg` pool. One is required. |
+| `redis_url`, `redis` or `redis_pool` | A URL, a client or a pool. One is required. |
+| `pool_config`, `redis_pool_config` | Options for pools the checkpointer creates. |
+| `schema` | PostgreSQL schema, `public` by default. |
+| `cache_ttl` | Redis TTL in seconds. Default 86400. |
+| `state_history_limit` | Snapshots kept per thread. Default 20. |
+| `enforce_user_isolation` | Scope threads to `user_id`. Default `True`. |
+| `user_id_type`, `id_type` | Column types: `string`, `int` or `bigint`. |
+
+`setup()` is synchronous, and `await checkpointer.asetup()` is the async form. I found no code path that calls it for you, so run it once before the first request. The tables are `threads`, `states`, `messages`, `tool_executions` and a schema version table.
+
+To let the API server construct it, put the object in a module and point `agentflow.json` at it with `"checkpointer": "graph.agent:checkpointer"`.
+
+## What is written, and when?
+
+During a run, the graph writes after every completed node, not only at the end. Each write does two things in order:
+
+1. **Durable write.** In one PostgreSQL transaction, it appends a new row to `states` with the next version number and inserts the messages that are not yet persisted.
+2. **Cache refresh.** It writes the same state to Redis under the key `state_cache:{thread_id}:{user_id}` with the TTL.
+
+If the PostgreSQL write fails, the Redis cache is not updated, so the cache never holds state that was never persisted. Redis failures are logged and ignored, because the cache is best effort. A final write also happens when a run completes, errors, is interrupted or is stopped.
+
+A crash therefore costs at most the node that was running. 10xGraph replays that node on resume, and the tool ledger stops tools that already finished from running twice. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
+
+## How does a read work?
+
+At the start of a run the graph asks the cache first:
+
+1. Read `state_cache:{thread_id}:{user_id}` from Redis. On a hit, use it.
+2. On a miss, read the highest-version row for the thread from PostgreSQL and copy it into Redis.
+3. If Redis itself errors, read from PostgreSQL directly.
+4. If neither has the thread, start from the graph's initial state and merge the incoming messages.
+
+## How are versions and snapshots handled?
+
+Every durable write creates a new version for the thread. The run remembers the version it read, and the write is a compare-and-swap: if another run committed in the meantime, the write raises `StaleStateError` instead of overwriting it. After a conflict the cached entry is dropped so the thread does not stay stuck on stale data. The cache write is guarded the same way and never moves a thread back to an older version.
+
+History is bounded. After each write, rows older than `state_history_limit` versions are deleted, so a thread keeps roughly the last 20 snapshots by default. That is enough to debug recent steps. It is not an archive, so export anything you must keep for audit.
+
+<Callout type="warning" title="Without a checkpointer, nothing survives">
+
+A graph compiled without a checkpointer saves no state, so each call starts empty and a thread cannot be resumed. `InMemoryCheckpointer` is also not durable: its docstring states the data is lost when the process ends, and it is shared with no other worker. Use `PgCheckpointer` for anything that must outlive one process.
+
+</Callout>
+
+## What is a thread?
+
+A thread is one conversation, identified by `thread_id` in the run config. The same id on a later call loads the saved state and continues. A thread also has a record (`ThreadInfo`) with an optional name, an owner `user_id` and metadata.
+
+By default `enforce_user_isolation` is on: queries are scoped to the `user_id` in the config, so knowing another user's `thread_id` is not enough to read it. `PgCheckpointer` raises a `ValueError` if the config has no `user_id` or no `thread_id`. Through the API server, `user_id` comes from your auth backend and is `anonymous` when there is none. Turn isolation off only for single-tenant apps with no real user identity.
+
+Useful thread methods on the checkpointer include `alist_threads`, `aget_thread`, `aput_thread` and `aclean_thread`, which deletes a thread and its data.
+
+## Where does long-term memory fit?
+
+The checkpointer remembers one thread. For facts that should carry across threads, such as a user's preferences, pass a store to `compile()`. The framework ships `QdrantStore` and `Mem0Store`, and an embedding class for QdrantStore.
+
+```python title="graph/agent.py"
+from agentflow.storage.store import OpenAIEmbedding, QdrantStore
+
+store = QdrantStore(
+    embedding=OpenAIEmbedding(),   # defaults to text-embedding-3-small
+    path="./qdrant_data",          # local Qdrant; host/port or url + api_key for remote
+)
+
+app = agent.compile(checkpointer=checkpointer, store=store)
+```
+
+Stores implement `astore`, `asearch`, `aget`, `aupdate` and `adelete`. To let an agent read and write them, give `ReactAgent` or `Agent` a `MemoryConfig(store=store)` through the `memory` argument. It defaults to post-load retrieval, 5 results and a score threshold of 0, with a user-scoped memory tool on and an agent-scoped one off. The `qdrant` and `mem0` extras install the client libraries.
+
+For the reasoning behind this split, read [Hot and cold agent memory](/blog/hot-and-cold-agent-memory).
+
+## Related pages
+
+<CardGrid>
+
+<LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Where the checkpointer plugs in through compile()." eyebrow="Concept" />
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="What the durable ledger does on resume." eyebrow="Concept" />
+<LinkCard title="Deploy with Docker" href="/docs/how-to/deploy-with-docker" description="Run the server with PostgreSQL and Redis." eyebrow="How-to" />
+</CardGrid>

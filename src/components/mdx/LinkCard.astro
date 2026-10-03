@@ -1,0 +1,16 @@
+---
+interface Props {
+  title: string;
+  href: string;
+  description?: string;
+  /** Small label above the title, for example "Concept" or "5 min". */
+  eyebrow?: string;
+}
+const { title, href, description, eyebrow } = Astro.props;
+const external = /^https?:\/\//.test(href);
+---
+<a class="link-card" href={href} {...(external && { rel: 'noopener' })}>
+  {eyebrow && <span class="link-card-eyebrow">{eyebrow}</span>}
+  <span class="link-card-title">{title}<span aria-hidden="true" class="link-card-arrow">{external ? '↗' : '→'}</span></span>
+  {description && <span class="link-card-desc">{description}</span>}
+</a>

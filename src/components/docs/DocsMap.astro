@@ -1,0 +1,53 @@
+---
+// Docs navigation drawn as a graph: each page is a node on its section's line. Only the current
+// section is open; the others collapse to a row of progress dots. Visited nodes are filled in by
+// scripts/docs-reader.ts from localStorage. Native <details>, so it works without JS.
+import { DOC_SECTIONS } from '../../lib/site';
+import { docHref, type Doc } from '../../lib/content';
+
+interface Props {
+  docs: Doc[];
+  current: Doc;
+}
+const { docs, current } = Astro.props;
+const groups = DOC_SECTIONS.map((s) => ({ section: s, items: docs.filter((d) => d.data.section === s) })).filter(
+  (g) => g.items.length > 0,
+);
+const DOT_LIMIT = 12;
+---
+<nav class="docs-map" aria-label="Documentation">
+  <div class="map-head">
+    <span class="map-title">Docs map</span>
+    <span class="map-progress" data-map-progress data-total={docs.length}>{docs.length} pages</span>
+  </div>
+  <div class="map-sections">
+    {groups.map((g) => {
+      const here = g.section === current.data.section;
+      return (
+        <details class="map-section" open={here}>
+          <summary>
+            <span class="map-section-name">{g.section}</span>
+            {g.items.length <= DOT_LIMIT ? (
+              <span class="map-dots" aria-hidden="true">
+                {g.items.map((d) => <i data-dot={d.id} class={d.id === current.id ? 'is-here' : undefined} />)}
+              </span>
+            ) : (
+              <span class="map-bar" aria-hidden="true" data-bar={g.section}><i /></span>
+            )}
+          </summary>
+          <ol class="map-nodes">
+            {g.items.map((d) => (
+              <li>
+                <a class="map-node" href={docHref(d.id)} data-doc-id={d.id} aria-current={d.id === current.id ? 'page' : undefined}>
+                  <span class="map-node-dot" aria-hidden="true" />
+                  <span class="map-node-label">{d.data.title}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </details>
+      );
+    })}
+  </div>
+  <p class="map-keys" aria-hidden="true"><kbd>[</kbd> <kbd>]</kbd> previous and next page</p>
+</nav>

@@ -1,16 +1,40 @@
 ---
+import type { MarkdownHeading } from 'astro';
 import BaseLayout from './BaseLayout.astro';
 import AiActions from '../components/AiActions.astro';
+import Faq from '../components/Faq.astro';
+import Toc from '../components/Toc.astro';
 import { SITE } from '../lib/site';
-import { absolute, formatDate, postHref, postMarkdownHref, readingMinutes, type Post } from '../lib/content';
+import { AUTHORS, initials } from '../lib/authors';
+import {
+  absolute,
+  faqJsonLd,
+  formatDate,
+  postHref,
+  postMarkdownHref,
+  readingMinutes,
+  tagHref,
+  type Post,
+} from '../lib/content';
 
 interface Props {
   entry: Post;
+  headings: MarkdownHeading[];
+  posts: Post[];
 }
-const { entry } = Astro.props;
-const { title, description, date, updated, author, tags } = entry.data;
+const { entry, headings, posts } = Astro.props;
+const { title, description, date, updated, author, tags, faq } = entry.data;
 const href = postHref(entry.id);
 const markdownHref = postMarkdownHref(entry.id);
+const role = AUTHORS[author]?.role;
+
+// Keep reading: posts sharing the most tags first, then the newest.
+const related = posts
+  .filter((p) => p.id !== entry.id)
+  .map((p) => ({ p, shared: p.data.tags.filter((t) => tags.includes(t)).length }))
+  .sort((a, b) => b.shared - a.shared || b.p.data.date.getTime() - a.p.data.date.getTime())
+  .slice(0, 2)
+  .map((r) => r.p);
 
 const jsonLd = [
   {
@@ -19,11 +43,13 @@ const jsonLd = [
     headline: title,
     description,
     url: absolute(href),
+    mainEntityOfPage: absolute(href),
     datePublished: date.toISOString(),
     dateModified: (updated ?? date).toISOString(),
-    author: { '@type': 'Person', name: author },
+    author: { '@type': 'Person', name: author, ...(role && { jobTitle: role }) },
     publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
     keywords: tags.join(', '),
+    wordCount: (entry.body ?? '').split(/\s+/).length,
     isPartOf: { '@type': 'Blog', name: `${SITE.name} blog`, url: absolute('/blog') },
   },
   {
@@ -34,6 +60,7 @@ const jsonLd = [
       { '@type': 'ListItem', position: 2, name: title, item: absolute(href) },
     ],
   },
+  ...(faq.length ? [faqJsonLd(faq)] : []),
 ];
 ---
 <BaseLayout
@@ -45,24 +72,53 @@ const jsonLd = [
   publishedTime={date}
   modifiedTime={updated ?? date}
 >
-  <article class="wrap post" data-pagefind-body>
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="/blog">Blog</a></nav>
-    <h1>{title}</h1>
-    <p class="lede">{description}</p>
-    <div class="page-meta">
-      <span>{author}</span>
-      <span><time datetime={date.toISOString()}>{formatDate(date)}</time></span>
-      {updated && <span>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></span>}
-      <span>{readingMinutes(entry.body)} min read</span>
-    </div>
-    <AiActions markdownHref={markdownHref} />
-    <div class="prose">
-      <slot />
-    </div>
-    {tags.length > 0 && (
-      <ul class="tags" aria-label="Tags">
-        {tags.map((t) => <li>{t}</li>)}
-      </ul>
-    )}
-  </article>
+  <div class="wrap post-grid">
+    <article class="post" data-pagefind-body>
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/blog">Blog</a></nav>
+      <h1>{title}</h1>
+      <p class="lede">{description}</p>
+      <div class="byline">
+        <span class="avatar" aria-hidden="true">{initials(author)}</span>
+        <span class="byline-text">
+          <span class="byline-name">{author}</span>
+          <span class="byline-meta">
+            {role && <span>{role}</span>}
+            <time datetime={date.toISOString()}>{formatDate(date)}</time>
+            <span>{readingMinutes(entry.body)} min read</span>
+            {updated && <span>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></span>}
+          </span>
+        </span>
+      </div>
+      <AiActions markdownHref={markdownHref} />
+      <div class="prose">
+        <slot />
+      </div>
+      <Faq faq={faq} />
+      {tags.length > 0 && (
+        <ul class="tags" aria-label="Tags" data-pagefind-ignore>
+          {tags.map((t) => <li><a href={tagHref(t)}>{t}</a></li>)}
+        </ul>
+      )}
+    </article>
+
+    <aside class="post-aside">
+      <Toc headings={headings} hasFaq={faq.length > 0} />
+    </aside>
+  </div>
+
+  {related.length > 0 && (
+    <section class="wrap keep-reading" aria-labelledby="keep-reading" data-pagefind-ignore>
+      <h2 id="keep-reading">Keep reading</h2>
+      <div class="post-cards">
+        {related.map((p) => (
+          <a class="post-card" href={postHref(p.id)}>
+            <time datetime={p.data.date.toISOString()}>{formatDate(p.data.date)}</time>
+            <span class="post-card-title">{p.data.title}</span>
+            <span class="post-card-desc">{p.data.description}</span>
+          </a>
+        ))}
+      </div>
+      <p class="keep-reading-more"><a href="/blog">All posts</a> <span aria-hidden="true">·</span> <a href="/rss.xml">RSS feed</a></p>
+    </section>
+  )}
 </BaseLayout>

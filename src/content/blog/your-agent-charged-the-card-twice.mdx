@@ -1,0 +1,132 @@
+---
+title: "Your agent charged the card twice: making tool calls replay-safe"
+description: How a crash between tool calls leads to double charges, why keying on tool_call_id alone fails, and how 10xGraph's tool ledger and versioned writes fix it.
+date: 2026-10-01
+author: Shudipto Trafder
+tags: [reliability, tools, checkpointing]
+featured: true
+faq:
+  - q: Does 10xGraph guarantee a tool runs exactly once?
+    a: No. The ledger records a call after it returns, so a crash in the small window between the tool finishing and the record being written can still re-run it. Pass your own idempotency key to the payment provider for that window.
+  - q: Which checkpointers support the tool ledger?
+    a: PgCheckpointer implements it, with a tool_executions table added in schema version 3. A checkpointer that does not implement the ledger inherits a default that returns no record, so tools run at least once as before.
+---
+
+If a worker dies after a tool call finishes but before the run is saved, resuming the run executes that tool again. For `charge_card` that means a second charge. 10xGraph closes the gap with a tool ledger in the checkpointer, keyed by the issuing message id plus the tool call id.
+
+## What actually goes wrong?
+
+Imagine a support agent with three tools: `lookup_order`, `charge_card` and `send_receipt`. The model asks for all three in one assistant message. The node runs them. `charge_card` returns successfully, and then the container is killed by a deploy before the node finishes.
+
+The run loop persists the current node before it runs and only advances after the node completes. So on restart the loop resumes at that same node and runs it from the start. Every tool in it fires again, including the one that already moved money.
+
+> A resumed run cannot tell the difference between "this tool never ran" and "this tool ran and the process died right after."
+
+## Why isn't a retry-safe tool enough?
+
+The usual advice is to make every tool idempotent. That is correct, and you should still do it. But it pushes the problem to every tool author, and it fails for tools you do not own: an MCP server, a third-party SDK, a shell command.
+
+The other common fix is a ledger keyed on `tool_call_id`. It looks right and breaks quietly. Models reuse ids such as `call_1` on every turn. Turn 1 charges the card under `call_1`. Turn 9 asks for a refund and the model again labels it `call_1`. A ledger keyed on that id alone finds a record and skips the refund, so a tool that never ran is reported as done.
+
+## How does 10xGraph key the ledger?
+
+An invocation is identified by the assistant message that issued it plus the call id. That message is persisted, so on replay it carries the same `message_id` and the key is stable. Different turns have different messages, so they never collide.
+
+```python title="agentflow/core/graph/utils/invoke_node_handler.py"
+@staticmethod
+def _ledger_key(origin_message_id: str | None, tool_call_id: str) -> str | None:
+    if not tool_call_id or not origin_message_id:
+        return None
+    return f"{origin_message_id}:{tool_call_id}"
+```
+
+Before each tool call the node handler looks the key up in the checkpointer. A hit returns the recorded result and the tool is not called. A miss runs the tool and records the result immediately after it returns, before the rest of the node continues.
+
+In `PgCheckpointer` the ledger is a `tool_executions` table, added by schema migration v3, with `(thread_id, tool_call_id)` as the primary key. The combined key above is stored in the `tool_call_id` column.
+
+```python title="agentflow/storage/checkpointer/pg_checkpointer.py (schema v3, abridged)"
+CREATE TABLE IF NOT EXISTS tool_executions (
+    thread_id ... NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
+    tool_call_id VARCHAR(255) NOT NULL,
+    result JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (thread_id, tool_call_id)
+)
+```
+
+Writes use `ON CONFLICT DO NOTHING`, so the first recorded result stays authoritative.
+
+### What happens when the ledger itself fails?
+
+The two sides fail differently on purpose.
+
+| Operation | On failure | Why |
+|---|---|---|
+| Ledger read | Logged, treated as "no record", tool runs | A broken read should not stop the run. This falls back to at-least-once. |
+| Ledger write | Raised to the caller | Silently losing the record of a finished side effect is what causes the next double charge. |
+
+<Callout type="warning" title="The remaining window">
+
+The record is written after the tool returns. If the process dies in the instant between the side effect and the write, the ledger has no entry and the tool runs again on replay. Closing that last gap needs an idempotency key at the provider (most payment APIs accept one). Use both layers.
+
+</Callout>
+
+## What stops two runs from overwriting each other?
+
+Replay safety also depends on state writes being safe when two executions touch the same thread, for example a client retry racing a resumed run. `PgCheckpointer` writes state as versioned rows. Reading state records the version in the run config under `_checkpoint_version`. The next write takes a row lock on the thread and compares that version with the current one.
+
+If they differ, another execution committed in between, and the write raises `StaleStateError` instead of silently discarding that work. The Redis cache entry for the thread is dropped on that conflict, so the next read goes back to Postgres and the thread does not stay stuck on a stale version.
+
+```python title="agentflow/storage/checkpointer/pg_checkpointer.py (abridged)"
+current_version = await self._lock_thread_for_write(conn, thread_id, user_id, config)
+
+if expected_version is not None and int(expected_version) != current_version:
+    raise StaleStateError(...)
+
+new_version = current_version + 1
+```
+
+The cache write is also version guarded. It is a Lua script that only writes when the incoming version is greater than or equal to the cached one, so a stale run cannot move the cache backwards.
+
+## What about tools that hang?
+
+A hung tool is the other way a worker ends up killed mid-node. Nothing else bounds a custom tool or an MCP call, because the LLM SDK timeout does not cover them. 10xGraph has two backstops, both overridable per run in the config:
+
+| Config key | Default | Applies to |
+|---|---|---|
+| `node_timeout` | 900 seconds | A whole node |
+| `tool_timeout` | 300 seconds | One tool call |
+
+Passing `None` or a non-positive value such as `0` disables the deadline. The node default sits above the LLM timeout of 600 seconds, so a slow model call fails with its own error instead of being masked by the node deadline.
+
+```python title="run_agent.py"
+config = {
+    "thread_id": "order-4821",
+    "tool_timeout": 60,   # fail a stuck tool after a minute
+    "node_timeout": 300,
+}
+result = await app.ainvoke({"messages": [message]}, config)
+```
+
+## What do you need to turn this on?
+
+A checkpointer that implements the ledger. With `PgCheckpointer` the migration runs for you on setup.
+
+```python title="graph/agent.py"
+from agentflow.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost/app",
+    redis_url="redis://localhost:6379/0",
+)
+app = graph.compile(checkpointer=checkpointer)
+```
+
+Each completed step is also persisted durably by default (`durable_checkpoint_every_step` defaults to true in the run config), which bounds a crash to replaying one node.
+
+## Try it
+
+- [Replay-safe tools](/docs/concepts/replay-safe-tools) explains the ledger and its requirements.
+- [Memory](/docs/concepts/memory) covers how the checkpointer stores state.
+- [State graph](/docs/concepts/state-graph) shows how nodes and steps fit together.
+- [Configuration](/docs/reference/configuration) lists project settings.
