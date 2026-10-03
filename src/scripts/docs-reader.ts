@@ -1,5 +1,5 @@
 // Docs reader behaviour: reading lenses, the run bar (sections as graph nodes that fill as you
-// read), visited pages on the docs map, keyboard shortcuts, the mobile map toggle and AI copy.
+// read), visited pages on the docs map, keyboard shortcuts and the mobile map toggle.
 // Everything here is progressive: without JS the page is a normal, complete article.
 
 type Lens = 'read' | 'skim' | 'code';
@@ -108,11 +108,14 @@ function initRun(reader: HTMLElement) {
 }
 
 function initVisited(reader: HTMLElement) {
-  const id = reader.dataset.docId!;
+  const id = reader.dataset.docId;
   let visited: string[] = [];
   try { visited = JSON.parse(store.get(VISITED_KEY) ?? '[]'); } catch { visited = []; }
-  if (!visited.includes(id)) visited.push(id);
-  store.set(VISITED_KEY, JSON.stringify(visited));
+  // Section landing pages have no doc id: they show progress without recording a visit.
+  if (id && !visited.includes(id)) {
+    visited.push(id);
+    store.set(VISITED_KEY, JSON.stringify(visited));
+  }
   const seen = new Set(visited);
 
   reader.querySelectorAll<HTMLElement>('[data-doc-id].map-node').forEach((a) => a.classList.toggle('is-visited', seen.has(a.dataset.docId!)));
@@ -131,27 +134,6 @@ function initVisited(reader: HTMLElement) {
     progress.textContent = `${read} of ${all.length} explored`;
     progress.style.setProperty('--p', String(all.length ? read / all.length : 0));
   }
-}
-
-function initAiMenu(reader: HTMLElement) {
-  const menu = reader.querySelector<HTMLDetailsElement>('.ai-menu');
-  document.addEventListener('click', (e) => {
-    if (menu?.open && !menu.contains(e.target as Node)) menu.open = false;
-  });
-  reader.querySelectorAll<HTMLButtonElement>('[data-copy-md]').forEach((btn) => {
-    const label = btn.firstChild!;
-    const original = label.textContent;
-    btn.addEventListener('click', async () => {
-      try {
-        const res = await fetch(btn.dataset.copyMd!);
-        await navigator.clipboard.writeText(await res.text());
-        label.textContent = 'Copied to clipboard';
-      } catch {
-        label.textContent = 'Copy failed, use View as Markdown';
-      }
-      setTimeout(() => (label.textContent = original), 1800);
-    });
-  });
 }
 
 function initMapToggle(reader: HTMLElement) {
@@ -183,7 +165,6 @@ export function initReader() {
   const refresh = initRun(reader);
   reader.querySelectorAll('.lens [data-lens]').forEach((b) => b.addEventListener('click', () => refresh?.()));
   initVisited(reader);
-  initAiMenu(reader);
   initMapToggle(reader);
   initKeys(setLens, refresh);
 }

@@ -1,21 +1,26 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import PostList from '../../../components/PostList.astro';
+import PostCard from '../../../components/blog/PostCard.astro';
+import TopicNav from '../../../components/blog/TopicNav.astro';
 import { absolute, getPosts, getTags, tagHref, tagSlug, type Post } from '../../../lib/content';
+import '../../../styles/blog.css';
 
 export async function getStaticPaths() {
   const posts = await getPosts();
-  return getTags(posts).map(({ tag }) => ({
+  const tags = getTags(posts);
+  return tags.map(({ tag }) => ({
     params: { tag: tagSlug(tag) },
-    props: { tag, posts: posts.filter((p: Post) => p.data.tags.includes(tag)) },
+    props: { tag, tags, total: posts.length, posts: posts.filter((p: Post) => p.data.tags.includes(tag)) },
   }));
 }
 
 interface Props {
   tag: string;
+  tags: { tag: string; count: number }[];
+  total: number;
   posts: Post[];
 }
-const { tag, posts } = Astro.props;
+const { tag, tags, total, posts } = Astro.props;
 const description = `Posts tagged ${tag} on the 10xGraph engineering blog: production AI agents, Python multi-agent systems and the runtime behind them.`;
 const jsonLd = [
   {
@@ -29,10 +34,17 @@ const jsonLd = [
 ];
 ---
 <BaseLayout title={`Posts tagged ${tag}`} description={description} jsonLd={jsonLd}>
-  <section class="wrap listing">
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="/blog">Blog</a><span aria-hidden="true">/</span><span>Topics</span></nav>
-    <h1>{tag}</h1>
-    <p class="lede">{posts.length} post{posts.length === 1 ? '' : 's'} tagged {tag}.</p>
-    <PostList posts={posts} />
-  </section>
+  <div class="blog">
+    <header class="blog-head blog-head-tag">
+      <div>
+        <p class="blog-kicker"><a href="/blog">Blog</a> / topic</p>
+        <h1>{tag}</h1>
+        <p class="blog-intro">{posts.length} post{posts.length === 1 ? '' : 's'} about {tag}.</p>
+      </div>
+    </header>
+    <TopicNav tags={tags} current={tag} total={total} />
+    <section aria-label={`Posts tagged ${tag}`} class="post-grid-list">
+      {posts.map((p) => <PostCard post={p} />)}
+    </section>
+  </div>
 </BaseLayout>

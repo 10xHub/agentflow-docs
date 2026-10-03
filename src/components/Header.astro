@@ -1,7 +1,7 @@
 ---
 import SearchDialog from './SearchDialog.astro';
 import ThemeToggle from './ThemeToggle.astro';
-import { NAV } from '../lib/site';
+import { NAV, SITE } from '../lib/site';
 
 const path = Astro.url.pathname;
 const isCurrent = (href: string) => href.startsWith('/') && (path === href || path.startsWith(`${href}/`));
@@ -9,6 +9,7 @@ const isCurrent = (href: string) => href.startsWith('/') && (path === href || pa
 <header class="site-header">
   <div class="wrap header-row">
     <a class="wordmark" href="/" aria-label="10xGraph home">10xGraph</a>
+    <a class="version-pill" href="/changelog" title={`Current release: v${SITE.version}. Read the changelog`}>v{SITE.version}</a>
     <nav aria-label="Primary">
       <ul>
         {NAV.map((item) => (

@@ -1,0 +1,27 @@
+---
+import PostCover from './PostCover.astro';
+import { formatDate, postHref, readingMinutes, type Post } from '../../lib/content';
+
+interface Props {
+  post: Post;
+  headingLevel?: 'h2' | 'h3';
+}
+const { post, headingLevel = 'h2' } = Astro.props;
+const Heading = headingLevel;
+---
+<article class="post-card">
+  <PostCover seed={post.id} />
+  <div class="post-card-body">
+    <p class="post-card-meta">
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+      <span>{readingMinutes(post.body)} min read</span>
+    </p>
+    <Heading class="post-card-title"><a href={postHref(post.id)}>{post.data.title}</a></Heading>
+    <p class="post-card-desc">{post.data.description}</p>
+    {post.data.tags.length > 0 && (
+      <ul class="post-card-tags" aria-label="Tags">
+        {post.data.tags.slice(0, 3).map((t) => <li>{t}</li>)}
+      </ul>
+    )}
+  </div>
+</article>

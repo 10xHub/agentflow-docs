@@ -1,0 +1,89 @@
+---
+// Release notes for every published version of the three packages, newest first.
+import { render } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { PACKAGES, SITE, type PackageKey } from '../lib/site';
+import { absolute, formatDate, getReleases, releaseAnchor } from '../lib/content';
+import '../styles/changelog.css';
+
+const releases = await getReleases();
+const rendered = await Promise.all(releases.map(async (r) => ({ r, Content: (await render(r)).Content })));
+const latest = (Object.keys(PACKAGES) as PackageKey[]).map((k) => ({ key: k, ...PACKAGES[k], release: releases.find((r) => r.data.package === k) }));
+const description = 'Release notes for 10xGraph: every published version of the Python framework, the API server and CLI, and the TypeScript client, newest first.';
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: '10xGraph changelog',
+    description,
+    url: absolute('/changelog'),
+    about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
+  },
+];
+---
+<BaseLayout title="Changelog" description={description} jsonLd={jsonLd}>
+  <div class="cl">
+    <header class="cl-head">
+      <div>
+        <p class="cl-kicker">Changelog</p>
+        <h1>Release notes</h1>
+        <p class="cl-intro">Every published release of the framework, the API server and CLI, and the TypeScript client. Versions and dates match PyPI and npm.</p>
+      </div>
+      <div class="cl-head-links">
+        <a href="/changelog.xml">Releases feed (RSS)</a>
+        <a href={`${SITE.github}/releases`}>GitHub releases</a>
+      </div>
+    </header>
+
+    <ul class="cl-latest" aria-label="Latest versions">
+      {latest.map((p) => (
+        <li>
+          <span class="cl-latest-label">{p.label}</span>
+          <span class="cl-latest-version">{p.release ? `v${p.release.data.version}` : 'No releases yet'}</span>
+          <a class="cl-latest-pkg" href={p.url}>{p.registry}: {p.name}</a>
+          {p.release && <span class="cl-latest-date">{formatDate(p.release.data.date)}</span>}
+        </li>
+      ))}
+    </ul>
+
+    <div class="cl-filter" role="group" aria-label="Filter by package" data-cl-filter>
+      <button type="button" aria-pressed="true" data-pkg="all">All</button>
+      {latest.map((p) => <button type="button" aria-pressed="false" data-pkg={p.key}>{p.label}</button>)}
+    </div>
+
+    {releases.length === 0 && <p class="cl-empty">Release notes are being prepared.</p>}
+
+    <ol class="cl-list">
+      {rendered.map(({ r, Content }) => (
+        <li class="cl-item" id={releaseAnchor(r)} data-pkg={r.data.package}>
+          <div class="cl-when">
+            <time datetime={r.data.date.toISOString()}>{formatDate(r.data.date)}</time>
+          </div>
+          <article class="cl-card">
+            <header class="cl-card-head">
+              <span class={`cl-pkg cl-pkg-${r.data.package}`}>{PACKAGES[r.data.package].label}</span>
+              <h2><a href={`#${releaseAnchor(r)}`}>v{r.data.version}</a></h2>
+              {r.data.breaking && <span class="cl-breaking">Breaking changes</span>}
+            </header>
+            <p class="cl-summary">{r.data.summary}</p>
+            <div class="prose cl-body"><Content /></div>
+          </article>
+        </li>
+      ))}
+    </ol>
+  </div>
+</BaseLayout>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-cl-filter]');
+  if (bar) {
+    const items = [...document.querySelectorAll<HTMLElement>('.cl-item')];
+    bar.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-pkg]');
+      if (!btn) return;
+      const pkg = btn.dataset.pkg;
+      bar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      items.forEach((i) => (i.hidden = pkg !== 'all' && i.dataset.pkg !== pkg));
+    });
+  }
+</script>

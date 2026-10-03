@@ -1,9 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostList from '../../components/PostList.astro';
+import PostCard from '../../components/blog/PostCard.astro';
+import PostCover from '../../components/blog/PostCover.astro';
+import TopicNav from '../../components/blog/TopicNav.astro';
 import { SITE } from '../../lib/site';
 import { AUTHORS, initials } from '../../lib/authors';
 import { absolute, formatDate, getPosts, getTags, postHref, readingMinutes, tagHref } from '../../lib/content';
+import '../../styles/blog.css';
 
 const posts = await getPosts();
 const featured = posts.find((p) => p.data.featured) ?? posts[0];
@@ -28,40 +31,58 @@ const jsonLd = [
 ];
 ---
 <BaseLayout title="Blog" description={description} jsonLd={jsonLd}>
-  <section class="wrap listing">
-    <p class="eyebrow">Blog</p>
-    <h1>Engineering notes</h1>
-    <p class="lede">{description}</p>
-    <p class="listing-links"><a href="/rss.xml">RSS feed</a><span aria-hidden="true">·</span><a href="/llms.txt">llms.txt</a></p>
+  <div class="blog">
+    <header class="blog-head">
+      <div>
+        <p class="blog-kicker">10xGraph blog</p>
+        <h1>Engineering notes</h1>
+        <p class="blog-intro">{description}</p>
+      </div>
+      <div class="blog-actions">
+      <a class="blog-subscribe blog-archive-link" href="/blog/archive">Archive</a>
+      <a class="blog-subscribe" href="/rss.xml">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor" /><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+        Subscribe via RSS
+      </a>
+      </div>
+    </header>
 
     {featured && (
-      <article class="featured">
-        <p class="featured-label">Featured</p>
-        <h2><a href={postHref(featured.id)}>{featured.data.title}</a></h2>
-        <p class="featured-desc">{featured.data.description}</p>
-        <div class="byline">
-          <span class="avatar" aria-hidden="true">{initials(featured.data.author)}</span>
-          <span class="byline-text">
-            <span class="byline-name">{featured.data.author}</span>
-            <span class="byline-meta">
-              {AUTHORS[featured.data.author] && <span>{AUTHORS[featured.data.author].role}</span>}
-              <time datetime={featured.data.date.toISOString()}>{formatDate(featured.data.date)}</time>
-              <span>{readingMinutes(featured.body)} min read</span>
+      <article class="feature">
+        <a class="feature-art" href={postHref(featured.id)} tabindex="-1" aria-hidden="true">
+          <PostCover seed={featured.id} variant="hero" animate />
+        </a>
+        <div class="feature-body">
+          <p class="feature-label">Featured</p>
+          <h2><a href={postHref(featured.id)}>{featured.data.title}</a></h2>
+          <p class="feature-desc">{featured.data.description}</p>
+          <div class="byline">
+            <span class="avatar" aria-hidden="true">{initials(featured.data.author)}</span>
+            <span class="byline-text">
+              <span class="byline-name">{featured.data.author}</span>
+              <span class="byline-meta">
+                {AUTHORS[featured.data.author] && <span>{AUTHORS[featured.data.author].role}</span>}
+                <time datetime={featured.data.date.toISOString()}>{formatDate(featured.data.date)}</time>
+                <span>{readingMinutes(featured.body)} min read</span>
+              </span>
             </span>
-          </span>
+          </div>
+          {featured.data.tags.length > 0 && (
+            <ul class="post-card-tags" aria-label="Tags">
+              {featured.data.tags.map((t) => <li><a href={tagHref(t)}>{t}</a></li>)}
+            </ul>
+          )}
         </div>
       </article>
     )}
 
-    {tags.length > 0 && (
-      <nav class="tag-filter" aria-label="Topics">
-        <span class="side-title">Topics</span>
-        <ul class="tags tags-sm">
-          {tags.map(({ tag, count }) => <li><a href={tagHref(tag)}>{tag} <span class="tag-count">{count}</span></a></li>)}
-        </ul>
-      </nav>
-    )}
+    <TopicNav tags={tags} total={posts.length} />
 
-    {rest.length > 0 && <PostList posts={rest} />}
-  </section>
+    {rest.length > 0 && (
+      <section aria-label="More posts" class="post-grid-list">
+        {rest.map((p) => <PostCard post={p} />)}
+      </section>
+    )}
+    <p class="blog-more"><a href="/blog/archive">Browse all {posts.length} posts in the archive</a></p>
+  </div>
 </BaseLayout>

@@ -56,6 +56,8 @@ const canonical = new URL(cleanPath, Astro.site).toString();
           t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         }
         document.documentElement.setAttribute('data-theme', t);
+        // Lets CSS show JS-only controls from the first paint, so they do not shift the layout later.
+        document.documentElement.classList.add('js');
       })();
     </script>
     <meta name="color-scheme" content="dark light" />

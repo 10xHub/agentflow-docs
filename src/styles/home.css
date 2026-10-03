@@ -11,7 +11,7 @@
 }
 [data-theme='light'] .home {
   --slate: #c9ced6; --slate-2: #9aa3b0; --ok: #0f7a5c; --danger-wash: #fdeeee; --accent-ink: #ffffff;
-  --tok-k: #2f5bd3; --tok-s: #0f7a5c; --tok-c: #6b7584; --tok-f: #1e2633;
+  --tok-k: #2f5bd3; --tok-s: #0f7a5c; --tok-c: #5c6674; --tok-f: #1e2633;
   --you: #4f5a68; --you-wash: #eef0f2; --you-line: #c3c9d1;
   --infra: #0f7a5c; --infra-wash: #e6f5ef; --infra-line: #9fd3c0;
   --edge: #b9c0ca; --edge-cur: #4f5a68; --particle: #2f5bd3; --dot: #dfe2dc;
@@ -70,10 +70,10 @@
 .home .legend i{width:8px;height:8px;border-radius:2px;display:inline-block}
 .home .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .home .rail{display:none;list-style:none;margin:0;padding:0;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--line)}
-.home .stage.js .rail{display:grid}
+:root.js .home .rail{display:grid}
 .home .rail button{width:100%;min-height:52px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:8px 12px 10px;background:none;border:0;border-right:1px solid var(--line);color:var(--faint);font:500 .78rem var(--f-mono);cursor:pointer;position:relative;text-align:left}
 .home .rail li:last-child button{border-right:0}
-.home .rail button .n{font-size:.68rem;color:var(--slate-2)}
+.home .rail button .n{font-size:.68rem;color:var(--faint)}
 .home .rail button:hover{color:var(--text)}
 .home .rail button.done{color:var(--muted)}
 .home .rail button.cur{color:var(--text);background:var(--surface-2)}
@@ -135,7 +135,7 @@
 .home .cap-txt{margin:6px 0 0;font-size:.9rem;color:var(--muted);transition:opacity .3s}
 .home .cap-txt.fade{opacity:0}
 .home .stage-ctl{display:none;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px}
-.home .stage.js .stage-ctl{display:flex}
+:root.js .home .stage-ctl{display:flex}
 .home .stage-ctl .grp{display:flex;gap:6px}
 .home .stage-ctl button{min-height:40px;min-width:44px;padding:0 12px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line-2);color:var(--muted);font:500 .76rem var(--f-mono);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .home .stage-ctl button:hover{color:var(--text)}

@@ -40,4 +40,17 @@ const blog = defineCollection({
   }),
 });
 
-export const collections = { docs, blog };
+// Release notes, one file per published version: src/content/releases/<package>-<version>.md.
+// Versions and dates must match what PyPI / npm actually published.
+const releases = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/releases' }),
+  schema: z.object({
+    package: z.enum(['core', 'api', 'client']),
+    version: z.string(),
+    date: z.coerce.date(),
+    summary: z.string().min(20).max(240),
+    breaking: z.boolean().default(false),
+  }),
+});
+
+export const collections = { docs, blog, releases };

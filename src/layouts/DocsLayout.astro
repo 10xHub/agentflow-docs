@@ -5,6 +5,7 @@ import DocsMap from '../components/docs/DocsMap.astro';
 import RunBar from '../components/docs/RunBar.astro';
 import NextEdges from '../components/docs/NextEdges.astro';
 import Faq from '../components/Faq.astro';
+import AiNote from '../components/AiNote.astro';
 import { SITE } from '../lib/site';
 import { absolute, docHref, docMarkdownHref, faqJsonLd, formatDate, readingMinutes, type Doc } from '../lib/content';
 import '../styles/docs.css';
@@ -21,6 +22,8 @@ const markdownHref = docMarkdownHref(entry.id);
 const sectionCount = headings.filter((h) => h.depth === 2).length + (faq.length ? 1 : 0);
 const position = docs.filter((d) => d.data.section === section).findIndex((d) => d.id === entry.id) + 1;
 const sectionSize = docs.filter((d) => d.data.section === section).length;
+const editHref = entry.filePath ? `${SITE.docsRepo}/edit/${SITE.docsBranch}/${entry.filePath}` : undefined;
+const issueHref = `${SITE.docsRepo}/issues/new?title=${encodeURIComponent(`Docs: ${title}`)}&body=${encodeURIComponent(`Page: ${absolute(href)}\n\nWhat is wrong or missing:\n`)}`;
 
 const jsonLd = [
   {
@@ -74,15 +77,24 @@ const jsonLd = [
           {sectionCount > 0 && <li>{sectionCount} section{sectionCount === 1 ? '' : 's'}</li>}
           {updated && <li>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></li>}
           <li>v{SITE.version}</li>
+          <li><a href={markdownHref} rel="alternate" type="text/markdown" title="This page as plain Markdown, for AI agents">Markdown</a></li>
         </ul>
       </header>
 
-      <RunBar headings={headings} hasFaq={faq.length > 0} markdownHref={markdownHref} />
+      <RunBar headings={headings} hasFaq={faq.length > 0} />
 
       <div class="prose doc-prose">
         <slot />
       </div>
       <Faq faq={faq} />
+      <div class="doc-foot" data-pagefind-ignore>
+        <span>{updated ? <>Last updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></> : 'Docs'} for v{SITE.version}</span>
+        <span class="doc-foot-links">
+          {editHref && <a href={editHref} target="_blank" rel="noopener">Edit this page on GitHub</a>}
+          <a href={issueHref} target="_blank" rel="noopener">Report an issue</a>
+        </span>
+      </div>
+      <AiNote markdownHref={markdownHref} />
       <NextEdges docs={docs} current={entry} />
     </article>
   </div>

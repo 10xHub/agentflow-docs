@@ -1,10 +1,81 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { DOC_SECTIONS, SECTION_INFO } from '../lib/site';
+
+const links = [
+  ...DOC_SECTIONS.map((s) => ({ title: s, href: `/docs/${SECTION_INFO[s].slug}`, desc: SECTION_INFO[s].blurb })),
+  { title: 'Blog', href: '/blog', desc: 'Engineering notes on production AI agents.' },
+  { title: 'Changelog', href: '/changelog', desc: 'Every release of the framework, API server and client.' },
+];
 ---
-<BaseLayout title="Page not found" description="This page does not exist. Try the 10xGraph documentation, the blog or search to find what you were looking for." noindex>
-  <section class="wrap listing">
-    <h1>Page not found</h1>
-    <p class="lede">The page you asked for does not exist or has moved.</p>
-    <p><a href="/docs">Go to the docs</a> · <a href="/blog">Read the blog</a> · <a href="/search">Search</a></p>
+<BaseLayout title="Page not found" description="This page does not exist. Search the 10xGraph docs and blog, or start from one of the main sections." noindex>
+  <section class="nf">
+    <svg class="nf-graph" viewBox="0 0 520 120" aria-hidden="true">
+      <path d="M40 60 C110 60 110 30 180 30" class="nf-edge" />
+      <path d="M40 60 C110 60 110 90 180 90" class="nf-edge" />
+      <path d="M180 30 C250 30 250 60 320 60" class="nf-edge nf-hot" />
+      <path d="M320 60 C380 60 400 60 440 60" class="nf-edge nf-broken" />
+      <circle cx="40" cy="60" r="11" class="nf-node nf-start" />
+      <circle cx="180" cy="30" r="8" class="nf-node nf-hot-node" />
+      <rect x="171" y="81" width="18" height="18" rx="5" class="nf-node" />
+      <circle cx="320" cy="60" r="8" class="nf-node nf-hot-node" />
+      <circle cx="470" cy="60" r="11" class="nf-node nf-missing" />
+      <text x="470" y="64.5" text-anchor="middle" class="nf-q">?</text>
+    </svg>
+    <p class="nf-code">404</p>
+    <h1>This route leads nowhere</h1>
+    <p class="nf-text">The page you asked for does not exist or has moved. The docs are being migrated to a new site, so some old links have changed.</p>
+    <div class="nf-actions">
+      <a class="nf-search" href="/search" data-nf-search>Search for this page</a>
+      <a class="nf-home" href="/">Go to the homepage</a>
+    </div>
+    <ul class="nf-links">
+      {links.map((l) => (
+        <li><a href={l.href}><span class="nf-link-title">{l.title}</span><span class="nf-link-desc">{l.desc}</span></a></li>
+      ))}
+    </ul>
   </section>
 </BaseLayout>
+
+<script>
+  // Turn the missing path into a search query: /docs/how-to/stream-graph -> "stream graph".
+  const words = decodeURIComponent(location.pathname)
+    .replace(/\.(html|md)$/, '')
+    .split('/')
+    .filter(Boolean)
+    .pop()
+    ?.replace(/[-_]+/g, ' ')
+    .trim();
+  const link = document.querySelector<HTMLAnchorElement>('[data-nf-search]');
+  if (link && words) {
+    link.href = `/search?q=${encodeURIComponent(words)}`;
+    link.textContent = `Search for "${words}"`;
+  }
+</script>
+
+<style>
+  .nf { max-width: 860px; margin: 0 auto; padding: clamp(48px, 8vw, 104px) var(--gutter) 112px; text-align: center; }
+  .nf-graph { width: min(100%, 520px); height: auto; margin: 0 auto 8px; display: block; }
+  .nf-edge { fill: none; stroke: var(--line-2); stroke-width: 2; }
+  .nf-hot { stroke: var(--accent); stroke-width: 2.5; }
+  .nf-broken { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5 7; }
+  .nf-node { fill: var(--bg); stroke: var(--faint); stroke-width: 1.75; }
+  .nf-start { fill: var(--accent); stroke: var(--accent); }
+  .nf-hot-node { stroke: var(--accent); stroke-width: 2.25; }
+  .nf-missing { stroke: var(--danger); stroke-dasharray: 3 4; }
+  .nf-q { fill: var(--danger); font: 600 13px var(--f-mono); }
+  .nf-code { margin: 0; font: 500 0.8rem var(--f-mono); color: var(--danger); }
+  .nf h1 { margin: 10px 0 14px; font-size: clamp(2.2rem, 5vw, 3.6rem); letter-spacing: -0.04em; }
+  .nf-text { max-width: 36em; margin: 0 auto; color: var(--sub); font-size: 1.08rem; }
+  .nf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 28px 0 48px; }
+  .nf-actions a { display: inline-flex; align-items: center; min-height: 46px; padding: 0 20px; border-radius: 10px; font: 600 0.95rem var(--f-body); text-decoration: none; }
+  .nf-search { background: var(--btn); color: var(--btn-ink); }
+  .nf-search:hover { background: var(--btn-hover); }
+  .nf-home { border: 1px solid var(--line-2); color: var(--text); }
+  .nf-home:hover { border-color: var(--accent-line); }
+  .nf-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; list-style: none; margin: 0; padding: 0; text-align: left; }
+  .nf-links a { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; text-decoration: none; transition: border-color 0.15s, transform 0.15s; }
+  .nf-links a:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+  .nf-link-title { color: var(--text); font-weight: 600; }
+  .nf-link-desc { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+</style>

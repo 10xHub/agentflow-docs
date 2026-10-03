@@ -1,0 +1,133 @@
+---
+// Generated cover art for a blog post: a small agent graph laid out left to right, seeded by the
+// post slug, so every post gets its own stable picture with no image files. One run through the
+// graph is highlighted (the path a request took); an optional particle travels along it.
+// Colours come from CSS variables, so covers follow the light and dark themes.
+
+interface Props {
+  seed: string;
+  variant?: 'hero' | 'card';
+  animate?: boolean;
+  class?: string;
+}
+const { seed, variant = 'card', animate = false, class: className } = Astro.props;
+
+// Deterministic PRNG (mulberry32) from a string hash.
+let h = 1779033703 ^ seed.length;
+for (let i = 0; i < seed.length; i++) {
+  h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+  h = (h << 13) | (h >>> 19);
+}
+let a = h >>> 0;
+const rand = () => {
+  a |= 0;
+  a = (a + 0x6d2b79f5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+const W = variant === 'hero' ? 1200 : 640;
+const H = variant === 'hero' ? 360 : 300;
+const cols = variant === 'hero' ? 7 : 5;
+const rows = 3;
+const cw = W / cols;
+const ch = H / rows;
+const palette = Math.floor(rand() * 3);
+
+type Node = { id: number; c: number; x: number; y: number; tool: boolean };
+const columns: Node[][] = [];
+let id = 0;
+for (let c = 0; c < cols; c++) {
+  const edge = c === 0 || c === cols - 1;
+  const count = edge ? 1 : 1 + Math.floor(rand() * 2.4);
+  const picked = [0, 1, 2].sort(() => rand() - 0.5).slice(0, Math.min(count, rows));
+  columns.push(
+    picked.sort().map((r) => ({
+      id: id++,
+      c,
+      x: Math.round(cw * (c + 0.5) + (rand() - 0.5) * cw * 0.3),
+      y: Math.round(edge ? H / 2 + (rand() - 0.5) * ch * 0.5 : ch * (r + 0.5) + (rand() - 0.5) * ch * 0.35),
+      tool: !edge && rand() < 0.3,
+    })),
+  );
+}
+const nodes = columns.flat();
+
+// Edges flow to the next column: every node gets at least one way in and one way out.
+const edges: [Node, Node][] = [];
+const has = (p: Node, q: Node) => edges.some(([x, y]) => x === p && y === q);
+for (let c = 0; c < cols - 1; c++) {
+  const next = columns[c + 1];
+  for (const n of columns[c]) {
+    const near = [...next].sort((p, q) => Math.abs(p.y - n.y) - Math.abs(q.y - n.y));
+    edges.push([n, near[0]]);
+    if (near[1] && rand() < 0.45) edges.push([n, near[1]]);
+  }
+  for (const m of next) {
+    if (!edges.some(([, to]) => to === m)) {
+      const from = [...columns[c]].sort((p, q) => Math.abs(p.y - m.y) - Math.abs(q.y - m.y))[0];
+      if (!has(from, m)) edges.push([from, m]);
+    }
+  }
+}
+
+// The highlighted run: start node to end node along existing edges.
+const path: Node[] = [columns[0][0]];
+while (path[path.length - 1].c < cols - 1) {
+  const here = path[path.length - 1];
+  const outs = edges.filter(([from]) => from === here).map(([, to]) => to);
+  path.push(outs[Math.floor(rand() * outs.length)]);
+}
+const onPath = new Set(path.map((n) => n.id));
+const hot = new Set(path.slice(1).map((n, i) => `${path[i].id}-${n.id}`));
+
+const curve = (p: Node, q: Node) => {
+  const mx = (p.x + q.x) / 2;
+  return `M${p.x} ${p.y} C${mx} ${p.y} ${mx} ${q.y} ${q.x} ${q.y}`;
+};
+const runPath = path
+  .slice(1)
+  .map((q, i) => {
+    const p = path[i];
+    const mx = (p.x + q.x) / 2;
+    return `${i === 0 ? `M${p.x} ${p.y} ` : ''}C${mx} ${p.y} ${mx} ${q.y} ${q.x} ${q.y}`;
+  })
+  .join(' ');
+
+// One loop edge (the agent calling a tool and coming back), drawn as a dashed arc above.
+const loopFrom = path[Math.max(1, Math.floor(path.length / 2))];
+const loopTo = path[Math.max(0, Math.floor(path.length / 2) - 1)];
+const loopTop = Math.max(18, Math.min(loopFrom.y, loopTo.y) - ch * 0.75);
+const loop = `M${loopFrom.x} ${loopFrom.y} C${loopFrom.x} ${loopTop} ${loopTo.x} ${loopTop} ${loopTo.x} ${loopTo.y}`;
+const dur = `${(path.length * 0.9).toFixed(1)}s`;
+const gid = `pc-${seed.replace(/[^a-z0-9]/gi, '').slice(0, 24)}-${variant}`;
+---
+<svg class:list={['post-cover', `post-cover-${variant}`, `pc-p${palette}`, className]} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id={`${gid}-dots`} width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" class="pc-dot" />
+    </pattern>
+    <radialGradient id={`${gid}-glow`} cx="78%" cy="20%" r="80%">
+      <stop offset="0" class="pc-glow-a" />
+      <stop offset="1" class="pc-glow-b" />
+    </radialGradient>
+  </defs>
+  <rect width={W} height={H} class="pc-bg" />
+  <rect width={W} height={H} fill={`url(#${gid}-glow)`} />
+  <rect width={W} height={H} fill={`url(#${gid}-dots)`} />
+  <path d={loop} class="pc-loop" />
+  {edges.map(([p, q]) => <path d={curve(p, q)} class:list={['pc-edge', { 'is-hot': hot.has(`${p.id}-${q.id}`) }]} />)}
+  {animate && (
+    <circle r="5" class="pc-particle">
+      <animateMotion dur={dur} repeatCount="indefinite" path={runPath} />
+    </circle>
+  )}
+  {nodes.map((n) =>
+    n.tool ? (
+      <rect x={n.x - 9} y={n.y - 9} width="18" height="18" rx="5" class:list={['pc-node', { 'is-hot': onPath.has(n.id) }]} />
+    ) : (
+      <circle cx={n.x} cy={n.y} r={n.c === 0 || n.c === cols - 1 ? 11 : 8} class:list={['pc-node', { 'is-hot': onPath.has(n.id), 'is-end': n.c === 0 || n.c === cols - 1 }]} />
+    ),
+  )}
+</svg>

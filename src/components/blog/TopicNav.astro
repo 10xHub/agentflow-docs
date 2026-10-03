@@ -1,0 +1,19 @@
+---
+// Topic chips for the blog index and tag pages. Plain links, so every topic is a crawlable page.
+import { tagHref, tagSlug } from '../../lib/content';
+
+interface Props {
+  tags: { tag: string; count: number }[];
+  current?: string;
+  total: number;
+}
+const { tags, current, total } = Astro.props;
+---
+<nav class="topics" aria-label="Topics">
+  <ul>
+    <li><a href="/blog" aria-current={!current ? 'page' : undefined}>All <span>{total}</span></a></li>
+    {tags.map(({ tag, count }) => (
+      <li><a href={tagHref(tag)} aria-current={current && tagSlug(current) === tagSlug(tag) ? 'page' : undefined}>{tag} <span>{count}</span></a></li>
+    ))}
+  </ul>
+</nav>

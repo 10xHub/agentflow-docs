@@ -1,30 +1,39 @@
 ---
-import { SITE } from '../lib/site';
+import { POLICIES, SECTION_INFO, DOC_SECTIONS, SITE } from '../lib/site';
+
+const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
   <div class="wrap footer-grid">
-    <div>
+    <div class="footer-brand">
       <a class="wordmark" href="/">10xGraph</a>
       <p>Open-source Python framework for production multi-agent AI, with the production server included.</p>
+      <a class="footer-version" href="/changelog">v{SITE.version} <span>Changelog</span></a>
     </div>
     <nav aria-label="Docs">
       <h2>Docs</h2>
       <ul>
-        <li><a href="/docs">Introduction</a></li>
-        <li><a href="/docs/get-started/installation">Installation</a></li>
-        <li><a href="/docs/concepts/replay-safe-tools">Replay-safe tools</a></li>
+        {DOC_SECTIONS.map((s) => <li><a href={`/docs/${SECTION_INFO[s].slug}`}>{s}</a></li>)}
       </ul>
     </nav>
     <nav aria-label="Project">
       <h2>Project</h2>
       <ul>
         <li><a href="/blog">Blog</a></li>
+        <li><a href="/changelog">Changelog</a></li>
         <li><a href={SITE.github}>GitHub</a></li>
-        <li><a href={SITE.org.url}>10xScale</a></li>
+        <li><a href={`${SITE.github}/issues`}>Issues</a></li>
+        <li><a href={SITE.org.url}>{SITE.org.name}</a></li>
       </ul>
     </nav>
-    <nav aria-label="Machine-readable">
-      <h2>For machines</h2>
+    <nav aria-label="Community">
+      <h2>Community</h2>
+      <ul>
+        {POLICIES.map((p) => <li><a href={p.href}>{p.label}</a></li>)}
+      </ul>
+    </nav>
+    <nav aria-label="AI and feeds">
+      <h2>AI and feeds</h2>
       <ul>
         <li><a href="/llms.txt">llms.txt</a></li>
         <li><a href="/llms-full.txt">llms-full.txt</a></li>
@@ -34,7 +43,7 @@ import { SITE } from '../lib/site';
     </nav>
   </div>
   <div class="wrap legal">
-    <span>{SITE.name} by {SITE.org.name}. Formerly {SITE.formerName}. MIT license.</span>
-    <span>v{SITE.version}</span>
+    <span>&copy; {year} {SITE.org.name}. {SITE.name} is open source under the MIT license.</span>
+    <span>Formerly {SITE.formerName}</span>
   </div>
 </footer>

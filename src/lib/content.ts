@@ -3,6 +3,7 @@ import { DOC_SECTIONS, SITE } from './site';
 
 export type Doc = CollectionEntry<'docs'>;
 export type Post = CollectionEntry<'blog'>;
+export type Release = CollectionEntry<'releases'>;
 
 const sectionRank = (s: Doc['data']['section']) => DOC_SECTIONS.indexOf(s);
 
@@ -27,6 +28,16 @@ export function getTags(posts: Post[]): { tag: string; count: number }[] {
   for (const p of posts) for (const t of p.data.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
   return [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
+
+/** Releases, newest first; same-day releases ordered core, api, client. */
+export async function getReleases(): Promise<Release[]> {
+  const order = { core: 0, api: 1, client: 2 } as const;
+  const all = await getCollection('releases');
+  return all.sort(
+    (a: Release, b: Release) => b.data.date.getTime() - a.data.date.getTime() || order[a.data.package] - order[b.data.package],
+  );
+}
+export const releaseAnchor = (r: Release) => `${r.data.package}-${r.data.version.replace(/\./g, '-')}`;
 
 export const docHref = (id: string) => (id === 'index' ? '/docs' : `/docs/${id}`);
 export const docMarkdownHref = (id: string) => `/docs/${id}.md`;

@@ -25,7 +25,7 @@ export default defineConfig({
   markdown: {
     // Dual themes: colors switch with the site theme through CSS variables (see global.css).
     shikiConfig: {
-      themes: { light: 'github-light', dark: 'github-dark' },
+      themes: { light: 'github-light-high-contrast', dark: 'github-dark' },
       defaultColor: false,
       // Authors can mark lines: {2,4-5} in the fence meta, or "# [!code highlight]", "# [!code ++]",
       // "# [!code --]" and "# [!code focus]" comments. codeFrame() must run last: it wraps the <pre>.
