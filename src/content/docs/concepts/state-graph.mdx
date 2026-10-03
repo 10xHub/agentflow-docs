@@ -2,8 +2,8 @@
 title: StateGraph
 description: How StateGraph models an agent as nodes, edges and shared state, how compile() produces a runnable graph, and when to use invoke or stream.
 section: Concepts
-order: 0
-updated: 2026-10-03
+order: 210
+updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: What is the difference between StateGraph and ReactAgent?
     a: ReactAgent is a prebuilt that creates a StateGraph for you, with one agent node, one tool node and a conditional edge between them. Build a StateGraph yourself when you need your own nodes, routing or several agents.
@@ -11,6 +11,7 @@ faq:
     a: Each run has a recursion limit, 25 steps by default. When a run exceeds it, execution stops with a GraphRecursionError. Raise the limit with recursion_limit in the run config, or fix the routing function.
   - q: Do I need a checkpointer to use a StateGraph?
     a: No, a graph runs without one. But without a checkpointer nothing is saved between calls, so every invoke starts from the graph's initial state and a thread cannot be resumed.
+group: In depth
 ---
 
 A `StateGraph` describes an agent as a set of nodes (Python functions, agents or tool nodes) joined by edges, all reading and writing one shared state object. You build it, call `compile()` to get a runnable `CompiledGraph`, then run it with `invoke` or `stream`.
@@ -155,7 +156,7 @@ A chunk has an `event` (`message`, `state`, `updates` or `error`) and carries a 
 
 <CardGrid>
 
-<LinkCard title="Quickstart" href="/docs/get-started/quickstart" description="Run a ReactAgent locally and over HTTP." eyebrow="Get started" />
+<LinkCard title="Quickstart" href="/docs/get-started/first-agent" description="Run a ReactAgent locally and over HTTP." eyebrow="Get started" />
 <LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="How checkpointers persist threads." eyebrow="Concept" />
 <LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="Resume a crashed run without repeating tools." eyebrow="Concept" />
 </CardGrid>

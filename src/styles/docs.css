@@ -209,3 +209,22 @@
 .doc-foot a { color: var(--muted); text-underline-offset: 3px; }
 .doc-foot a:hover { color: var(--text); }
 .doc-foot + .ai-note { margin-top: 24px; }
+
+/* group labels inside a docs map section */
+.map-group { margin: 12px 0 2px; padding-left: 28px; font: 500 0.7rem var(--f-mono); color: var(--faint); }
+.map-group:first-child { margin-top: 0; }
+.section-intro { margin-bottom: 8px; }
+.section-intro > h2:first-child { margin-top: 0.4em; }
+.section-list-title { margin: 56px 0 8px; padding-top: 28px; border-top: 1px solid var(--line); font-size: 1.5rem; }
+.section-group { margin-top: 20px; }
+.section-group-title { margin: 0 0 4px; font: 500 0.78rem var(--f-mono); color: var(--faint); letter-spacing: 0; }
+
+/* mermaid diagrams (scripts/mermaid.ts) */
+.mermaid-figure { margin: 0 0 1.6em; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow-x: auto; }
+.mermaid-figure > div:first-child { display: flex; justify-content: center; }
+.mermaid-figure > div:first-child:empty { min-height: 120px; }
+.mermaid-figure svg { max-width: 100%; height: auto; }
+.mermaid-source { margin-top: 12px; font: 400 0.76rem var(--f-mono); color: var(--faint); }
+.mermaid-source summary { cursor: pointer; width: max-content; }
+.mermaid-source pre { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--code-bg); }
+.mermaid-figure.is-error > div:first-child { display: none; }

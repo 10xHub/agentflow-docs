@@ -2,8 +2,8 @@
 title: Installation
 description: Install 10xGraph and its API server on Python 3.12 or newer, scaffold a production project, and serve your first agent on port 8000.
 section: Get started
-order: 1
-updated: 2026-10-03
+order: 20
+updated: 2026-10-03T00:00:00.000Z
 ---
 
 10xGraph needs Python 3.12 or newer.

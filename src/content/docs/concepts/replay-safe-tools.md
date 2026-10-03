@@ -2,8 +2,8 @@
 title: Replay-safe tools
 description: How 10xGraph keeps a crashed run from executing finished tools twice, so a resumed run never charges a card or sends an email a second time.
 section: Concepts
-order: 1
-updated: 2026-10-03
+order: 155
+updated: 2026-10-03T00:00:00.000Z
 ---
 
 A process can die between two tool calls. When the run resumes, 10xGraph replays the interrupted step, but it checks a tool ledger first. Tools that already finished are skipped instead of executed again.

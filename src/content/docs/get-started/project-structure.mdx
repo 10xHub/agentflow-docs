@@ -2,8 +2,8 @@
 title: Project structure
 description: The files that 10xgraph init --template production generates, what each one does, and what every key in the generated agentflow.json controls.
 section: Get started
-order: 3
-updated: 2026-10-03
+order: 35
+updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: Which template should I start from?
     a: Use quick-start to try an idea, since it writes only a graph, an env example and agentflow.json. Use production when the agent will be deployed, because it adds auth options, a prompt-injection validator, evals, tests and lint configuration.
@@ -144,6 +144,6 @@ container = InjectQ.get_instance()
 
 <CardGrid>
 
-<LinkCard title="Quickstart" href="/docs/get-started/quickstart" description="Build and serve a first agent from scratch." eyebrow="Get started" />
-<LinkCard title="Configuration reference" href="/docs/reference/configuration" description="Every agentflow.json key." eyebrow="Reference" />
+<LinkCard title="Quickstart" href="/docs/get-started/first-agent" description="Build and serve a first agent from scratch." eyebrow="Get started" />
+<LinkCard title="Configuration reference" href="/docs/reference/api-cli/configuration" description="Every agentflow.json key." eyebrow="Reference" />
 </CardGrid>

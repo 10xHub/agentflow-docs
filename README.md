@@ -82,8 +82,10 @@ Docs frontmatter:
 ---
 title: Replay-safe tools
 description: 50-170 characters. Used for search results and llms.txt.
-section: Concepts        # one of: Get started, Concepts, How-to guides, Reference
-order: 1                 # position within the section
+section: Concepts        # one of DOC_SECTIONS in src/lib/site.ts (12 sections)
+group: In depth          # optional sub-group shown as a heading in the docs map
+label: Replay safety     # optional short name for the docs map
+order: 1                 # position within the section (migrated pages use steps of 10)
 updated: 2026-10-03      # optional; shown on the page and in JSON-LD
 faq:                     # optional; rendered at the end and as FAQPage JSON-LD
   - q: Does this need Redis?
@@ -93,6 +95,10 @@ draft: false             # optional
 ```
 
 Blog frontmatter: `title`, `description`, `date`, `author`, optional `updated`, `tags`, `featured` (pins the post to the top of /blog), `faq`, `draft`.
+
+A doc at `<folder>/index.md` takes the folder URL (`concepts/index.md` is `/docs/concepts`). When the folder is a section's slug, that page becomes the intro of the section landing page.
+
+Diagrams: write ```` ```mermaid ```` blocks. They are drawn in the browser (Mermaid loads only on pages that have one) and follow the light and dark themes.
 
 Start each page with a 40-60 word paragraph that answers the page's question on its own. AI answer engines quote it.
 
@@ -127,4 +133,4 @@ graph.add_node("tools", tool_node)   # [!code ++]
 
 - Set the final domain in `astro.config.mjs` (`site`) and `src/lib/site.ts`.
 - Add an Open Graph image and a favicon (waiting on the logo).
-- Migrate content from `agentflow-docs/docs/` and add redirects for old URLs in `astro.config.mjs`.
+- The Docusaurus content is migrated (Oct 2026) with the same URLs; old Docusaurus redirects live in `astro.config.mjs`. Delete `docusaurus/` once you have checked the migrated pages.

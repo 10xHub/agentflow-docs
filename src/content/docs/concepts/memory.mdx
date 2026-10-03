@@ -2,8 +2,8 @@
 title: "Memory: hot and cold"
 description: How PgCheckpointer keeps thread state in a Redis hot cache and PostgreSQL durable history, what is written when, and how the long-term store fits in.
 section: Concepts
-order: 2
-updated: 2026-10-03
+order: 150
+updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: What happens when the Redis cache expires or Redis restarts?
     a: Nothing is lost. PostgreSQL holds the authoritative state, so the next read misses the cache, loads the latest version from PostgreSQL and writes it back to Redis. The cache TTL defaults to 86400 seconds (24 hours).
@@ -131,5 +131,5 @@ For the reasoning behind this split, read [Hot and cold agent memory](/blog/hot-
 
 <LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Where the checkpointer plugs in through compile()." eyebrow="Concept" />
 <LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="What the durable ledger does on resume." eyebrow="Concept" />
-<LinkCard title="Deploy with Docker" href="/docs/how-to/deploy-with-docker" description="Run the server with PostgreSQL and Redis." eyebrow="How-to" />
+<LinkCard title="Deploy with Docker" href="/docs/how-to/api-cli/generate-docker-files" description="Run the server with PostgreSQL and Redis." eyebrow="How-to" />
 </CardGrid>

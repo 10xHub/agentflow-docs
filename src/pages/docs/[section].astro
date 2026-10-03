@@ -1,27 +1,40 @@
 ---
 // Section landing pages: /docs/get-started, /docs/concepts, /docs/how-to, /docs/reference.
 // Every page in the section, in reading order, as a numbered run.
+import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { mdxComponents } from '../../components/mdx';
 import DocsMap from '../../components/docs/DocsMap.astro';
 import { DOC_SECTIONS, SECTION_INFO, type DocSection } from '../../lib/site';
-import { absolute, docHref, getDocs, readingMinutes, type Doc } from '../../lib/content';
+import { absolute, docHref, getDocs, isSectionIntro, readerDocs, readingMinutes, type Doc } from '../../lib/content';
 import '../../styles/docs.css';
 
 export async function getStaticPaths() {
-  const docs = await getDocs();
-  return DOC_SECTIONS.filter((s) => docs.some((d: Doc) => d.data.section === s)).map((section) => ({
+  const all = await getDocs();
+  const docs = readerDocs(all);
+  return DOC_SECTIONS.filter((s) => all.some((d: Doc) => d.data.section === s)).map((section) => ({
     params: { section: SECTION_INFO[section].slug },
-    props: { section, docs },
+    props: { section, docs, intro: all.find((d: Doc) => d.data.section === section && isSectionIntro(d)) },
   }));
 }
 
 interface Props {
   section: DocSection;
   docs: Doc[];
+  intro?: Doc;
 }
-const { section, docs } = Astro.props;
+const { section, docs, intro } = Astro.props;
+const Intro = intro ? (await render(intro)).Content : undefined;
 const { slug, blurb } = SECTION_INFO[section];
 const pages = docs.filter((d) => d.data.section === section);
+// Pages grouped by their `group` frontmatter, in reading order; ungrouped pages come first.
+const grouped: { group?: string; items: Doc[] }[] = [];
+for (const d of pages) {
+  const last = grouped[grouped.length - 1];
+  if (last && last.group === d.data.group) last.items.push(d);
+  else grouped.push({ group: d.data.group, items: [d] });
+}
+let n = 0;
 const minutes = pages.reduce((n, d) => n + readingMinutes(d.body), 0);
 const href = `/docs/${slug}`;
 const jsonLd = [
@@ -66,32 +79,46 @@ const jsonLd = [
           <span aria-current="page">{section}</span>
         </nav>
         <h1>{section}</h1>
-        <p class="doc-tldr"><span class="doc-tldr-label">In this section</span>{blurb}</p>
+        <p class="doc-tldr"><span class="doc-tldr-label">In this section</span>{intro?.data.description ?? blurb}</p>
         <ul class="doc-chips" data-pagefind-ignore>
           <li>{pages.length} page{pages.length === 1 ? '' : 's'}</li>
           <li>About {minutes} min to read all</li>
         </ul>
       </header>
 
-      <ol class="section-run">
-        {pages.map((d, i) => (
-          <li>
-            <a href={docHref(d.id)}>
-              <span class="section-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-              <span class="section-body">
-                <span class="section-title">{d.data.title}</span>
-                <span class="section-desc">{d.data.description}</span>
-              </span>
-              <span class="section-time">{readingMinutes(d.body)} min</span>
-            </a>
-          </li>
-        ))}
-      </ol>
+      {Intro && (
+        <div class="prose doc-prose section-intro">
+          <Intro components={mdxComponents} />
+        </div>
+      )}
+
+      <h2 class="section-list-title" id="pages">All pages in {section}</h2>
+      {grouped.map((g) => (
+        <section class="section-group" aria-label={g.group ?? section}>
+          {g.group && <h3 class="section-group-title">{g.group}</h3>}
+          <ol class="section-run">
+            {g.items.map((d) => (
+              <li>
+                <a href={docHref(d.id)}>
+                  <span class="section-num" aria-hidden="true">{String(++n).padStart(2, '0')}</span>
+                  <span class="section-body">
+                    <span class="section-title">{d.data.title}</span>
+                    <span class="section-desc">{d.data.description}</span>
+                  </span>
+                  <span class="section-time">{readingMinutes(d.body)} min</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
     </div>
   </div>
 </BaseLayout>
 
 <script>
   import { initReader } from '../../scripts/docs-reader';
+  import { renderMermaid } from '../../scripts/mermaid';
   initReader();
+  renderMermaid();
 </script>

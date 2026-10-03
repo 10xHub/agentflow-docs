@@ -16,6 +16,9 @@ const openSection = current?.data.section ?? section;
 const groups = DOC_SECTIONS.map((s) => ({ section: s, items: docs.filter((d) => d.data.section === s) })).filter(
   (g) => g.items.length > 0,
 );
+// A group label row is inserted wherever the `group` frontmatter changes within a section.
+const withGroups = (items: Doc[]) =>
+  items.map((d, i) => ({ d, groupStart: d.data.group && d.data.group !== items[i - 1]?.data.group ? d.data.group : undefined }));
 const DOT_LIMIT = 12;
 ---
 <nav class="docs-map" aria-label="Documentation">
@@ -40,13 +43,16 @@ const DOT_LIMIT = 12;
           </summary>
           <ol class="map-nodes">
             <li><a class="map-overview" href={`/docs/${SECTION_INFO[g.section].slug}`} aria-current={!current && here ? 'page' : undefined}>Overview</a></li>
-            {g.items.map((d) => (
-              <li>
-                <a class="map-node" href={docHref(d.id)} data-doc-id={d.id} aria-current={d.id === current?.id ? 'page' : undefined}>
-                  <span class="map-node-dot" aria-hidden="true" />
-                  <span class="map-node-label">{d.data.title}</span>
-                </a>
-              </li>
+            {withGroups(g.items).map(({ d, groupStart }) => (
+              <>
+                {groupStart && <li class="map-group" aria-hidden="true">{groupStart}</li>}
+                <li>
+                  <a class="map-node" href={docHref(d.id)} data-doc-id={d.id} aria-current={d.id === current?.id ? 'page' : undefined} title={d.data.label ? d.data.title : undefined}>
+                    <span class="map-node-dot" aria-hidden="true" />
+                    <span class="map-node-label">{d.data.label ?? d.data.title}</span>
+                  </a>
+                </li>
+              </>
             ))}
           </ol>
         </details>

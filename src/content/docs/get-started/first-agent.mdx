@@ -1,0 +1,172 @@
+---
+title: Quickstart
+description: Build a 10xGraph agent with one tool in about 20 lines of Python, run it locally, then serve it over HTTP and call it with curl.
+section: Get started
+order: 30
+updated: 2026-10-03T00:00:00.000Z
+faq:
+  - q: Do I need ReactAgent, or should I write a StateGraph myself?
+    a: Start with ReactAgent. It builds the standard reason-and-act graph for you (one agent node, one tool node, a conditional edge between them) and returns a normal compiled graph. Move to StateGraph when you need custom routing or several agents.
+  - q: Can I use OpenAI or Anthropic instead of Google?
+    a: Yes. Change the model string and the provider argument, and install the matching extra. The graph, the tools and the API server stay the same.
+  - q: Why does the second curl call remember the first one?
+    a: Both calls send the same thread_id, and the compiled graph has a checkpointer. The checkpointer stores the conversation per thread, so the next call on that thread continues it.
+---
+
+This page builds a working agent with one tool, runs it from a Python script, then serves it with the 10xGraph API server and calls `POST /v1/graph/invoke` with curl. You need Python 3.12 or newer and a Google API key.
+
+## Install the packages
+
+<Tabs syncKey="pkg">
+
+<TabItem label="pip">
+
+```bash
+pip install 10xgraph 10xgraph-api google-genai
+```
+
+</TabItem>
+
+<TabItem label="uv">
+
+```bash
+uv add 10xgraph 10xgraph-api google-genai
+```
+
+</TabItem>
+
+</Tabs>
+
+`10xgraph` is the framework, `10xgraph-api` adds the server and the `10xgraph` command, and `google-genai` is the model provider used below. See [Installation](/docs/get-started/installation) for the full list of extras.
+
+Export your key. The Google provider reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`:
+
+```bash
+export GOOGLE_API_KEY="your-key"
+```
+
+## Build and run the agent
+
+<Steps>
+
+1. **Write the agent**
+
+   Create `agent.py`. A tool is a plain Python function. The docstring and type hints become the schema the model sees.
+
+   ```python title="agent.py"
+   from agentflow.prebuilt.agent import ReactAgent
+   from agentflow.storage.checkpointer import InMemoryCheckpointer
+
+
+   def get_weather(location: str) -> str:
+       """Get the current weather for a location."""
+       return f"The weather in {location} is sunny, 24 C."
+
+
+   agent = ReactAgent(
+       model="google/gemini-2.5-flash",
+       provider="google",
+       system_prompt=[{"role": "system", "content": "You are a concise weather assistant."}],
+       tools=[get_weather],  # [!code highlight]
+   )
+
+   app = agent.compile(checkpointer=InMemoryCheckpointer())
+   ```
+
+   `compile()` returns a `CompiledGraph`. That object, named `app` here, is what you run and what the server loads.
+
+2. **Run it from Python**
+
+   Add a runner next to the agent.
+
+   ```python title="run.py"
+   from agentflow.core.state import Message
+
+   from agent import app
+
+   result = app.invoke(
+       {"messages": [Message.text_message("What is the weather in London?")]},
+       config={"thread_id": "quickstart-1"},
+   )
+   print(result["messages"][-1].text())
+   ```
+
+   ```bash
+   python run.py
+   ```
+
+   The model decides to call `get_weather`, the tool node runs it, and the agent node writes the final answer.
+
+3. **Add the config file**
+
+   The server finds your graph through `agentflow.json`. The `agent` value is `module:variable`.
+
+   ```json title="agentflow.json"
+   {
+     "agent": "agent:app",
+     "env": ".env",
+     "auth": null
+   }
+   ```
+
+4. **Serve it**
+
+   ```bash
+   10xgraph api
+   ```
+
+   The server listens on `127.0.0.1:8000` by default. Use `--host 0.0.0.0` to accept outside connections and `--port` to change the port.
+
+5. **Call it with curl**
+
+   ```bash
+   curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
+     -H "Content-Type: application/json" \
+     -d '{
+       "messages": [
+         {"role": "user", "content": [{"type": "text", "text": "What is the weather in London?"}]}
+       ],
+       "config": {"thread_id": "quickstart-2"}
+     }'
+   ```
+
+   The reply is wrapped in a `data` object, next to a `metadata` object with a request id and timestamp. The assistant message is the last item in `data.messages`.
+
+</Steps>
+
+## What does the request body accept?
+
+The invoke endpoint validates the body against `GraphInputSchema`:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `messages` | `[]` | Messages to process. Required unless you send `resume`. |
+| `config` | none | Run settings. `thread_id` selects the conversation. |
+| `initial_state` | none | Initial values for your state fields. |
+| `recursion_limit` | 25 | Step cap for the run. Allowed range is 1 to 100. |
+| `response_granularity` | `low` | `low` returns messages, `partial` adds context and summary, `full` adds state. |
+| `resume` | none | Answer for a thread paused by an interrupt. |
+
+Message content is a list of typed blocks, so a text message is `[{"type": "text", "text": "..."}]`.
+
+<Callout type="tip" title="Always send a thread_id">
+
+If you leave `thread_id` out, the server generates a fresh one for every call. The run works, but you cannot continue or stop that conversation because nobody knows its id.
+
+</Callout>
+
+<Callout type="note" title="InMemoryCheckpointer forgets on restart">
+
+`InMemoryCheckpointer` keeps threads in process memory and loses them when the server stops. It is right for a first run. For anything that must survive a restart, read [Memory: hot and cold](/docs/concepts/memory).
+
+</Callout>
+
+## Where to go next
+
+<CardGrid>
+
+<LinkCard title="Project structure" href="/docs/get-started/project-structure" description="What 10xgraph init generates for a production project." eyebrow="Get started" />
+<LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Nodes, edges and routing, the layer ReactAgent is built on." eyebrow="Concept" />
+<LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="Persist threads with Redis and PostgreSQL." eyebrow="Concept" />
+<LinkCard title="Add JWT auth" href="/docs/how-to/api-cli/add-auth" description="Protect the endpoints before you deploy." eyebrow="How-to" />
+</CardGrid>

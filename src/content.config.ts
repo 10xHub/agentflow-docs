@@ -17,6 +17,10 @@ const docs = defineCollection({
     title: z.string(),
     description,
     section: z.enum(DOC_SECTIONS),
+    /** Optional sub-group inside the section, e.g. "Python library" under Reference. */
+    group: z.string().optional(),
+    /** Shorter name for the docs map, when the title is long. */
+    label: z.string().optional(),
     order: z.number().default(100),
     updated: z.coerce.date().optional(),
     faq,

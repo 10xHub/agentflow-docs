@@ -15,12 +15,22 @@ const next = i < docs.length - 1 ? docs[i + 1] : undefined;
 
 const INTENT: Record<string, string> = {
   'Get started': 'to start',
+  'Beginner path': 'to learn step by step',
   Concepts: 'to understand',
+  Prebuilt: 'to reuse',
   'How-to guides': 'to ship',
+  'Testing and QA': 'to test',
+  Tutorials: 'to build along',
   Reference: 'to look up',
+  Troubleshooting: 'to fix',
+  'Learn more': 'to explore',
+  Courses: 'to study',
+  Project: 'to contribute',
 };
-// One branch per other section: its first page, skipping the page that is already "next".
-const branches = DOC_SECTIONS.filter((s) => s !== current.data.section)
+// Two branches into the sections that follow this one (wrapping around), each to its first page.
+const at = DOC_SECTIONS.indexOf(current.data.section);
+const branches = [1, 2, 3, 4]
+  .map((k) => DOC_SECTIONS[(at + k) % DOC_SECTIONS.length])
   .map((s) => docs.find((d) => d.data.section === s && d.id !== next?.id))
   .filter((d): d is Doc => !!d)
   .slice(0, 2);

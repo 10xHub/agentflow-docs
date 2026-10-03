@@ -1,0 +1,135 @@
+---
+title: Add JWT authentication
+description: Turn on JWT auth in agentflow.json, send bearer tokens, read the user in tools, and restrict each thread to its owner. Includes a custom BaseAuth option.
+section: How-to guides
+order: 900
+updated: 2026-10-03T00:00:00.000Z
+faq:
+  - q: Which claims must my JWT contain?
+    a: Every token needs an exp claim and a user_id claim. If you set JWT_ISSUER or JWT_AUDIENCE, the token must also carry matching iss or aud claims. A token without user_id is rejected with INVALID_TOKEN.
+  - q: Why do I get 401 with REVOKED_TOKEN?
+    a: The request had no Authorization header, or it was not a Bearer credential. Send Authorization with the value "Bearer <token>".
+  - q: Does ownership checking work with the in-memory checkpointer?
+    a: The in-memory and SQLite checkpointers implement thread ownership lookup, but in-memory data disappears on restart. Use PgCheckpointer in production so owners persist.
+group: CLI
+---
+
+Set `"auth": "jwt"` in `agentflow.json`, put `JWT_SECRET_KEY` and `JWT_ALGORITHM` in your environment, and send `Authorization: Bearer <token>` on every request. The token must carry `exp` and `user_id` claims. The `user_id` becomes the thread owner and reaches your tools through the run config.
+
+<Steps>
+
+1. **Install the JWT extra**
+
+   Token verification uses PyJWT, which ships as an optional extra of the API package.
+
+   ```bash
+   pip install "10xscale-agentflow-cli[jwt]"
+   ```
+
+2. **Set the environment variables**
+
+   Put these in the file named by the `env` key (usually `.env`) or in the process environment.
+
+   ```bash title=".env"
+   JWT_SECRET_KEY=<a random string of 32 or more bytes>
+   JWT_ALGORITHM=HS256
+   ```
+
+   Generate a secret with `python -c 'import secrets; print(secrets.token_urlsafe(48))'`. The server refuses a shorter HS* secret at startup when `MODE=production`, and warns otherwise.
+
+3. **Enable JWT in agentflow.json**
+
+   Use the bare string `"jwt"`. The object form is only for custom auth.
+
+   ```jsonc title="agentflow.json"
+   {
+     "agent": "graph.agent:app",
+     "env": ".env",
+     "auth": null, // [!code --]
+     "auth": "jwt", // [!code ++]
+     "authorization": "ownership" // [!code ++]
+   }
+   ```
+
+4. **Start the server and call it**
+
+   ```bash
+   10xgraph api
+   ```
+
+   ```bash
+   curl -X POST http://localhost:8000/v1/graph/invoke \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"messages": [{"role": "user", "content": "hello"}]}'
+   ```
+
+</Steps>
+
+<Callout type="danger" title="Keep the signing secret out of git">
+
+Anyone who holds `JWT_SECRET_KEY` can mint a token for any `user_id`. Never commit it, never bake it into an image, and inject it at deploy time from a secret manager. The generated `.dockerignore` excludes `.env` files for this reason.
+
+</Callout>
+
+## How does a request carry the token?
+
+The server reads a standard bearer credential from the `Authorization` header. Browser and server clients send the same header.
+
+| Situation | Result |
+|---|---|
+| No header | 401, code `REVOKED_TOKEN` |
+| Expired token | 401, code `EXPIRED_TOKEN` |
+| Bad signature, or missing `iss`/`aud` when configured | 401, code `INVALID_TOKEN` |
+| Valid signature but no `user_id` claim | 401, code `INVALID_TOKEN` |
+
+To pin tokens to your service, set `JWT_ISSUER` and `JWT_AUDIENCE`. When either is set, tokens must carry a matching claim, so a token minted for another service that shares the key is rejected.
+
+## How does the user reach my tools?
+
+The server copies the verified identity into the run config as `config["user"]` (the full decoded claims) and `config["user_id"]`. A tool receives that config by declaring a parameter named `config`. Framework-injected parameters are hidden from the tool schema the model sees.
+
+```python title="graph/tools/orders.py"
+def list_my_orders(config: dict) -> list[dict]:  # [!code highlight]
+    """List the caller's recent orders."""
+    user_id = config["user_id"]  # [!code highlight]
+    return db.orders_for(user_id)
+```
+
+Never take the user id from a tool argument. The model chooses tool arguments, and a prompt-injected model could ask for another user's data.
+
+## How do I make users see only their own threads?
+
+Set `"authorization": "ownership"`. A thread is read, continued, stopped or fixed only by the user who created it. Another user's request on that thread is denied for every action, including `invoke` and `stream`. Listing threads is scoped to the caller.
+
+If you leave `authorization` unset, the default depends on `MODE`: `ownership` when `MODE=production`, and allow-all otherwise. Setting it explicitly keeps development and production consistent.
+
+Ownership is looked up through the checkpointer you pass to `compile()`. Use a durable one such as `PgCheckpointer` so owners survive restarts. Set `redis` in `agentflow.json` (or `REDIS_URL`) to share the ownership cache across workers.
+
+For roles and scopes, `authorization` also accepts an object with `"backend": "rbac"`, a `roles` map and optional `default_scopes`. See the [configuration reference](/docs/reference/api-cli/configuration).
+
+## How do I write custom auth instead?
+
+Subclass `BaseAuth` and return a dict containing at least `user_id`. Raise `HTTPException(status_code=401)` for a bad credential.
+
+```python title="auth/agent_auth.py"
+from agentflow_cli import BaseAuth
+from fastapi import HTTPException
+
+class AgentAuth(BaseAuth):
+    def authenticate(self, request, response, credential):
+        if credential is None:
+            raise HTTPException(status_code=401, detail="Missing credentials")
+        claims = verify_with_my_idp(credential.credentials)  # raises on a bad token
+        return {"user_id": claims["sub"], "roles": claims.get("roles", [])}
+```
+
+Point the config at it with the object form:
+
+```json title="agentflow.json"
+{
+  "auth": { "method": "custom", "path": "auth.agent_auth:AgentAuth" }
+}
+```
+
+Every key you return is merged into `config["user"]`. Derive `user_id` only from the verified credential, never from a client-set header.

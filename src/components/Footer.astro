@@ -1,7 +1,8 @@
 ---
-import { POLICIES, SECTION_INFO, DOC_SECTIONS, SITE } from '../lib/site';
+import { POLICIES, SECTION_INFO, SITE, type DocSection } from '../lib/site';
 
 const year = new Date().getFullYear();
+const docLinks: DocSection[] = ['Get started', 'Concepts', 'How-to guides', 'Tutorials', 'Reference', 'Troubleshooting'];
 ---
 <footer class="site-footer">
   <div class="wrap footer-grid">
@@ -13,7 +14,7 @@ const year = new Date().getFullYear();
     <nav aria-label="Docs">
       <h2>Docs</h2>
       <ul>
-        {DOC_SECTIONS.map((s) => <li><a href={`/docs/${SECTION_INFO[s].slug}`}>{s}</a></li>)}
+        {docLinks.map((s) => <li><a href={`/docs/${SECTION_INFO[s].slug}`}>{s}</a></li>)}
       </ul>
     </nav>
     <nav aria-label="Project">

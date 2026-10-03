@@ -1,5 +1,5 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { DOC_SECTIONS, SITE } from './site';
+import { DOC_SECTIONS, SECTION_INFO, SITE } from './site';
 
 export type Doc = CollectionEntry<'docs'>;
 export type Post = CollectionEntry<'blog'>;
@@ -39,7 +39,14 @@ export async function getReleases(): Promise<Release[]> {
 }
 export const releaseAnchor = (r: Release) => `${r.data.package}-${r.data.version.replace(/\./g, '-')}`;
 
-export const docHref = (id: string) => (id === 'index' ? '/docs' : `/docs/${id}`);
+// `index` files take their folder's URL: concepts/index -> /docs/concepts.
+export const docHref = (id: string) => (id === 'index' ? '/docs' : `/docs/${id.replace(/\/index$/, '')}`);
+
+/** A section's own index page (concepts/index for Concepts). It is shown on /docs/<slug>, not as a page. */
+export const isSectionIntro = (d: Doc) => d.id === `${SECTION_INFO[d.data.section].slug}/index`;
+
+/** Docs in reading order without the section intros: what the docs map, pager and lists show. */
+export const readerDocs = (docs: Doc[]) => docs.filter((d) => !isSectionIntro(d));
 export const docMarkdownHref = (id: string) => `/docs/${id}.md`;
 export const postHref = (id: string) => `/blog/${id}`;
 export const postMarkdownHref = (id: string) => `/blog/${id}.md`;
@@ -78,6 +85,18 @@ export function mdxToMarkdown(source: string): string {
     if (/^<\/?(Tabs|Steps|CardGrid|FileTree)\b[^>]*>$/.test(t) || t === '</TabItem>') continue;
     if (t.startsWith('<TabItem')) {
       out.push(`**${attr(t, 'label') ?? ''}**`, '');
+      continue;
+    }
+    // Raw-HTML callouts (converted Docusaurus admonitions): <aside class="callout ..."><p class="callout-title">X</p>
+    if (t.startsWith('<aside class="callout')) {
+      out.push(`> **${/callout-title">([^<]*)</.exec(t)?.[1] ?? 'Note'}**`);
+      quote = true;
+      continue;
+    }
+    if (t === '</aside>' && quote) {
+      while (out.at(-1) === '>') out.pop();
+      out.push('');
+      quote = false;
       continue;
     }
     if (t.startsWith('<Callout')) {
