@@ -1,9 +1,10 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { DOC_SECTIONS, SECTION_INFO, SITE } from './site';
+import { BLOG_KINDS, DOC_SECTIONS, SECTION_INFO, SITE, type BlogKind } from './site';
 
 export type Doc = CollectionEntry<'docs'>;
 export type Post = CollectionEntry<'blog'>;
 export type Release = CollectionEntry<'releases'>;
+export type Build = CollectionEntry<'build'>;
 
 const sectionRank = (s: Doc['data']['section']) => DOC_SECTIONS.indexOf(s);
 
@@ -20,6 +21,18 @@ export async function getDocs(): Promise<Doc[]> {
 export async function getPosts(): Promise<Post[]> {
   const posts = await getCollection('blog', (e: Post) => !e.data.draft);
   return posts.sort((a: Post, b: Post) => b.data.date.getTime() - a.data.date.getTime());
+}
+
+export async function getBuilds(): Promise<Build[]> {
+  const builds = await getCollection('build', (e: Build) => !e.data.draft);
+  return builds.sort((a: Build, b: Build) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title));
+}
+
+/** Blog kinds that have posts, in BLOG_KINDS order, with counts. Empty kinds get no page. */
+export function getKinds(posts: Post[]): { kind: BlogKind; label: string; count: number }[] {
+  return (Object.keys(BLOG_KINDS) as BlogKind[])
+    .map((kind) => ({ kind, label: BLOG_KINDS[kind].label, count: posts.filter((p) => p.data.kind === kind).length }))
+    .filter((k) => k.count > 0);
 }
 
 /** Tags across all posts with their post counts, most used first. */
@@ -50,8 +63,11 @@ export const readerDocs = (docs: Doc[]) => docs.filter((d) => !isSectionIntro(d)
 export const docMarkdownHref = (id: string) => `/docs/${id}.md`;
 export const postHref = (id: string) => `/blog/${id}`;
 export const postMarkdownHref = (id: string) => `/blog/${id}.md`;
-export const tagSlug = (tag: string) => tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+export const buildHref = (id: string) => `/build/${id}`;
+export const buildMarkdownHref = (id: string) => `/build/${id}.md`;
+export const tagSlug =(tag: string) => tag.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 export const tagHref = (tag: string) => `/blog/tags/${tagSlug(tag)}`;
+export const kindHref = (kind: string) => `/blog/kind/${kind}`;
 export const absolute = (path: string) => new URL(path, SITE.url).toString();
 
 export const formatDate = (d: Date) =>
@@ -130,7 +146,7 @@ const faqMarkdown = (faq: { q: string; a: string }[]) =>
  * Plain-markdown version of an entry for AI agents and LLM crawlers: title, summary and
  * canonical URL up front, then the body as plain markdown, then the FAQ.
  */
-export function toMarkdown(entry: Doc | Post, canonicalPath: string): string {
+export function toMarkdown(entry: Doc | Post | Build, canonicalPath: string): string {
   const body = mdxToMarkdown(entry.body ?? '');
   const updated = entry.data.updated ? `\nLast updated: ${entry.data.updated.toISOString().slice(0, 10)}` : '';
   return `# ${entry.data.title}\n\n> ${entry.data.description}\n\nSource: ${absolute(canonicalPath)}${updated}\n\n${body}${faqMarkdown(entry.data.faq)}\n`;

@@ -1,0 +1,56 @@
+/* Build guides (/build): outcome-first pages and the guide index. Uses the blog's story grid. */
+
+/* ---------- guide page ---------- */
+.build-head { max-width: 880px; margin: 0 auto; }
+.build-crumbs { font: 400 0.76rem var(--f-mono); }
+.build-crumbs a { color: var(--accent); text-decoration: none; }
+.build-crumbs a:hover { color: var(--text); }
+.build-head h1 { margin: 18px 0 16px; font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.04; letter-spacing: -0.04em; }
+.build-dek { max-width: 42em; margin: 0; color: var(--sub); font-size: clamp(1.06rem, 1.5vw, 1.24rem); line-height: 1.55; }
+
+.build-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 20px 0 0; padding: 0; }
+.build-chips li { padding: 4px 11px; border: 1px solid var(--line); border-radius: 999px; font: 400 0.74rem var(--f-mono); color: var(--muted); }
+.build-chips li:first-child { border-color: var(--accent-line); color: var(--text); }
+.build-chips li:has(a) { padding: 0; }
+.build-chips a { display: inline-flex; padding: 4px 11px; color: var(--muted); text-decoration: none; }
+.build-chips a:hover { color: var(--text); }
+
+.build-outcome { margin: 28px 0 0; padding: 20px 24px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg, var(--accent-wash), transparent 70%), var(--surface); }
+.build-outcome-label { margin: 0 0 10px; font: 500 0.72rem var(--f-mono); color: var(--accent); }
+.build-outcome ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 8px 24px; list-style: none; margin: 0; padding: 0; }
+.build-outcome li { position: relative; padding-left: 24px; color: var(--text); line-height: 1.5; }
+.build-outcome li::before { content: ''; position: absolute; left: 2px; top: 0.42em; width: 10px; height: 6px; border-left: 2px solid var(--tip); border-bottom: 2px solid var(--tip); transform: rotate(-45deg); }
+
+.build-prose { font-size: 1.06rem; line-height: 1.75; }
+.build-prose h2 { margin: 2.2em 0 0.7em; font-size: clamp(1.5rem, 2.4vw, 1.95rem); scroll-margin-top: 90px; }
+.build-prose h3 { scroll-margin-top: 90px; }
+@media (min-width: 1101px) {
+  .build-prose > :is(.code-frame, table, .tabs, .file-tree) { margin-inline: -40px; }
+}
+
+.build-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); font: 400 0.78rem var(--f-mono); color: var(--faint); }
+.build-foot-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.build-foot a { color: var(--muted); text-underline-offset: 3px; }
+.build-foot a:hover { color: var(--text); }
+
+/* ---------- index and "build next" cards ---------- */
+.build-index { max-width: 1200px; margin: 0 auto; padding: clamp(40px, 6vw, 72px) var(--gutter) 112px; }
+.build-index-head { max-width: 760px; margin-bottom: 40px; }
+.build-kicker { margin: 0; font: 500 0.76rem var(--f-mono); color: var(--accent); }
+.build-index-head h1 { margin: 14px 0 16px; font-size: clamp(2.3rem, 5.4vw, 4rem); line-height: 1.03; letter-spacing: -0.042em; }
+.build-index-head p { margin: 0; color: var(--sub); font-size: 1.12rem; line-height: 1.6; }
+
+.build-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 20px; list-style: none; margin: 0; padding: 0; }
+.build-card { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: border-color 0.2s, transform 0.2s; }
+.build-card:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.build-card > a { display: flex; flex-direction: column; gap: 10px; height: 100%; padding: 22px 24px; color: inherit; text-decoration: none; }
+.build-card-meta { font: 400 0.74rem var(--f-mono); color: var(--muted); }
+.build-card-title { color: var(--text); font: 600 1.28rem/1.25 var(--f-display); letter-spacing: -0.015em; }
+.build-card-desc { color: var(--sub); line-height: 1.55; }
+.build-card ul { display: grid; gap: 6px; list-style: none; margin: 4px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); }
+.build-card li { position: relative; padding-left: 20px; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+.build-card li::before { content: ''; position: absolute; left: 1px; top: 0.4em; width: 8px; height: 5px; border-left: 2px solid var(--tip); border-bottom: 2px solid var(--tip); transform: rotate(-45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .build-card { transition: none; }
+  .build-card:hover { transform: none; }
+}

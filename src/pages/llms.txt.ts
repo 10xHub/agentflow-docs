@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
 import { DOC_SECTIONS, SITE } from '../lib/site';
-import { absolute, docMarkdownHref, getDocs, getPosts, postMarkdownHref } from '../lib/content';
+import { absolute, buildMarkdownHref, docMarkdownHref, getBuilds, getDocs, getPosts, postMarkdownHref } from '../lib/content';
 
 // llms.txt (https://llmstxt.org): a markdown index of the site for LLMs. Links point to the
 // plain-markdown twin of each page so agents get clean text instead of HTML.
 export const GET: APIRoute = async () => {
-  const [docs, posts] = await Promise.all([getDocs(), getPosts()]);
+  const [builds, docs, posts] = await Promise.all([getBuilds(), getDocs(), getPosts()]);
   const out: string[] = [
     `# ${SITE.name}`,
     '',
@@ -14,6 +14,11 @@ export const GET: APIRoute = async () => {
     `Current version: ${SITE.version}. Install: \`pip install 10xgraph 10xgraph-api\`. Source: ${SITE.github}`,
     '',
   ];
+  if (builds.length) {
+    out.push('## Build guides', '');
+    for (const b of builds) out.push(`- [${b.data.title}](${absolute(buildMarkdownHref(b.id))}): ${b.data.description}`);
+    out.push('');
+  }
   for (const section of DOC_SECTIONS) {
     const items = docs.filter((d) => d.data.section === section);
     if (!items.length) continue;

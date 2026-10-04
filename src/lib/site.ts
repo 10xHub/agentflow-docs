@@ -18,10 +18,22 @@ export const SITE = {
 } as const;
 
 export const NAV = [
+  { label: 'Build', href: '/build' },
   { label: 'Docs', href: '/docs' },
   { label: 'Blog', href: '/blog' },
   { label: 'GitHub', href: SITE.github },
 ] as const;
+
+// Blog categories. Every post has exactly one `kind`; each kind with posts gets /blog/kind/<kind>.
+// Rules for what belongs in each: CONTENT_GUIDE.md at the repo root.
+export const BLOG_KINDS = {
+  tutorial: { label: 'Tutorials', blurb: 'Problem-first builds with 10xGraph: real use cases, working code, tested end to end.' },
+  paper: { label: 'Papers', blurb: 'Research papers on agents, implemented in 10xGraph and run, with results, costs and limits.' },
+  engineering: { label: 'Engineering', blurb: 'How 10xGraph works inside and why: failure modes, storage, auth and the runtime.' },
+  release: { label: 'Releases', blurb: 'What changed in notable 10xGraph releases and how to upgrade. Every version is in the changelog.' },
+  news: { label: 'News', blurb: 'Project announcements from the 10xGraph team.' },
+} as const;
+export type BlogKind = keyof typeof BLOG_KINDS;
 
 // Docs sections, in reading-journey order (install, learn, build, look up, unblock, everything
 // else). A doc picks its section with the `section` frontmatter field and, optionally, a `group`.

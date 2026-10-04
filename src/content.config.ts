@@ -1,7 +1,7 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
-import { DOC_SECTIONS } from './lib/site';
+import { BLOG_KINDS, DOC_SECTIONS, type BlogKind } from './lib/site';
 
 // Descriptions double as meta descriptions and as the summaries in llms.txt, so their
 // length is enforced at build time (search engines show roughly 150-160 characters).
@@ -36,9 +36,32 @@ const blog = defineCollection({
     date: z.coerce.date(),
     updated: z.coerce.date().optional(),
     author: z.string(),
+    /** One category per post; drives /blog/kind/<kind>. See BLOG_KINDS in lib/site.ts. */
+    kind: z.enum(Object.keys(BLOG_KINDS) as [BlogKind, ...BlogKind[]]),
     tags: z.array(z.string()).default([]),
     /** Pin to the top of the blog index. */
     featured: z.boolean().default(false),
+    faq,
+    draft: z.boolean().default(false),
+  }),
+});
+
+// Build guides: outcome-first, end-to-end builds shown at /build, ahead of the docs. Each one
+// states its time, level and result up front, so a visitor can pick one in seconds.
+const build = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/build' }),
+  schema: z.object({
+    title: z.string(),
+    description,
+    /** Honest time to finish, in minutes, for someone who has Python set up. */
+    minutes: z.number().int().positive(),
+    level: z.enum(['Beginner', 'Intermediate', 'Advanced']),
+    /** What the reader has at the end. Shown as a checklist on the card and the page. */
+    outcome: z.array(z.string()).min(2).max(6),
+    /** Package versions the guide was written and run against. */
+    versions: z.string(),
+    order: z.number().default(100),
+    updated: z.coerce.date(),
     faq,
     draft: z.boolean().default(false),
   }),
@@ -57,4 +80,4 @@ const releases = defineCollection({
   }),
 });
 
-export const collections = { docs, blog, releases };
+export const collections = { docs, blog, build, releases };
