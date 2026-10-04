@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PostCard from '../../../components/blog/PostCard.astro';
+import KindNav from '../../../components/blog/KindNav.astro';
+import { BLOG_KINDS, type BlogKind } from '../../../lib/site';
+import { absolute, getKinds, getPosts, kindHref, type Post } from '../../../lib/content';
+import '../../../styles/blog.css';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  const kinds = getKinds(posts);
+  return kinds.map(({ kind }) => ({
+    params: { kind },
+    props: { kind, kinds, total: posts.length, posts: posts.filter((p: Post) => p.data.kind === kind) },
+  }));
+}
+
+interface Props {
+  kind: BlogKind;
+  kinds: { kind: BlogKind; label: string; count: number }[];
+  total: number;
+  posts: Post[];
+}
+const { kind, kinds, total, posts } = Astro.props;
+const { label, blurb } = BLOG_KINDS[kind];
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: absolute('/blog') },
+      { '@type': 'ListItem', position: 2, name: label, item: absolute(kindHref(kind)) },
+    ],
+  },
+];
+---
+<BaseLayout title={`${label} | Blog`} description={blurb} jsonLd={jsonLd}>
+  <div class="blog">
+    <header class="blog-head blog-head-tag">
+      <div>
+        <p class="blog-kicker"><a href="/blog">Blog</a> / category</p>
+        <h1>{label}</h1>
+        <p class="blog-intro">{blurb}</p>
+      </div>
+    </header>
+    <KindNav kinds={kinds} current={kind} total={total} />
+    <section aria-label={label} class="post-grid-list">
+      {posts.map((p) => <PostCard post={p} />)}
+    </section>
+  </div>
+</BaseLayout>

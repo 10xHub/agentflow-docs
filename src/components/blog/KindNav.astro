@@ -1,0 +1,21 @@
+---
+// Category chips (tutorials, papers, engineering...) for the blog index and kind pages.
+// Only kinds that have posts are listed, so every link is a real page.
+import { kindHref } from '../../lib/content';
+import type { BlogKind } from '../../lib/site';
+
+interface Props {
+  kinds: { kind: BlogKind; label: string; count: number }[];
+  current?: BlogKind;
+  total: number;
+}
+const { kinds, current, total } = Astro.props;
+---
+<nav class="topics kinds" aria-label="Categories">
+  <ul>
+    <li><a href="/blog" aria-current={!current ? 'page' : undefined}>All posts <span>{total}</span></a></li>
+    {kinds.map(({ kind, label, count }) => (
+      <li><a href={kindHref(kind)} aria-current={current === kind ? 'page' : undefined}>{label} <span>{count}</span></a></li>
+    ))}
+  </ul>
+</nav>

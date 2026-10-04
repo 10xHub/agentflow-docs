@@ -48,6 +48,7 @@
 }
 
 .topics { margin: 48px 0 24px; }
+.kinds + .topics { margin-top: 0; }
 .topics ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .topics a { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--muted); font: 400 0.78rem var(--f-mono); text-decoration: none; }
 .topics a span { color: var(--faint); }

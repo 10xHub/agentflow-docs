@@ -3,15 +3,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/blog/PostCard.astro';
 import PostCover from '../../components/blog/PostCover.astro';
 import TopicNav from '../../components/blog/TopicNav.astro';
+import KindNav from '../../components/blog/KindNav.astro';
 import { SITE } from '../../lib/site';
 import { AUTHORS, initials } from '../../lib/authors';
-import { absolute, formatDate, getPosts, getTags, postHref, readingMinutes, tagHref } from '../../lib/content';
+import { absolute, formatDate, getKinds, getPosts, getTags, postHref, readingMinutes, tagHref } from '../../lib/content';
 import '../../styles/blog.css';
 
 const posts = await getPosts();
 const featured = posts.find((p) => p.data.featured) ?? posts[0];
 const rest = posts.filter((p) => p !== featured);
 const tags = getTags(posts);
+const kinds = getKinds(posts);
 const description = 'Engineering notes from the 10xGraph team on production AI agents: replay-safe tools, two-tier memory, auth, deployment and release news.';
 const jsonLd = [
   {
@@ -76,6 +78,7 @@ const jsonLd = [
       </article>
     )}
 
+    <KindNav kinds={kinds} total={posts.length} />
     <TopicNav tags={tags} total={posts.length} />
 
     {rest.length > 0 && (
