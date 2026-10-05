@@ -4,6 +4,7 @@ seoTitle: "Serving agents with agentflow.json"
 description: How agentflow.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
 section: Concepts
 order: 160
+group: Serving and clients
 updated: "2026-07-21"
 ---
 

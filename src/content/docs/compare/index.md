@@ -18,7 +18,6 @@ These pages compare **10xGraph** with other Python agent frameworks, written by 
 - [**10xGraph vs AutoGen**](/docs/compare/agentflow-vs-autogen). AutoGen (now in maintenance mode) vs 10xGraph
 - [**10xGraph vs LlamaIndex Agents**](/docs/compare/agentflow-vs-llamaindex-agents). Retrieval-first agents vs a runtime-first server
 - [**10xGraph vs Google ADK**](/docs/compare/agentflow-vs-google-adk). Google's Agent Development Kit vs 10xGraph
-- [**Python agent frameworks in 2026**](/docs/compare/best-python-agent-framework-2026). A roundup with a short "when to pick it" for each
 
 ## What the comparisons focus on
 

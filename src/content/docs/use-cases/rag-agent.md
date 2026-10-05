@@ -112,7 +112,7 @@ rag_agent = Agent(
 
 The agent only works if the index is good. Quick checklist for indexing:
 
-- **Chunk by structure**, not fixed size. Markdown headers, HTML sections, paragraph breaks. See [chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives).
+- **Chunk by structure**, not fixed size. Markdown headers, HTML sections, paragraph breaks.
 - **Add metadata.** Product, audience, last-modified date. Filters need them.
 - **Both dense and sparse.** Index for vector + BM25 from day one.
 - **Reindex on doc changes.** A daily diff is usually enough.

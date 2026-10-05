@@ -5,6 +5,7 @@ description: 10xGraph supports OpenAI, Google (Gemini, Vertex AI) and Anthropic 
 section: Learn more
 group: Providers
 order: 2080
+label: Overview
 updated: "2026-10-06"
 ---
 

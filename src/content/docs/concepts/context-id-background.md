@@ -2,8 +2,8 @@
 title: Context, IDs, and Background Tasks
 description: How 10xGraph trims model context with MessageContextManager, generates thread and run IDs, and tracks background tasks with BackgroundTaskManager.
 section: Concepts
-group: In depth
-order: 330
+order: 172
+group: Production
 updated: "2026-07-21"
 ---
 

@@ -213,6 +213,18 @@
 /* group labels inside a docs map section */
 .map-group { margin: 12px 0 2px; padding-left: 28px; font: 500 0.7rem var(--f-mono); color: var(--faint); }
 .map-group:first-child { margin-top: 0; }
+/* Collapsible groups inside a section (e.g. How-to guides: Python library, Production, CLI...). */
+.map-sub > details > summary { position: relative; list-style: none; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 8px 6px 28px; cursor: pointer; color: var(--sub); font: 500 0.8rem var(--f-mono); border-radius: 6px; }
+.map-sub > details > summary::-webkit-details-marker { display: none; }
+.map-sub > details > summary::before { content: ''; position: absolute; left: 3.5px; top: 50%; z-index: 1; width: 8px; height: 8px; margin-top: -4px; border: 1.5px solid var(--line-2); background: var(--bg); transform: rotate(45deg); }
+.map-sub > details > summary::after { content: ''; flex: none; width: 6px; height: 6px; margin-right: 4px; border: solid var(--faint); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform 0.2s; }
+.map-sub > details[open] > summary::after { transform: rotate(45deg); }
+.map-sub > details > summary:hover, .map-sub > details[open] > summary { color: var(--text); }
+.map-sub > details[open] > summary::before { border-color: var(--accent); }
+.map-sub-name { flex: 1; min-width: 0; }
+.map-sub-count { font-size: 0.7rem; color: var(--faint); }
+.map-sub .map-nodes { margin: 0 0 6px; padding-left: 14px; }
+.map-sub .map-nodes::before { left: 21px; }
 .section-intro { margin-bottom: 8px; }
 .section-intro > h2:first-child { margin-top: 0.4em; }
 .section-list-title { margin: 56px 0 8px; padding-top: 28px; border-top: 1px solid var(--line); font-size: 1.5rem; }

@@ -3,8 +3,8 @@ title: Agents and Tools
 seoTitle: "Agent and ToolNode concepts"
 description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options.
 section: Concepts
-group: In depth
-order: 220
+order: 142
+group: Graphs and agents
 label: Agents and Tools
 updated: "2026-09-29"
 ---

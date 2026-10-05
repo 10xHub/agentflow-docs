@@ -3,8 +3,8 @@ title: Architecture
 seoTitle: "10xGraph architecture overview"
 description: An overview of how 10xGraph packages fit together and how requests flow from client to graph.
 section: Concepts
-group: In depth
-order: 200
+order: 140
+group: Graphs and agents
 label: Architecture
 updated: "2026-07-21"
 ---

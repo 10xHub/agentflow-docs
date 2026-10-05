@@ -3,8 +3,8 @@ title: Media and Files
 seoTitle: "Multimodal messages: media and files"
 description: How to build multimodal messages with images, audio, video, and documents using MediaRef, content blocks, and media stores.
 section: Concepts
-group: In depth
-order: 290
+order: 164
+group: Serving and clients
 label: Media and Files
 updated: "2026-07-21"
 ---

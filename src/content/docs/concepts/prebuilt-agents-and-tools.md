@@ -2,8 +2,8 @@
 title: Prebuilt Agents and Tools
 description: Ready-made 10xGraph graph patterns, common tools, and handoff helpers.
 section: Concepts
-group: In depth
-order: 250
+order: 144
+group: Graphs and agents
 updated: "2026-07-21"
 ---
 

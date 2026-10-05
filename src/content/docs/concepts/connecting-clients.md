@@ -3,7 +3,8 @@ title: Connecting Clients
 seoTitle: "Connect clients to the 10xGraph API"
 description: How the 10xgraph-client TypeScript SDK connects browser and Node.js apps to a 10xGraph API over REST, SSE, and WebSockets.
 section: Concepts
-order: 170
+order: 161
+group: Serving and clients
 updated: "2026-09-29"
 ---
 

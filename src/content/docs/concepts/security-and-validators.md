@@ -2,8 +2,8 @@
 title: Security and Validators
 description: How input validators and PromptInjectionValidator work in 10xGraph, what the production template enables, and why they reduce prompt-injection risk.
 section: Concepts
-group: In depth
-order: 320
+order: 171
+group: Production
 updated: "2026-07-21"
 ---
 

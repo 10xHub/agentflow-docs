@@ -3,8 +3,8 @@ title: State and Messages
 seoTitle: "AgentState and messages in 10xGraph"
 description: AgentState fields, Message structure, all content block types, ToolResult, and the add_messages reducer.
 section: Concepts
-group: In depth
-order: 230
+order: 143
+group: Graphs and agents
 label: State and Messages
 updated: "2026-07-21"
 ---

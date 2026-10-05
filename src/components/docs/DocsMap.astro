@@ -19,9 +19,20 @@ const mapDocs = docs.filter((d) => !MAP_HIDDEN.includes(d.data.section));
 const groups = DOC_SECTIONS.filter((s) => !MAP_HIDDEN.includes(s))
   .map((s) => ({ section: s, items: mapDocs.filter((d) => d.data.section === s) }))
   .filter((g) => g.items.length > 0);
-// A group label row is inserted wherever the `group` frontmatter changes within a section.
-const withGroups = (items: Doc[]) =>
-  items.map((d, i) => ({ d, groupStart: d.data.group && d.data.group !== items[i - 1]?.data.group ? d.data.group : undefined }));
+// Pages are split into runs by their `group` frontmatter. A section with two or more groups shows
+// each group as a collapsible sub-list (open when it holds the current page); a section with one
+// group keeps a flat list under a label.
+type Run = { group?: string; items: Doc[] };
+const runsOf = (items: Doc[]): Run[] => {
+  const runs: Run[] = [];
+  for (const d of items) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === d.data.group) last.items.push(d);
+    else runs.push({ group: d.data.group, items: [d] });
+  }
+  return runs;
+};
+const collapsible = (runs: Run[]) => new Set(runs.filter((r) => r.group).map((r) => r.group)).size >= 2;
 const DOT_LIMIT = 12;
 ---
 <nav class="docs-map" aria-label="Documentation">
@@ -46,17 +57,36 @@ const DOT_LIMIT = 12;
           </summary>
           <ol class="map-nodes">
             <li><a class="map-overview" href={`/docs/${SECTION_INFO[g.section].slug}`} aria-current={!current && here ? 'page' : undefined}>Overview</a></li>
-            {withGroups(g.items).map(({ d, groupStart }) => (
-              <>
-                {groupStart && <li class="map-group" aria-hidden="true">{groupStart}</li>}
+            {(() => {
+              const runs = runsOf(g.items);
+              const nested = collapsible(runs);
+              const node = (d: Doc) => (
                 <li>
                   <a class="map-node" href={docHref(d.id)} data-doc-id={d.id} aria-current={d.id === current?.id ? 'page' : undefined} title={d.data.label ? d.data.title : undefined}>
                     <span class="map-node-dot" aria-hidden="true" />
                     <span class="map-node-label">{d.data.label ?? d.data.title}</span>
                   </a>
                 </li>
-              </>
-            ))}
+              );
+              return runs.map((r) =>
+                nested && r.group ? (
+                  <li class="map-sub">
+                    <details open={r.items.some((d) => d.id === current?.id)}>
+                      <summary>
+                        <span class="map-sub-name">{r.group}</span>
+                        <span class="map-sub-count" aria-hidden="true">{r.items.length}</span>
+                      </summary>
+                      <ol class="map-nodes">{r.items.map(node)}</ol>
+                    </details>
+                  </li>
+                ) : (
+                  <>
+                    {r.group && <li class="map-group" aria-hidden="true">{r.group}</li>}
+                    {r.items.map(node)}
+                  </>
+                ),
+              );
+            })()}
           </ol>
         </details>
       );

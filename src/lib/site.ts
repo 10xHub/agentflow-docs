@@ -48,7 +48,7 @@ export const DOC_SECTIONS = [
   'Reference',
   'Troubleshooting',
   'Learn more',
-  'Courses',
+  'Glossary',
   'Project',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
@@ -65,8 +65,8 @@ export const SECTION_INFO: Record<DocSection, { slug: string; title: string; blu
   Tutorials: { slug: 'tutorials', title: '10xGraph tutorials: end-to-end agent builds', blurb: 'End-to-end 10xGraph builds based on the examples in the repository, from a single tool agent to multi-agent systems.' },
   Reference: { slug: 'reference', title: '10xGraph reference: Python, REST API, CLI, TS client', blurb: 'Exact details: the Python library, the REST API, the CLI and configuration, and the TypeScript client.' },
   Troubleshooting: { slug: 'troubleshooting', title: 'Troubleshooting 10xGraph: install, providers, server', blurb: 'Fixes for common problems with installation, providers, the server and deployments.' },
-  'Learn more': { slug: 'learn-more', title: 'Learn more: 10xGraph use cases, comparisons, glossary', blurb: 'Use cases, integrations, providers, skills, a glossary of agent terms, and comparisons with other frameworks.' },
-  Courses: { slug: 'courses', title: 'Free GenAI and AI agent courses from 10xGraph', blurb: 'Free GenAI courses: shared foundations, a beginner track and an advanced track for agent systems.' },
+  'Learn more': { slug: 'learn-more', title: 'Learn more: 10xGraph use cases and comparisons', blurb: 'Use cases, integrations, LLM providers, agent skills, and comparisons of 10xGraph with other agent frameworks.' },
+  Glossary: { slug: 'glossary', title: 'AI agent glossary: key terms, explained', blurb: 'Plain definitions of AI agent terms: agents, ReAct, state graphs, memory, MCP, RAG, streaming, durable execution and idempotent tool calls.' },
   Project: { slug: 'project', title: '10xGraph project: roadmap, security, upgrades', blurb: 'How the 10xGraph project is run: roadmap, security policy, upgrade guides, maintainers, support and contributing.' },
 };
 

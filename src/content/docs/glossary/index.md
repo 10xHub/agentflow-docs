@@ -2,9 +2,8 @@
 title: AI Agent Glossary
 seoTitle: "AI agent glossary: definitions and examples"
 description: Plain definitions of AI agent terms, from ReAct agents and state graphs to MCP, RAG, durable execution and idempotent tool calls, with Python examples.
-section: Learn more
-group: Glossary
-order: 2130
+section: Glossary
+order: 2300
 label: Glossary
 updated: "2026-10-06"
 ---

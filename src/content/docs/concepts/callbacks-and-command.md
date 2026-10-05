@@ -2,8 +2,8 @@
 title: Callbacks and Command
 description: Hook into invocations, validate inputs, recover from errors, and route from inside nodes.
 section: Concepts
-group: In depth
-order: 310
+order: 145
+group: Graphs and agents
 updated: "2026-07-21"
 ---
 

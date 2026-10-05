@@ -3,7 +3,8 @@ title: Replay-safe tools
 seoTitle: "Replay-safe tools: no double tool calls"
 description: Replay-safe tools let a resumed 10xGraph run skip tool calls that already finished, so a crash does not charge a card or send an email twice.
 section: Concepts
-order: 155
+order: 151
+group: Memory and reliability
 updated: 2026-10-06
 faq:
   - q: Does 10xGraph guarantee a tool runs exactly once?

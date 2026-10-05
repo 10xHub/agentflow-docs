@@ -3,7 +3,8 @@ title: StateGraph
 seoTitle: "StateGraph: nodes, edges and state"
 description: How StateGraph models an agent as nodes, edges and shared state, how compile() produces a runnable graph, and when to use invoke or stream.
 section: Concepts
-order: 210
+order: 141
+group: Graphs and agents
 updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: What is the difference between StateGraph and ReactAgent?
@@ -12,7 +13,7 @@ faq:
     a: Each run has a recursion limit, 25 steps by default. When a run exceeds it, execution stops with a GraphRecursionError. Raise the limit with recursion_limit in the run config, or fix the routing function.
   - q: Do I need a checkpointer to use a StateGraph?
     a: No, a graph runs without one. But without a checkpointer nothing is saved between calls, so every invoke starts from the graph's initial state and a thread cannot be resumed.
-group: In depth
+
 ---
 
 A `StateGraph` describes an agent as a set of nodes (Python functions, agents or tool nodes) joined by edges, all reading and writing one shared state object. You build it, call `compile()` to get a runnable `CompiledGraph`, then run it with `invoke` or `stream`.

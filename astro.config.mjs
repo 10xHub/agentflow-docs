@@ -102,7 +102,7 @@ const redirects = {
   '/docs/Tutorial': '/docs/tutorials',
   '/docs/faq': '/docs/troubleshooting/installation',
   '/docs/how-to/production/api-reference': '/docs/reference/rest-api/conventions',
-  '/blog/langgraph-alternatives-5-frameworks': '/docs/compare/best-python-agent-framework-2026',
+  '/blog/langgraph-alternatives-5-frameworks': '/docs/compare',
   '/blog/langgraph-to-agentflow-migration': '/docs/compare/agentflow-vs-langgraph',
   '/blog/multi-agent-orchestration-python-7-patterns': '/docs/glossary/what-is-multi-agent-orchestration',
   '/blog/react-agent-tools-real-apis': '/docs/glossary/what-is-a-react-agent',

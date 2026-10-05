@@ -3,8 +3,8 @@ title: Remote Tools
 seoTitle: "Remote tools: run tools in the client"
 description: How 10xGraph lets a Python graph request tools that execute in a TypeScript client or browser.
 section: Concepts
-group: In depth
-order: 270
+order: 163
+group: Serving and clients
 updated: "2026-09-29"
 ---
 

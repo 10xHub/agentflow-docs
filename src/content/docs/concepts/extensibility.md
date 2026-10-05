@@ -3,7 +3,8 @@ title: Extensibility
 seoTitle: "Extending 10xGraph with base classes"
 description: The abstract base classes — BaseCheckpointer, BaseStore, BaseAuth, BasePublisher, and more — used to extend 10xGraph's storage, auth, and event layers.
 section: Concepts
-order: 180
+order: 173
+group: Production
 updated: "2026-09-29"
 ---
 

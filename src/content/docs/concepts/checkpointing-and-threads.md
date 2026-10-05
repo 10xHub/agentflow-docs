@@ -2,8 +2,8 @@
 title: Checkpointing and Threads
 description: How checkpointers save and restore conversation state across calls using thread IDs.
 section: Concepts
-group: In depth
-order: 260
+order: 152
+group: Memory and reliability
 updated: "2026-09-29"
 ---
 

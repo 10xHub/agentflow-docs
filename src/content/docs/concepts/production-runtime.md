@@ -3,8 +3,8 @@ title: Production Runtime
 seoTitle: "Production runtime for 10xGraph agents"
 description: How 10xGraph serves agents in production, including async execution, publisher adapters, and multi-worker deployments.
 section: Concepts
-group: In depth
-order: 370
+order: 170
+group: Production
 label: Production Runtime
 updated: "2026-07-21"
 ---
