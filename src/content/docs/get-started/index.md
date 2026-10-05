@@ -102,6 +102,5 @@ When a prebuilt is too rigid (custom state, non-linear routing), build the graph
 | Step | Page | What you will have at the end |
 |---|---|---|
 | 1 | [Installation](/docs/get-started/installation) | Python packages, optional extras and the TypeScript client |
-| 2 | [Quickstart](/docs/get-started/first-agent) | A running agent served over HTTP |
-| 3 | [Connect Client](/docs/get-started/connect-client) | TypeScript code calling your agent with invoke and streaming |
-| 4 | [Project structure](/docs/get-started/project-structure) | Every file the production template generates |
+| 2 | [Quickstart](/docs/get-started/first-agent) | A running agent served over HTTP and called from curl and TypeScript |
+| 3 | [Project structure](/docs/get-started/project-structure) | Every file the production template generates |

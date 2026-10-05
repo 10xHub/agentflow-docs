@@ -147,7 +147,7 @@ See [Error Codes Reference](/docs/troubleshooting/error-codes) for full document
 
 ## Related docs
 
-- [Connect Client](/docs/get-started/connect-client)
+- [Quickstart](/docs/get-started/first-agent)
 - [TypeScript Client Reference](/docs/reference/client/agentflow-client)
 - [API Server Troubleshooting](/docs/troubleshooting/api-server)
 - [`realtime()` reference](/docs/reference/client/realtime)

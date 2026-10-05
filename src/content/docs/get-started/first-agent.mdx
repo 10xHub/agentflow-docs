@@ -1,7 +1,7 @@
 ---
 title: Quickstart
-seoTitle: "10xGraph quickstart: build and serve an agent"
-description: Build a 10xGraph support agent with lookup and refund tools in Python, run it locally, then serve it over HTTP and call it with curl.
+seoTitle: "10xGraph quickstart: agent, API and TS client"
+description: Install 10xGraph, build a support agent in Python, serve it with the API server, then call it with curl and the TypeScript client.
 section: Get started
 order: 30
 updated: 2026-10-06
@@ -10,37 +10,23 @@ faq:
     a: Start with ReactAgent. It builds the standard reason-and-act graph for you (one agent node, one tool node, a conditional edge between them) and returns a normal compiled graph. Move to StateGraph when you need custom routing or several agents.
   - q: Can I use OpenAI or Anthropic instead of Google?
     a: Yes. Change the model string and the provider argument, and install the matching extra. The graph, the tools and the API server stay the same.
+  - q: Which Node.js version does the TypeScript client need?
+    a: Node.js 18 or newer. Install it with npm install 10xgraph-client and point AgentFlowClient at the baseUrl of your running 10xgraph api server.
+  - q: How do I authenticate the TypeScript client?
+    a: Pass an auth option to the AgentFlowClient constructor, for example bearerAuth("your-token"). The client also exports basicAuth(username, password) and headerAuth(name, value).
   - q: Why does the second curl call remember the first one?
     a: Both calls send the same thread_id, and the compiled graph has a checkpointer. The checkpointer stores the conversation per thread, so the next call on that thread continues it.
 ---
 
-This page builds a working support agent with two tools, runs it from a Python script, then serves it with the 10xGraph API server and calls `POST /v1/graph/invoke` with curl. You need Python 3.12 or newer and a Google API key.
+This page builds a working support agent with two tools, runs it from a Python script, serves it with the 10xGraph API server, then calls it with curl and from TypeScript. You need Python 3.12 or newer and a Google API key.
 
 ## Install the packages
-
-<Tabs syncKey="pkg">
-
-<TabItem label="pip">
 
 ```bash
 pip install "10xgraph[google-genai]" 10xgraph-api
 ```
 
-</TabItem>
-
-<TabItem label="uv">
-
-```bash
-uv add "10xgraph[google-genai]" 10xgraph-api
-```
-
-</TabItem>
-
-</Tabs>
-
-`10xgraph` is the framework, `10xgraph-api` adds the server and the `10xgraph` command, and the `google-genai` extra adds the model provider used below. See [Installation](/docs/get-started/installation) for the full list of extras.
-
-Export your key. The Google provider reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`:
+`10xgraph` is the framework, `10xgraph-api` adds the server and the `10xgraph` command, and the `google-genai` extra adds the model provider used below. [Installation](/docs/get-started/installation) covers uv, other extras and provider API keys. The Google provider reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`:
 
 ```bash
 export GOOGLE_API_KEY="your-key"
@@ -140,6 +126,59 @@ export GOOGLE_API_KEY="your-key"
 
 </Steps>
 
+## Call it from TypeScript
+
+`10xgraph-client` is a typed client for the endpoints `10xgraph api` exposes: graph execution, threads, long-term memory and file uploads. It needs Node.js 18 or newer. With the server still running:
+
+```bash
+npm install 10xgraph-client
+```
+
+```typescript title="client.ts"
+import { AgentFlowClient, Message } from "10xgraph-client";
+
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+
+const result = await client.invoke(
+  [Message.text_message("Where is order 1042?")],
+  {
+    config: { thread_id: "quickstart-3" },
+    recursion_limit: 10,
+  }
+);
+
+console.log(result.messages.at(-1)?.text());
+```
+
+If the server has auth enabled, pass `auth: bearerAuth("your-api-token")` to the constructor. The client also exports `basicAuth(username, password)` and `headerAuth(name, value)`.
+
+To stream the reply, iterate `client.stream(...)`. It calls `POST /v1/graph/stream`:
+
+```typescript
+import { StreamEventType } from "10xgraph-client";
+
+const stream = client.stream(
+  [Message.text_message("Refund order 1042 for 59.00.")],
+  { config: { thread_id: "quickstart-4" } }
+);
+
+for await (const chunk of stream) {
+  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    process.stdout.write(chunk.message.text());
+  }
+}
+```
+
+| Topic | Guide |
+|---|---|
+| Client setup, auth, config options | [Create a client](/docs/how-to/client/create-client) |
+| Invoke, stream, WebSocket, partial results | [Invoke an agent](/docs/how-to/client/invoke-agent) |
+| Streaming responses in depth | [Stream responses](/docs/how-to/client/stream-responses) |
+| Thread state, messages, history | [Manage threads](/docs/how-to/client/manage-threads) |
+| Long-term memory store and search | [Use memory API](/docs/how-to/client/use-memory-api) |
+| File uploads and multimodal messages | [Upload files](/docs/how-to/client/upload-files) |
+| Remote tools from the client side | [Register remote tools](/docs/how-to/client/register-remote-tools) |
+
 ## What does the request body accept?
 
 The invoke endpoint validates the body against `GraphInputSchema`:
@@ -177,6 +216,7 @@ A refund must not run twice if the process dies mid-run. With a checkpointer, 10
 
 <CardGrid>
 
+<LinkCard title="Create a client" href="/docs/how-to/client/create-client" description="Client options, auth and configuration." eyebrow="How-to" />
 <LinkCard title="Project structure" href="/docs/get-started/project-structure" description="What 10xgraph init generates for a production project." eyebrow="Get started" />
 <LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Nodes, edges and routing, the layer ReactAgent is built on." eyebrow="Concept" />
 <LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="Persist threads with Redis and PostgreSQL." eyebrow="Concept" />

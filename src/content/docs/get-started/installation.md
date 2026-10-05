@@ -98,7 +98,7 @@ export OPENAI_API_KEY="your-key"
 npm install 10xgraph-client
 ```
 
-The client talks to a running `10xgraph api` server. See [Connect Client](/docs/get-started/connect-client).
+The client talks to a running `10xgraph api` server. See [Quickstart](/docs/get-started/first-agent).
 
 ## Scaffold a production project
 

@@ -84,6 +84,7 @@ const redirects = {
   '/docs/tutorials/from-examples/qdrant-memory': '/docs/tutorials/from-examples/memory',
   '/docs/reference/client/tools': '/docs/how-to/client/register-remote-tools',
   '/docs/project/maintainers': '/maintainers',
+  '/docs/get-started/connect-client': '/docs/get-started/first-agent',
   '/docs/concept2': '/docs/concepts',
   '/docs/concept2/agents-tools-control': '/docs/concepts/agents-and-tools',
   '/docs/concept2/memory': '/docs/concepts/memory',
