@@ -14,7 +14,7 @@ This section covers 10xGraph as a project rather than as an API: who maintains i
 
 Read the [Changelog](/changelog) first to see what has shipped and which versions are current, then the [Roadmap](/docs/project/roadmap) for what is missing, partial or deliberately out of scope. The roadmap is where the honest gaps are listed, so it is worth reading before you commit to the project.
 
-If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/upgrade-to-1.0) explains what to migrate. For the package rename (new PyPI and npm names, CLI and GitHub org), see the launch post [Agentflow is now 10xGraph](/blog/introducing-10xgraph). If something breaks, [Support](/docs/project/support) explains what to collect for a bug report that gets fixed, and [Security](/docs/project/security) describes private vulnerability reporting. To send a fix or a doc improvement, start with [Contributing](/docs/project/contributing); the people involved are listed on [Maintainers](/docs/project/maintainers).
+If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/upgrade-to-1.0) explains what to migrate. For the package rename (new PyPI and npm names, CLI and GitHub org), see the launch post [Agentflow is now 10xGraph](/blog/introducing-10xgraph). If something breaks, [Support](/docs/project/support) explains what to collect for a bug report that gets fixed, and [Security](/docs/project/security) describes private vulnerability reporting. To send a fix or a doc improvement, start with [Contributing](/docs/project/contributing); the people involved are listed on [Maintainers](/maintainers).
 
 | Page | Answers |
 | --- | --- |
@@ -24,7 +24,7 @@ If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/
 | [Security](/docs/project/security) | How to report a vulnerability, and what is by design |
 | [Support](/docs/project/support) | Where to ask, and how to file a report that gets fixed |
 | [Contributing](/docs/project/contributing) | Local setup, conventions, and the checks that gate a merge |
-| [Maintainers](/docs/project/maintainers) | Who maintains 10xGraph, and who has contributed to it |
+| [Maintainers](/maintainers) | Who maintains 10xGraph, and who has contributed to it |
 
 ## At a glance
 

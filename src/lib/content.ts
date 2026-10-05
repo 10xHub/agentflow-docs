@@ -56,7 +56,12 @@ export const releaseAnchor = (r: Release) => `${r.data.package}-${r.data.version
 export const docHref = (id: string) => (id === 'index' ? '/docs' : `/docs/${id.replace(/\/index$/, '')}`);
 
 /** A section's own index page (concepts/index for Concepts). It is shown on /docs/<slug>, not as a page. */
-export const isSectionIntro = (d: Doc) => d.id === `${SECTION_INFO[d.data.section].slug}/index`;
+// The glob loader drops a trailing /index from ids (get-started/index.md -> "get-started"), so
+// match both forms.
+export const isSectionIntro = (d: Doc) => {
+  const slug = SECTION_INFO[d.data.section].slug;
+  return d.id === slug || d.id === `${slug}/index`;
+};
 
 /** Docs in reading order without the section intros: what the docs map, pager and lists show. */
 export const readerDocs = (docs: Doc[]) => docs.filter((d) => !isSectionIntro(d));

@@ -21,16 +21,15 @@ const docLinks: DocSection[] = ['Get started', 'Concepts', 'How-to guides', 'Tut
     <nav aria-label="Project">
       <h2>Project</h2>
       <ul>
-        <li><a href="/blog">Blog</a></li>
+        <li><a href="/docs/project">About the project</a></li>
         <li><a href="/changelog">Changelog</a></li>
-        <li><a href={SITE.github}>GitHub</a></li>
         <li><a href={`${SITE.github}/issues`}>Issues</a></li>
-        <li><a href={SITE.org.url}>{SITE.org.name}</a></li>
       </ul>
     </nav>
     <nav aria-label="Community">
       <h2>Community</h2>
       <ul>
+        <li><a href="/maintainers">Maintainers</a></li>
         {POLICIES.map((p) => <li><a href={p.href}>{p.label}</a></li>)}
       </ul>
     </nav>
@@ -45,7 +44,7 @@ const docLinks: DocSection[] = ['Get started', 'Concepts', 'How-to guides', 'Tut
     </nav>
   </div>
   <div class="wrap legal">
-    <span>&copy; {year} {SITE.org.name}. {SITE.name} is open source under the MIT license.</span>
+    <span>&copy; {year} <a href={SITE.org.url}>{SITE.org.name}</a>. {SITE.name} is open source under the MIT license.</span>
     <span>Formerly {SITE.formerName}</span>
   </div>
 </footer>

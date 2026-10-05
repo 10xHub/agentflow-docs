@@ -49,6 +49,11 @@ const jsonLd = [
       </div>
     </header>
 
+    <section aria-label="About the blog" style="display:grid;gap:12px;margin-top:32px">
+      <p class="blog-intro">The blog has three kinds of posts. Tutorials build one real use case from an empty folder, with working code that was run before it was published. Engineering notes explain how 10xGraph behaves when things go wrong: a process killed mid-tool, two runs on one thread, a hung node, a stale cache. Release posts say what changed in a version and how to upgrade.</p>
+      <p class="blog-intro">It is written for Python developers who are moving an agent from a demo to a service other people depend on, and for the platform engineers who run it. Every version is listed in the <a href="/changelog">changelog</a>. For reference material, use the <a href="/docs">docs</a>.</p>
+    </section>
+
     {featured && (
       <article class="feature">
         <a class="feature-art" href={postHref(featured.id)} tabindex="-1" aria-hidden="true">

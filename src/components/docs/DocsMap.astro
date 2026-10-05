@@ -13,9 +13,12 @@ interface Props {
 }
 const { docs, current, section } = Astro.props;
 const openSection = current?.data.section ?? section;
-const groups = DOC_SECTIONS.map((s) => ({ section: s, items: docs.filter((d) => d.data.section === s) })).filter(
-  (g) => g.items.length > 0,
-);
+// Project pages (roadmap, security, support...) are linked from the footer, not the reading map.
+const MAP_HIDDEN: readonly string[] = ['Project'];
+const mapDocs = docs.filter((d) => !MAP_HIDDEN.includes(d.data.section));
+const groups = DOC_SECTIONS.filter((s) => !MAP_HIDDEN.includes(s))
+  .map((s) => ({ section: s, items: mapDocs.filter((d) => d.data.section === s) }))
+  .filter((g) => g.items.length > 0);
 // A group label row is inserted wherever the `group` frontmatter changes within a section.
 const withGroups = (items: Doc[]) =>
   items.map((d, i) => ({ d, groupStart: d.data.group && d.data.group !== items[i - 1]?.data.group ? d.data.group : undefined }));
@@ -24,7 +27,7 @@ const DOT_LIMIT = 12;
 <nav class="docs-map" aria-label="Documentation">
   <div class="map-head">
     <span class="map-title">Docs map</span>
-    <span class="map-progress" data-map-progress data-total={docs.length}>{docs.length} pages</span>
+    <span class="map-progress" data-map-progress data-total={mapDocs.length}>{mapDocs.length} pages</span>
   </div>
   <div class="map-sections">
     {groups.map((g) => {

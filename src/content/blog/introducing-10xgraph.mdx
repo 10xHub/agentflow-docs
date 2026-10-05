@@ -29,8 +29,8 @@ Graph orchestration, tool-calling loops, MCP and streaming are in there too, but
 
 ## What stays the same
 
-- **The project and the people.** Same code base, same maintainers, same [license](/docs/project/maintainers): MIT, made by 10xScale.
-- **`agentflow.json`.** The configuration file keeps its name and its keys.
+- **The project and the people.** Same code base, same maintainers, same [license](https://github.com/10xHub/agentflow/blob/main/LICENSE): MIT, made by 10xScale.
+- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `graph.json`.
 - **Your Python imports.** `from agentflow import StateGraph` keeps working. Existing code needs no changes beyond the package names.
 
 ## What changes
@@ -41,6 +41,7 @@ Graph orchestration, tool-calling loops, MCP and streaming are in there too, but
 | `pip install 10xscale-agentflow-cli` | `pip install 10xgraph-api` |
 | `npm install @10xscale/agentflow-client` | `npm install 10xgraph-client` |
 | CLI command `agentflow` | CLI command `10xgraph` |
+| Config file `agentflow.json` | Config file `graph.json` |
 | GitHub organization 10xHub | GitHub organization 10xGraph |
 
 Version `0.10.0` is the final release of `10xscale-agentflow` on PyPI. New releases and fixes go to the new package names.
@@ -66,4 +67,4 @@ The [roadmap](/docs/project/roadmap) lists what is missing or partial.
 - New to the project: follow [Get started](/docs/get-started) or the [beginner path](/docs/beginner).
 - Moving an existing install: read [Installation](/docs/get-started/installation) and the [changelog](/changelog).
 - Choosing between frameworks: see the [comparisons](/docs/compare).
-- Questions or bugs: see [Support](/docs/project/support), or the [maintainers page](/docs/project/maintainers) for who to contact.
+- Questions or bugs: see [Support](/docs/project/support), or the [maintainers page](/maintainers) for who to contact.

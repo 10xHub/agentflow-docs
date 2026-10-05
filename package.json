@@ -10,7 +10,8 @@
     "build": "astro build && pagefind --site dist",
     "search:index": "astro build && pagefind --site dist --output-path public/pagefind",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "contributors": "node scripts/fetch-contributors.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.2",

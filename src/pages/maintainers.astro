@@ -1,0 +1,189 @@
+---
+// Maintainers and contributors. The contributor wall reads src/data/contributors.json, which
+// `npm run contributors` regenerates from the GitHub API across all five repositories. Builds never
+// call GitHub, so the page keeps building when the API is down or rate-limited.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import contributors from '../data/contributors.json';
+import { SITE } from '../lib/site';
+import { absolute } from '../lib/content';
+import '../styles/maintainers.css';
+
+const LEAD = {
+  name: 'Shudipto Trafder',
+  login: 'Iamsdt',
+  role: 'Creator and lead maintainer',
+  title: 'VP Engineering, 10xScale',
+  links: [
+    { label: 'GitHub', href: 'https://github.com/Iamsdt' },
+    { label: 'LinkedIn', href: 'https://www.linkedin.com/in/iamsdt' },
+    { label: 'Medium', href: 'https://medium.com/@iamsdt' },
+  ],
+};
+
+// Repository names share a prefix, so the chips use the short names the docs use.
+const REPO_LABELS: Record<string, string> = {
+  '10xHub/agentflow': 'core',
+  '10xHub/agentflow-cli': 'API and CLI',
+  '10xHub/agentflow-client': 'TS client',
+  '10xHub/agentflow-docs': 'docs',
+  '10xHub/agentflow-playground': 'playground',
+};
+const REPOS = Object.keys(REPO_LABELS);
+const repoLabel = (repo: string) => REPO_LABELS[repo] ?? repo.split('/').pop();
+const avatar = (url: string, px: number) => `${url}?s=${px * 2}&v=4`;
+
+const people = [...contributors].sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login));
+const most = Math.max(1, ...people.map((p) => p.contributions));
+const total = people.reduce((n, p) => n + p.contributions, 0);
+
+const reach = [
+  {
+    label: 'Bugs and feature requests',
+    body: 'Open an issue on the core repository with a minimal reproduction.',
+    href: `${SITE.github}/issues`,
+    cta: 'Open an issue',
+  },
+  {
+    label: 'Security vulnerabilities',
+    body: 'Do not open a public issue. Use a private GitHub Security Advisory or email contact@10xscale.ai.',
+    href: '/docs/project/security',
+    cta: 'Security policy',
+  },
+  {
+    label: 'Contributing code or docs',
+    body: 'Changes pass formatting, lint, type checks, a security scan and an 80 percent coverage gate. One logical change per pull request.',
+    href: '/docs/project/contributing',
+    cta: 'How to contribute',
+  },
+  {
+    label: 'Everything else',
+    body: 'Partnerships, production questions and anything that is not a bug.',
+    href: 'mailto:contact@10xscale.ai',
+    cta: 'contact@10xscale.ai',
+  },
+];
+
+const title = '10xGraph maintainers and contributors';
+const description = `The people who build ${SITE.name}: lead maintainer ${LEAD.name}, ${people.length} contributors across five repositories, and how to reach the team.`;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: title,
+    description,
+    url: absolute('/maintainers'),
+    about: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE.url },
+    mainEntity: {
+      '@type': 'Person',
+      name: LEAD.name,
+      jobTitle: LEAD.title,
+      worksFor: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+      sameAs: LEAD.links.map((l) => l.href),
+    },
+  },
+];
+---
+<BaseLayout title={title} exactTitle description={description} jsonLd={jsonLd}>
+  <div class="mt">
+    <header class="mt-hero">
+      <p class="mt-kicker">Maintainers</p>
+      <h1>The people who build {SITE.name}</h1>
+      <p class="mt-lede">
+        {SITE.name} is an MIT-licensed open-source project with a lead maintainer and open contributions.
+        It is built and run in production by <a href={SITE.org.url}>{SITE.org.name}</a>, and shaped by everyone below.
+      </p>
+      <dl class="mt-stats">
+        <div><dt>Contributors</dt><dd>{people.length + 1}</dd></div>
+        <div><dt>Repositories</dt><dd>{REPOS.length}</dd></div>
+        <div><dt>Community commits</dt><dd>{total}</dd></div>
+        <div><dt>License</dt><dd>MIT</dd></div>
+      </dl>
+    </header>
+
+    <section class="mt-lead" aria-labelledby="lead-heading">
+      <h2 id="lead-heading" class="mt-label">Lead maintainer</h2>
+      <div class="mt-lead-card">
+        <img class="mt-lead-avatar" src={`https://github.com/${LEAD.login}.png?size=240`} alt="" width="120" height="120" decoding="async" />
+        <div class="mt-lead-body">
+          <p class="mt-lead-name">{LEAD.name}</p>
+          <p class="mt-lead-role">{LEAD.role} <span>· {LEAD.title}</span></p>
+          <ul class="mt-lead-links">
+            {LEAD.links.map((l) => <li><a href={l.href} rel="me noopener">{l.label}</a></li>)}
+          </ul>
+        </div>
+        <div class="mt-graph" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="96" height="96">
+            <path d="M13 33L21 23L34 15L34 31L21 23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="21" cy="23" r="3.2" fill="currentColor" /><circle cx="34" cy="15" r="3.2" fill="currentColor" /><circle cx="34" cy="31" r="3.2" fill="currentColor" />
+            <circle cx="13" cy="33" r="3.6" fill="var(--brand-amber)" />
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-wall" aria-labelledby="wall-heading">
+      <div class="mt-wall-head">
+        <h2 id="wall-heading">Contributors</h2>
+        <p>
+          {SITE.name} lives in {REPOS.length} repositories, so no single GitHub graph shows everyone. This wall merges all of them,
+          ordered by merged commits.
+        </p>
+      </div>
+      <ul class="mt-grid">
+        {people.map((p, i) => (
+          <li>
+            <a class="mt-card" href={p.url} aria-label={`${p.login} on GitHub: ${p.contributions} commits to ${p.repos.map(repoLabel).join(', ')}`}>
+              <span class="mt-rank" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <img class="mt-avatar" src={avatar(p.avatar, 56)} alt="" width="56" height="56" loading="lazy" decoding="async" />
+              <span class="mt-card-body">
+                <span class="mt-login">{p.login}</span>
+                <span class="mt-commits">{p.contributions} commit{p.contributions === 1 ? '' : 's'}</span>
+                <span class="mt-bar" aria-hidden="true"><i style={`width:${Math.max(4, Math.round((p.contributions / most) * 100))}%`} /></span>
+                <span class="mt-repos">{p.repos.map((r) => <span>{repoLabel(r)}</span>)}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+        <li>
+          <a class="mt-card mt-card-you" href={`${SITE.github}/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22`}>
+            <span class="mt-you-mark" aria-hidden="true">+</span>
+            <span class="mt-card-body">
+              <span class="mt-login">You, next</span>
+              <span class="mt-commits">Every name here started with one pull request. Pick a good first issue.</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+      <p class="mt-graphs">
+        Live graphs per repository:
+        {REPOS.map((r, i) => (
+          <>{i > 0 && ' · '}<a href={`https://github.com/${r}/graphs/contributors`}>{repoLabel(r)}</a></>
+        ))}
+      </p>
+    </section>
+
+    <section class="mt-reach" aria-labelledby="reach-heading">
+      <h2 id="reach-heading">How to reach the maintainers</h2>
+      <ul class="mt-reach-grid">
+        {reach.map((r) => (
+          <li>
+            <p class="mt-reach-label">{r.label}</p>
+            <p>{r.body}</p>
+            <a href={r.href}>{r.cta}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="mt-run" aria-labelledby="run-heading">
+      <h2 id="run-heading">How the project is run</h2>
+      <p>
+        The repository does not publish a governance document, voting rules or a formal release process, so this page does not
+        describe one. What is written down: releases are announced in the <a href="/changelog">changelog</a>, changes follow the
+        <a href="/docs/project/security">security</a> and <a href="/docs/project/contributing">contributing</a> policies, and the
+        <a href="/docs/project/roadmap">roadmap</a> says what is planned and what is out of scope. Contributions are accepted under the
+        <a href={`${SITE.github}/blob/main/LICENSE`}>MIT license</a>. More in <a href="/docs/project">About the project</a>.
+      </p>
+    </section>
+  </div>
+</BaseLayout>

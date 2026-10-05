@@ -14,6 +14,9 @@ for (const p of posts) {
   months.set(m, [...(months.get(m) ?? []), p]);
 }
 const day = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
+// While the blog is small the archive repeats the blog index, so it stays out of search until
+// there are enough posts for it to add something.
+const MIN_ARCHIVE_POSTS = 10;
 const description = `All ${posts.length} posts from the 10xGraph engineering blog, newest first, grouped by year and month.`;
 const jsonLd = [
   {
@@ -34,7 +37,7 @@ const jsonLd = [
   },
 ];
 ---
-<BaseLayout title="10xGraph blog archive: every post by date" exactTitle description={description} jsonLd={jsonLd}>
+<BaseLayout title="10xGraph blog archive: every post by date" exactTitle description={description} jsonLd={jsonLd} noindex={posts.length < MIN_ARCHIVE_POSTS}>
   <div class="blog">
     <header class="blog-head blog-head-tag">
       <div>

@@ -23,6 +23,9 @@ interface Props {
 }
 const { kind, kinds, total, posts } = Astro.props;
 const { label, blurb } = BLOG_KINDS[kind];
+// Categories with only a post or two are thin, so they stay out of search (and the sitemap)
+// until they grow.
+const MIN_INDEXED_POSTS = 3;
 const jsonLd = [
   {
     '@context': 'https://schema.org',
@@ -34,7 +37,7 @@ const jsonLd = [
   },
 ];
 ---
-<BaseLayout title={`${label}: 10xGraph blog`} description={blurb} jsonLd={jsonLd}>
+<BaseLayout title={`${label}: 10xGraph blog`} description={blurb} jsonLd={jsonLd} noindex={posts.length < MIN_INDEXED_POSTS}>
   <div class="blog">
     <header class="blog-head blog-head-tag">
       <div>

@@ -1,75 +1,85 @@
 ---
 title: Security and Validators
-description: Graph-level validation, prompt-injection checks, and safety boundaries for 10xGraph apps.
+description: How input validators and PromptInjectionValidator work in 10xGraph, what the production template enables, and why they reduce prompt-injection risk.
 section: Concepts
 group: In depth
 order: 320
 updated: "2026-07-21"
 ---
 
-10xGraph separates HTTP security from graph-level safety:
+Validators are checks that run on incoming messages before a graph executes them. A validator subclasses `BaseValidator`, is registered on a `CallbackManager`, and raises `ValidationError` to reject input. They reduce prompt-injection risk. They do not eliminate it.
 
-- API auth, CORS, middleware, and request limits protect the server boundary.
-- Validators and callbacks protect graph inputs, tool arguments, model outputs, and memory writes.
+## Threat model
 
-## Validator API
+Two layers need protection, and they use different tools:
 
-Validators subclass `BaseValidator` and implement `validate`.
+- **The server boundary.** Who may call which endpoint. The API server handles this with JWT or custom auth, role scopes checked per endpoint (`resource:action`, for graph, checkpointer, store, files and config), and owner-only threads. It also provides CORS limits, request-size limits and rate limits.
+- **The model boundary.** What text reaches the model. A user, or a document a tool fetched, can try to override instructions, reveal the system prompt or push the agent toward actions it should not take. Validators and callbacks address this layer.
+
+Authorization is not per tool out of the box. A tool receives the verified identity and scopes in `config["authz"]` and can check them itself with `agentflow.core.authz.has_scope`.
+
+## How validators run
+
+When a run starts, the new input messages are passed to `validate_message_content`, which calls `CallbackManager.execute_validators`. Validators run in registration order, each awaited in turn. The first one that raises stops the run, and a rejection event is published if a publisher is configured. Through the API server, a `ValidationError` becomes an HTTP 422 response with error code `AGENTFLOW_VALIDATION_ERROR`.
+
+Input validators see messages entering the graph, on both fresh and continued threads. They do not inspect model output or tool arguments. For those points, use `register_before_invoke` and `register_after_invoke` callbacks (see [Callbacks and Command](/docs/concepts/callbacks-and-command)).
+
+## Writing a validator
 
 ```python
-from agentflow.utils import BaseValidator
-from agentflow.utils.validators import ValidationError
+from agentflow.core.state import Message
+from agentflow.utils import BaseValidator, CallbackManager
+from agentflow.utils.validators import PromptInjectionValidator, ValidationError
 
-class TopicValidator(BaseValidator):
-    async def validate(self, messages):
+
+class NoCardNumbers(BaseValidator):
+    async def validate(self, messages: list[Message]) -> bool:
         for message in messages:
-            if "forbidden topic" in message.text().lower():
-                raise ValidationError("Topic is not allowed", "topic_policy")
+            text = message.text()
+            if "4111 1111" in text:
+                raise ValidationError("Card numbers are not accepted", "pii_card")
         return True
-```
 
-Register validators on a callback manager:
-
-```python
-from agentflow.utils import CallbackManager
 
 callback_manager = CallbackManager()
-callback_manager.register_input_validator(TopicValidator())
+callback_manager.register_input_validator(
+    PromptInjectionValidator(strict_mode=True, max_length=2000)
+)
+callback_manager.register_input_validator(NoCardNumbers())
 
 app = graph.compile(callback_manager=callback_manager)
 ```
 
+`ValidationError(message, violation_type, details=None)` carries a machine-readable `violation_type`.
+
 ## Built-in validators
 
-| Validator | Purpose |
+| Validator | What it checks |
 |---|---|
-| `PromptInjectionValidator` | Detect common prompt-injection patterns and suspicious content. |
-| `MessageContentValidator` | Validate message structure and content limits. |
-| `register_default_validators` | Register the standard validation set. |
+| `PromptInjectionValidator` | Maximum length, regex patterns for instruction override, role switching, system-prompt leakage, delimiter tricks and jailbreak names, encoding obfuscation, and three or more suspicious keywords in one message. |
+| `MessageContentValidator` | Allowed roles and a cap on content blocks per message (default 50). |
+| `register_default_validators(manager, strict_mode=True)` | Registers both of the above. |
 
-## Safety points
+With `strict_mode=False`, `PromptInjectionValidator` logs a warning instead of raising. You can extend it with `blocked_patterns` and `suspicious_keywords`.
 
-Use callbacks when validation needs to happen around a specific invocation.
+## What the production template generates
 
-| Safety point | Example |
-|---|---|
-| Before model calls | Block prompt injection or disallowed topics. |
-| Before tool calls | Validate tool arguments and permissions. |
-| After model calls | Filter or inspect output before returning it. |
-| Before memory writes | Prevent sensitive data from entering long-term memory. |
+The prod template creates `graph/validators/validators.py` with a `PromptInjectionValidator(strict_mode=True, max_length=1000)` and extra suspicious keywords such as `bypass`, `override`, `token`, `coupon` and `free`. `graph/validators/manager.py` builds a `CallbackManager`, registers that validator and a lifecycle hook, and `graph/agent.py` passes it to `compile(callback_manager=...)`. Tune the keyword list to your domain: words like `free` will flag ordinary customer messages in some products.
 
-## Production boundary
+## Limits
 
-Graph validators are not a replacement for HTTP security. In production, also configure API auth, restrict CORS origins, protect docs endpoints when needed, and validate remote tool registrations if untrusted clients can call setup routes.
+- Pattern and keyword checks are heuristics. A rephrased or translated attack can pass, and a legitimate message can be rejected.
+- Indirect injection, where a tool result or retrieved document carries the attack, is not covered by input validators.
+- Validators do not replace authorization. Keep tools narrow, check scopes inside sensitive tools, and make side effects such as refunds replay-safe.
 
 ## Rules
 
 | Rule | Why it matters |
 |---|---|
 | Keep validators deterministic and fast | They run on the hot path. |
-| Avoid LLM calls inside validators by default | That adds latency and nondeterminism. |
-| Raise `ValidationError` for expected policy failures | Error handling can distinguish policy from system failures. |
-| Sanitize logs | User and tool data can contain secrets. |
+| Avoid LLM calls inside validators | They add latency and nondeterminism. |
+| Raise `ValidationError` for policy failures | Callers can tell policy from system errors. |
+| Sanitize logs | Rejected input can contain secrets. |
 
 ## Related docs
 

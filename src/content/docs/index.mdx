@@ -36,3 +36,28 @@ A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for t
 <LinkCard eyebrow="How-to" title="Add JWT authentication" href="/docs/how-to/api-cli/add-auth" description="Turn on auth and owner-only threads in agentflow.json." />
 <LinkCard eyebrow="Reference" title="CLI reference" href="/docs/reference/api-cli/commands" description="Every command and flag of the 10xgraph CLI." />
 </CardGrid>
+
+## How the docs are organized
+
+Each section answers a different question. Use the list to jump to the one you need.
+
+- [Get started](/docs/get-started): install 10xGraph, build a first agent and see what the production template generates.
+- [Beginner path](/docs/beginner): a guided route from the mental model to a served agent and a TypeScript client.
+- [Concepts](/docs/concepts): how graphs, state, tools, memory and the production runtime work.
+- [Prebuilt](/docs/prebuild): ready-made agents and tools to use as they are or extend.
+- [How-to guides](/docs/how-to): task recipes for the Python library, the CLI, the TypeScript client and production.
+- [Testing and QA](/docs/qa): unit tests with mocked models, evaluation sets and simulated users.
+- [Tutorials](/docs/tutorials): end-to-end builds based on the examples in the repository.
+- [Reference](/docs/reference): exact details for the Python library, REST API, CLI and client.
+- [Troubleshooting](/docs/troubleshooting): symptoms, causes and fixes, plus the error code reference.
+- [Learn more](/docs/learn-more): use cases, integrations, providers, a glossary and framework comparisons.
+- [Courses](/docs/courses): free GenAI courses, from foundations to agent systems.
+- [Project](/docs/project): roadmap, security policy, upgrade guides, support and contributing.
+
+## Pick a path
+
+**New to agents.** Read the [beginner mental model](/docs/beginner/mental-model), then build [your first agent](/docs/beginner/your-first-agent) and [add a tool](/docs/beginner/add-a-tool). The [courses](/docs/courses) cover the underlying ideas if you want more background first.
+
+**Already using LangGraph.** Start with [10xGraph vs LangGraph](/docs/compare/agentflow-vs-langgraph) for an honest side-by-side, including where LangGraph is stronger, such as its visual tooling. Then read [Concepts](/docs/concepts) to see how `StateGraph` maps across, and the [Quickstart](/docs/get-started/first-agent) to run something. 10xGraph is pre-1.0, so pin versions and read the changelog.
+
+**Going to production.** Begin with [production how-to guides](/docs/how-to/production) for [auth and authorization](/docs/how-to/production/auth-and-authorization), [checkpointing](/docs/how-to/production/checkpointing) and [deployment](/docs/how-to/production/deployment). Then read [Replay-safe tools](/docs/concepts/replay-safe-tools) before you give an agent tools that move money or send email, and keep [Troubleshooting](/docs/troubleshooting) close when you deploy.
