@@ -70,12 +70,11 @@ export const SECTION_INFO: Record<DocSection, { slug: string; title: string; blu
   Project: { slug: 'project', title: '10xGraph project: roadmap, security, upgrades', blurb: 'How the 10xGraph project is run: roadmap, security policy, upgrade guides, maintainers, support and contributing.' },
 };
 
-// Policy files in the main repo, linked from the footer.
+// Project policies linked from the footer: the license file, plus the docs pages for contributing and security.
 export const POLICIES = [
   { label: 'License (MIT)', href: 'https://github.com/10xHub/agentflow/blob/main/LICENSE' },
-  { label: 'Contributing', href: 'https://github.com/10xHub/agentflow/blob/main/CONTRIBUTING.md' },
-  { label: 'Code of conduct', href: 'https://github.com/10xHub/agentflow/blob/main/CODE_OF_CONDUCT.md' },
-  { label: 'Security policy', href: 'https://github.com/10xHub/agentflow/blob/main/SECURITY.md' },
+  { label: 'Contributing', href: '/docs/project/contributing' },
+  { label: 'Security policy', href: '/docs/project/security' },
 ] as const;
 
 // Packages that publish releases, with the names they are published under today.
