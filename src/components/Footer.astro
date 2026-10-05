@@ -18,18 +18,12 @@ const docLinks: DocSection[] = ['Get started', 'Concepts', 'How-to guides', 'Tut
         {docLinks.map((s) => <li><a href={`/docs/${SECTION_INFO[s].slug}`}>{s}</a></li>)}
       </ul>
     </nav>
-    <nav aria-label="Project">
-      <h2>Project</h2>
-      <ul>
-        <li><a href="/docs/project">About the project</a></li>
-        <li><a href="/changelog">Changelog</a></li>
-        <li><a href={`${SITE.github}/issues`}>Issues</a></li>
-      </ul>
-    </nav>
     <nav aria-label="Community">
       <h2>Community</h2>
       <ul>
+        <li><a href="/docs/project">About the project</a></li>
         <li><a href="/maintainers">Maintainers</a></li>
+        <li><a href={`${SITE.github}/issues`}>Issues</a></li>
         {POLICIES.map((p) => <li><a href={p.href}>{p.label}</a></li>)}
       </ul>
     </nav>
