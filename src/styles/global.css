@@ -23,6 +23,7 @@
   --warn: #f0b45a;
   --danger: #f2868a;
   --code-bg: #0d1219;
+  --brand-amber: #e9a57c;
 }
 [data-theme='light'] {
   color-scheme: light;
@@ -45,6 +46,7 @@
   --warn: #8a5a00;
   --danger: #b4232c;
   --code-bg: #f4f5f2;
+  --brand-amber: #c8692f;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -68,6 +70,7 @@
     --warn: #8a5a00;
     --danger: #b4232c;
     --code-bg: #f4f5f2;
+    --brand-amber: #c8692f;
   }
 }
 :root {
@@ -101,7 +104,8 @@ code, pre { font-family: var(--f-mono); }
 .version-pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 999px; font: 400 0.72rem var(--f-mono); color: var(--muted); text-decoration: none; }
 .version-pill:hover { color: var(--text); border-color: var(--accent-line); }
 @media (max-width: 640px) { .version-pill { display: none; } }
-.wordmark { font: 700 1.3rem var(--f-display); letter-spacing: -0.04em; color: var(--text); text-decoration: none; }
+.wordmark { font: 700 1.3rem var(--f-display); letter-spacing: -0.04em; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; gap: 0.32em; }
+.wordmark-mark { flex: none; width: 1.05em; height: 1.05em; }
 .site-header nav { margin-left: auto; }
 .site-header ul { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
 .site-header nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--muted); text-decoration: none; font-size: 0.94rem; border-radius: 6px; }

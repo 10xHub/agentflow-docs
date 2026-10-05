@@ -1,4 +1,5 @@
 ---
+import Logo from './Logo.astro';
 import { POLICIES, SECTION_INFO, SITE, type DocSection } from '../lib/site';
 
 const year = new Date().getFullYear();
@@ -7,7 +8,7 @@ const docLinks: DocSection[] = ['Get started', 'Concepts', 'How-to guides', 'Tut
 <footer class="site-footer">
   <div class="wrap footer-grid">
     <div class="footer-brand">
-      <a class="wordmark" href="/">10xGraph</a>
+      <Logo />
       <p>Open-source Python framework for production multi-agent AI, with the production server included.</p>
       <a class="footer-version" href="/changelog">v{SITE.version} <span>Changelog</span></a>
     </div>

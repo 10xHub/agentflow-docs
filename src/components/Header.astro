@@ -1,4 +1,5 @@
 ---
+import Logo from './Logo.astro';
 import SearchDialog from './SearchDialog.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { NAV, SITE } from '../lib/site';
@@ -8,7 +9,7 @@ const isCurrent = (href: string) => href.startsWith('/') && (path === href || pa
 ---
 <header class="site-header">
   <div class="wrap header-row">
-    <a class="wordmark" href="/" aria-label="10xGraph home">10xGraph</a>
+    <Logo label="10xGraph home" />
     <a class="version-pill" href="/changelog" title={`Current release: v${SITE.version}. Read the changelog`}>v{SITE.version}</a>
     <nav aria-label="Primary">
       <ul>
