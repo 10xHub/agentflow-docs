@@ -1,6 +1,6 @@
 ---
 title: Eval Presets & Configuration
-description: Ready-to-use EvalPresets and how to build custom EvalConfig — tool_usage, response_quality, conversation_flow, comprehensive, safety_check, and quick_check presets.
+description: "Ready-made EvalPresets (tool_usage, response_quality, conversation_flow, comprehensive, safety_check, quick_check) and how to build a custom EvalConfig."
 section: Testing and QA
 group: Evaluation
 order: 1110
@@ -136,7 +136,7 @@ Criteria included (LLM-judge, when `use_llm_judge=True`):
 
 Note that `comprehensive` uses `rouge_match` rather than `response_match_score` for response comparison.
 
-Note: `contains_keywords` is not included in `comprehensive` because keywords are domain-specific. Add it manually if needed (see [Criteria — contains_keywords](/docs/qa/evaluation/criteria#contains_keywords)).
+Note: `contains_keywords` is not included in `comprehensive` because keywords are domain-specific. Add it manually if needed (see [Criteria — contains_keywords](/docs/qa/evaluation/criteria#contains_keywords--keyword-presence-contains_keywords)).
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Evaluation Criteria
-description: Guide to the 10xGraph evaluation criteria — tool and node matching, ROUGE, semantic response, LLM-as-judge, rubrics, factual accuracy, hallucination, and safety.
+description: "The 10xGraph evaluation criteria: tool and node matching, ROUGE, semantic response, LLM-as-judge, rubrics, factual accuracy, hallucination, and safety."
 section: Testing and QA
 group: Evaluation
 order: 1100

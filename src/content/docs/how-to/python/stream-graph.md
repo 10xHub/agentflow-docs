@@ -96,11 +96,11 @@ async for chunk in app.astream({"messages": [Message.text_message("Explain gravi
         continue
 
     if chunk.message.delta:
-        # Partial message — append the new text to the live display
+        # Partial message, append the new text to the live display
         buffer += chunk.message.text()
         update_ui_streaming(buffer)
     else:
-        # Complete message — replace the streaming placeholder
+        # Complete message, replace the streaming placeholder
         final_msg = chunk.message
         buffer = ""
         show_final_message(final_msg)

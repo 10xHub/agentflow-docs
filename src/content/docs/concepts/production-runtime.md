@@ -1,5 +1,6 @@
 ---
 title: Production Runtime
+seoTitle: "Production runtime for 10xGraph agents"
 description: How 10xGraph serves agents in production, including async execution, publisher adapters, and multi-worker deployments.
 section: Concepts
 group: In depth
@@ -14,7 +15,7 @@ Running `app.invoke` in a script is fine for experimentation. Production deploym
 
 ```mermaid
 flowchart TB
-  subgraph Process["agentflow api process"]
+  subgraph Process["10xgraph api process"]
     Uvicorn[Uvicorn ASGI server]
     FastAPI[FastAPI app]
     Auth[Auth middleware]
@@ -37,15 +38,44 @@ The CLI starts a Uvicorn ASGI server. The FastAPI app loads your compiled graph 
 
 ## Async execution
 
-The `GraphService` runs your graph in a thread pool so that blocking model calls do not delay the event loop. You do not need to write `async` code in your graph nodes — the runtime handles scheduling.
+The `GraphService` awaits `ainvoke` for `POST /v1/graph/invoke` and iterates `astream` for `POST /v1/graph/stream`, returning the chunks as a `StreamingResponse`. Nodes can be sync or async functions; the runtime handles scheduling.
 
-If your graph nodes are already `async` functions, the runtime awaits them directly.
+## Publishers
 
-## Publisher adapters
+A publisher receives structured `EventModel` payloads (source, phase, content type, node name, thread ID, run ID, payload, timestamp, metadata) from graph execution. Pass one to `StateGraph(...)`, not to `compile()`:
 
-The `agentflow.runtime.publisher` module provides adapters for different streaming transports. Internally the API uses the SSE publisher to send `StreamChunk` events over `POST /v1/graph/stream`.
+```python
+from agentflow.core.graph import StateGraph
+from agentflow.runtime.publisher import ConsolePublisher
 
-You do not interact with publisher adapters directly unless you are embedding the graph outside the standard API server.
+graph = StateGraph(publisher=ConsolePublisher(config={"format": "json"}))
+app = graph.compile()
+```
+
+`StateGraph(publisher=...)` also accepts a list of publishers, which it wraps in a `CompositePublisher`.
+
+| Publisher | Use case |
+|---|---|
+| `ConsolePublisher` | Local debugging. |
+| `RedisPublisher` | Pub/Sub or stream-backed event distribution. |
+| `KafkaPublisher` | Kafka event pipelines. |
+| `RabbitMQPublisher` | RabbitMQ messaging. |
+| `CompositePublisher` | Fan an event out to several publishers at once. |
+| `OtelPublisher` | OpenTelemetry spans for each run, node, and tool call. |
+| `LogfirePublisher` | Logfire traces. |
+| `LangsmithPublisher` | LangSmith traces over OTLP. |
+
+Rules of thumb:
+
+- Prefer publishers over ad hoc print statements, so events stay structured and backend-agnostic.
+- Close network publishers on shutdown. Redis, Kafka, and RabbitMQ publishers own connections.
+- Keep optional publisher dependencies optional, so core graph imports stay light.
+
+See the [Publishers reference](/docs/reference/python/publishers) and the [graceful shutdown tutorial](/docs/tutorials/from-examples/graceful-shutdown).
+
+## LLM response converters
+
+Converters normalize provider-native responses into 10xGraph messages, tool calls and usage. `agentflow.runtime.adapters` exports `BaseConverter`, `ConverterType`, `GoogleGenAIConverter`, `OpenAIConverter` and `OpenAIResponsesConverter`. You rarely use them directly; see [Providers](/docs/providers).
 
 ## Multi-worker deployment
 
@@ -53,9 +83,9 @@ For production scale, run multiple worker processes behind a load balancer. Beca
 
 ```mermaid
 flowchart LR
-  LB[Load balancer] --> W1[Worker 1\nagentflow api]
-  LB --> W2[Worker 2\nagentflow api]
-  LB --> W3[Worker 3\nagentflow api]
+  LB[Load balancer] --> W1[Worker 1\n10xgraph api]
+  LB --> W2[Worker 2\n10xgraph api]
+  LB --> W3[Worker 3\n10xgraph api]
   W1 & W2 & W3 --> PG[(PostgreSQL\ncheckpointer)]
   W1 & W2 & W3 --> Qdrant[(Qdrant\nmemory store)]
 ```
@@ -71,9 +101,9 @@ The API server reads settings from environment variables. Key variables:
 | `MODE` | `development` or `production` | `development` |
 | `LOG_LEVEL` | Logging verbosity | `INFO` |
 | `ORIGINS` | Comma-separated allowed CORS origins | `*` |
-| `JWT_SECRET_KEY` | Secret key for JWT auth | — |
+| `JWT_SECRET_KEY` | Secret key for JWT auth | None |
 | `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
-| `REDIS_URL` | Redis URL for `PgCheckpointer` | — |
+| `REDIS_URL` | Redis URL for `PgCheckpointer` | None |
 
 In production, set `MODE=production`. This enables stricter security header checks and logs warnings for unsafe defaults like `ORIGINS=*`.
 
@@ -82,7 +112,7 @@ In production, set `MODE=production`. This enables stricter security header chec
 Generate a Dockerfile:
 
 ```bash
-agentflow build --docker-compose
+10xgraph build --docker-compose
 ```
 
 This creates a `Dockerfile` and `docker-compose.yml` configured for the standard API server. See [Generate Docker files](/docs/how-to/api-cli/generate-docker-files) for options.
@@ -90,7 +120,7 @@ This creates a `Dockerfile` and `docker-compose.yml` configured for the standard
 ## What you learned
 
 - The API server loads the compiled graph once at startup.
-- Async scheduling is handled by the runtime — your nodes can be sync or async.
+- Async scheduling is handled by the runtime, so nodes can be sync or async.
 - Multi-worker deployments require `PgCheckpointer` for shared state.
 - Set `MODE=production` and configure `ORIGINS` for secure production deployments.
 

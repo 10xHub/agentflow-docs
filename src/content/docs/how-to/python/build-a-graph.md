@@ -13,7 +13,7 @@ updated: "2026-07-21"
 ## Prerequisites
 
 ```bash
-pip install 10xscale-agentflow
+pip install 10xgraph
 ```
 
 Set your provider API key:
@@ -215,7 +215,7 @@ Pass `response_granularity` to `invoke()`, `ainvoke()`, or `astream()`:
 
 | Value | `invoke()` returns |
 |---|---|
-| `ResponseGranularity.LOW` (default) | `{"messages": [...]}` — only the final messages |
+| `ResponseGranularity.LOW` (default) | `{"messages": [...]}` - only the final messages |
 | `ResponseGranularity.PARTIAL` | `{"messages": [...], "context": [...], "context_summary": ...}` |
 | `ResponseGranularity.FULL` | Complete state dict including `execution_meta` |
 

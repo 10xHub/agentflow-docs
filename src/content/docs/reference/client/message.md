@@ -1,5 +1,6 @@
 ---
 title: "Message"
+seoTitle: "Message class in the TypeScript client"
 description: Reference for the Message class and all content block types in the 10xGraph TypeScript client.
 section: Reference
 group: TypeScript client

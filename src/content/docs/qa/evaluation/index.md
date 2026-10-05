@@ -1,6 +1,7 @@
 ---
 title: Evaluation
-description: An introduction to 10xGraph's evaluation framework — EvalSet, EvalConfig, EvalPresets, user simulation, parallel execution, criteria, and the agentflow eval CLI command.
+seoTitle: "Evaluating AI agents with 10xGraph"
+description: "Evaluate 10xGraph agents with eval sets, criteria presets, user simulation and parallel runs, then run them in CI with the 10xgraph eval command."
 section: Testing and QA
 group: Evaluation
 order: 1080

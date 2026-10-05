@@ -1,5 +1,6 @@
 ---
 title: ReactAgent
+seoTitle: "ReactAgent: prebuilt ReAct agent"
 description: ReactAgent runs the ReAct MAIN/TOOL loop, executing tool calls in parallel until the LLM returns a final answer.
 section: Prebuilt
 group: Agents

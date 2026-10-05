@@ -1,5 +1,6 @@
 ---
 title: Unit Testing
+seoTitle: "Unit testing AI agents with 10xGraph"
 description: How to unit-test 10xGraph agents without LLM API calls using TestAgent, QuickTest, MockToolRegistry, and the agentflow test CLI command.
 section: Testing and QA
 group: Unit testing

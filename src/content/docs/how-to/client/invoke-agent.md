@@ -22,7 +22,7 @@ updated: "2026-07-21"
 Use `Message.text_message()` to create a plain text user message:
 
 ```ts
-import { Message } from '@10xscale/agentflow-client';
+import { Message } from '10xgraph-client';
 
 const userMessage = Message.text_message('What is the capital of France?');
 ```
@@ -50,7 +50,7 @@ With a system prompt:
 const result = await client.invoke([systemPrompt, userMessage]);
 ```
 
-`invoke()` returns an `InvokeResult`. The response will not arrive until the graph has finished running — all tool calls complete before the `await` resolves.
+`invoke()` returns an `InvokeResult`. The response will not arrive until the graph has finished running, all tool calls complete before the `await` resolves.
 
 ---
 
@@ -74,7 +74,7 @@ if (assistantMsg) {
 
 ## Step 4: Use a persistent thread
 
-Without a `thread_id` the graph runs without persistence — each call is independent. To keep conversation history across calls, pass a `thread_id` in `config`:
+Without a `thread_id` the graph runs without persistence, each call is independent. To keep conversation history across calls, pass a `thread_id` in `config`:
 
 ```ts
 const THREAD_ID = 'user-123-session-1';
@@ -147,7 +147,7 @@ console.log(`Completed in ${result.iterations} step(s)`);
 Wrap the call in a `try/catch` block to handle server errors gracefully:
 
 ```ts
-import { AgentFlowError } from '@10xscale/agentflow-client';
+import { AgentFlowError } from '10xgraph-client';
 
 try {
   const result = await client.invoke([userMessage]);
@@ -175,7 +175,7 @@ import {
   AgentFlowClient,
   Message,
   AgentFlowError,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -217,7 +217,7 @@ Answer: The capital of France is Paris.
 If you see a `401` error, your token is wrong. If you see `TypeError: Failed to fetch`, the server is not running. Start it with:
 
 ```bash
-agentflow api
+10xgraph api
 ```
 
 ---

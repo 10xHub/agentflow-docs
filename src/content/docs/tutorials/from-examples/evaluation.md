@@ -1,5 +1,6 @@
 ---
 title: Evaluation
+seoTitle: "Evaluation tutorial: score an agent"
 description: Use 10xGraph's evaluation framework to score tool use, response quality, trajectories, simulation goals, and reporting workflows.
 section: Tutorials
 group: From examples

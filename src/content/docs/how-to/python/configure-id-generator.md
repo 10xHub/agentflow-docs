@@ -8,7 +8,7 @@ label: Change the ID strategy
 updated: "2026-07-21"
 ---
 
-By default, agentflow generates UUID v4 strings for thread IDs and run IDs. If your storage backend requires integer primary keys, short human-readable codes, or timestamp-sortable IDs, you can swap in a different generator.
+By default, 10xGraph generates UUID v4 strings for thread IDs and run IDs. If your storage backend requires integer primary keys, short human-readable codes, or timestamp-sortable IDs, you can swap in a different generator.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ Every thread and run created by this graph will now have a 19-digit integer ID b
 
 | Class | `id_type` | Example output | Use when |
 |---|---|---|---|
-| `DefaultIDGenerator` | `STRING` | `""` (falls back to framework UUID) | Default — framework picks UUID if empty. |
+| `DefaultIDGenerator` | `STRING` | `""` (falls back to framework UUID) | Default - framework picks UUID if empty. |
 | `UUIDGenerator` | `STRING` | `"550e8400-e29b-41d4-a716-446655440000"` | Maximum collision resistance; stateless. |
 | `BigIntIDGenerator` | `BIGINT` | `1712576400000000000` | PostgreSQL `bigint` primary keys; sortable by time. |
 | `TimestampIDGenerator` | `INTEGER` | `1712576400123456` | 16-digit microsecond integer; sortable. |

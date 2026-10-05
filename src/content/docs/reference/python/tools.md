@@ -1,5 +1,6 @@
 ---
 title: Tools
+seoTitle: "ToolNode API reference (Python)"
 description: ToolNode — the unified tool registry and executor for local functions, MCP, Composio, and LangChain tools.
 section: Reference
 group: Python library
@@ -33,7 +34,7 @@ tools = ToolNode([my_function, another_function])
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `tools` | `Iterable[Callable]` | **required** | Local Python functions to register. Each is registered under its `__name__`. |
-| `client` | `fastmcp.Client \| None` | `None` | MCP client for remote tool access. Requires `pip install "10xscale-agentflow[mcp]"`. |
+| `client` | `fastmcp.Client \| None` | `None` | MCP client for remote tool access. Requires `pip install "10xgraph[mcp]"`. |
 | `pass_user_info_to_mcp` | `bool` | `False` | Forward the run config's `user` dict to MCP tool calls as request metadata, readable on the server via `ctx.request_context.meta`. |
 
 Pass an empty list when the node only serves MCP tools: `ToolNode([], client=client)`.
@@ -47,33 +48,33 @@ Pass an empty list when the node only serves MCP tools: `ToolNode([], client=cli
 Any Python function can be a tool. Use docstrings and type annotations to generate accurate JSON schemas:
 
 ```python
-def get_weather(location: str, unit: str = "celsius") -> str:
-    """Get the current weather for a location.
+def lookup_order(order_id: str) -> dict:
+    """Look up an order by ID.
 
     Args:
-        location: City name or coordinates.
-        unit: Temperature unit, either 'celsius' or 'fahrenheit'.
+        order_id: The order identifier, for example "A1001".
 
     Returns:
-        A string describing the current weather.
+        A dict with the order status and line items.
     """
-    # ... actual implementation
-    return f"Sunny, 24°C in {location}"
+    # ... query the order system
+    return {"order_id": order_id, "status": "shipped"}
 
-def search_web(query: str, max_results: int = 5) -> list[dict]:
-    """Search the web for information.
+def refund_order(order_id: str, amount: float, reason: str = "") -> dict:
+    """Refund an order, fully or partially.
 
     Args:
-        query: Search query string.
-        max_results: Maximum number of results to return (1-20).
+        order_id: The order identifier.
+        amount: Amount to refund in the order currency.
+        reason: Optional reason recorded on the refund.
 
     Returns:
-        List of results with 'title', 'url', and 'snippet' keys.
+        A dict with the refund ID and the refunded amount.
     """
-    # ... search implementation
-    return [{"title": "...", "url": "...", "snippet": "..."}]
+    # ... call the payment provider
+    return {"refund_id": "R-1", "amount": amount}
 
-tools = ToolNode([get_weather, search_web])
+tools = ToolNode([lookup_order, refund_order])
 ```
 
 ### Supported annotation types
@@ -98,15 +99,19 @@ tools = ToolNode([get_weather, search_web])
 from agentflow.core.graph import StateGraph, Agent, ToolNode
 from agentflow.utils import START, END
 
-def get_weather(location: str) -> str:
-    """Get weather for a location."""
-    return f"Sunny in {location}"
+def lookup_order(order_id: str) -> dict:
+    """Look up an order by ID."""
+    return {"order_id": order_id, "status": "shipped"}
 
-tool_node = ToolNode([get_weather])
+def refund_order(order_id: str, amount: float) -> dict:
+    """Refund an order."""
+    return {"refund_id": "R-1", "amount": amount}
+
+tool_node = ToolNode([lookup_order, refund_order])
 
 agent = Agent(
     model="gpt-4o",
-    system_prompt=[{"role": "system", "content": "You are a weather assistant."}],
+    system_prompt=[{"role": "system", "content": "You are a support agent for an online store."}],
     tool_node=tool_node,
 )
 
@@ -131,7 +136,7 @@ app = graph.compile()
 
 ## MCP integration
 
-`ToolNode` talks to MCP servers through a `fastmcp.Client`. Install the extra with `pip install "10xscale-agentflow[mcp]"`, then pass the client to `ToolNode`:
+`ToolNode` talks to MCP servers through a `fastmcp.Client`. Install the extra with `pip install "10xgraph[mcp]"`, then pass the client to `ToolNode`:
 
 ```python
 from fastmcp import Client
@@ -161,15 +166,19 @@ When `client` is provided, `ToolNode` fetches available tool schemas from the MC
 Use the `tools_tags` parameter on `Agent` to present only a subset of tools to the LLM:
 
 ```python
-def search_web(query: str) -> str:
-    """Search the web."""
+from agentflow.utils import tool
+
+@tool(tags=["safe", "orders"])
+def lookup_order(order_id: str) -> dict:
+    """Look up an order by ID."""
     ...
 
-def read_file(path: str) -> str:
-    """Read a file from disk."""
+@tool(tags=["write", "payments"])
+def refund_order(order_id: str, amount: float) -> dict:
+    """Refund an order."""
     ...
 
-tool_node = ToolNode([search_web, read_file])
+tool_node = ToolNode([lookup_order, refund_order])
 
 # Agent only sees tools tagged "safe"
 agent = Agent(
@@ -179,12 +188,7 @@ agent = Agent(
 )
 ```
 
-To tag a function, add a `__tags__` attribute:
-
-```python
-search_web.__tags__ = {"safe", "web"}
-read_file.__tags__ = {"filesystem"}
-```
+The `@tool` decorator also accepts `name`, `description`, `provider`, `capabilities`, `metadata` and `parameters`. Setting a `__tags__` attribute by hand is not supported.
 
 ---
 
@@ -193,10 +197,10 @@ read_file.__tags__ = {"filesystem"}
 When `ToolNode` executes a tool, it:
 
 1. Calls the function with the arguments from `ToolCallBlock.args`.
-2. Converts the return value to a string.
-3. Returns a `ToolResultBlock(tool_call_id=..., content=..., is_error=False)`.
+2. Wraps the return value as the block's `output`.
+3. Returns a message carrying a `ToolResultBlock(call_id=..., output=..., is_error=False)`.
 
-If the function raises an exception, the exception message is captured and `is_error=True` is set — the error is reported to the LLM so it can recover gracefully.
+If the function raises an exception, the exception message is captured and `is_error=True` is set. The error is reported to the LLM so it can recover gracefully.
 
 ---
 
@@ -224,8 +228,8 @@ In most cases you do not call `ToolNode.invoke` directly — the graph handles t
 
 ```python
 result = await tool_node.invoke(
-    name="get_weather",
-    args={"location": "Paris"},
+    name="lookup_order",
+    args={"order_id": "A1001"},
     tool_call_id="call_abc123",
     config={"thread_id": "test"},
     state=AgentState(),
@@ -236,12 +240,14 @@ result = await tool_node.invoke(
 
 ## Getting tool schemas
 
-`ToolNode` exposes the JSON schemas it will send to the LLM:
+`ToolNode` exposes the JSON schemas it will send to the LLM through the async `all_tools` method, optionally filtered by tags:
 
 ```python
-schemas = tool_node.get_tool_schemas()
-# [{"name": "get_weather", "description": "...", "parameters": {...}}, ...]
+schemas = await tool_node.all_tools(tags={"safe"}, config=config)
+# [{"type": "function", "function": {"name": "lookup_order", "description": "...", "parameters": {...}}}, ...]
 ```
+
+There is also a synchronous `all_tools_sync()` for non-async code.
 
 ---
 
@@ -249,6 +255,6 @@ schemas = tool_node.get_tool_schemas()
 
 | Error | Cause | Fix |
 |---|---|---|
-| `ToolExecutionError` | The function raised an exception. | Check tool implementation. The `is_error=True` result is returned to the LLM to handle. |
-| `ToolNotFoundError` | LLM requested a tool name that is not registered. | Verify the function is in the `tools` list and that the name matches exactly. |
+| Tool failure result (`is_error=True`) | The function raised an exception. | Check the tool implementation. The error is returned to the LLM so it can recover. |
+| Tool-not-found result | The LLM requested a tool name that is not registered. | Verify the function is in the `tools` list and that the name matches exactly. |
 | `TypeError` | Tool called with wrong argument types. | Add type annotations and docstrings to improve schema accuracy. |

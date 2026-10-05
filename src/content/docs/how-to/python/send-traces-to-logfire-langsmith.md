@@ -8,25 +8,25 @@ label: Logfire & LangSmith tracing
 updated: "2026-07-01"
 ---
 
-[Pydantic Logfire](https://pydantic.dev/logfire) and [LangSmith](https://docs.langchain.com/langsmith/) are both OpenTelemetry backends. 10xGraph already reconstructs a full span tree (graph → node → LLM → tool) with GenAI semantic-convention attributes (`gen_ai.usage.input_tokens`, `gen_ai.request.model`, `session.id`, …) through its `OtelPublisher`. So sending traces to either backend means configuring the right OpenTelemetry `TracerProvider`/exporter — there is no per-vendor event plumbing.
+[Pydantic Logfire](https://pydantic.dev/logfire) and [LangSmith](https://docs.langchain.com/langsmith/) are both OpenTelemetry backends. 10xGraph already reconstructs a full span tree (graph → node → LLM → tool) with GenAI semantic-convention attributes (`gen_ai.usage.input_tokens`, `gen_ai.request.model`, `session.id`, …) through its `OtelPublisher`. So sending traces to either backend means configuring the right OpenTelemetry `TracerProvider`/exporter, there is no per-vendor event plumbing.
 
 You have three ways to wire it up:
 
-- **Python helpers** — `setup_logfire`, `setup_langsmith`, or the unified `setup_observability`.
-- **Dedicated publishers** — `LogfirePublisher` / `LangsmithPublisher`, if you prefer a publisher object to assign or compose.
-- **Declarative config** — an `observability` block in `agentflow.json` (auto-wired by the API server; see [below](#declarative-config-in-agentflowjson)).
+- **Python helpers**, `setup_logfire`, `setup_langsmith`, or the unified `setup_observability`.
+- **Dedicated publishers**, `LogfirePublisher` / `LangsmithPublisher`, if you prefer a publisher object to assign or compose.
+- **Declarative config**, an `observability` block in `agentflow.json` (auto-wired by the API server; see [below](#declarative-config-in-agentflowjson)).
 
 ---
 
 ## Install
 
 ```bash
-pip install '10xscale-agentflow[logfire]'        # Logfire
-pip install '10xscale-agentflow[langsmith]'      # LangSmith (OTLP HTTP exporter)
-pip install '10xscale-agentflow[observability]'  # both + otel
+pip install '10xgraph[logfire]'        # Logfire
+pip install '10xgraph[langsmith]'      # LangSmith (OTLP HTTP exporter)
+pip install '10xgraph[observability]'  # both + otel
 ```
 
-The `langsmith` extra pulls only the OpenTelemetry OTLP HTTP exporter — not the LangSmith SDK — because spans are sent over OTLP, not RunTree.
+The `langsmith` extra pulls only the OpenTelemetry OTLP HTTP exporter, not the LangSmith SDK, because spans are sent over OTLP, not RunTree.
 
 ---
 
@@ -60,7 +60,7 @@ graph.add_node("MAIN", Agent(model="gpt-4o"))
 graph.set_entry_point("MAIN")
 graph.add_edge("MAIN", END)
 
-# Configure Logfire and instrument the graph — before compile()
+# Configure Logfire and instrument the graph, before compile()
 setup_logfire(
     graph,
     service_name="my-agent",
@@ -118,7 +118,7 @@ app = graph.compile()
 
 ## Dedicated publishers
 
-If you prefer a publisher object — for example to fan out with `CompositePublisher` — use `LogfirePublisher` or `LangsmithPublisher`. They subclass `OtelPublisher` and configure the provider on construction, so assign them before `compile()`:
+If you prefer a publisher object, for example to fan out with `CompositePublisher`, use `LogfirePublisher` or `LangsmithPublisher`. They subclass `OtelPublisher` and configure the provider on construction, so assign them before `compile()`:
 
 ```python
 from agentflow.runtime.publisher import LangsmithPublisher, ObservabilityLevel
@@ -141,7 +141,7 @@ The `level` controls how much data lands on each span. It reuses `ObservabilityL
 |---|---|---|
 | `SPANS` | Timing and structure only | None |
 | `STANDARD` (default) | + token counts, model, request params. **No message content.** | Low |
-| `FULL` | + prompt and completion content | High — opt in deliberately |
+| `FULL` | + prompt and completion content | High - opt in deliberately |
 
 `FULL` puts prompt/response text on spans. The framework's log redaction (`install_secret_redaction()`) does **not** scrub span content, so treat `FULL` traces as sensitive and restrict who can view them in Logfire/LangSmith.
 
@@ -149,7 +149,7 @@ The `level` controls how much data lands on each span. It reuses `ObservabilityL
 
 ## Declarative config in agentflow.json
 
-When you serve a graph with `agentflow api`, you do not call the helpers yourself. Add an `observability` block to [`agentflow.json`](/docs/how-to/api-cli/configure-agentflow-json) and the server wires it up during startup:
+When you serve a graph with `10xgraph api`, you do not call the helpers yourself. Add an `observability` block to [`agentflow.json`](/docs/how-to/api-cli/configure-agentflow-json) and the server wires it up during startup:
 
 ```json
 {
@@ -162,11 +162,11 @@ When you serve a graph with `agentflow api`, you do not call the helpers yoursel
 }
 ```
 
-Keep `LOGFIRE_TOKEN` / `LANGSMITH_API_KEY` in your `.env` — never in `agentflow.json`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter rather than failing.
+Keep `LOGFIRE_TOKEN` / `LANGSMITH_API_KEY` in your `.env`, never in `agentflow.json`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter rather than failing.
 
 ---
 
 ## Related
 
-- [How to use publishers](/docs/how-to/python/use-publishers) — the full publisher catalog, including the raw `OtelPublisher`.
-- [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json) — every top-level config key.
+- [How to use publishers](/docs/how-to/python/use-publishers), the full publisher catalog, including the raw `OtelPublisher`.
+- [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json), every top-level config key.

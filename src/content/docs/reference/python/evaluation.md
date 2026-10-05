@@ -1,5 +1,6 @@
 ---
 title: Evaluation
+seoTitle: "Evaluation API reference (Python)"
 description: AgentEvaluator, EvalSet, EvalCase, EvalConfig, EvalReport and TrajectoryCollector — how a scored evaluation run is wired together.
 section: Reference
 group: Python library

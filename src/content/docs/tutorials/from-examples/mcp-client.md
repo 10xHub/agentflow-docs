@@ -1,5 +1,6 @@
 ---
 title: MCP Client
+seoTitle: "MCP client tutorial with FastMCP"
 description: Connect to MCP servers with FastMCP Client, list remote tools, inspect metadata, and invoke tools directly.
 section: Tutorials
 group: From examples

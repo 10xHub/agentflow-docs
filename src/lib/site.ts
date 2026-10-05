@@ -5,7 +5,7 @@ export const SITE = {
   url: 'https://10xgraph.com',
   tagline: '10xGraph by 10xScale: graph engineering for production AI agents.',
   description:
-    'Open-source Python multi-agent framework that generates the production server: auth, per-tool permissions, rate limits, replay-safe tools, Docker and k8s. MIT.',
+    'Open-source Python multi-agent framework that generates the production server: auth, owner-only threads, rate limits, replay-safe tools, Docker and k8s. MIT.',
   // Current repo URLs. GitHub redirects these after the repos move to the 10xGraph org,
   // so they keep working; switch them once the transfer is done.
   github: 'https://github.com/10xHub/agentflow',
@@ -31,7 +31,7 @@ export const BLOG_KINDS = {
   paper: { label: 'Papers', blurb: 'Research papers on agents, implemented in 10xGraph and run, with results, costs and limits.' },
   engineering: { label: 'Engineering', blurb: 'How 10xGraph works inside and why: failure modes, storage, auth and the runtime.' },
   release: { label: 'Releases', blurb: 'What changed in notable 10xGraph releases and how to upgrade. Every version is in the changelog.' },
-  news: { label: 'News', blurb: 'Project announcements from the 10xGraph team.' },
+  news: { label: 'News', blurb: 'Project announcements from the 10xGraph team: the rename from Agentflow, new packages, the GitHub org move and roadmap updates.' },
 } as const;
 export type BlogKind = keyof typeof BLOG_KINDS;
 
@@ -55,19 +55,19 @@ export type DocSection = (typeof DOC_SECTIONS)[number];
 
 // Section landing pages (/docs/<slug>). When a doc with id `<slug>/index` exists, its content
 // is shown at the top of the landing page.
-export const SECTION_INFO: Record<DocSection, { slug: string; blurb: string }> = {
-  'Get started': { slug: 'get-started', blurb: 'Install 10xGraph, build a first agent with a tool, and learn what the production template generates.' },
-  'Beginner path': { slug: 'beginner', blurb: 'A guided path from zero: the mental model, a first agent, tools, memory, the API server and a TypeScript client.' },
-  Concepts: { slug: 'concepts', blurb: 'How 10xGraph works: graphs and state, tools, memory, serving, clients and the production runtime.' },
-  Prebuilt: { slug: 'prebuild', blurb: 'Ready-made agents and tools you can use as they are or extend.' },
-  'How-to guides': { slug: 'how-to', blurb: 'Task-focused recipes for the Python library, production, the CLI and the TypeScript client.' },
-  'Testing and QA': { slug: 'qa', blurb: 'Unit tests, evaluation sets, simulated users and quality gates for agents.' },
-  Tutorials: { slug: 'tutorials', blurb: 'End-to-end builds based on the examples in the repository.' },
-  Reference: { slug: 'reference', blurb: 'Exact details: the Python library, the REST API, the CLI and configuration, and the TypeScript client.' },
-  Troubleshooting: { slug: 'troubleshooting', blurb: 'Fixes for common problems with installation, providers, the server and deployments.' },
-  'Learn more': { slug: 'learn-more', blurb: 'Use cases, integrations, providers, skills, a glossary of agent terms, and comparisons with other frameworks.' },
-  Courses: { slug: 'courses', blurb: 'Free GenAI courses: shared foundations, a beginner track and an advanced track for agent systems.' },
-  Project: { slug: 'project', blurb: 'Roadmap, security, upgrades, maintainers and how the project is run.' },
+export const SECTION_INFO: Record<DocSection, { slug: string; title: string; blurb: string }> = {
+  'Get started': { slug: 'get-started', title: 'Get started with 10xGraph: install and first agent', blurb: 'Install 10xGraph, build a first agent with a tool, and learn what the production template generates.' },
+  'Beginner path': { slug: 'beginner', title: '10xGraph beginner path: from zero to a served agent', blurb: 'A guided path from zero: the mental model, a first agent, tools, memory, the API server and a TypeScript client.' },
+  Concepts: { slug: 'concepts', title: '10xGraph concepts: graphs, tools, memory, serving', blurb: 'How 10xGraph works: graphs and state, tools, memory, serving, clients and the production runtime.' },
+  Prebuilt: { slug: 'prebuild', title: 'Prebuilt agents and tools in 10xGraph', blurb: 'Ready-made 10xGraph agents (ReAct, RAG, supervisor team, swarm, plan-act-reflect, structured output, audio) and tools to use as they are or extend.' },
+  'How-to guides': { slug: 'how-to', title: '10xGraph how-to guides: Python, CLI, production', blurb: 'Task-focused recipes for the Python library, production, the CLI and the TypeScript client.' },
+  'Testing and QA': { slug: 'qa', title: 'Testing and evaluating AI agents with 10xGraph', blurb: 'Unit tests, evaluation sets, simulated users and quality gates for agents.' },
+  Tutorials: { slug: 'tutorials', title: '10xGraph tutorials: end-to-end agent builds', blurb: 'End-to-end 10xGraph builds based on the examples in the repository, from a single tool agent to multi-agent systems.' },
+  Reference: { slug: 'reference', title: '10xGraph reference: Python, REST API, CLI, TS client', blurb: 'Exact details: the Python library, the REST API, the CLI and configuration, and the TypeScript client.' },
+  Troubleshooting: { slug: 'troubleshooting', title: 'Troubleshooting 10xGraph: install, providers, server', blurb: 'Fixes for common problems with installation, providers, the server and deployments.' },
+  'Learn more': { slug: 'learn-more', title: 'Learn more: 10xGraph use cases, comparisons, glossary', blurb: 'Use cases, integrations, providers, skills, a glossary of agent terms, and comparisons with other frameworks.' },
+  Courses: { slug: 'courses', title: 'Free GenAI and AI agent courses from 10xGraph', blurb: 'Free GenAI courses: shared foundations, a beginner track and an advanced track for agent systems.' },
+  Project: { slug: 'project', title: '10xGraph project: roadmap, security, upgrades', blurb: 'How the 10xGraph project is run: roadmap, security policy, upgrade guides, maintainers, support and contributing.' },
 };
 
 // Policy files in the main repo, linked from the footer.

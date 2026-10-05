@@ -1,64 +1,18 @@
 ---
 title: Configure agentflow.json
-description: How to configure agentflow.json for checkpointers, stores, auth, and environment variables.
+description: Task guide for setting the common agentflow.json keys, wiring a checkpointer, store and auth, and keeping separate configs per environment.
 section: How-to guides
 group: CLI
 order: 890
 label: Configure agentflow.json
-updated: "2026-09-29"
+updated: "2026-10-06"
 ---
 
-`agentflow.json` is the single source of truth for how your API server behaves. This guide walks through each field with examples and explains when to use each option. For a complete reference, see [agentflow.json Configuration Reference](/docs/reference/api-cli/configuration).
+`agentflow.json` tells the API server which graph to serve and how to secure it. This guide covers how to set the keys you reach for most often. For every key, type and default, see the [agentflow.json reference](/docs/reference/api-cli/configuration).
 
-## Basic structure
+## Start with the agent key
 
-Every `agentflow.json` must have at least an `agent` field:
-
-```json
-{
-  "agent": "graph.react:app"
-}
-```
-
-This tells the server where to load your compiled graph from. All other fields are optional but recommended for production.
-
-## Core fields
-
-### agent (required)
-
-The import path to your compiled graph, in the format `module:attribute`:
-
-```json
-{
-  "agent": "graph.react:app"
-}
-```
-
-This import happens when the server starts. The module `graph.react` is imported and the `app` attribute is retrieved. The `app` must be a `CompiledGraph` instance:
-
-```python
-# graph/react.py
-from agentflow.core.graph import StateGraph
-
-state_graph = StateGraph(MyState)
-# ... add nodes, edges ...
-app = state_graph.compile()  # app is the compiled graph
-```
-
-**Why it matters:** If this import fails, the server will not start. Common issues:
-- The module does not exist (typo in the path)
-- The attribute does not exist on the module
-- The module has syntax errors
-
-**Debugging:** Test the import manually:
-
-```bash
-python -c "from graph.react import app; print(type(app))"
-```
-
-### env (optional)
-
-Path to a `.env` file containing environment variables:
+Only `agent` is required. It is a `module:attribute` path to your compiled graph:
 
 ```json
 {
@@ -67,111 +21,17 @@ Path to a `.env` file containing environment variables:
 }
 ```
 
-The server uses `python-dotenv` to load this file before importing your graph module. This is useful for:
-
-- **Development secrets** (API keys, database URLs) that should not be committed to git
-- **Local overrides** of production variables for testing
-
-Example `.env`:
+The module is imported when the server starts, and `app` must be a compiled graph (`state_graph.compile()`). If the import fails, the server does not start. Test it by hand:
 
 ```bash
-# API keys
-GOOGLE_API_KEY=sk-abc123...
-OPENAI_API_KEY=sk-def456...
-
-# Database connections
-REDIS_URL=redis://localhost:6379/0
-DATABASE_URL=postgresql://user:pass@localhost/mydb
-
-# Feature flags
-ENABLE_STREAMING=true
+python -c "from graph.react import app; print(type(app))"
 ```
 
-Your graph code accesses them:
+`env` names a dotenv file loaded before your graph module is imported. Use it for local secrets, never commit it, and in production pass variables through the container or process environment instead.
 
-```python
-import os
+## Persist conversations with a checkpointer
 
-api_key = os.environ["GOOGLE_API_KEY"]
-```
-
-**Important:** Never commit `.env` files to version control. Add `.env` to `.gitignore`.
-
-**In production:** Pass environment variables via container/process environment, not `.env` files:
-
-```bash
-export GOOGLE_API_KEY=...
-export REDIS_URL=...
-agentflow api --no-reload
-```
-
-## Persistence: Checkpointer
-
-### Without a checkpointer
-
-If you do not pass one, `compile()` falls back to an `InMemoryCheckpointer`. Threads work while
-the process runs, but every conversation is lost on restart and is not shared across workers.
-
-### With a checkpointer
-
-Conversation state is saved after each step. By providing a `thread_id`, you can resume a conversation later:
-
-```bash
-# First request
-curl -X POST http://localhost:8000/v1/graph/invoke \
-  -d '{
-    "messages": [{"role": "user", "content": "What is my name?"}],
-    "config": {"thread_id": "user-123"}
-  }'
-
-# Second request (same thread, context is preserved)
-curl -X POST http://localhost:8000/v1/graph/invoke \
-  -d '{
-    "messages": [{"role": "user", "content": "Remind me what I just asked."}],
-    "config": {"thread_id": "user-123"}
-  }'
-```
-
-### Adding a checkpointer
-
-Pass the checkpointer to `compile()` in your graph module. The server uses whatever the compiled
-graph named in `agent` carries. Do not rely on the `checkpointer` key in `agentflow.json`: it is
-recognised, but the API server does not apply it yet, so setting it has no effect (see
-[`checkpointer`](/docs/reference/api-cli/configuration#checkpointer)).
-
-**Development (in-memory, lost on restart):**
-
-```python
-# graph/dependencies.py
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-
-my_checkpointer = InMemoryCheckpointer()
-```
-
-```python
-# graph/react.py
-from graph.dependencies import my_checkpointer
-
-app = state_graph.compile(checkpointer=my_checkpointer)
-```
-
-```json
-{
-  "agent": "graph.react:app"
-}
-```
-
-Fast and easy, but state is lost when the server restarts.
-
-**Production (PostgreSQL + Redis):**
-
-Install the optional dependency:
-
-```bash
-pip install 10xscale-agentflow[pg_checkpoint]
-```
-
-Create the checkpointer:
+Pass the checkpointer to `compile()` in your graph module. The server uses whatever the compiled graph carries. The `checkpointer` key in `agentflow.json` is recognised but not applied by the API server, so setting it has no effect.
 
 ```python
 # graph/dependencies.py
@@ -183,8 +43,6 @@ my_checkpointer = PgCheckpointer(
 )
 ```
 
-Then compile the graph with it, exactly as above:
-
 ```python
 # graph/react.py
 from graph.dependencies import my_checkpointer
@@ -192,67 +50,18 @@ from graph.dependencies import my_checkpointer
 app = state_graph.compile(checkpointer=my_checkpointer)
 ```
 
-This persists all state to a PostgreSQL database, enabling:
-- Durable conversation history across server restarts
-- Multi-server deployments (shared state)
-- Data retention and compliance
+`PgCheckpointer` needs `pip install "10xgraph[pg_checkpoint]"`. Without a checkpointer, `compile()` falls back to `InMemoryCheckpointer`: threads work while the process runs, but are lost on restart and are not shared across workers. See [Set up checkpointing](/docs/how-to/python/set-up-checkpointing).
 
-**Health check:** Verify the checkpointer is accessible:
+## Enable the memory store endpoints
 
-```bash
-curl -X GET http://localhost:8000/v1/threads
-```
-
-If the database is unreachable, you get a 500 error.
-
-## Thread name generation
-
-When a new conversation thread is created, generate a human-readable name instead of a raw UUID:
-
-```python
-# graph/thread_name_generator.py
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
-
-class MyThreadNameGenerator(ThreadNameGenerator):
-    async def generate_name(self, messages: list[str]) -> str:
-        # Optionally use message context or an LLM
-        return "thoughtful-conversation"
-
-my_generator = MyThreadNameGenerator()
-```
-
-```json
-{
-  "agent": "graph.react:app",
-  "thread_name_generator": "graph.thread_name_generator:MyThreadNameGenerator"
-}
-```
-
-When a new thread is created via the API, it automatically gets a readable name like `exploring-ideas` instead of `550e8400-e29b-41d4-a716-446655440000`.
-
-## Memory store
-
-The `store` field points at a `BaseStore` instance. Without it the `/v1/store/*` endpoints report
-that no store is configured, even if your graph uses one internally.
+The `store` key points at a `BaseStore` instance (not a class). Without it, the `/v1/store/*` endpoints report that no store is configured.
 
 ```python
 # graph/dependencies.py
 from agentflow.storage.store import QdrantStore
 from agentflow.storage.store.embedding import OpenAIEmbedding
 
-my_store = QdrantStore(
-    embedding=OpenAIEmbedding(),
-    path="./qdrant_data",
-)
-```
-
-For local development and tests, `agentflow.qa.testing.InMemoryStore` is a `BaseStore`
-implementation with no external dependencies — it satisfies the same field:
-
-```python
-from agentflow.qa.testing import InMemoryStore
-
-my_store = InMemoryStore()
+my_store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 ```
 
 ```json
@@ -262,13 +71,11 @@ my_store = InMemoryStore()
 }
 ```
 
-The value is a `module:attribute` path resolving to an instance, not a class. Loading fails at
-startup with a clear error if the attribute is not a `BaseStore`.
+Loading fails at startup with a clear error if the attribute is not a `BaseStore`. For tests, `agentflow.qa.testing.InMemoryStore` satisfies the same key.
 
-## Dependency injection
+## Inject your own services
 
-The `injectq` field points at an `InjectQ` container. Use it when your nodes or tools need
-services resolved at startup: a database session factory, an HTTP client, a settings object.
+The `injectq` key points at an `InjectQ` container. Use it when nodes or tools need services resolved at startup, such as a database session factory or an HTTP client:
 
 ```python
 # graph/dependencies.py
@@ -285,413 +92,80 @@ container.bind_instance(MyDatabase, MyDatabase(dsn=os.environ["DATABASE_URL"]))
 }
 ```
 
-The container is activated as the global instance when it loads, so the server's own bindings
-(graph config, auth backend, media service, checkpointer) land in the same container as yours.
-Bind a `BaseRateLimitBackend` here when using `"backend": "custom"` for rate limiting.
+The container becomes the global instance on load, so the server's own bindings land in the same container as yours. Bind a `BaseRateLimitBackend` here when you use `"backend": "custom"` for rate limiting.
 
-## Redis
+## Name threads
 
-A single Redis URL for the server's own use, as a plain string:
-
-```json
-{
-  "agent": "graph.react:app",
-  "redis": "redis://localhost:6379/0"
-}
-```
-
-It backs the shared L2 tier of the thread-ownership cache used by the `ownership` and `rbac`
-authorization backends. When it is unset the server falls back to the `REDIS_URL` environment
-variable. With neither set, or without the `redis` package installed, the cache runs in-process
-only and the server logs a warning; nothing breaks, but each worker pays its own first lookup per
-thread.
-
-This is separate from `rate_limit.redis`, which the rate limiter uses. Configure both if you want
-both features backed by Redis:
-
-```json
-{
-  "redis": "redis://localhost:6379/0",
-  "rate_limit": {
-    "backend": "redis",
-    "redis": { "url": "redis://localhost:6379/1" }
-  }
-}
-```
-
-## Rate limiting
-
-Add a `rate_limit` block to turn on the sliding-window limiter. It is off until you do.
-
-```json
-{
-  "agent": "graph.react:app",
-  "rate_limit": {
-    "enabled": true,
-    "backend": "memory",
-    "requests": 100,
-    "window": 60,
-    "by": "ip",
-    "trusted_proxy_headers": false,
-    "trusted_proxy_hops": 1,
-    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"],
-    "fail_open": true
-  }
-}
-```
-
-Three things that are easy to miss:
-
-- `by` accepts `"user"` as well as `"ip"` and `"global"`. Switch to `"user"` once auth is enabled.
-- The limiter also gates **WebSocket handshakes** on `/v1/graph/ws` and `/v1/graph/live`, sharing
-  the same bucket as REST. Exceeding it closes the handshake with code `1013`.
-- `"backend": "memory"` counts per process and logs a startup warning. With N workers the real
-  limit is `requests x N`.
-
-Full reference: [Rate Limiting](/docs/reference/api-cli/rate-limiting). Step-by-step setup:
-[Configure rate limiting](/docs/how-to/api-cli/configure-rate-limiting).
-
-## WebSocket settings
-
-Cap how many WebSocket connections a single server process will hold open:
-
-```json
-{
-  "agent": "graph.react:app",
-  "websocket": {
-    "max_connections": 100,
-    "max_connections_per_user": 5
-  }
-}
-```
-
-`max_connections` counts `/v1/graph/ws` and `/v1/graph/live` together. `max_connections_per_user`
-caps how many of those one verified user may hold. A missing field keeps its default (`1000` and
-`10`); only an explicit `0` or `null` removes a cap. A negative value raises a `ValueError`.
-
-Both WebSocket endpoints are always mounted. There is no switch to turn `/v1/graph/ws` off; clients
-that only need REST can use `POST /v1/graph/stream` (SSE) and simply never open the socket.
-
-To let `/v1/graph/live` clients pick their realtime model, list the allowed ones in
-`realtime_models`. Any other requested model is ignored and the agent's own model is used:
-
-```json
-{
-  "agent": "graph.react:app",
-  "websocket": {
-    "realtime_models": ["gemini-2.5-flash-live"]
-  }
-}
-```
-
-The block is read when a connection opens rather than at startup, so a bad value shows up on the
-first handshake. `agentflow config` validates it ahead of time.
-
-When a cap is reached the handshake is refused before `accept()` with close code `1013`, so the
-client sees a clean rejection rather than a socket that opens and immediately dies. The slot is
-released when the handler returns or the client disconnects.
-
-The counter is per process, like the in-memory rate-limit backend. With four workers,
-`max_connections: 100` means up to 400 concurrent sockets across the deployment. Size it per
-worker, not per cluster.
-
-## Observability
-
-Send graph, node, LLM, and tool spans to [Pydantic Logfire](https://pydantic.dev/logfire) and/or [LangSmith](https://docs.langchain.com/langsmith/) by adding an `observability` block. The server configures the exporters and attaches the tracing publisher at startup — you do not call any setup helper yourself.
-
-```json
-{
-  "agent": "graph.react:app",
-  "observability": {
-    "level": "standard",
-    "logfire":   { "enabled": true, "service_name": "my-agent", "send_to_logfire": true, "console": false },
-    "langsmith": { "enabled": true, "project": "my-agent", "endpoint": null }
-  }
-}
-```
-
-Keep the secrets in `.env`, never in `agentflow.json`:
-
-```bash
-LOGFIRE_TOKEN=your-logfire-write-token
-LANGSMITH_API_KEY=your-langsmith-api-key
-```
-
-Field notes:
-
-- `level` — `spans` (timing only), `standard` (default; token counts, model, params — no message content), or `full` (adds prompt/completion content; PII risk, opt in deliberately).
-- `logfire.enabled` / `langsmith.enabled` — turn each backend on independently; enable both to fan out to both.
-- `langsmith.endpoint` — leave `null` for the default, or set a regional base URL like `https://eu.api.smith.langchain.com/otel`.
-- Requires the extra: `pip install '10xscale-agentflow[observability]'`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter.
-
-For the equivalent Python API (`setup_logfire` / `setup_langsmith` / `setup_observability` and the dedicated publishers), see [Send traces to Logfire and LangSmith](/docs/how-to/python/send-traces-to-logfire-langsmith).
-
-## Authentication
-
-### No authentication (development only)
-
-```json
-{
-  "agent": "graph.react:app",
-  "auth": null
-}
-```
-
-Or omit the `auth` field entirely. All requests are accepted.
-
-### JWT authentication
-
-```json
-{
-  "agent": "graph.react:app",
-  "auth": "jwt"
-}
-```
-
-Add required environment variables:
-
-```bash
-export JWT_SECRET_KEY="your-long-random-secret-key-at-least-32-chars"
-export JWT_ALGORITHM="HS256"
-agentflow api
-```
-
-Clients must now provide a valid JWT token in every request:
-
-```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/graph/invoke
-```
-
-Requests without a valid token get a `401 Unauthorized` response.
-
-### Custom authentication
-
-For integration with external identity providers (OAuth, SAML, custom API keys):
-
-`authenticate` is **synchronous** and takes `(request, response, credential)` — the bearer token
-arrives as `credential`. Do not declare it `async def` (the server calls it without `await`).
+Set `thread_name_generator` to a `module:Class` path to give new threads readable names instead of raw UUIDs:
 
 ```python
-# graph/auth.py
-from typing import Any
+# graph/thread_name_generator.py
+from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
 
-from fastapi import Request, Response
-from fastapi.security import HTTPAuthorizationCredentials
-
-from agentflow_cli import BaseAuth
-
-class MyCustomAuth(BaseAuth):
-    def authenticate(
-        self, request: Request, response: Response,
-        credential: HTTPAuthorizationCredentials | None,
-    ) -> dict[str, Any] | None:
-        # Custom header (API key) — or use `credential.credentials` for a bearer token.
-        api_key = request.headers.get("X-API-Key")
-        if not api_key:
-            return None
-
-        user = verify_api_key(api_key)
-        if not user:
-            return None
-
-        # Return user info (at least user_id) for authorization later.
-        return {"user_id": user.id, "role": user.role}
+class MyThreadNameGenerator(ThreadNameGenerator):
+    async def generate_name(self, messages: list[str]) -> str:
+        return "thoughtful-conversation"
 ```
 
 ```json
 {
   "agent": "graph.react:app",
-  "auth": {
-    "method": "custom",
-    "path": "graph.auth:MyCustomAuth"
-  }
+  "thread_name_generator": "graph.thread_name_generator:MyThreadNameGenerator"
 }
 ```
 
-### Authorization (fine-grained permissions)
+## Turn on auth, authorization and rate limits
 
-After authenticating, restrict which users can access which endpoints. Without an
-`authorization` key the default is mode-based — `"ownership"` (owner-only threads) in
-production, `"allow_all"` in development. For roles → permissions with no code, use the RBAC
-config block:
+These keys have their own guides:
+
+| Key | Guide |
+|---|---|
+| `auth` | [Add JWT authentication](/docs/how-to/api-cli/add-auth) |
+| `authorization` | [Auth and authorization](/docs/how-to/production/auth-and-authorization) |
+| `rate_limit` | [Configure rate limiting](/docs/how-to/api-cli/configure-rate-limiting) |
+
+A minimal secured config looks like this:
 
 ```json
 {
   "agent": "graph.react:app",
   "auth": "jwt",
-  "authorization": {
-    "backend": "rbac",
-    "roles": { "admin": ["*"], "user": ["graph:invoke", "graph:stream", "checkpointer:read"] },
-    "default_scopes": [],
-    "isolation": "owner"
-  }
+  "authorization": "ownership",
+  "rate_limit": { "backend": "redis", "redis": { "url": "redis://localhost:6379/1" }, "requests": 100, "window": 60 }
 }
 ```
 
-For arbitrary rules, subclass `AuthorizationBackend`. `authorize` takes
-`(user, resource, action, resource_id=None, **context)`:
+`"auth": "jwt"` needs `JWT_SECRET_KEY` in the environment. `ownership` makes threads owner-only. The server checks `resource:action` scopes on every endpoint through the authorization backend, and the `rbac` backend maps roles to those scopes.
 
-```python
-# graph/auth.py
-from typing import Any
+## Share a Redis URL
 
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+The `redis` key is a plain URL string used by the shared tier of the thread-ownership cache. When unset, the server falls back to the `REDIS_URL` environment variable. With neither, the cache is per process and the server logs a warning. It is separate from `rate_limit.redis`, so configure both if you want both backed by Redis.
 
-class MyAuthorizationBackend(AuthorizationBackend):
-    async def authorize(
-        self, user: dict[str, Any], resource: str, action: str,
-        resource_id: str | None = None, **context: Any,
-    ) -> bool:
-        role = user.get("role", "guest")
-        if resource == "graph" and action == "invoke":
-            return role == "admin"
-        if resource == "checkpointer" and action == "read":
-            return role in ("admin", "user")
-        return False
-```
+## Set defaults for test and eval
+
+The optional `test` and `evaluation` blocks supply defaults for `10xgraph test` and `10xgraph eval`. CLI flags win over the file:
 
 ```json
 {
   "agent": "graph.react:app",
-  "auth": "jwt",
-  "authorization": "graph.auth:MyAuthorizationBackend"
+  "test": { "path": "tests", "coverage": true, "coverage_threshold": 80 },
+  "evaluation": { "directory": "evals", "output_dir": "eval_reports", "threshold": 0.9 }
 }
 ```
-
-See the [Authentication reference](/docs/reference/api-cli/auth) for the full scope catalog,
-`isolation_scope`/`scopes_for`, and how the isolation policy reaches the storage layer.
-
-## Testing
-
-The optional `"test"` section configures the `agentflow test` command, which is a thin wrapper around pytest.
-
-### Minimal example
-
-```json
-{
-  "agent": "graph.react:app",
-  "test": {
-    "path": "tests/"
-  }
-}
-```
-
-### Full example with coverage
-
-```json
-{
-  "agent": "graph.react:app",
-  "test": {
-    "path": "tests/",
-    "coverage": true,
-    "coverage_threshold": 80
-  }
-}
-```
-
-### Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `path` | string | null (pytest auto-discovery) | Directory or file to pass to pytest |
-| `coverage` | boolean | `false` | Enable `--cov` and generate an HTML coverage report in `htmlcov/` |
-| `coverage_threshold` | integer | null | Fail the run if coverage falls below this percentage (`--cov-fail-under`) |
-
-### How fields interact with CLI flags
-
-CLI flags always win. The `agentflow.json` values are fallbacks used when the flag is not provided:
 
 ```bash
-# Uses path/coverage from agentflow.json
-agentflow test
-
-# Overrides path; coverage still comes from agentflow.json
-agentflow test --path tests/unit/
-
-# Overrides coverage; path still comes from agentflow.json
-agentflow test --coverage
+10xgraph test tests/unit/            # overrides test.path
+10xgraph test --coverage             # overrides test.coverage
+10xgraph eval --output ci_reports/   # overrides evaluation.output_dir (short form: -o)
+10xgraph eval --threshold 0.95
+10xgraph eval --parallel --max-concurrency 16
 ```
 
-## Evaluation
+Evaluation criteria do not come from `agentflow.json`. They come from `confeval.py` in your evals directory. See [Run evals](/docs/how-to/api-cli/run-evals).
 
-The optional `"evaluation"` section configures the `agentflow eval` command. It controls where eval files are discovered, where reports are written, and the default pass-rate threshold. **It does not control evaluation criteria** — those come from `confeval.py` inside your evals directory.
+## Keep one config per environment
 
-### Minimal example
-
-```json
-{
-  "agent": "graph.react:app",
-  "evaluation": {
-    "directory": "evals"
-  }
-}
-```
-
-### Full example
-
-```json
-{
-  "agent": "graph.react:app",
-  "evaluation": {
-    "directory": "evals",
-    "output_dir": "eval_reports",
-    "threshold": 0.9,
-    "parallel": true,
-    "max_concurrency": 8
-  }
-}
-```
-
-### Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `directory` | string | `"evals"` | Directory to scan for eval files (files matching `*_eval.py` or `eval_*.py`) |
-| `output_dir` | string | `"eval_reports"` | Directory where HTML and JSON reports are written |
-| `threshold` | float | null | Minimum pass rate (0.0–1.0). The command exits with code 1 if the pass rate is below this value |
-| `parallel` | boolean | `false` | Run eval cases concurrently instead of sequentially |
-| `max_concurrency` | integer | `4` | Maximum number of cases running at the same time (only applies when `parallel` is `true`) |
-
-### How fields interact with CLI flags
-
-CLI flags take priority over `agentflow.json`. JSON values are fallbacks:
-
-```bash
-# Uses all settings from agentflow.json
-agentflow eval
-
-# Overrides output_dir; other settings still come from agentflow.json
-agentflow eval --output-dir ci_reports/
-
-# Overrides threshold; directory still comes from agentflow.json
-agentflow eval --threshold 0.95
-
-# Overrides parallel and concurrency
-agentflow eval --parallel --max-concurrency 16
-```
-
-### Criteria configuration
-
-Evaluation criteria (thresholds per criterion, judge model, match type) are **not** set in `agentflow.json`. They live in `confeval.py` inside your evals directory:
-
-```python
-# evals/confeval.py
-from agentflow.qa.evaluation import EvalConfig, CriteriaConfig, CriterionConfig
-
-EVAL_CONFIG = EvalConfig(
-    criteria=CriteriaConfig(
-        tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
-        rouge_match=CriterionConfig.rouge_match(threshold=0.5),
-        node_order=CriterionConfig.node_order(threshold=0.8),
-    )
-)
-```
-
-If no `confeval.py` is found, the built-in defaults are used.
-
-## Environment-specific configs
-
-Create separate config files for dev, staging, and production:
+Use separate files and pick one with `--config`:
 
 ```
 config/
@@ -700,93 +174,26 @@ config/
   prod.json
 ```
 
-**config/dev.json** (local development, no persistence):
-
-```json
-{
-  "agent": "graph.react:app",
-  "env": ".env.dev",
-  "auth": null
-}
+```bash
+10xgraph api --config config/dev.json
+MODE=production 10xgraph api --config config/prod.json --no-reload
 ```
 
-**config/staging.json** (pre-production):
+## Validate before you deploy
 
-```json
-{
-  "agent": "graph.react:app",
-  "env": ".env.staging",
-  "store": "graph.dependencies:qdrant_store",
-  "auth": "jwt"
-}
-```
-
-**config/prod.json** (production, all features):
-
-```json
-{
-  "agent": "graph.react:app",
-  "env": ".env.prod",
-  "store": "graph.dependencies:qdrant_store_prod",
-  "thread_name_generator": "graph.thread_name_generator:ProductionNameGenerator",
-  "auth": "jwt",
-  "authorization": "graph.auth:ProductionAuthorizationBackend"
-}
-```
-
-Start the server with the appropriate config:
+Run `10xgraph audit` to check the interpreter, packages, project config and port. Then start the server and call the health endpoint:
 
 ```bash
-# Development
-agentflow api --config config/dev.json
-
-# Production
-MODE=production agentflow api --config config/prod.json --no-reload
-```
-
-## Validating your config
-
-Before deploying, verify the config is valid:
-
-```bash
-python -c "
-import json
-with open('agentflow.json') as f:
-    config = json.load(f)
-print('Config is valid JSON')
-print(f'Agent path: {config.get(\"agent\")}')
-"
-```
-
-Then test that the graph can be imported:
-
-```bash
-python -c "from graph.react import app; print(f'Graph loaded: {type(app)}')
-```
-
-If both succeed, your config is likely valid. Start the server and test an endpoint:
-
-```bash
-agentflow api &
+10xgraph audit
+10xgraph api &
 curl http://127.0.0.1:8000/ping
 ```
 
 ## Common config issues
 
-**"Module not found" error**
-- Check the module path is spelled correctly
-- Verify the module exists in your project
-- Try importing manually: `python -c "from graph.react import app"`
-
-**"Attribute not found" error**
-- Verify the attribute name exists on the module
-- In the example, `graph.react:app` requires an `app` variable in `graph/react.py`
-
-**"Checkpointer database connection failed"**
-- Verify the database URL is correct
-- Verify the database is running and accessible
-- Test the connection: `psql postgresql://user:pass@localhost/agentflow`
-
-**"JWT_SECRET_KEY not found"**
-- Set the environment variable: `export JWT_SECRET_KEY=...`
-- Or add it to your `.env` file and point `agentflow.json` to it: `"env": ".env"`
+| Symptom | Check |
+|---|---|
+| Module not found | The module path is spelled correctly and the module exists in your project. |
+| Attribute not found | `graph.react:app` needs an `app` variable in `graph/react.py`. |
+| Checkpointer database connection failed | The DSN is correct and the database is reachable (`psql <dsn>`). |
+| `JWT_SECRET_KEY` not found | Export it, or set `"env": ".env"` and add it there. |

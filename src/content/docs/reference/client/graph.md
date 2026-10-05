@@ -1,6 +1,7 @@
 ---
 title: Graph control
-description: Reference for AgentFlowClient graph-control methods (ping, graph, graphTools, observability, graphStateSchema, stopGraph, fixGraph, setup) and the AgentState shape.
+seoTitle: "Graph control methods in the TS client"
+description: "Reference for graph-control methods on the TypeScript client: ping, graph, graphTools, observability, graphStateSchema, stopGraph, fixGraph, and setup."
 section: Reference
 group: TypeScript client
 order: 1810
@@ -390,4 +391,4 @@ if (interrupt) {
 
 ## Next step
 
-See [how-to/client/graph-utilities](/docs/how-to/client/graph-utilities) for task-oriented recipes, or [`reference/client/tools`](/docs/reference/client/tools) for registering the client-side tools that `setup()` transmits.
+See [how-to/client/graph-utilities](/docs/how-to/client/graph-utilities) for task-oriented recipes, or [Register remote tools](/docs/how-to/client/register-remote-tools) for registering the client-side tools that `setup()` transmits.

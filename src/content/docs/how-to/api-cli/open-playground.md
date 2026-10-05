@@ -1,6 +1,6 @@
 ---
 title: Open the Playground
-description: How to use agentflow play to start the API and open the hosted playground.
+description: How to use 10xgraph play to start the API and open the hosted playground.
 section: How-to guides
 group: CLI
 order: 880
@@ -8,13 +8,13 @@ label: Open the Playground
 updated: "2026-09-29"
 ---
 
-`agentflow play` is a convenient shortcut that starts the API server and automatically opens the hosted playground in your default browser in a single command. This is the fastest way to interactively test your agent during development.
+`10xgraph play` is a convenient shortcut that starts the API server and automatically opens the hosted playground in your default browser in a single command. This is the fastest way to interactively test your agent during development.
 
 ## Important: The playground is hosted externally
 
-10xGraph playground is a web app hosted by 10xScale. `agentflow play` does NOT start a separate frontend server on your machine. Instead:
+10xGraph playground is a web app hosted by 10xScale. `10xgraph play` does NOT start a separate frontend server on your machine. Instead:
 
-1. It starts the API server locally (same as `agentflow api`)
+1. It starts the API server locally (same as `10xgraph api`)
 2. It opens your browser to the hosted playground URL, with your local API URL as a query parameter
 3. The playground runs in your browser and sends requests to your local API
 
@@ -28,7 +28,7 @@ updated: "2026-09-29"
 From the folder that contains `agentflow.json`:
 
 ```bash
-agentflow play --host 127.0.0.1 --port 8000
+10xgraph play --host 127.0.0.1 --port 8000
 ```
 
 You should see output like:
@@ -47,7 +47,7 @@ The playground is a left nav rail plus a working area. There is no thread sideba
 
 | Group | Page | Route | What it is for |
 |---|---|---|---|
-| — | Connect | `/` | Add, pick, and test backend connections. This is where you land first. |
+| - | Connect | `/` | Add, pick, and test backend connections. This is where you land first. |
 | Interact | Chat | `/chat` | Turn-based conversation with the agent. |
 | Interact | Live | `/live` | Voice-to-voice session for realtime (live) agents. |
 | Inspect | Thread Inspector | `/threads` | Browse saved threads, their messages, and their checkpointed state. |
@@ -57,11 +57,11 @@ The playground is a left nav rail plus a working area. There is no thread sideba
 | Build | Graph | `/graph` | Node and edge canvas of the compiled graph, with live highlighting. |
 | Build | Tools & MCP | `/tools` | Every tool the graph exposes, plus client-side tool authoring. |
 | Build | Files | `/files` | Marked "Soon" in the rail. The page is a placeholder. |
-| — | Settings | `/settings` | Saved connections and appearance. Stored in your browser only. |
+| - | Settings | `/settings` | Saved connections and appearance. Stored in your browser only. |
 
 ### Connect first
 
-Every other page needs an active connection, so the playground opens on the Connect page. `agentflow play` passes your local API URL through, so the connection is usually pre-filled and you only have to confirm it.
+Every other page needs an active connection, so the playground opens on the Connect page. `10xgraph play` passes your local API URL through, so the connection is usually pre-filled and you only have to confirm it.
 
 Pick an auth mode to match your server's `agentflow.json`:
 
@@ -72,7 +72,7 @@ Pick an auth mode to match your server's `agentflow.json`:
 | Basic | A custom `BaseAuth` that decodes an `Authorization: Basic` header. |
 | Custom header | A custom `BaseAuth` that reads its own header, such as `X-API-Key`. |
 
-On connect, the playground calls `GET /v1/graph` and derives a row of capability chips from the response: `stream`, `ws`, `live`, `store`, `checkpointer`, `mcp`. These chips are what gate the rest of the UI — `live` in particular decides whether the Live page runs a session or shows an explanation.
+On connect, the playground calls `GET /v1/graph` and derives a row of capability chips from the response: `stream`, `ws`, `live`, `store`, `checkpointer`, `mcp`. These chips are what gate the rest of the UI, `live` in particular decides whether the Live page runs a session or shows an explanation.
 
 Connections are saved in browser storage, so you can keep several backends and switch between them from Settings.
 
@@ -104,11 +104,11 @@ Everything on this page needs the graph to be compiled with a checkpointer (`com
 
 ### Observability
 
-The trace for a run: a span timeline (`root → node → llm | tool`), an event list, and a cost pane with token usage. Click a span or event to open its detail. It reads the active thread, so send a message in Chat first — with no runs recorded it says so rather than showing an empty chart.
+The trace for a run: a span timeline (`root → node → llm | tool`), an event list, and a cost pane with token usage. Click a span or event to open its detail. It reads the active thread, so send a message in Chat first, with no runs recorded it says so rather than showing an empty chart.
 
 ### Evals
 
-Lists eval runs from the server, with a per-case drilldown and a detail pane for the selected case. This is the UI counterpart to `agentflow eval`.
+Lists eval runs from the server, with a per-case drilldown and a detail pane for the selected case. This is the UI counterpart to `10xgraph eval`.
 
 ### Memory Inspector
 
@@ -124,7 +124,7 @@ Lists every tool the graph exposes, grouped by tool node and tagged by source, s
 
 ### Files
 
-Present in the rail with a "Soon" badge. The page is a placeholder; file upload is not wired up in the playground yet. Uploads work over the API and the TypeScript client — see [how-to/client/send-images-and-documents](/docs/how-to/client/send-images-and-documents).
+Present in the rail with a "Soon" badge. The page is a placeholder; file upload is not wired up in the playground yet. Uploads work over the API and the TypeScript client, see [how-to/client/send-images-and-documents](/docs/how-to/client/send-images-and-documents).
 
 ## Streaming responses
 
@@ -133,7 +133,7 @@ Chat defaults to `stream` mode, so partial responses build up in the UI as they 
 ## Use a different config or port
 
 ```bash
-agentflow play --config ./config/staging.json --port 8001
+10xgraph play --config ./config/staging.json --port 8001
 ```
 
 Useful when you have multiple `agentflow.json` files for different setups.
@@ -152,7 +152,7 @@ Useful when you have multiple `agentflow.json` files for different setups.
 4. The port specified does not match what the server is listening on
 
 **Fix:**
-- Verify the API is running: In the terminal where you ran `agentflow play`, you should see running logs
+- Verify the API is running: In the terminal where you ran `10xgraph play`, you should see running logs
 - Verify the `backendUrl` query parameter in the browser URL matches your server address
 - Manual test: Open a new terminal and run `curl http://127.0.0.1:8000/ping`. If this fails, the server is not reachable.
 
@@ -180,7 +180,7 @@ For local development, you may need to:
 
 **Fix:**
 1. Check browser console (F12 → Console tab) for errors
-2. Check API logs (terminal running `agentflow play`) for errors
+2. Check API logs (terminal running `10xgraph play`) for errors
 3. Verify your graph is not stuck in an infinite loop (look for CPU usage)
 4. If requests timeout, increase the timeout by configuring `recursion_limit` in your graph module
 
@@ -208,12 +208,12 @@ Start the server with:
 
 ```bash
 export GOOGLE_API_KEY=your_key
-agentflow play
+10xgraph play
 ```
 
 ## Stopping the playground
 
-Press `Ctrl+C` in the terminal where `agentflow play` is running. This:
+Press `Ctrl+C` in the terminal where `10xgraph play` is running. This:
 1. Stops the API server
 2. Closes the playground connection
 3. Returns control to the shell
@@ -233,9 +233,9 @@ If you want others to test your agent:
 
 The agent runs on your server, so make sure authentication is properly configured (`auth` field in `agentflow.json`).
 
-## Difference: agentflow play vs agentflow api
+## Difference: 10xgraph play vs 10xgraph api
 
-| Aspect | `agentflow play` | `agentflow api` |
+| Aspect | `10xgraph play` | `10xgraph api` |
 | --- | --- | --- |
 | **Server** | Same FastAPI server | Same FastAPI server |
 | **Browser** | Opens playground automatically | You open your own client |
@@ -246,14 +246,14 @@ Both start an identical server. The only difference is whether a browser is auto
 
 ## Next steps
 
-- **Modify your agent** — Edit `graph/react.py` and test changes by sending new messages in the playground
-- **Add tools** — Give your agent callable functions and see them invoked in the playground
-- **Add persistence** — Configure a checkpointer so conversations persist when the server restarts
-- **Deploy** — Use `agentflow build` to generate a Docker config and deploy to production
+- **Modify your agent**, Edit `graph/react.py` and test changes by sending new messages in the playground
+- **Add tools**, Give your agent callable functions and see them invoked in the playground
+- **Add persistence**, Configure a checkpointer so conversations persist when the server restarts
+- **Deploy**, Use `10xgraph build` to generate a Docker config and deploy to production
 
 ## Performance tips for the playground
 
-- **Streaming is faster** — If your graph is slow, enable streaming responses so the UI shows partial results as they arrive
-- **Reduce state size** — Keep your state dict lean to reduce network transfer time
-- **Batch operations** — Avoid many small tool calls; combine them into fewer, larger calls
-- **Monitor from a local machine** — For best UI responsiveness, run the playground from the same machine as the API, or at least on a low-latency network
+- **Streaming is faster**, If your graph is slow, enable streaming responses so the UI shows partial results as they arrive
+- **Reduce state size**, Keep your state dict lean to reduce network transfer time
+- **Batch operations**, Avoid many small tool calls; combine them into fewer, larger calls
+- **Monitor from a local machine**, For best UI responsiveness, run the playground from the same machine as the API, or at least on a low-latency network

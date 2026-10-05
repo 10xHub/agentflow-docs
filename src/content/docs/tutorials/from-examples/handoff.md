@@ -1,5 +1,6 @@
 ---
 title: Handoff
+seoTitle: "Handoff tutorial: multi-agent transfers"
 description: Build a multi-agent 10xGraph graph where specialized agents transfer control to each other using handoff tools.
 section: Tutorials
 group: From examples

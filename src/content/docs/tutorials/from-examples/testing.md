@@ -1,5 +1,6 @@
 ---
 title: Testing
+seoTitle: "Testing tutorial: QuickTest without an LLM"
 description: Use QuickTest to write low-boilerplate, deterministic tests for 10xGraph graphs without hitting a live model.
 section: Tutorials
 group: From examples

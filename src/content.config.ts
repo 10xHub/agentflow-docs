@@ -9,12 +9,17 @@ const description = z.string().min(50).max(170);
 
 // Optional FAQ, rendered at the end of the page and as FAQPage JSON-LD from the same text,
 // so the structured data always matches what readers see. Answers are plain text, 1-3 sentences.
+// Optional <title> override, for when the H1 is too short or generic to rank. " | 10xGraph" is
+// appended, so 49 characters keeps the full title within the ~60 that search results show.
+const seoTitle = z.string().min(15).max(49).optional();
+
 const faq = z.array(z.object({ q: z.string(), a: z.string() })).default([]);
 
 const docs = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/docs' }),
   schema: z.object({
     title: z.string(),
+    seoTitle,
     description,
     section: z.enum(DOC_SECTIONS),
     /** Optional sub-group inside the section, e.g. "Python library" under Reference. */
@@ -32,6 +37,7 @@ const blog = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
+    seoTitle,
     description,
     date: z.coerce.date(),
     updated: z.coerce.date().optional(),

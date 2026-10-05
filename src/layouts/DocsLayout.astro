@@ -16,7 +16,7 @@ interface Props {
   docs: Doc[];
 }
 const { entry, headings, docs } = Astro.props;
-const { title, description, section, group, updated, faq } = entry.data;
+const { title, seoTitle, description, section, group, updated, faq } = entry.data;
 const sectionHref = `/docs/${SECTION_INFO[section].slug}`;
 const href = docHref(entry.id);
 const markdownHref = docMarkdownHref(entry.id);
@@ -34,7 +34,8 @@ const jsonLd = [
     description,
     url: absolute(href),
     ...(updated && { dateModified: updated.toISOString() }),
-    proficiencyLevel: 'Beginner',
+    // Only the beginner path is written for beginners; other pages make no level claim.
+    ...(section === 'Beginner path' && { proficiencyLevel: 'Beginner' }),
     about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
     publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
     isPartOf: { '@type': 'WebSite', name: SITE.name, url: SITE.url },
@@ -51,7 +52,7 @@ const jsonLd = [
   ...(faq.length ? [faqJsonLd(faq)] : []),
 ];
 ---
-<BaseLayout title={title} description={description} ogType="article" jsonLd={jsonLd} markdownHref={markdownHref} modifiedTime={updated}>
+<BaseLayout title={seoTitle ?? title} description={description} ogType="article" jsonLd={jsonLd} markdownHref={markdownHref} modifiedTime={updated}>
   <div class="reader" data-doc-id={entry.id} data-lens="read">
     <aside class="reader-map">
       <button class="map-toggle" type="button" aria-expanded="false" aria-controls="docs-map">

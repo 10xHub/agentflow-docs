@@ -1,6 +1,6 @@
 ---
 title: How to set up checkpointing
-description: Enable state persistence with InMemoryCheckpointer for development, SqliteCheckpointer for client agents, and PgCheckpointer (Redis and Postgres) for production.
+description: "Set up checkpointing: InMemoryCheckpointer for development, SqliteCheckpointer for client agents, and PgCheckpointer (Redis and Postgres) for production."
 section: How-to guides
 group: Python library
 order: 540
@@ -39,7 +39,7 @@ app.invoke(
     config={"thread_id": "user-1"},
 )
 
-# Second turn — same thread_id resumes the conversation
+# Second turn, same thread_id resumes the conversation
 result = app.invoke(
     {"messages": [Message.text_message("What is my name?")]},
     config={"thread_id": "user-1"},
@@ -58,7 +58,7 @@ print(result["messages"][-1].content)  # "Your name is Alice."
 ### Install the extra
 
 ```bash
-pip install "10xscale-agentflow[pg_checkpoint]"
+pip install "10xgraph[pg_checkpoint]"
 ```
 
 ### Minimal setup
@@ -76,12 +76,12 @@ checkpointer = PgCheckpointer(
 
 ```python
 PgCheckpointer(
-    # PostgreSQL — provide DSN or an existing asyncpg pool
+    # PostgreSQL, provide DSN or an existing asyncpg pool
     postgres_dsn: str | None = None,
     pg_pool = None,                         # asyncpg.Pool, if you manage the pool yourself
     pool_config: dict | None = None,        # extra asyncpg.create_pool() kwargs
 
-    # Redis — provide URL, client, or pool
+    # Redis, provide URL, client, or pool
     redis_url: str | None = None,
     redis = None,                           # redis.asyncio.Redis client
     redis_pool = None,                      # redis.asyncio.ConnectionPool
@@ -123,7 +123,7 @@ checkpointer = PgCheckpointer(
 call. Set `enforce_user_isolation=False` when:
 
 - You run **single-tenant** (one user, or an internal service).
-- You have **no real user identity** — no auth configured, so every request lands
+- You have **no real user identity**, no auth configured, so every request lands
   under the same placeholder `user_id`, or you pass a dummy/`None` `user_id`.
 
 With it off, `user_id` is ignored for ownership entirely: every query keys on
@@ -143,12 +143,12 @@ Only disable it if you are **not** relying on a `thread_id` being secret.
 
 Isolation is only meaningful if a real `user_id` actually reaches the
 checkpointer. The API server sets `user_id` from the authenticated user and falls
-back to `"anonymous"` when no `auth` is configured — in which case every caller
+back to `"anonymous"` when no `auth` is configured, in which case every caller
 shares one bucket and isolation is a no-op regardless of this setting.
 
 So: enable [`auth`](#) (e.g. `"auth": "jwt"` in `agentflow.json`) if you want
 per-user isolation to mean anything. `authorization` (the `AuthorizationBackend`)
-is a separate, coarser layer — it decides *whether* a caller may perform an action
+is a separate, coarser layer, it decides *whether* a caller may perform an action
 at all; `enforce_user_isolation` decides *whose rows* they can touch in storage.
 The two are complementary, and the checkpointer will not second-guess an
 allow-all authorization backend: if you disable isolation, it stays disabled.
@@ -164,7 +164,7 @@ concurrent writers on the same thread cannot collide on a version) and lets you
 inspect or recover an earlier snapshot.
 
 At runtime the engine only ever reads the **latest** version, so old snapshots
-are not needed for correctness — they exist purely for debugging, audit, and
+are not needed for correctness, they exist purely for debugging, audit, and
 manual recovery. To keep the table bounded, rows older than
 `state_history_limit` are pruned on every write.
 
@@ -184,8 +184,8 @@ checkpointer = PgCheckpointer(
 |-------|-----------|
 | `1` | Keep only the current state per thread (minimal storage; closest to overwrite). |
 | `20` (default) | Keep a small bounded audit/rollback window. |
-| Higher | Keep a longer history — more storage per active thread. |
-| `0` or `None` | Disable pruning entirely (history grows unbounded — not recommended). |
+| Higher | Keep a longer history - more storage per active thread. |
+| `0` or `None` | Disable pruning entirely (history grows unbounded - not recommended). |
 
 Concurrency safety and correctness are identical at every setting; this knob
 only changes how much historical audit trail you retain.
@@ -258,19 +258,19 @@ asyncio.run(main())
 
 ## SqliteCheckpointer (client-side / single-user)
 
-`SqliteCheckpointer` keeps **everything** — durable state, the realtime state cache, messages, and threads — in a single local SQLite `.db` file. No Postgres, no Redis. It is the right choice when the agent runs next to a single user rather than behind a shared server.
+`SqliteCheckpointer` keeps **everything**, durable state, the realtime state cache, messages, and threads, in a single local SQLite `.db` file. No Postgres, no Redis. It is the right choice when the agent runs next to a single user rather than behind a shared server.
 
 **Use it when:**
 
-- You are building a **client-side / desktop agent** — for example a Tauri, Electron, or PyInstaller app that ships a Python sidecar, or a local CLI agent. The state file lives on the user's machine.
+- You are building a **client-side / desktop agent**, for example a Tauri, Electron, or PyInstaller app that ships a Python sidecar, or a local CLI agent. The state file lives on the user's machine.
 - Each user has a **dedicated room / process** with their own database file, so there is exactly one writer per database.
 
-**Do not use it when** many users share one backend. SQLite serializes writers and does not scale horizontally — use `PgCheckpointer` there.
+**Do not use it when** many users share one backend. SQLite serializes writers and does not scale horizontally, use `PgCheckpointer` there.
 
 ### Install the extra
 
 ```bash
-pip install "10xscale-agentflow[sqlite_checkpoint]"
+pip install "10xgraph[sqlite_checkpoint]"
 ```
 
 ### Full example with SqliteCheckpointer
@@ -333,7 +333,7 @@ DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mydb
 REDIS_URL=redis://localhost:6379/0
 ```
 
-When using `agentflow api` (the CLI server), build the checkpointer in code the same way and pass it to `compile()` in the module that `agentflow.json`'s `agent` points at. The server uses the checkpointer the compiled graph carries. `agentflow.json` has no object form for a checkpointer, and its `checkpointer` import-path key is not applied by the server yet.
+When using `10xgraph api` (the CLI server), build the checkpointer in code the same way and pass it to `compile()` in the module that `agentflow.json`'s `agent` points at. The server uses the checkpointer the compiled graph carries. `agentflow.json` has no object form for a checkpointer, and its `checkpointer` import-path key is not applied by the server yet.
 
 ```python
 # graph.py
@@ -433,8 +433,8 @@ The ledger table is created by `checkpointer.setup()` as part of schema version 
 
 - Pass `checkpointer=...` to `graph.compile()` to enable state persistence.
 - `InMemoryCheckpointer` is the default; state is lost on process restart.
-- `SqliteCheckpointer` requires `pip install 10xscale-agentflow[sqlite_checkpoint]` and stores everything in one local `.db` file — ideal for client-side / single-user agents, not for shared multi-user servers.
-- `PgCheckpointer` requires `pip install 10xscale-agentflow[pg_checkpoint]` and both a PostgreSQL DSN and a Redis URL.
+- `SqliteCheckpointer` requires `pip install 10xgraph[sqlite_checkpoint]` and stores everything in one local `.db` file, ideal for client-side / single-user agents, not for shared multi-user servers.
+- `PgCheckpointer` requires `pip install 10xgraph[pg_checkpoint]` and both a PostgreSQL DSN and a Redis URL.
 - Call `checkpointer.setup()` before the first request to create the database schema.
 - Thread isolation is automatic: each `thread_id` is a fully independent conversation.
 - `PgCheckpointer` checkpoints durably after every step (`durable_checkpoint_every_step`, default `True`), guards concurrent writes with optimistic versioning (`StaleStateError`), and de-duplicates completed tool calls through the `tool_executions` ledger.

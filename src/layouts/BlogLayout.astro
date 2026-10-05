@@ -27,7 +27,7 @@ interface Props {
   posts: Post[];
 }
 const { entry, headings, posts } = Astro.props;
-const { title, description, date, updated, author, kind, tags, faq } = entry.data;
+const { title, seoTitle, description, date, updated, author, kind, tags, faq } = entry.data;
 const href = postHref(entry.id);
 const url = absolute(href);
 const markdownHref = postMarkdownHref(entry.id);
@@ -90,7 +90,7 @@ const jsonLd = [
 ];
 ---
 <BaseLayout
-  title={title}
+  title={seoTitle ?? title}
   description={description}
   ogType="article"
   jsonLd={jsonLd}

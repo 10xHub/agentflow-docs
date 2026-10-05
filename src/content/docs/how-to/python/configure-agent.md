@@ -18,7 +18,7 @@ from agentflow.core.graph import Agent
 agent = Agent(model="gpt-4o")
 ```
 
-10xGraph auto-detects the provider from the model name. For OpenAI models it uses the `openai` SDK; for Gemini models it uses `google-generativeai`.
+10xGraph auto-detects the provider from the model name. `gpt-*`, `o1-`/`o3-`/`o4-` models use the `openai` SDK, `gemini-*` models use the Google GenAI SDK, and `claude-*` models use the `anthropic` SDK. A `provider/model` prefix (`openai/`, `google/`, `anthropic/`) also selects the provider.
 
 ---
 
@@ -162,7 +162,7 @@ agent = Agent(model="gpt-4o", tool_node=tool_node, tools_tags={"safe"})
 All providers share a unified `reasoning_config` dict. Reasoning is **on by default** at medium effort.
 
 ```python
-# Default — medium effort (ON for both OpenAI and Google)
+# Default, medium effort (ON for both OpenAI and Google)
 agent = Agent(model="gpt-4o")
 
 # High effort
@@ -409,7 +409,7 @@ Agent(
     multimodal_config: MultimodalConfig | None = None,
     output_schema: type[BaseModel] | None = None,
     # kwargs only:
-    provider: str | None = None,             # "openai" | "google"
+    provider: str | None = None,             # "openai" | "google" | "anthropic"
     base_url: str | None = None,
     api_style: str = "chat",                 # "chat" | "responses"
     use_vertex_ai: bool = False,

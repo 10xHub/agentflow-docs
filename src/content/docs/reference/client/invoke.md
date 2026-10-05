@@ -1,5 +1,6 @@
 ---
 title: "invoke()"
+seoTitle: "invoke() in the TypeScript client"
 description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state.
 section: Reference
 group: TypeScript client
@@ -152,7 +153,7 @@ When server-configured remote tools have matching `client.registerToolHandler()`
 4. Client wraps the handler results in `ToolResultBlock` objects and sends them back to `/v1/graph/invoke` as `tool` role messages.
 5. Steps 2–4 repeat until the server returns no more `RemoteToolCallBlock` entries or `recursion_limit` is reached.
 
-See [`reference/client/tools`](/docs/reference/client/tools) for how to register handlers.
+See [Register remote tools](/docs/how-to/client/register-remote-tools) for how to register handlers.
 
 ---
 

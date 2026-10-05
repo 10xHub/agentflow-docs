@@ -7,7 +7,7 @@ order: 700
 updated: "2026-05-24"
 ---
 
-Some operations — sending notifications, writing to a slow store, triggering webhooks — should not block the agent's response. Use `BackgroundTaskManager` to launch these tasks asynchronously from inside any node function.
+Some operations, sending notifications, writing to a slow store, triggering webhooks, should not block the agent's response. Use `BackgroundTaskManager` to launch these tasks asynchronously from inside any node function.
 
 ## Prerequisites
 

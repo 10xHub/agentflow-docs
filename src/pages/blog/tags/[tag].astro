@@ -21,6 +21,9 @@ interface Props {
   posts: Post[];
 }
 const { tag, tags, total, posts } = Astro.props;
+// Topic pages with only a post or two are thin, so they stay out of search (and the sitemap)
+// until the topic grows.
+const MIN_INDEXED_POSTS = 3;
 const description = `Posts tagged ${tag} on the 10xGraph engineering blog: production AI agents, Python multi-agent systems and the runtime behind them.`;
 const jsonLd = [
   {
@@ -33,7 +36,7 @@ const jsonLd = [
   },
 ];
 ---
-<BaseLayout title={`Posts tagged ${tag}`} description={description} jsonLd={jsonLd}>
+<BaseLayout title={`Posts about ${tag}: 10xGraph blog`} description={description} jsonLd={jsonLd} noindex={posts.length < MIN_INDEXED_POSTS}>
   <div class="blog">
     <header class="blog-head blog-head-tag">
       <div>

@@ -15,7 +15,7 @@ This guide covers writing a skill, attaching it to an `Agent`, checking it, and 
 ## Prerequisites
 
 ```bash
-pip install 10xscale-agentflow
+pip install 10xgraph
 ```
 
 ---
@@ -70,7 +70,7 @@ Guidelines for the frontmatter:
 ## Step 2: Check the skill
 
 ```bash
-agentflow skills --validate .agents/skills
+10xgraph skills --validate .agents/skills
 ```
 
 The command lists each skill as valid or invalid and explains every problem. For example, it reports a `name` that doesn't match its folder, unquoted metadata numbers, unknown frontmatter fields, or a `references/...` path that doesn't exist. It exits with status `1` on errors, so you can run it in CI.
@@ -218,7 +218,7 @@ agent = Agent(
 
 ## Reuse skills written for other tools
 
-Skills from Claude Code (`.claude/skills/`), Codex or Copilot (`.agents/skills/`, `.github/skills/`) load without changes. 10xGraph is lenient about small rule breaks: a name that doesn't match its folder, a long description, or YAML that breaks on an unquoted `: ` still loads, and the problem is logged as a warning. Run `agentflow skills --validate` to see the list, or read `SkillsRegistry.diagnostics` in code.
+Skills from Claude Code (`.claude/skills/`), Codex or Copilot (`.agents/skills/`, `.github/skills/`) load without changes. 10xGraph is lenient about small rule breaks: a name that doesn't match its folder, a long description, or YAML that breaks on an unquoted `: ` still loads, and the problem is logged as a warning. Run `10xgraph skills --validate` to see the list, or read `SkillsRegistry.diagnostics` in code.
 
 ---
 

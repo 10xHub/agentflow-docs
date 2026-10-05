@@ -1,6 +1,7 @@
 ---
 title: "10xGraph with CopilotKit: Serve Your Agent over AG-UI"
-description: Turn on the AG-UI endpoint in agentflow-api and connect a CopilotKit frontend to your 10xGraph graph, with streaming chat, tool calls, frontend tools, and shared state.
+seoTitle: "10xGraph with CopilotKit over AG-UI"
+description: "Turn on the AG-UI endpoint in the 10xGraph API server and connect a CopilotKit frontend, with streaming chat, tool calls, frontend tools, and shared state."
 section: Learn more
 group: Integrations
 order: 2060
@@ -48,7 +49,7 @@ Enable it in `agentflow.json`:
 ```
 
 Start the server as usual (`agentflow api`). `POST /v1/ag-ui` is now mounted. With the key absent
-or `"enabled": false` the route does not exist. See [`ag_ui`](/docs/reference/api-cli/configuration#ag_ui).
+or `"enabled": false` the route does not exist. See [`ag_ui`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
 
 Check it with curl:
 

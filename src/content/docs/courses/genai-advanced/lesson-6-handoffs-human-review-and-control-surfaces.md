@@ -1,5 +1,6 @@
 ---
 title: "Lesson 6: Handoffs, Human Review, and Control Surfaces"
+seoTitle: "Advanced lesson 6: handoffs, human review"
 description: Implement human-in-the-loop with approval flows, interrupts, and control surfaces.
 section: Courses
 group: GenAI advanced

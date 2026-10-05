@@ -1,5 +1,6 @@
 ---
 title: Calculator Tool
+seoTitle: "Calculator tool: safe_calculator"
 description: safe_calculator evaluates arithmetic expressions with Python's ast module, safely exposing math to an LLM without code execution.
 section: Prebuilt
 group: Tools

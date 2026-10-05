@@ -1,5 +1,6 @@
 ---
 title: Agent
+seoTitle: "Agent class API reference (Python)"
 description: The Agent class — a smart node that handles LLM calls, tool use, memory, skills, and retries.
 section: Reference
 group: Python library
@@ -36,7 +37,7 @@ agent = Agent(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `model` | `str` | **required** | Model identifier. Examples: `"gpt-4o"`, `"gpt-4o-mini"`, `"gemini-2.0-flash"`, `"gemini-2.5-flash"`. |
-| `provider` | `str \| None` | `None` | Provider name. Supported: `"openai"`, `"google"`. If `None`, the provider is inferred from the model name. |
+| `provider` | `str \| None` | `None` | Provider name. Supported: `"openai"`, `"google"`, `"anthropic"`. If `None`, the provider is inferred from the model name. |
 | `output_type` | `str` | `"text"` | Generation modality: `"text"`, `"image"`, `"video"`, or `"audio"`. Structured JSON is requested with `output_schema`, not this field. |
 | `system_prompt` | `list[dict] \| None` | `None` | System prompt as a list of message dicts, e.g. `[{"role": "system", "content": "..."}]`. |
 | `tool_node` | `str \| ToolNode \| None` | `None` | Tools available to the agent. Pass a `ToolNode` instance or the string name of an existing graph node. |
@@ -62,6 +63,7 @@ agent = Agent(
 |---|---|---|
 | [`"openai"`](/docs/providers/openai) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
 | [`"google"`](/docs/providers/google) | Gemini API (Google AI Studio) or Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+| [`"anthropic"`](/docs/providers/anthropic) | Claude API directly, Vertex AI, or Bedrock | `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5-20251001` |
 
 The `"google"` provider supports both the Gemini API and Vertex AI. Toggle Vertex AI with `use_vertex_ai=True` on the agent or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment — see [Using Vertex AI](/docs/providers/google#using-vertex-ai).
 
@@ -73,6 +75,9 @@ If `provider` is `None`, the library infers the provider from the `model` string
 
 - Models starting with `"gpt"`, `"o1"`, `"o3"`, `"o4"` → `"openai"`
 - Models starting with `"gemini"` → `"google"`
+- Models starting with `"claude-"` or `"anthropic."` → `"anthropic"`
+
+The Anthropic provider reads `anthropic_backend` from the agent kwargs: omit it for the direct Claude API, or pass `"vertex"` or `"bedrock"`.
 
 ---
 
@@ -83,15 +88,18 @@ from agentflow.core.graph import StateGraph, Agent, ToolNode
 from agentflow.utils import START, END
 
 # 1. Define tools
-def get_weather(location: str) -> str:
-    return f"It's sunny in {location}"
+def lookup_order(order_id: str) -> dict:
+    return {"order_id": order_id, "status": "shipped"}
 
-tool_node = ToolNode([get_weather])
+def refund_order(order_id: str, amount: float) -> dict:
+    return {"order_id": order_id, "refunded": amount}
+
+tool_node = ToolNode([lookup_order, refund_order])
 
 # 2. Create the agent
 agent = Agent(
     model="gpt-4o",
-    system_prompt=[{"role": "system", "content": "You are a weather assistant."}],
+    system_prompt=[{"role": "system", "content": "You are a support agent for an online store."}],
     tool_node=tool_node,
 )
 
@@ -214,12 +222,12 @@ If the primary model returns an error the agent tries each fallback in order.
 Wire long-term memory retrieval into the agent:
 
 ```python
-from agentflow.storage.store.memory_config import MemoryConfig
+from agentflow.storage.store import MemoryConfig, ReadMode
 
 memory_config = MemoryConfig(
-    enabled=True,
-    top_k=5,
-    memory_type="semantic",
+    store=my_qdrant_store,
+    retrieval_mode=ReadMode.POSTLOAD,
+    limit=5,
 )
 
 agent = Agent(
@@ -232,7 +240,9 @@ agent = Agent(
 app = graph.compile(store=my_qdrant_store)
 ```
 
-Before each LLM call the agent retrieves the top-k relevant memories and prepends them to the context.
+Before each LLM call the agent retrieves up to `limit` relevant memories and prepends them to the context.
+
+`MemoryConfig` fields: `store`, `retrieval_mode`, `limit`, `score_threshold`, `max_tokens`, `inject_system_prompt`, `config`, `user_memory`, `agent_memory`. See [Memory stores](/docs/reference/python/memory-stores).
 
 ---
 
@@ -244,13 +254,13 @@ from agentflow.storage.media.config import MultimodalConfig
 agent = Agent(
     model="gpt-4o",
     multimodal_config=MultimodalConfig(
-        auto_offload=True,
-        max_inline_bytes=50_000,
+        max_image_size_mb=10.0,
+        max_image_dimension=2048,
     ),
 )
 ```
 
-When `auto_offload=True` and a `media_store` is attached to the compiled graph, large inline `data_base64` blobs are automatically offloaded to the media store and replaced with lightweight references before the context is sent to the LLM.
+`MultimodalConfig` fields: `image_handling` (`base64`, `url` or `file_id`; default `base64`), `document_handling` (`extract_text`, `pass_raw` or `skip`; default `extract_text`), `max_image_size_mb` (default 10.0), `max_image_dimension` (default 2048), `supported_image_types` and `supported_doc_types`.
 
 ---
 
@@ -258,8 +268,7 @@ When `auto_offload=True` and a `media_store` is attached to the compiled graph, 
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AuthenticationError` | Missing or invalid API key. | Set `OPENAI_API_KEY`, `GOOGLE_API_KEY`/`GEMINI_API_KEY`, or Vertex AI credentials in your environment. |
+| `AuthenticationError` | Missing or invalid API key. | Set `OPENAI_API_KEY`, `GOOGLE_API_KEY`/`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or Vertex AI credentials in your environment. |
 | `ValueError: GOOGLE_CLOUD_PROJECT environment variable must be set` | Vertex AI was enabled (`use_vertex_ai=True` or `GOOGLE_GENAI_USE_VERTEXAI=true`) without a GCP project. | Export `GOOGLE_CLOUD_PROJECT` and ensure Application Default Credentials are configured. |
-| `ImportError: google-genai SDK is required` | The `google-genai` SDK is not installed. | Install it: `pip install 10xscale-agentflow[google-genai]` (or `pip install google-genai`). |
-| `InferenceError` | LLM provider returned an unexpected response. | Check the model name and provider. If using fallbacks, inspect the `fallback_models` list. |
+| `ImportError: google-genai SDK is required` | The `google-genai` SDK is not installed. | Install it: `pip install 10xgraph[google-genai]` (or `pip install google-genai`). |
 | `ValueError: Invalid tool_node` | `tool_node` is a string but no node with that name exists in the graph. | Add the ToolNode to the graph before using its name as a reference. |

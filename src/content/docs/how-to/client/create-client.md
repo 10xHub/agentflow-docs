@@ -7,12 +7,12 @@ order: 960
 updated: "2026-07-21"
 ---
 
-This guide walks you through installing `@10xscale/agentflow-client`, creating a client instance, and verifying that it can reach your 10xGraph API server.
+This guide walks you through installing `10xgraph-client`, creating a client instance, and verifying that it can reach your 10xGraph API server.
 
 ## Prerequisites
 
 - Node.js 18+ or a modern browser environment.
-- An 10xGraph API server running locally (`agentflow api`) or hosted.
+- An 10xGraph API server running locally (`10xgraph api`) or hosted.
 - If the server requires auth, have the token or credentials ready.
 
 ---
@@ -20,14 +20,14 @@ This guide walks you through installing `@10xscale/agentflow-client`, creating a
 ## Step 1: Install the package
 
 ```bash
-npm install @10xscale/agentflow-client
+npm install 10xgraph-client
 ```
 
 Or with Yarn or pnpm:
 
 ```bash
-yarn add @10xscale/agentflow-client
-pnpm add @10xscale/agentflow-client
+yarn add 10xgraph-client
+pnpm add 10xgraph-client
 ```
 
 ---
@@ -35,7 +35,7 @@ pnpm add @10xscale/agentflow-client
 ## Step 2: Import and instantiate
 
 ```ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -68,7 +68,7 @@ The `auth` field accepts three strategies. Use the factory helpers (`bearerAuth`
 The most common strategy. Sends `Authorization: Bearer <token>` on every request.
 
 ```ts
-import { AgentFlowClient, bearerAuth } from '@10xscale/agentflow-client';
+import { AgentFlowClient, bearerAuth } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -83,7 +83,7 @@ const client = new AgentFlowClient({
 Sends `Authorization: Basic <base64(username:password)>`.
 
 ```ts
-import { basicAuth } from '@10xscale/agentflow-client';
+import { basicAuth } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -97,14 +97,14 @@ const client = new AgentFlowClient({
 Useful for API keys sent in a custom header (e.g. `X-API-Key`), or when the server uses a non-standard scheme.
 
 ```ts
-import { headerAuth } from '@10xscale/agentflow-client';
+import { headerAuth } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
   // Sends: X-API-Key: my-api-key
   auth: headerAuth('X-API-Key', process.env.API_KEY!),
 
-  // Or with a prefix — sends: ApiKey my-api-key
+  // Or with a prefix, sends: ApiKey my-api-key
   // auth: headerAuth('Authorization', process.env.API_KEY!, 'ApiKey'),
 });
 ```
@@ -134,7 +134,7 @@ const client = new AgentFlowClient({
 });
 ```
 
-Disable `debug` in production — it logs request details to `console.debug`.
+Disable `debug` in production, it logs request details to `console.debug`.
 
 ---
 
@@ -162,12 +162,12 @@ import {
   bearerAuth,
   basicAuth,
   headerAuth,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const config: AgentFlowConfig = {
   baseUrl: 'http://localhost:8000',   // Required. No trailing slash.
 
-  // auth — pick one strategy (or omit for no auth):
+  // auth, pick one strategy (or omit for no auth):
   auth: bearerAuth(process.env.API_TOKEN!),
   // auth: basicAuth('user', 'pass'),
   // auth: headerAuth('X-API-Key', process.env.API_KEY!),
@@ -202,7 +202,7 @@ npm install ws
 
 ```ts
 import WebSocket from 'ws';
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -211,7 +211,7 @@ const client = new AgentFlowClient({
 });
 ```
 
-Everything else — `invoke()`, `stream()`, threads, memory, files — goes over `fetch` and works without it.
+Everything else, `invoke()`, `stream()`, threads, memory, files, goes over `fetch` and works without it.
 
 ---
 
@@ -221,7 +221,7 @@ Create the client once at the module level (or in a context provider) so it is s
 
 ```ts
 // lib/agentflow.ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '10xgraph-client';
 
 export const client = new AgentFlowClient({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000',
@@ -234,7 +234,7 @@ export const client = new AgentFlowClient({
 ```tsx
 // components/ChatWidget.tsx
 import { client } from '../lib/agentflow';
-import { Message } from '@10xscale/agentflow-client';
+import { Message } from '10xgraph-client';
 
 export function ChatWidget() {
   async function sendMessage(text: string) {
@@ -251,7 +251,7 @@ export function ChatWidget() {
 
 | Error | Cause | Fix |
 |---|---|---|
-| `TypeError: Failed to fetch` | Server is not running or `baseUrl` is wrong. | Start the server with `agentflow api` and verify the URL. |
+| `TypeError: Failed to fetch` | Server is not running or `baseUrl` is wrong. | Start the server with `10xgraph api` and verify the URL. |
 | `AgentFlowError` status `401` | Auth token is missing or invalid. | Check `auth.token` and the server's `JWT_SECRET_KEY`. |
 | `AgentFlowError` status `404` on `/ping` | Server is running but the path is wrong (e.g. trailing slash in `baseUrl`). | Remove the trailing slash from `baseUrl`. |
 | CORS error in browser | The server does not allow your origin. | Check the server's CORS config (FastAPI CORS middleware) or set `credentials: 'include'` if using cookies. |
@@ -260,7 +260,7 @@ export function ChatWidget() {
 
 ## What you learned
 
-- Install with `npm install @10xscale/agentflow-client`.
+- Install with `npm install 10xgraph-client`.
 - Instantiate with `baseUrl` and optional `auth`, `timeout`, `headers`, `debug`.
 - Verify connectivity with `client.ping()` before sending agent requests.
 - Create the client once at module level and import it in components.

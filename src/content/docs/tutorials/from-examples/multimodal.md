@@ -1,5 +1,6 @@
 ---
 title: Multimodal
+seoTitle: "Multimodal tutorial: images, audio, docs"
 description: Send images, audio, video, and documents to 10xGraph using media blocks, MediaRef, a media store, and multimodal model configuration.
 section: Tutorials
 group: From examples

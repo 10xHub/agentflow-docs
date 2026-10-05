@@ -1,6 +1,7 @@
 ---
 title: Graph
-description: StateGraph, CompiledGraph, START, END — the core execution engine of the agentflow library.
+seoTitle: "StateGraph API reference (Python)"
+description: StateGraph, CompiledGraph, START, END — the core execution engine of 10xGraph.
 section: Reference
 group: Python library
 order: 1410

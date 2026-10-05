@@ -5,8 +5,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/home.css';
 
-const title = "10xGraph: Production-Ready Python Multi-Agent Framework";
-const description = "Open-source Python multi-agent framework that generates the production server: auth, per-tool permissions, rate limits, replay-safe tools, Docker and k8s. MIT.";
+const title = "10xGraph: Python Multi-Agent Framework With Built-In Server";
+const description = "Open-source Python multi-agent framework that generates the production server: auth, owner-only threads, rate limits, replay-safe tools, Docker and k8s. MIT.";
 const jsonLd = [
   {
     "@context": "https://schema.org",
@@ -25,7 +25,7 @@ const jsonLd = [
     "@type": "SoftwareApplication",
     "name": "10xGraph",
     "alternateName": "Agentflow",
-    "description": "10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.",
+    "description": "10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, macOS, Windows",
     "softwareVersion": "0.9.2",
@@ -53,7 +53,7 @@ const jsonLd = [
         "name": "What is 10xGraph?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, per-tool permissions, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale."
+          "text": "10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, scoped access control, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale."
         }
       },
       {
@@ -133,7 +133,7 @@ const jsonLd = [
       <div>
         <p class="eyebrow">Open source · MIT · Python 3.12+</p>
         <h1 id="h1">Write the Python agent. 10xGraph builds the production server around it.</h1>
-        <p class="sub">Authentication, per-tool permissions, rate limits, two-tier memory, replay-safe tools, and Docker and Kubernetes manifests come generated with your graph. MIT licensed and self-hosted, so the production layer is in the box.</p>
+        <p class="sub">Authentication, owner-only threads, scoped access control, rate limits, two-tier memory, replay-safe tools, and Docker and Kubernetes manifests come generated with your graph. MIT licensed and self-hosted, so the production layer is in the box.</p>
         <div class="cta-row">
           <a class="btn btn-primary" href="/docs/get-started/installation">Build your first agent <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         </div>
@@ -166,7 +166,7 @@ const jsonLd = [
         </div>
         <div class="stage-ctl">
           <div class="grp">
-            <button type="button" data-act="prev" aria-label="Previous step"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Prev</button>
+            <button type="button" data-act="prev" aria-label="Prev: previous step"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Prev</button>
             <button type="button" data-act="pause" aria-pressed="false">Pause</button>
           </div>
           <span class="pos">Step 1 of 5</span>
@@ -179,7 +179,7 @@ const jsonLd = [
 </section>
 
 <!-- MOAT INDEX -->
-<section class="moats" aria-label="What only 10xGraph ships">
+<section class="moats" aria-label="What 10xGraph ships in the box">
   <div class="wrap">
     <ul class="moat-list">
       <li><a href="#in-the-box"><span>Production layer</span><b>In the box</b>Auth, permissions, rate limits and deploy files, generated.</a></li>
@@ -197,7 +197,7 @@ const jsonLd = [
     <div class="def-grid">
       <div>
         <h2 id="what">What is 10xGraph?</h2>
-        <p class="def">10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.</p>
+        <p class="def">10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale.</p>
         <p class="fresh">Updated October 2026 · v0.9.2 · <a href="/docs/concepts">Read the concepts</a></p>
       </div>
       <dl class="facts">
@@ -233,10 +233,10 @@ const jsonLd = [
           <div class="cfg-row"><code>build --docker-compose --k8s</code><div><b>Deployment files:</b> Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service.</div></div>
           <div class="cfg-row"><code>POST /v1/graph/stream</code><div><b>Streaming</b> over SSE, plus WebSocket and a realtime audio endpoint.</div></div>
         </div>
-        <div class="perm" aria-label="Per-tool permission example">
-          <div class="cfg-head"><span>Per-tool permissions</span><span class="tag-ill">illustrative</span></div>
-          <div class="perm-row"><span>user <b>maya</b> · role support · calls <b>refund_order</b></span><span class="st no">403 denied</span></div>
-          <div class="perm-row"><span>user <b>sam</b> · role billing · calls <b>refund_order</b></span><span class="st ok">200 allowed</span></div>
+        <div class="perm" aria-label="Access control example">
+          <div class="cfg-head"><span>Scoped access</span><span class="tag-ill">illustrative</span></div>
+          <div class="perm-row"><span>user <b>maya</b> · scopes <b>checkpointer:read</b> · calls <b>/v1/graph/invoke</b></span><span class="st no">403 denied</span></div>
+          <div class="perm-row"><span>user <b>sam</b> · scopes <b>graph:invoke</b> · calls <b>/v1/graph/invoke</b></span><span class="st ok">200 allowed</span></div>
           <div class="perm-row"><span>user <b>maya</b> · reads a thread owned by <b>sam</b></span><span class="st no">403 denied</span></div>
         </div>
       </div>
@@ -390,7 +390,7 @@ const jsonLd = [
   <div class="wrap">
     <h2 id="faq">Frequently asked questions</h2>
     <div class="faq">
-<details><summary><span>What is 10xGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, per-tool permissions, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale.</p></details>
+<details><summary><span>What is 10xGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xGraph is an open-source Python framework for building production multi-agent AI systems. You write agents as typed StateGraphs or with the prebuilt ReactAgent, and 10xGraph generates the production server around them: REST and streaming endpoints, JWT auth, owner-only threads, scoped access control, rate limits, and Docker and Kubernetes manifests. It is MIT licensed and made by 10xScale.</p></details>
 <details><summary><span>What happens if a run crashes mid-way?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>With a checkpointer configured, 10xGraph records the current node before running it and keeps a ledger of every completed tool call. When the run resumes, the interrupted node runs again, but any tool call already in the ledger is skipped instead of executed. A payment tool that finished before the crash does not charge the card a second time.</p></details>
 <details><summary><span>How does 10xGraph handle authentication and multi-user isolation?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>The API server supports JWT or a custom auth class. The production template sets authorization to ownership, so a thread is accessible only to the user who created it, and owner checks are cached in process and in Redis. You can also restrict individual tools by role and add rate limits backed by memory or Redis.</p></details>
 <details><summary><span>How is 10xGraph different from LangGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Both model agents as graphs. With 10xGraph, the API server, authentication, rate limits and Docker and Kubernetes manifests come from the same MIT-licensed install, and you host them yourself. LangGraph offers its managed server through LangSmith Deployment. LangGraph also requires langchain-core, while 10xGraph has no LangChain dependency.</p></details>

@@ -1,5 +1,6 @@
 ---
 title: "Lesson 2: Single-Agent Runtime and Bounded Autonomy"
+seoTitle: "Advanced lesson 2: single-agent runtime"
 description: Design agent runtimes with explicit limits, recovery paths, and failure containment.
 section: Courses
 group: GenAI advanced

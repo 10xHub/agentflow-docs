@@ -1,6 +1,6 @@
 ---
 title: How to build a realtime audio agent
-description: Build a live audio-to-audio agent with AudioAgent and Gemini Live. Covers arealtime sessions, LiveInputQueue, image input, reconnection, and the WebSocket bridge.
+description: "Build a live audio-to-audio agent with AudioAgent and Gemini Live: arealtime sessions, LiveInputQueue, image input, reconnection, and the WebSocket bridge."
 section: How-to guides
 group: Python library
 order: 730
@@ -22,7 +22,7 @@ This guide covers:
 
 ## Prerequisites
 
-- `10xscale-agentflow` >= 0.9.0
+- `10xgraph` >= 0.9.0
 - A Gemini API key (or Vertex AI credentials)
 
 ---
@@ -30,7 +30,7 @@ This guide covers:
 ## Install
 
 ```bash
-pip install "10xscale-agentflow[realtime]"
+pip install "10xgraph[realtime]"
 ```
 
 The `realtime` extra pulls in `google-genai`. Provider SDK imports are lazy: importing `agentflow.core.realtime` never loads the SDK unless you open a session.
@@ -352,7 +352,7 @@ config = RealtimeConfig(
 
 ## API server WebSocket bridge
 
-When the configured graph is rooted at a `LiveAgent` (i.e. built with `AudioAgent`), `agentflow api` automatically exposes a WebSocket endpoint at `/v1/graph/live`.
+When the configured graph is rooted at a `LiveAgent` (i.e. built with `AudioAgent`), `10xgraph api` automatically exposes a WebSocket endpoint at `/v1/graph/live`.
 
 ### Setup
 
@@ -380,7 +380,7 @@ app = AudioAgent(
 
 ```bash
 export GEMINI_API_KEY=...
-agentflow api
+10xgraph api
 # WebSocket available at ws://localhost:8000/v1/graph/live
 ```
 
@@ -401,10 +401,10 @@ Two fields are limited by the server. `model` is honoured only when it is listed
 | Frame | Content |
 |---|---|
 | Binary | PCM16 input audio at 16 kHz |
-| JSON text | `{"type": "text", "text": "..."}` — inject a text turn |
-| JSON text | `{"type": "activity_start"}` — manual VAD start |
-| JSON text | `{"type": "activity_end"}` — manual VAD end |
-| JSON text | `{"type": "close"}` — end the session |
+| JSON text | `{"type": "text", "text": "..."}` - inject a text turn |
+| JSON text | `{"type": "activity_start"}` - manual VAD start |
+| JSON text | `{"type": "activity_end"}` - manual VAD end |
+| JSON text | `{"type": "close"}` - end the session |
 
 **Downstream (server -> client)**
 
@@ -440,10 +440,10 @@ python examples/realtime/audio_agent_mic.py
 
 ## What you learned
 
-- Install with `pip install "10xscale-agentflow[realtime]"` and set `GEMINI_API_KEY`.
+- Install with `pip install "10xgraph[realtime]"` and set `GEMINI_API_KEY`.
 - `AudioAgent` builds a single realtime agent graph with `LiveAgent` as the root; compile it once and reuse.
 - Feed PCM16 audio (16 kHz) into a `LiveInputQueue`; read PCM16 audio (24 kHz) and all other events from `arealtime()`.
 - Tools, system prompts, skills, and memory work the same as `ReactAgent` but are fixed at connect time.
 - Checkpointing enables transcript persistence and cross-session resume.
 - Reconnection is automatic; configure backoff via `ReconnectConfig`.
-- `agentflow api` exposes `ws://.../v1/graph/live` when the graph uses `AudioAgent`.
+- `10xgraph api` exposes `ws://.../v1/graph/live` when the graph uses `AudioAgent`.

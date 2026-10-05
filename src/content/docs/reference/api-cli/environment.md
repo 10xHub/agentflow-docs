@@ -1,6 +1,7 @@
 ---
 title: Environment Variables
-description: All environment variables recognized by the 10xGraph API server.
+seoTitle: "API server environment variables reference"
+description: "Reference for every environment variable the 10xGraph API server recognizes, grouped by area such as auth, CORS, logging, and Snowflake ID settings."
 section: Reference
 group: CLI and configuration
 order: 1770

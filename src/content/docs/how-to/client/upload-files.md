@@ -8,7 +8,7 @@ label: How to upload files
 updated: "2026-07-21"
 ---
 
-10xGraph supports multimodal messages — messages that contain images, audio, documents, and other binary files alongside text. This guide shows you how to upload a file, reference it in a message, and send it to the agent.
+10xGraph supports multimodal messages, messages that contain images, audio, documents, and other binary files alongside text. This guide shows you how to upload a file, reference it in a message, and send it to the agent.
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ Use the `file_id` or `url` from the upload in a `MediaRef` inside the appropriat
 ### Image message
 
 ```ts
-import { Message, ImageBlock, TextBlock, MediaRef } from '@10xscale/agentflow-client';
+import { Message, ImageBlock, TextBlock, MediaRef } from '10xgraph-client';
 
 const imageMsg = new Message('user', [
   new TextBlock('What is shown in this image?'),
@@ -90,7 +90,7 @@ const imageMsg = new Message('user', [
 ### Document message (PDF, DOCX)
 
 ```ts
-import { DocumentBlock } from '@10xscale/agentflow-client';
+import { DocumentBlock } from '10xgraph-client';
 
 const docMsg = new Message('user', [
   new TextBlock('Summarise the key points from this document.'),
@@ -105,7 +105,7 @@ If `document_handling` is `'extract_text'` (the server default), the server extr
 ### Audio message
 
 ```ts
-import { AudioBlock } from '@10xscale/agentflow-client';
+import { AudioBlock } from '10xgraph-client';
 
 const audioMsg = new Message('user', [
   new TextBlock('Please transcribe and summarise this audio.'),
@@ -195,7 +195,7 @@ import {
   ImageBlock,
   TextBlock,
   MediaRef,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 

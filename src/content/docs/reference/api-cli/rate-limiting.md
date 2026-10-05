@@ -1,6 +1,7 @@
 ---
 title: Rate Limiting
-description: Complete reference for the rate_limit block in agentflow.json.
+seoTitle: "rate_limit configuration reference"
+description: "Complete reference for the rate_limit block in agentflow.json: the backends, limits, and every option for throttling requests to the 10xGraph API server."
 section: Reference
 group: CLI and configuration
 order: 1760
@@ -68,7 +69,7 @@ address is in one of them; anyone else is keyed by their peer address.
 
 Rate limiting is HTTP middleware, and Starlette runs middleware for HTTP scopes only, so WebSocket handshakes would otherwise bypass it. `WS /v1/graph/ws` and `WS /v1/graph/live` therefore re-apply the check at the handshake, using the **same backend and the same bucket** as REST requests. Opening a socket counts exactly like any other request; exceeding the limit refuses the handshake with WebSocket close code `1013` (Try Again Later) before `accept()`.
 
-The separate [`websocket.max_connections`](/docs/reference/api-cli/configuration#websocket) cap is enforced at the same point and uses the same close code.
+The separate [`websocket.max_connections`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability) cap is enforced at the same point and uses the same close code.
 
 ## Minimal example
 

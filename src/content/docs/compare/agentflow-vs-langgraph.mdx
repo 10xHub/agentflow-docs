@@ -1,220 +1,177 @@
 ---
 title: "10xGraph vs LangGraph: Production Python Alternative"
-description: 10xGraph vs LangGraph head-to-head. State graphs, memory, streaming, REST API, and TypeScript client compared for production Python AI agents.
+seoTitle: "10xGraph vs LangGraph: production server compared"
+description: 10xGraph vs LangGraph compared on the production layer, with sources. Auth, thread isolation, replay-safe tools, versioned writes, timeouts, and deploy files.
 section: Learn more
 group: Compare
 order: 2230
 label: vs LangGraph
-updated: "2026-09-29"
+updated: "2026-10-06"
 faq:
   - q: Is 10xGraph a fork of LangGraph?
-    a: No. 10xGraph is an independent open-source project with its own runtime, state types, and CLI. The two frameworks share a graph-based mental model that is common to most agent runtimes today.
-  - q: Can I migrate a LangGraph state schema to 10xGraph?
-    a: Yes. 10xGraph's AgentState supports a list of typed Message objects plus arbitrary fields. Most TypedDict-based LangGraph states map onto AgentState fields one-to-one. Multimodal content and tool calls migrate cleanly through the Message API.
-  - q: Does 10xGraph support the same model providers as LangGraph?
-    a: 10xGraph ships with first-party support for OpenAI, Anthropic, Google (Gemini and Vertex AI), and other major providers. You configure them by provider+model string on the Agent class. See the providers section of the docs.
-  - q: How does 10xGraph's API server compare to LangGraph Platform?
-    a: 10xGraph's CLI ships with a built-in REST + SSE server you can run anywhere. No SaaS account required. LangGraph Platform is a hosted product with extra features like managed checkpointers and Studio visualisation; 10xGraph is closer to the open-source LangGraph experience plus an opinionated server.
+    a: No. 10xGraph is an independent open-source project with its own runtime, state types, and CLI. Both frameworks model agents as graphs of nodes and edges.
+  - q: How does the 10xGraph API server compare to LangSmith Deployment?
+    a: 10xGraph generates a REST, SSE and WebSocket server from your graph in the open-source install, under the MIT license. LangGraph routes deployment to LangSmith Deployment, which has cloud, hybrid, self-hosted and standalone options, with plan or license requirements listed in LangChain's docs.
+  - q: Does LangGraph have a TypeScript client?
+    a: Yes. LangChain publishes @langchain/langgraph-sdk, an MIT-licensed client library for the LangGraph API, and LangGraph.js. 10xGraph ships its own typed TypeScript client for the 10xGraph API.
+  - q: Does 10xGraph depend on LangChain?
+    a: No. The langgraph package on PyPI requires langchain-core. 10xGraph does not depend on LangChain.
   - q: Is 10xGraph free for commercial use?
-    a: Yes. 10xGraph is MIT-licensed, including the API/CLI and the TypeScript client. There is no required hosted service or paid tier.
-  - q: Does 10xGraph integrate with MCP (Model Context Protocol)?
-    a: Yes. 10xGraph has first-class MCP support. See the MCP tutorials under Tutorials → From examples for client and server patterns.
+    a: Yes. The framework, the API server and CLI, and the TypeScript client are MIT-licensed. There is no required hosted service or paid tier.
+  - q: When should I stay on LangGraph?
+    a: Stay on LangGraph if you rely on the LangChain ecosystem, LangSmith tracing, or Studio, or if you need a community and integration list larger than 10xGraph has today.
 ---
 
 <Callout type="tip" title="10xGraph vs LangGraph">
 
-Same graph mental model. Production server, durable threads, and a typed TypeScript client included.
+Both give you a graph runtime. 10xGraph also generates the secured production server around it, in the open-source install.
 
 </Callout>
 
-If you are evaluating **LangGraph** for a multi-agent system in Python, **10xGraph** is the closest drop-in alternative. A graph-based runtime with the same mental model, plus an opinionated API, CLI, and TypeScript client out of the box.
+This page is written by the 10xGraph team. We maintain 10xGraph, so read it with that in mind. Every claim about LangGraph links to LangChain's own documentation or to package metadata, checked on 2026-10-06.
 
-This page shows what changes when you migrate, what stays the same, and where 10xGraph gives you a stronger production foundation than LangGraph alone.
+**LangGraph** is an MIT-licensed graph orchestration library for stateful agents ([repository](https://github.com/langchain-ai/langgraph)). **10xGraph** covers the same ground and adds the server layer: endpoints, auth, thread ownership, rate limits and deploy files generated from your compiled graph.
 
-## TL;DR: 10xGraph vs LangGraph
+## Production layer compared
 
-High-level comparison of architectural choices. Both frameworks are open-source and Python-first.
+The rows below start with what differs most between the two. The shared basics (graph model, checkpointing, streaming, MCP) are at the bottom.
 
 | | 10xGraph | LangGraph |
 |---|---|---|
-| Programming model | Typed StateGraph with nodes, conditional edges, and sub-graphs | StateGraph with TypedDict / Pydantic state and edges |
-| State and messages | Built-in AgentState + Message types, multimodal aware | BYO TypedDict / annotated reducers |
-| Persistence | InMemoryCheckpointer for dev, PgCheckpointer (Postgres + Redis) for prod | MemorySaver / PostgresSaver / SQLiteSaver via langgraph-checkpoint-* |
-| API serving | Built-in: `agentflow api` serves any compiled graph as REST + SSE | LangGraph Platform (paid) or roll-your-own FastAPI |
-| Frontend client | Typed TypeScript client (`@10xscale/agentflow-client`) with invoke + stream | No first-party TS client; use fetch / EventSource |
-| Hosted playground | Bundled. Open in browser to chat with a deployed graph | LangGraph Studio (commercial) |
-| License | MIT | MIT (LangGraph OSS). Platform/Studio are commercial |
-| Lock-in | No required SaaS account; runs anywhere Python runs | OSS runs anywhere; LangSmith and LangGraph Platform pull you toward the LangChain stack |
+| Production server (REST, SSE, WebSocket) in the open-source install | Yes. `10xgraph api` generates REST, SSE, WebSocket and realtime-audio endpoints from the compiled graph | The `langgraph` library is MIT ([PyPI](https://pypi.org/project/langgraph/)). Serving goes through Agent Server: cloud needs Plus or above, self-hosted control plane needs Enterprise, standalone needs a LangSmith license ([deployment options](https://docs.langchain.com/langsmith/deployments), [pricing](https://www.langchain.com/pricing)) |
+| Auth (JWT or custom) | JWT (`"auth": "jwt"`) or a custom `BaseAuth` subclass | Custom auth via `@auth.authenticate`, supported on all plans ([auth docs](https://docs.langchain.com/langgraph-platform/auth)) |
+| Authorization | Role scopes (such as `graph:invoke`, `checkpointer:read`) or a custom `AuthorizationBackend` | `@auth.on` handlers per resource and action ([auth docs](https://docs.langchain.com/langgraph-platform/auth)) |
+| Thread ownership isolation | Built-in `"authorization": "ownership"` backend, with a two-tier cached owner check | Not built in. The docs show a handler pattern you write yourself ([auth docs](https://docs.langchain.com/langgraph-platform/auth)) |
+| Rate limiting | Memory or Redis sliding-window limits, set in `agentflow.json` | Not verified |
+| Replay-safe tool calls after a crash | Tool ledger in the checkpointer: a tool that already ran is not executed again on resume. Needs a checkpointer | Resume replays from a checkpoint. The docs advise wrapping side effects in tasks and making them idempotent ([functional API docs](https://docs.langchain.com/oss/python/langgraph/functional-api)) |
+| Versioned (compare-and-swap) state writes | Optimistic version check on durable writes in `PgCheckpointer` | Not documented |
+| Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | `TimeoutPolicy` per node, async nodes only, plus `RetryPolicy` ([fault tolerance docs](https://docs.langchain.com/oss/python/langgraph/fault-tolerance)) |
+| Docker Compose and Kubernetes manifests | `10xgraph build --docker-compose --k8s` writes `Dockerfile`, `docker-compose.yml`, `k8s.yaml` | `langgraph build` builds an image ([CLI docs](https://docs.langchain.com/langsmith/cli)). Standalone self-hosting documents Helm and a Docker Compose example, and needs a license key ([standalone docs](https://docs.langchain.com/langsmith/deploy-standalone-server)) |
+| License | MIT, including API/CLI and client | MIT for the library. LangSmith plans are commercial ([pricing](https://www.langchain.com/pricing)) |
+| TypeScript client | Typed `10xgraph-client` for the 10xGraph API | `@langchain/langgraph-sdk`, MIT ([npm](https://www.npmjs.com/package/@langchain/langgraph-sdk)) |
+| Visual tooling | Browser playground (`10xgraph play`) | LangSmith Studio, free with a LangSmith account ([Studio docs](https://docs.langchain.com/oss/python/langgraph/studio)) |
+| Python version | 3.12 or newer | 3.10 or newer ([PyPI](https://pypi.org/project/langgraph/)) |
+| LangChain dependency | None | `langchain-core` is a required dependency ([PyPI](https://pypi.org/project/langgraph/)) |
+| Graph model | `StateGraph` with nodes, conditional edges, sub-graphs | `StateGraph` with state schema and edges ([persistence docs](https://docs.langchain.com/oss/python/langgraph/persistence)) |
+| Checkpointing | `InMemoryCheckpointer`, `PgCheckpointer` (Postgres plus Redis), SQLite | `InMemorySaver`, `SqliteSaver`, `PostgresSaver` ([persistence docs](https://docs.langchain.com/oss/python/langgraph/persistence)) |
 
-## Why teams migrate from LangGraph to 10xGraph
+## What the 10xGraph production layer looks like
 
-1. **One project for runtime, API, and client.** LangGraph gives you the graph engine, but you still wire FastAPI, SSE plumbing, and a frontend fetcher yourself. 10xGraph ships `agentflow api` (REST + SSE) and a typed TypeScript client in the same repo.
-2. **Smaller dependency surface.** 10xGraph does not depend on the LangChain core or LangSmith. You install `agentflow` and you are done.
-3. **Production patterns are the default.** Checkpointers, thread IDs, recursion limits, and graceful shutdown are wired into the API server. Not a recipe you copy from a blog post.
-4. **No SaaS gravity.** LangSmith and LangGraph Platform are excellent products but pull you toward a paid stack. 10xGraph has no required hosted dependency.
+A support agent with two tools, one of which moves money:
 
-## Same agent, both frameworks
-
-A minimal **ReAct agent with one tool**, written first in LangGraph, then in 10xGraph. Both frameworks compile to a graph that loops between a model node and a tool node.
-
-### LangGraph
-
-```python
-from langchain_core.messages import HumanMessage
-from langchain_core.tools import tool
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import create_react_agent
-
-@tool
-def get_weather(location: str) -> str:
-    """Get current weather for a location."""
-    return f"The weather in {location} is sunny and 22°C."
-
-app = create_react_agent("openai:gpt-4o-mini", tools=[get_weather])
-
-result = app.invoke({"messages": [HumanMessage("What is the weather in London?")]})
-print(result["messages"][-1].content)
-```
-
-### 10xGraph
-
-```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
-
-def get_weather(location: str) -> str:
-    """Get current weather for a location."""
-    return f"The weather in {location} is sunny and 22°C."
-
-tool_node = ToolNode([get_weather])
-agent = Agent(
-    model="google/gemini-2.5-flash",
-    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
-    tool_node="TOOL",
-)
-
-graph = StateGraph(AgentState)
-graph.add_node("MAIN", agent)
-graph.add_node("TOOL", tool_node)
-
-def route(state):
-    last = state.context[-1] if state.context else None
-    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
-        return "TOOL"
-    if last and last.role == "tool":
-        return "MAIN"
-    return END
-
-graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
-graph.add_edge("TOOL", "MAIN")
-graph.set_entry_point("MAIN")
-app = graph.compile()
-
-result = app.invoke(
-    {"messages": [Message.text_message("What is the weather in London?")]},
-    config={"thread_id": "demo-1"},
-)
-print(result["messages"][-1].text())
-```
-
-The shape is the same. Graph, nodes, conditional edges, compile, invoke. 10xGraph uses its own `Message` and `AgentState` types so multimodal content and tool calls flow through the graph without adapter layers.
-
-## Persistence and threads
-
-LangGraph users who have already moved past the in-memory checkpointer will recognize the 10xGraph pattern.
-
-```python
-# AgentFlow — production
+```python title="graph/agent.py"
+from agentflow.prebuilt.agent import ReactAgent
 from agentflow.storage.checkpointer import PgCheckpointer
 
-checkpointer = PgCheckpointer(
-    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
-    redis_url="redis://localhost:6379/0",
+
+def lookup_order(order_id: str) -> dict:
+    """Return status and total for an order."""
+    return {"order_id": order_id, "status": "delivered", "total": 59.0}
+
+
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund part or all of an order."""
+    return f"Refunded {amount} on {order_id}"
+
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{"role": "system", "content": "You are a support agent. Confirm the order before refunding."}],
+    tools=[lookup_order, refund_order],
 )
 
-app = graph.compile(checkpointer=checkpointer)
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost:5432/agents",
+    redis_url="redis://localhost:6379/0",
+)
+checkpointer.setup()
+
+app = agent.compile(checkpointer=checkpointer)
 ```
 
-```python
-# LangGraph — production
-from langgraph.checkpoint.postgres import PostgresSaver
-
-with PostgresSaver.from_conn_string("postgresql://...") as checkpointer:
-    app = workflow.compile(checkpointer=checkpointer)
-```
-
-Both use thread IDs in `config={"thread_id": "..."}` to scope conversations. If you already store thread IDs in your app, the migration is mechanical.
-
-## Serving the graph
-
-This is where 10xGraph saves the most code.
+Then scaffold, serve and package it:
 
 ```bash
-# AgentFlow — one command, production-ready
-pip install 10xscale-agentflow-cli
-agentflow init
-agentflow api --host 0.0.0.0 --port 8000
+pip install 10xgraph 10xgraph-api google-genai
+10xgraph init --yes --template production --auth jwt --rate-limit redis
+10xgraph api --host 0.0.0.0 --port 8000
+10xgraph build --docker-compose --k8s
 ```
 
-The `agentflow.json` points the CLI at your compiled graph (compiled with its checkpointer):
+The `production` template writes an `agentflow.json` with `"auth": "jwt"`, `"authorization": "ownership"` and a Redis rate limit. If the process is killed after `refund_order` returns but before the run is saved, the resumed run reads the tool ledger and does not refund twice. See [replay-safe tools](/docs/concepts/replay-safe-tools).
 
-```json
-{
-  "agent": "graph.react:app",
-  "auth": "jwt"
-}
-```
-
-You get `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET /v1/graph/threads/{id}` for free, plus health checks and graceful shutdown.
-
-In LangGraph you would either run **LangGraph Platform** (commercial) or wire FastAPI yourself. Typically 100–200 lines of routing, SSE serialization, and checkpoint plumbing per project.
+For the equivalent LangGraph quickstart, see [LangGraph's docs](https://docs.langchain.com/oss/python/langgraph/overview).
 
 ## Calling from TypeScript
 
 ```typescript
-import {AgentFlowClient, Message} from "@10xscale/agentflow-client";
+import { AgentFlowClient, Message, bearerAuth } from "10xgraph-client";
 
-const client = new AgentFlowClient({baseUrl: "http://127.0.0.1:8000"});
+const client = new AgentFlowClient({
+  baseUrl: "http://127.0.0.1:8000",
+  auth: bearerAuth(token),
+});
 
 const result = await client.invoke(
-  [Message.text_message("What is the weather in Tokyo?")],
-  {config: {thread_id: "ts-demo"}},
+  [Message.text_message("Refund order A-1042 for 59.00")],
+  { config: { thread_id: "ticket-8841" } },
 );
 console.log(result.messages.at(-1)?.text());
 ```
 
-There is no equivalent first-party TypeScript client in LangGraph today. Most teams wrap fetch and parse SSE by hand.
+LangChain publishes its own client for the LangGraph API, [`@langchain/langgraph-sdk`](https://www.npmjs.com/package/@langchain/langgraph-sdk). The two clients target different servers.
 
 ## Migrating from LangGraph to 10xGraph
 
-The conversion is largely mechanical for a single-graph app:
-
 1. Replace `from langgraph.graph import StateGraph` with `from agentflow.core.graph import StateGraph`.
-2. Replace `from langchain_core.messages import HumanMessage` (and friends) with `from agentflow.core.state import Message` and use `Message.text_message(...)`.
-3. Use `agentflow.core.graph.Agent` instead of `create_react_agent`. Pass `model`, `system_prompt`, and `tool_node`.
-4. Replace `MemorySaver` / `PostgresSaver` with `InMemoryCheckpointer` / `PgCheckpointer`.
-5. Drop FastAPI. Point `agentflow.json` at your compiled graph and run `agentflow api`.
-6. Replace your custom TypeScript fetcher with `@10xscale/agentflow-client`.
+2. Replace LangChain message classes with `from agentflow.core.state import Message` and `Message.text_message(...)`.
+3. Use `ReactAgent` or `agentflow.core.graph.Agent` with a `ToolNode` where you used a prebuilt agent. Pass `model`, `system_prompt` and tools.
+4. Replace `InMemorySaver` / `PostgresSaver` with `InMemoryCheckpointer` / `PgCheckpointer`. Thread IDs move from `config["configurable"]["thread_id"]` to `config["thread_id"]`.
+5. Replace `langgraph.json` with `agentflow.json` pointing at your compiled graph, and run `10xgraph api`.
+6. Point your frontend at `10xgraph-client`.
 
-For multi-agent systems with handoffs, 10xGraph exposes `create_handoff_tool` and the `Command` primitive. See [the handoff how-to](/docs/how-to/python/handoff-between-agents) for a full example.
+For multi-agent handoffs, see [the handoff how-to](/docs/how-to/python/handoff-between-agents).
 
-## When LangGraph is still the right pick
+## Where LangGraph is the better choice
 
-We will not pretend 10xGraph is the right answer for every team:
+- **You use the LangChain ecosystem.** Runnables, retrievers and LangSmith tracing fit together with LangGraph, and 10xGraph does not integrate with them.
+- **You want visual debugging.** LangSmith Studio is free with a LangSmith account ([docs](https://docs.langchain.com/oss/python/langgraph/studio)). 10xGraph has a playground, not an equivalent visual tool.
+- **You need a larger community and integration list.** LangGraph has more users, examples and third-party integrations.
+- **You need Python 3.10 or 3.11.** 10xGraph requires 3.12 or newer.
+- **You want a managed platform.** LangSmith Deployment offers cloud and hybrid hosting that 10xGraph does not.
 
-- **Heavy LangChain integration.** If your codebase is already deep into LangChain runnables, retrievers, and LangSmith tracing, staying on LangGraph keeps that ecosystem cohesive.
-- **LangGraph Platform features you depend on.** If you rely on LangGraph Studio's visual editor or LangGraph Platform's hosted infrastructure, 10xGraph does not currently match those products.
-- **Python-only stack.** If you have no JavaScript surface and no plan to add one, you will not feel the TypeScript-client win as strongly.
+## Weak spots of 10xGraph
 
-For everyone else. Especially teams who want a Python backend plus a TypeScript frontend without rebuilding the API layer. 10xGraph ships closer to "deployable" out of the box.
+- Smaller community and fewer integrations than LangGraph.
+- Pre-1.0: pin versions and read changelogs before upgrading.
+- Renamed from Agentflow, so the 10xGraph name has little search history yet.
+- No Studio-equivalent visual tool.
+- Code-first only, and Python 3.12 or newer.
+
+## Sources
+
+Verified on 2026-10-06.
+
+- [LangGraph repository](https://github.com/langchain-ai/langgraph) and [PyPI metadata](https://pypi.org/project/langgraph/)
+- [LangSmith deployment options](https://docs.langchain.com/langsmith/deployments)
+- [Standalone self-hosting](https://docs.langchain.com/langsmith/deploy-standalone-server)
+- [Authentication and authorization](https://docs.langchain.com/langgraph-platform/auth)
+- [Fault tolerance (TimeoutPolicy, RetryPolicy)](https://docs.langchain.com/oss/python/langgraph/fault-tolerance)
+- [Functional API (durable execution, idempotency)](https://docs.langchain.com/oss/python/langgraph/functional-api)
+- [Persistence](https://docs.langchain.com/oss/python/langgraph/persistence)
+- [LangGraph CLI](https://docs.langchain.com/langsmith/cli)
+- [LangSmith Studio](https://docs.langchain.com/oss/python/langgraph/studio)
+- [LangSmith pricing](https://www.langchain.com/pricing)
+- [@langchain/langgraph-sdk on npm](https://www.npmjs.com/package/@langchain/langgraph-sdk)
 
 ## Next steps
 
 <CardGrid>
 
-<LinkCard title="Get started with 10xGraph" href="/docs/get-started" description="Install, build a first agent, expose an API, connect from TypeScript." eyebrow="Guide" />
+<LinkCard title="Get started with 10xGraph" href="/docs/get-started" description="Install, build an agent, expose an API, connect from TypeScript." eyebrow="Guide" />
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How the tool ledger stops a resumed run from repeating a refund." eyebrow="Concept" />
+<LinkCard title="Auth and authorization" href="/docs/how-to/production/auth-and-authorization" description="JWT, ownership isolation and role scopes." eyebrow="Guide" />
 <LinkCard title="State graphs" href="/docs/concepts/state-graph" description="How nodes, edges, and routing work in 10xGraph." eyebrow="Concept" />
-<LinkCard title="Add memory and checkpointing" href="/docs/beginner/add-memory" description="Same patterns LangGraph uses, with 10xGraph's persistence layer." eyebrow="Tutorial" />
 
 </CardGrid>

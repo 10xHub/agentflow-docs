@@ -1,5 +1,6 @@
 ---
 title: ID Generator
+seoTitle: "ID generator setup for the API server"
 description: 10xGraph uses ID generators to create unique identifiers for threads, messages, and other persisted records.
 section: Reference
 group: CLI and configuration

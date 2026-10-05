@@ -1,5 +1,6 @@
 ---
 title: Security policy
+seoTitle: "Security policy and vulnerability reports"
 description: How to report a vulnerability in 10xGraph, what response to expect, which versions receive fixes, and which behaviours are by design rather than bugs.
 section: Project
 order: 2640

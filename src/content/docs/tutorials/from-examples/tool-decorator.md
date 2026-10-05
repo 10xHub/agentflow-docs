@@ -1,5 +1,6 @@
 ---
 title: Tool Decorator
+seoTitle: "Tool decorator tutorial: @tool metadata"
 description: Use the @tool decorator to attach metadata, tags, and capabilities to Python functions before registering them with a ToolNode.
 section: Tutorials
 group: From examples

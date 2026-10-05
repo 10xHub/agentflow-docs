@@ -1,5 +1,6 @@
 ---
 title: Memory stores
+seoTitle: "Memory stores API reference (Python)"
 description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents.
 section: Reference
 group: Python library
@@ -71,14 +72,16 @@ Abstract base class. All store backends implement this interface.
 
 | Method | Signature | Description |
 |---|---|---|
-| `astore` | `async (config, content, memory_type, category, metadata) -> str` | Add a memory. Returns the memory ID. |
-| `abatch_store` | `async (config, contents, memory_type, category, metadata) -> list[str]` | Bulk add multiple memories. |
-| `asearch` | `async (config, query, memory_type, strategy, limit, distance_metric, filter) -> list[MemorySearchResult]` | Search memories by query. |
-| `aget` | `async (config, memory_id) -> MemoryRecord \| None` | Fetch a memory by ID. |
-| `aupdate` | `async (config, memory_id, content, metadata) -> bool` | Update a memory's content. |
-| `adelete` | `async (config, memory_id) -> bool` | Delete a memory by ID. |
-| `aforget_memory` | `async (config, query) -> int` | Delete memories that semantically match a query. Returns count deleted. |
-| `arelease` | `async () -> None` | Release connections and cleanup. |
+| `astore` | `async (config, content, memory_type=EPISODIC, category="general", metadata=None, **kwargs) -> str` | Add a memory. Returns the memory ID. |
+| `asearch` | `async (config, query, memory_type=None, category=None, limit=10, score_threshold=None, filters=None, retrieval_strategy=SIMILARITY, distance_metric=COSINE, max_tokens=4000, **kwargs) -> list[MemorySearchResult]` | Search memories by query. |
+| `aget` | `async (config, memory_id, **kwargs) -> MemorySearchResult \| None` | Fetch a memory by ID. |
+| `aget_all` | `async (config, limit=100, **kwargs) -> list[MemorySearchResult]` | List memories in the config's scope. |
+| `aupdate` | `async (config, memory_id, content, metadata=None, **kwargs) -> Any` | Update a memory's content. |
+| `adelete` | `async (config, memory_id, **kwargs) -> Any` | Delete a memory by ID. |
+| `aforget_memory` | `async (config, **kwargs) -> Any` | Delete memories for a user or agent scope. Accepted keyword arguments are store-specific. |
+| `arelease` | `async () -> None` | Release connections and cleanup (not abstract, default no-op). |
+
+There is no bulk `abatch_store`; call `astore` in a loop or with `asyncio.gather`.
 
 ### Sync wrappers
 
@@ -102,7 +105,7 @@ config = {
 
 ## `MemorySearchResult`
 
-Returned by `asearch`. Each result represents a matching memory.
+Returned by `asearch`, `aget` and `aget_all`. Each result represents a matching memory.
 
 | Field | Type | Description |
 |---|---|---|
@@ -168,7 +171,8 @@ app = graph.compile(store=store)
 | `port` | `int \| None` | Remote Qdrant port (default: `6333`). |
 | `url` | `str \| None` | Qdrant Cloud URL. |
 | `api_key` | `str \| None` | Qdrant Cloud API key. |
-| `collection_name` | `str` | Qdrant collection name. Default: `"agentflow_memories"`. |
+| `collection` | `str \| None` | Qdrant collection name. Defaults to `"agentflow_memories"`. |
+| `distance_metric` | `DistanceMetric` | Distance metric for the collection. Default: `COSINE`. |
 
 ---
 
@@ -206,20 +210,24 @@ app = graph.compile(store=store)
 Configure the `Agent` to automatically retrieve relevant memories before each LLM call:
 
 ```python
-from agentflow.storage.store.memory_config import MemoryConfig
+from agentflow.storage.store import MemoryConfig, QdrantStore, ReadMode
+
+store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 
 agent = Agent(
     model="gpt-4o",
     memory=MemoryConfig(
-        enabled=True,
-        top_k=5,
-        memory_type=MemoryType.SEMANTIC,
-        retrieval_strategy=RetrievalStrategy.SIMILARITY,
+        store=store,
+        retrieval_mode=ReadMode.POSTLOAD,
+        limit=5,
+        score_threshold=0.0,
     ),
 )
 
-app = graph.compile(store=QdrantStore(...))
+app = graph.compile(store=store)
 ```
+
+`MemoryConfig` fields: `store`, `retrieval_mode` (`ReadMode.NO_RETRIEVAL`, `PRELOAD` or `POSTLOAD`; default `POSTLOAD`), `limit` (default 5), `score_threshold` (default 0.0), `max_tokens`, `inject_system_prompt` (default `True`), `config`, `user_memory` and `agent_memory`.
 
 ---
 
@@ -237,7 +245,7 @@ async def remember_node(state: AgentState, config: dict, store: BaseStore) -> li
         config={"user_id": config.get("user_id")},
         query=state.context[-1].content[0].text,
         memory_type=MemoryType.EPISODIC,
-        strategy=RetrievalStrategy.SIMILARITY,
+        retrieval_strategy=RetrievalStrategy.SIMILARITY,
         limit=5,
     )
     context = "\n".join(m.content for m in memories)

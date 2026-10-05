@@ -1,5 +1,6 @@
 ---
 title: Serving Agents
+seoTitle: "Serving agents with agentflow.json"
 description: How agentflow.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
 section: Concepts
 order: 160
@@ -519,4 +520,4 @@ pip install "10xscale-agentflow-cli[otel]"       # API layer (FastAPIInstrumento
 | [Connecting Clients](/docs/concepts/connecting-clients) | TypeScript SDK, streaming, remote tools |
 | [Memory](/docs/concepts/memory) | `PgCheckpointer`, Redis cache, long-term vector store |
 | [Extensibility](/docs/concepts/extensibility) | `BaseAuth`, `AuthorizationBackend`, `BasePublisher` and all other ABCs |
-| [Quality & Observability](/docs/concepts/qa) | `GraphLifecycleHook` with OpenTelemetry, evaluation, testing |
+| [Quality & Observability](/docs/qa) | `GraphLifecycleHook` with OpenTelemetry, evaluation, testing |

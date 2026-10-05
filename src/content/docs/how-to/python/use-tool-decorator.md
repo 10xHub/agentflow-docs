@@ -10,7 +10,7 @@ updated: "2026-05-23"
 
 The `@tool` decorator marks a Python function as an agent tool. It attaches metadata (name, description, tags, provider, capabilities) that `ToolNode` uses when building the function-calling schema sent to the LLM.
 
-Without `@tool`, 10xGraph still registers the function — it falls back to `__name__` and the docstring. Use `@tool` when you need to override defaults or add tags for filtering.
+Without `@tool`, 10xGraph still registers the function, it falls back to `__name__` and the docstring. Use `@tool` when you need to override defaults or add tags for filtering.
 
 ---
 
@@ -92,7 +92,7 @@ Tags are an `OR` filter: a tool is included if it has **any** of the requested t
 
 ## Mark capabilities
 
-`capabilities` is an informational field. 10xGraph does not enforce them at runtime — they are stored as metadata for your own auditing or policy checks.
+`capabilities` is an informational field. 10xGraph does not enforce them at runtime, they are stored as metadata for your own auditing or policy checks.
 
 ```python
 @tool(

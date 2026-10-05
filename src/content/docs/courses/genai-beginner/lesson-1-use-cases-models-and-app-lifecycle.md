@@ -1,5 +1,6 @@
 ---
 title: "Lesson 1: Use Cases, Models, and the LLM App Lifecycle"
+seoTitle: "Beginner lesson 1: use cases and models"
 description: Learn to identify which problems fit GenAI automation, understand core building blocks, and make your first model selection decision.
 section: Courses
 group: GenAI beginner

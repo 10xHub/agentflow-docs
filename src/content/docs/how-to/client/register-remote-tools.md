@@ -32,7 +32,7 @@ Use remote tools when execution needs browser or client-owned capabilities. Keep
 ```
 
 Restart the API after changing schemas. Startup fails for unknown fields, duplicate names, malformed parameters, or a `node` that is not a `ToolNode`.
-Run `agentflow audit` first to validate the schema format and duplicate names.
+Run `10xgraph audit` first to validate the schema format and duplicate names.
 
 ## 2. Register matching handlers
 
@@ -60,6 +60,28 @@ const result = await client.invoke([
 ```
 
 The SDK detects remote calls, runs handlers, returns tool results, and continues the graph automatically. There is no `setup()` method or dynamic setup endpoint.
+
+## `registerToolHandler(name, handler)`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Must exactly match a configured `remote_tools[].name`. |
+| `handler` | `(args: any) => Promise<any>` | Executes locally and returns a serializable result. |
+
+Register handlers before `invoke()`, `stream()`, or `wsStream()`. Schemas are trusted server configuration: the client stores and executes only handlers and cannot add or replace schemas.
+
+`registerTool({ name, handler, ...metadata })` remains available for existing clients. Schema metadata supplied there stays local and is not sent to the server. New code should use `registerToolHandler()`.
+
+## Execution behavior
+
+When a response contains a `RemoteToolCallBlock`, the SDK:
+
+1. Finds the handler by tool name.
+2. Calls it with the model-generated arguments.
+3. Wraps the result in a `ToolResultBlock`.
+4. Continues execution until no remote calls remain or the recursion limit (`recursion_limit`, default 25) is reached.
+
+Missing handlers and thrown errors become failed tool results rather than transport failures.
 
 ## Troubleshooting
 

@@ -1,5 +1,6 @@
 ---
 title: "Lesson 8: Observability, Testing, Security, and Deployment"
+seoTitle: "Advanced lesson 8: production readiness"
 description: Achieve production readiness with comprehensive testing, monitoring, and security controls.
 section: Courses
 group: GenAI advanced

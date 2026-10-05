@@ -1,5 +1,6 @@
 ---
 title: StreamEmitter
+seoTitle: "StreamEmitter API reference (Python)"
 description: Emit live progress, errors, and status updates from tools during streaming execution.
 section: Reference
 group: Python library

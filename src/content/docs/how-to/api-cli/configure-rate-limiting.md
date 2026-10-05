@@ -62,7 +62,7 @@ across the whole deployment.
 ### Install the Redis extra
 
 ```bash
-pip install "10xscale-agentflow-cli[redis]"
+pip install "10xgraph-api[redis]"
 ```
 
 ### Update `agentflow.json`
@@ -94,7 +94,7 @@ pip install "10xscale-agentflow-cli[redis]"
 RATE_LIMIT_REDIS_URL=redis://localhost:6379/0
 ```
 
-The `${RATE_LIMIT_REDIS_URL}` placeholder is expanded from the environment at startup —
+The `${RATE_LIMIT_REDIS_URL}` placeholder is expanded from the environment at startup -
 never commit Redis credentials into `agentflow.json`.
 
 <aside class="callout callout-tip" role="note"><p class="callout-title">Atomic enforcement</p>
@@ -196,7 +196,7 @@ Budget for this when sizing limits for a streaming client: a browser that reconn
 network blip spends a request each time.
 
 Concurrent socket count is capped separately by `websocket.max_connections`, which uses the same
-close code. See [agentflow.json configuration](/docs/reference/api-cli/configuration#websocket).
+close code. See [agentflow.json configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
 
 ## Behind a reverse proxy
 
@@ -299,6 +299,6 @@ Every response also includes these headers so clients can track their quota:
 
 ## See also
 
-- [Rate Limiting reference](/docs/reference/api-cli/rate-limiting) — full field reference, response headers, and backend comparison table
+- [Rate Limiting reference](/docs/reference/api-cli/rate-limiting), full field reference, response headers, and backend comparison table
 - [agentflow.json configuration](/docs/reference/api-cli/configuration)
 - [Environment variables](/docs/reference/api-cli/environment)

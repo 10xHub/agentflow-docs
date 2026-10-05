@@ -31,7 +31,7 @@ const threads = response.data.threads;
 
 console.log(`Found ${threads.length} thread(s)`);
 for (const t of threads) {
-  console.log(`  [${t.thread_id}] ${t.thread_name ?? '(no name)'} — updated: ${t.updated_at}`);
+  console.log(`  [${t.thread_id}] ${t.thread_name ?? '(no name)'}, updated: ${t.updated_at}`);
 }
 ```
 
@@ -158,7 +158,7 @@ await client.updateThreadState(
 
 <aside class="callout callout-warning" role="note"><p class="callout-title">Warning</p>
 
-`updateThreadState()` replaces the state at the last checkpoint. The graph will continue from this state on the next `invoke()` call. Use with care — incorrect state can break the agent's logic.
+`updateThreadState()` replaces the state at the last checkpoint. The graph will continue from this state on the next `invoke()` call. Use with care, incorrect state can break the agent's logic.
 
 </aside>
 
@@ -202,13 +202,13 @@ await client.deleteThread('thread-abc123');
 
 ## Build a thread history viewer
 
-Putting it all together — a basic function that loads and displays a thread history:
+Putting it all together, a basic function that loads and displays a thread history:
 
 ```ts
 import {
   AgentFlowClient,
   Message,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -255,7 +255,7 @@ await showThreadHistory('thread-abc123');
 - `threads()` lists all threads with optional search and pagination.
 - `threadMessages()` lists messages in a thread with search and pagination.
 - `threadState()` / `updateThreadState()` / `clearThreadState()` operate on the graph state snapshot.
-- `deleteThread()` removes everything — use `clearThreadState()` if you want to keep the history but reset the state.
+- `deleteThread()` removes everything, use `clearThreadState()` if you want to keep the history but reset the state.
 
 ## Next step
 

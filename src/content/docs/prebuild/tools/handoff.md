@@ -1,5 +1,6 @@
 ---
 title: Handoff Tools
+seoTitle: "Handoff tools for multi-agent swarms"
 description: create_handoff_tool and is_handoff_tool build and detect transfer_to_X tools used to route control between agents in a swarm.
 section: Prebuilt
 group: Tools

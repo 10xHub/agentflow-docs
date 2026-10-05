@@ -1,5 +1,6 @@
 ---
 title: Design Checklists
+seoTitle: "GenAI system design checklists"
 description: Decision checklists for GenAI system design across both beginner and advanced tracks.
 section: Courses
 group: Shared foundations

@@ -1,6 +1,6 @@
 ---
 title: How to use graph utilities
-description: Guide to graph(), graphTools(), graphStateSchema(), observability(), stopGraph(), and fixGraph(), the AgentFlowClient methods for inspecting and controlling graphs.
+description: "Use graph(), graphTools(), graphStateSchema(), observability(), stopGraph(), and fixGraph() on the TypeScript client to inspect and control graphs."
 section: How-to guides
 group: TypeScript client
 order: 1050
@@ -111,7 +111,7 @@ console.log(`${result.data.tool_count} tool(s) across ${result.data.node_count} 
 for (const node of result.data.nodes) {
   console.log(`\n${node.node_name} (${node.tool_count})`);
   for (const tool of node.tools) {
-    console.log(`  [${tool.source}] ${tool.name} — ${tool.description}`);
+    console.log(`  [${tool.source}] ${tool.name}, ${tool.description}`);
   }
 }
 ```
@@ -185,7 +185,7 @@ const bySource = data.nodes
 
 ## graphStateSchema()
 
-Fetches the full JSON Schema of `AgentState` from `GET /v1/graph:StateSchema`. The schema describes every field in the graph's state type — useful for building dynamic forms, writing client-side validators, or understanding what data the graph tracks.
+Fetches the full JSON Schema of `AgentState` from `GET /v1/graph:StateSchema`. The schema describes every field in the graph's state type, useful for building dynamic forms, writing client-side validators, or understanding what data the graph tracks.
 
 ```ts
 const result = await client.graphStateSchema();
@@ -194,7 +194,7 @@ const schema = result.data;
 console.log('State title:', schema.title);
 
 for (const [field, def] of Object.entries(schema.properties)) {
-  console.log(`  ${field}: ${def.type} — ${def.description ?? '(no description)'}`);
+  console.log(`  ${field}: ${def.type}, ${def.description ?? '(no description)'}`);
 }
 ```
 
@@ -269,7 +269,7 @@ const run = result.data.run;
 if (!run) {
   console.log('No runs recorded for this thread yet.');
 } else {
-  console.log(`run ${run.run_id} — ${run.status} in ${run.duration_ms}ms`);
+  console.log(`run ${run.run_id}, ${run.status} in ${run.duration_ms}ms`);
   console.log(`${run.llm_calls} LLM call(s), ${run.tool_calls} tool call(s), ${run.iterations} iteration(s)`);
   console.log('Tokens:', run.usage.total_tokens);
 
@@ -436,13 +436,13 @@ for await (const chunk of stream) {
 
 - `stopGraph()` is a request, not a guarantee. The graph processes the flag between nodes, so it may produce one more response message before stopping.
 - After stopping, the thread state is preserved. The next `invoke()` or `stream()` call on the same `thread_id` starts from where execution was when the stop flag was checked.
-- If the thread is not running, `success` may still be `true` — the server accepted the request but there was nothing to stop.
+- If the thread is not running, `success` may still be `true`, the server accepted the request but there was nothing to stop.
 
 ---
 
 ## fixGraph()
 
-Removes incomplete tool-call messages from a thread's history via `POST /v1/graph/fix`. This is a recovery operation for threads that ended up in a broken state due to an interrupted execution — typically when the server was restarted mid-tool-call or when a network error cut a streaming connection.
+Removes incomplete tool-call messages from a thread's history via `POST /v1/graph/fix`. This is a recovery operation for threads that ended up in a broken state due to an interrupted execution, typically when the server was restarted mid-tool-call or when a network error cut a streaming connection.
 
 ```ts
 const result = await client.fixGraph('thread-abc123');
@@ -478,7 +478,7 @@ async function invokeWithRecovery(threadId: string, message: string) {
     );
   } catch (err) {
     if (err instanceof AgentFlowError && err.errorCode.startsWith('GRAPH')) {
-      console.warn('Graph error — attempting state repair...');
+      console.warn('Graph error, attempting state repair...');
       const fix = await client.fixGraph(threadId);
       console.log(`Removed ${fix.data.removed_count} broken message(s). Retrying.`);
 
@@ -495,14 +495,14 @@ async function invokeWithRecovery(threadId: string, message: string) {
 
 ### How it works
 
-`fixGraph()` scans the thread's message history and removes any assistant messages that contain `ToolCallBlock` entries with no corresponding `ToolResultBlock`. These orphaned tool calls are what cause the graph to be "stuck" — the LLM sees them and believes it is still waiting for tool results.
+`fixGraph()` scans the thread's message history and removes any assistant messages that contain `ToolCallBlock` entries with no corresponding `ToolResultBlock`. These orphaned tool calls are what cause the graph to be "stuck", the LLM sees them and believes it is still waiting for tool results.
 
 ---
 
 ## Complete example: graph health dashboard
 
 ```ts
-import { AgentFlowClient, AgentFlowError } from '@10xscale/agentflow-client';
+import { AgentFlowClient, AgentFlowError } from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 

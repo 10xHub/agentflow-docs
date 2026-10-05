@@ -1,6 +1,6 @@
 ---
 title: How to use prebuilt agents
-description: Guide to ReactAgent, PlanActReflectAgent, StructuredOutputAgent, SupervisorTeamAgent, SwarmAgent, and RAGAgent — drop-in compiled graph factories.
+description: Guide to ReactAgent, PlanActReflectAgent, StructuredOutputAgent, SupervisorTeamAgent, SwarmAgent, and RAGAgent as compiled graph factories.
 section: How-to guides
 group: Python library
 order: 600
@@ -154,88 +154,118 @@ print(result["messages"][-1].content)  # JSON string conforming to ProductReview
 
 ## SupervisorTeamAgent
 
-A supervisor LLM routes tasks to specialist worker agents. Each worker is a full `ReactAgent` with its own model and tools.
+A supervisor LLM routes tasks to specialist worker agents. Each worker is a pre-built agent (usually an `Agent`) that you configure yourself, so every worker can have its own model, tools and prompt.
 
 ```python
+from agentflow.core.graph import Agent, ToolNode
+from agentflow.core.state import Message
 from agentflow.prebuilt.agent import SupervisorTeamAgent, WorkerConfig
 
+
+def lookup_order(order_id: str) -> str:
+    """Look up the status of a customer order."""
+    return f"Order {order_id}: shipped, delivered 2026-09-30."
+
+
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund an order."""
+    return f"Refunded {amount} for order {order_id}."
+
+
 agent = SupervisorTeamAgent(
-    model="gpt-4o",                   # supervisor model
-    workers=[
-        WorkerConfig(
-            name="researcher",
-            model="gpt-4o-mini",
-            tools=[fetch_url, google_web_search],
-            description="Searches the web and fetches URLs for information.",
+    supervisor_model="gpt-4o",
+    provider="openai",                  # forwarded to the supervisor Agent only
+    workers={
+        "ORDERS": WorkerConfig(
+            agent=Agent(
+                model="gpt-4o-mini",
+                provider="openai",
+                tool_node=ToolNode([lookup_order]),
+                system_prompt=[{"role": "system", "content": "Answer order status questions."}],
+            ),
+            description="Looks up order status and delivery details.",
         ),
-        WorkerConfig(
-            name="analyst",
-            model="gpt-4o",
-            tools=[safe_calculator],
-            description="Performs calculations and data analysis.",
+        "REFUNDS": WorkerConfig(
+            agent=Agent(
+                model="gpt-4o",
+                provider="openai",
+                tool_node=ToolNode([refund_order]),
+                system_prompt=[{"role": "system", "content": "Issue refunds when asked."}],
+            ),
+            description="Issues refunds for orders.",
         ),
-    ],
-    system_prompt=[{
-        "role": "system",
-        "content": "You are a supervisor. Delegate tasks to the right specialist.",
-    }],
+    },
+    supervisor_system_prompt=None,      # None builds the prompt from the worker descriptions
+    max_rounds=10,
 )
 
 app = agent.compile()
 result = app.invoke(
-    {"messages": [Message.text_message("Research the latest AI chip prices and calculate the total cost for 100 units.")]},
+    {"messages": [Message.text_message("Order A-1042 arrived damaged. Refund 25.00.")]},
     config={"thread_id": "supervisor-1"},
 )
 ```
 
-### WorkerConfig fields
+### Constructor and WorkerConfig
 
 ```python
+SupervisorTeamAgent(
+    supervisor_model: str,
+    workers: dict[str, WorkerConfig],   # worker name -> config
+    supervisor_system_prompt: list[dict] | None = None,
+    max_rounds: int = 10,
+    state=None, context_manager=None, publisher=None, id_generator=..., container=None,
+    **supervisor_kwargs,                # forwarded to the supervisor Agent (provider, temperature, ...)
+)
+
 WorkerConfig(
-    name: str,                          # worker node name
-    model: str,                         # model for this worker
-    tools: list[Callable] = [],
-    description: str = "",              # shown to the supervisor to aid routing
-    system_prompt: list[dict] | None = None,
-    **agent_kwargs,                     # any other Agent constructor kwargs
+    agent: BaseAgent,                   # a fully configured Agent
+    description: str = "",              # injected into the supervisor prompt to aid routing
 )
 ```
+
+`SUPERVISOR` is a reserved worker name. See [SupervisorTeamAgent](/docs/prebuild/agents/supervisor-team-agent) for the graph layout.
 
 ---
 
 ## SwarmAgent
 
-Agents hand off directly to each other based on their own routing logic. No central supervisor — each member decides who handles the task next.
+Agents hand off directly to each other. There is no central supervisor: each member decides who handles the task next. Handoff tools are injected automatically, so do not add them to a member's `ToolNode`.
 
 ```python
 from agentflow.prebuilt.agent import SwarmAgent, SwarmMemberConfig
 
-agent = SwarmAgent(
-    members=[
-        SwarmMemberConfig(
-            name="triage",
-            model="gpt-4o-mini",
+triage = Agent(model="gpt-4o-mini", provider="openai",
+               system_prompt=[{"role": "system", "content": "Route the request to a specialist."}])
+orders = Agent(model="gpt-4o", provider="openai", tool_node=ToolNode([lookup_order]),
+               system_prompt=[{"role": "system", "content": "Answer order questions."}])
+refunds = Agent(model="gpt-4o", provider="openai", tool_node=ToolNode([refund_order]),
+                system_prompt=[{"role": "system", "content": "Handle refunds."}])
+
+swarm = SwarmAgent(
+    members={
+        "TRIAGE": SwarmMemberConfig(
+            agent=triage,
+            can_handoff_to=["ORDERS", "REFUNDS"],
             description="Classifies requests and routes them to the right specialist.",
         ),
-        SwarmMemberConfig(
-            name="billing",
-            model="gpt-4o",
-            tools=[],
-            description="Handles billing and payment questions.",
+        "ORDERS": SwarmMemberConfig(
+            agent=orders,
+            can_handoff_to=["REFUNDS"],
+            description="Handles order status questions.",
         ),
-        SwarmMemberConfig(
-            name="technical",
-            model="gpt-4o",
-            tools=[fetch_url],
-            description="Handles technical support and troubleshooting.",
+        "REFUNDS": SwarmMemberConfig(
+            agent=refunds,
+            can_handoff_to=[],           # terminal: no handoffs out
+            description="Issues refunds.",
         ),
-    ],
-    entry_member="triage",             # which member receives the first message
+    },
+    entry="TRIAGE",                      # member that receives the first message
 )
 
-app = agent.compile()
+app = swarm.compile()
 result = app.invoke(
-    {"messages": [Message.text_message("My payment failed last Tuesday.")]},
+    {"messages": [Message.text_message("Where is order A-1042?")]},
     config={"thread_id": "swarm-1"},
 )
 ```
@@ -244,55 +274,83 @@ result = app.invoke(
 
 ```python
 SwarmMemberConfig(
-    name: str,
-    model: str,
-    description: str = "",
-    tools: list[Callable] = [],
-    system_prompt: list[dict] | None = None,
-    **agent_kwargs,
+    agent: BaseAgent,
+    can_handoff_to: list[str] | None = None,   # None = may hand off to every other member
+    description: str = "",                     # shown to other members' handoff tools
 )
 ```
+
+See [SwarmAgent](/docs/prebuild/agents/swarm-agent) for details.
 
 ---
 
 ## RAGAgent
 
-A retrieval-augmented generation agent. Retrieves relevant documents from a store before each LLM call and includes them in the context.
+A retrieval-augmented generation agent. It retrieves documents from a store before the LLM call, optionally reranks them, and passes them to the wrapped agent as context.
 
 ```python
+from agentflow.core.graph import Agent
+from agentflow.core.state import Message
 from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage.store import create_local_qdrant_store, OpenAIEmbedding
+from agentflow.storage import create_local_qdrant_store
+from agentflow.storage.store.embedding import OpenAIEmbedding
 
-store = create_local_qdrant_store("./docs_qdrant", OpenAIEmbedding())
-
-agent = RAGAgent(
-    model="gpt-4o",
-    store=store,
-    system_prompt=[{
-        "role": "system",
-        "content": "Answer questions using the provided document context.",
-    }],
+store = create_local_qdrant_store(
+    path="./knowledge_base",
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
 )
 
-app = agent.compile()
+rag = RAGAgent(
+    store=store,
+    agent=Agent(
+        model="gpt-4o-mini",
+        provider="openai",
+        system_prompt=[{
+            "role": "system",
+            "content": "Answer using only the provided context. If it is missing, say so.",
+        }],
+    ),
+    top_k=5,                            # candidates retrieved from the store
+)
+
+app = rag.compile()
 result = app.invoke(
-    {"messages": [Message.text_message("What is the return policy?")]},
+    {"messages": [Message.text_message("What is the refund policy?")]},
     config={"thread_id": "rag-1"},
 )
-print(result["messages"][-1].content)
 ```
 
-`RAGAgent` also accepts `BaseReranker` implementations (`CohereReranker`, `CrossEncoderReranker`) for reranking retrieved chunks before passing them to the LLM.
+Full signature:
 
 ```python
-from agentflow.prebuilt.agent import RAGAgent, CohereReranker
-
-agent = RAGAgent(
-    model="gpt-4o",
-    store=store,
-    reranker=CohereReranker(api_key="your-cohere-key"),
+RAGAgent(
+    store: BaseStore,
+    agent: BaseAgent,
+    reranker: BaseReranker | None = None,
+    top_k: int = 5,
+    top_n: int = 3,                     # kept after reranking
+    retrieval_strategy: RetrievalStrategy = RetrievalStrategy.SIMILARITY,
+    score_threshold: float | None = None,
+    store_config: dict | None = None,   # extra kwargs for every store.asearch call
+    state=None, context_manager=None, publisher=None, id_generator=..., container=None,
 )
 ```
+
+Add a reranker (`CohereReranker`, `CrossEncoderReranker`, or your own `BaseReranker`) to rerank retrieved chunks:
+
+```python
+from agentflow.prebuilt.agent import CohereReranker
+
+rag = RAGAgent(
+    store=store,
+    agent=Agent(model="gpt-4o-mini", provider="openai"),
+    reranker=CohereReranker(api_key="your-cohere-key"),
+    top_k=20,
+    top_n=5,
+)
+```
+
+See [RAGAgent](/docs/prebuild/agents/rag-agent) for where the answer is read from and the full node layout.
 
 ---
 
@@ -316,7 +374,7 @@ app = agent.compile(
 
 ## What you learned
 
-- `ReactAgent` is the standard tool-calling loop — use it for most tasks.
+- `ReactAgent` is the standard tool-calling loop. Use it for most tasks.
 - `PlanActReflectAgent` adds planning and self-reflection for complex multi-step tasks.
 - `StructuredOutputAgent` forces JSON output conforming to a Pydantic schema.
 - `SupervisorTeamAgent` routes tasks from a central supervisor to specialist workers.

@@ -1,6 +1,6 @@
 ---
 title: File upload endpoints
-description: Reference for the file upload and retrieval endpoints.
+description: "Reference for the 10xGraph REST endpoints that upload files and retrieve them, with request fields, responses, and authentication requirements."
 section: Reference
 group: REST API
 order: 1690

@@ -1,5 +1,6 @@
 ---
 title: ReAct Agent
+seoTitle: "ReAct agent tutorial with a checkpointer"
 description: Build a persistent ReAct agent with an InMemoryCheckpointer, injectable tool parameters, and custom state.
 section: Tutorials
 group: From examples

@@ -1,6 +1,7 @@
 ---
 title: GitHub MCP
-description: Use a remote GitHub MCP server from 10xGraph so an agent can query repositories and other GitHub data through MCP tools.
+seoTitle: "GitHub MCP tutorial: query repositories"
+description: Use a remote GitHub MCP server from 10xGraph so an agent can list commits and download repository files such as README.md through MCP tools.
 section: Tutorials
 group: From examples
 order: 1280
@@ -8,7 +9,7 @@ label: GitHub MCP
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/github-mcp/git_mcp.py`](https://github.com/10xHub/Agentflow/blob/main/examples/github-mcp/git_mcp.py)
+**Source examples:** [`agentflow/examples/github-mcp/git_mcp.py`](https://github.com/10xHub/Agentflow/blob/main/examples/github-mcp/git_mcp.py) and [`mcp_file_download.py`](https://github.com/10xHub/Agentflow/blob/main/examples/github-mcp/mcp_file_download.py)
 
 ## What you will build
 
@@ -17,7 +18,7 @@ A ReAct agent that connects to the GitHub Copilot MCP endpoint and asks it to re
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - `fastmcp` installed
 - a Google model key such as `GEMINI_API_KEY`
 - `GITHUB_TOKEN` with access to the GitHub MCP endpoint
@@ -56,7 +57,7 @@ flowchart LR
     E --> B
 ```
 
-## Step 1 — Configure the remote MCP server
+## Step 1: Configure the remote MCP server
 
 The example registers a `github` server:
 
@@ -77,16 +78,16 @@ This is the same pattern as the local MCP examples, but with:
 - a hosted remote endpoint
 - auth headers
 
-## Step 2 — Build an MCP-backed ToolNode
+## Step 2: Build an MCP-backed ToolNode
 
 ```python
 client_http = Client(config)
-tool_node = ToolNode(functions=[], client=client_http)
+tool_node = ToolNode(tools=[], client=client_http)
 ```
 
 The agent then uses that `tool_node` like any other tool source.
 
-## Step 3 — Create the ReAct graph
+## Step 3: Create the ReAct graph
 
 The graph is a standard `MAIN -> TOOL -> MAIN` loop:
 
@@ -95,7 +96,7 @@ main_agent = Agent(
     model="gemini-2.0-flash",
     provider="google",
     system_prompt=[...],
-    tools=tool_node,
+    tool_node=tool_node,
     trim_context=True,
 )
 ```
@@ -122,7 +123,7 @@ sequenceDiagram
     MAIN-->>User: summary of commits
 ```
 
-## Step 4 — Ask for repository data
+## Step 4: Ask for repository data
 
 The example asks the agent to list commits:
 
@@ -141,7 +142,7 @@ config = {"thread_id": "12345", "recursion_limit": 10}
 res = app.invoke(inp, config=config)
 ```
 
-## Step 5 — Print message history
+## Step 5: Print message history
 
 The example includes a pretty-printer to inspect:
 
@@ -171,6 +172,33 @@ Successful behavior should include:
 - Assuming all GitHub MCP tools are always available.
 - Treating remote MCP latency like local function-call latency.
 
+## Variant: download a repository file
+
+`mcp_file_download.py` uses the same config, `ToolNode(tools=[], client=client_http)` and graph. Only the prompt changes: the agent picks a remote file-access tool instead of `list_commits`.
+
+```python
+inp = {
+    "messages": [
+        Message.text_message(
+            "Get Readme.md file form the github repo "
+            "'https://github.com/suchith83/portfolio' of the 'suchith83' username,."
+        )
+    ]
+}
+config = {"thread_id": "12345", "recursion_limit": 10}
+
+res = app.invoke(inp, config=config)
+```
+
+This variant also turns on debug logging, which helps with tool discovery and remote invocation failures:
+
+```python
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("agentflow").setLevel(logging.DEBUG)
+```
+
+Check that the message history contains a tool call, a tool result tied to the file, and a final assistant message that references the README content. Remote tools may return structured data rather than plain text, and the file path must match what the remote tool expects. Treat this as a remote call, not a local filesystem read.
+
 ## Key concepts
 
 | Concept | Details |
@@ -187,4 +215,4 @@ Successful behavior should include:
 
 ## Next step
 
-→ [MCP File Download](/docs/tutorials/from-examples/mcp-file-download) to retrieve repository files rather than repository metadata.
+→ [Memory](/docs/tutorials/from-examples/memory) to add long-term user memory to a graph.

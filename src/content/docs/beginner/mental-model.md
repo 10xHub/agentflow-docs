@@ -1,5 +1,6 @@
 ---
 title: Mental Model
+seoTitle: "10xGraph mental model: four core concepts"
 description: Understand the four core concepts in 10xGraph before writing any code.
 section: Beginner path
 order: 60

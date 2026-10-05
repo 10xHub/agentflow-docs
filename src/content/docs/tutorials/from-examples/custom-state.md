@@ -1,5 +1,6 @@
 ---
 title: Custom State
+seoTitle: "Custom state tutorial: extend AgentState"
 description: Extend AgentState with domain-specific fields and learn how partial state updates work at invoke time.
 section: Tutorials
 group: From examples

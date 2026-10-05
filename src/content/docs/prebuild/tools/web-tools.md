@@ -1,5 +1,6 @@
 ---
 title: Web Tools
+seoTitle: "Web tools: fetch_url and web search"
 description: fetch_url, google_web_search, and vertex_ai_search — prebuilt tools for fetching web pages and running grounded searches.
 section: Prebuilt
 group: Tools

@@ -98,7 +98,7 @@ The cache has two tiers: an in-process dictionary, plus the configured checkpoin
 Extraction requires the media extra:
 
 ```bash
-pip install "10xscale-agentflow-cli[media]"
+pip install "10xgraph-api[media]"
 ```
 
 `DOCUMENT_HANDLING` accepts three values:

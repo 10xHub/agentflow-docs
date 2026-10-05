@@ -1,6 +1,7 @@
 ---
 title: Memory
-description: Reference for all memory store methods on AgentFlowClient — store, search, list, update, and delete memories.
+seoTitle: "Memory store methods in the TS client"
+description: Reference for all memory store methods on AgentFlowClient, store, search, list, update, and delete memories.
 section: Reference
 group: TypeScript client
 order: 1870
@@ -28,7 +29,7 @@ import {
   MemoryType,
   RetrievalStrategy,
   DistanceMetric,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 ```
 
 ### `MemoryType`
@@ -125,7 +126,7 @@ const response = await client.searchMemory({
 });
 
 for (const result of response.data.results) {
-  console.log(`Score: ${result.score.toFixed(3)} — ${result.content}`);
+  console.log(`Score: ${result.score.toFixed(3)}, ${result.content}`);
 }
 ```
 
@@ -133,7 +134,7 @@ for (const result of response.data.results) {
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `query` | `string` | — | The search query. Converted to a vector embedding by the store backend. |
+| `query` | `string` | - | The search query. Converted to a vector embedding by the store backend. |
 | `memory_type` | `MemoryType` | `EPISODIC` | Filter by memory type. |
 | `category` | `string` | `''` | Filter by category. Empty string returns all categories. |
 | `limit` | `number` | `10` | Maximum number of results to return. |
@@ -328,7 +329,7 @@ import {
   Message,
   MemoryType,
   RetrievalStrategy,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -384,7 +385,7 @@ async function invokeWithMemory(userInput: string) {
 ## What you learned
 
 - Use `MemoryType` to categorise memories for efficient retrieval.
-- `searchMemory()` with `RetrievalStrategy.SIMILARITY` performs vector search — the store must support embeddings.
+- `searchMemory()` with `RetrievalStrategy.SIMILARITY` performs vector search, the store must support embeddings.
 - `listMemories()` returns everything (use `limit` to paginate).
 - `forgetMemories()` bulk-deletes by type, category, or filter.
 

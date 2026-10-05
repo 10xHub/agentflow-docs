@@ -1,5 +1,6 @@
 ---
 title: Add a Tool
+seoTitle: "Add a tool to your agent with ToolNode"
 description: Give your agent a callable function with ToolNode and conditional routing.
 section: Beginner path
 order: 80

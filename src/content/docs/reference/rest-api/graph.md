@@ -1,6 +1,7 @@
 ---
 title: Graph endpoints
-description: Reference for the graph invoke, stream, stop and details endpoints.
+seoTitle: "Graph REST API reference"
+description: "Reference for the 10xGraph REST endpoints that invoke, stream, stop, and inspect a graph, with request bodies, responses, and auth requirements."
 section: Reference
 group: REST API
 order: 1650
@@ -275,7 +276,7 @@ Repair a thread whose state contains messages with tool calls that have empty co
 
 Turn-based streaming over a WebSocket. Same payloads as `POST /v1/graph/stream`, but the connection stays open across runs, which is what makes client-side tool execution possible without a second HTTP request.
 
-**Always mounted.** There is no setting that turns this endpoint off. Concurrent connections are capped per process by [`websocket.max_connections`](/docs/reference/api-cli/configuration#websocket) and `max_connections_per_user`; a refused handshake closes with code `1013`.
+**Always mounted.** There is no setting that turns this endpoint off. Concurrent connections are capped per process by [`websocket.max_connections`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability) and `max_connections_per_user`; a refused handshake closes with code `1013`.
 
 **Authentication.** Bearer token via the `Authorization` header, the `agentflow-bearer` `Sec-WebSocket-Protocol` (preferred for browsers), or the `?token=` query fallback. Identical to the [live socket](/docs/reference/rest-api/live#authentication).
 

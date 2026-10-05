@@ -503,6 +503,46 @@ raise ValidationError(
 
 ---
 
+## Symptom Lookup
+
+| Symptom | Error code | What to do |
+|---|---|---|
+| Graph runs until it stops on a step limit, repeated tool calls | `RECURSION_000` | Fix routing so every path reaches `END`, or raise `recursion_limit` in the run config |
+| A node or tool hangs, then fails with a deadline error | `NODE_TIMEOUT_000` | Fix the hanging call or set `node_timeout` / `tool_timeout` in the run config |
+| 404 or empty history for a thread | `STORAGE_NOT_FOUND_000` | Check `thread_id` and that the graph was compiled with `checkpointer=` |
+| Intermittent connection errors under load | `STORAGE_TRANSIENT_000` | Retry with backoff, check connection pool limits |
+| Checkpoint save or restore fails to encode or decode | `STORAGE_SERIALIZATION_000` | Keep state to JSON-serializable types |
+| Errors after upgrading the package | `STORAGE_SCHEMA_000` | Check the stored schema version against the installed version |
+| User input rejected | `VALIDATION_000` | Inspect the violation type, then tune the validator |
+| Media input rejected | `MEDIA_000` | Use a model that supports the media type, or another source type |
+| Tool or node raised | `NODE_000` | Read the tool error in the logs, test the tool alone |
+
+Run limits are run-config keys, not `compile()` arguments:
+
+```python
+config = {
+    "thread_id": "support-42",
+    "recursion_limit": 50,   # max steps before GraphRecursionError
+    "node_timeout": 60,      # seconds per node
+    "tool_timeout": 30,      # seconds per tool call
+}
+result = await app.ainvoke({"messages": [...]}, config)
+```
+
+`compile()` accepts only `checkpointer`, `store`, `media_store`, `interrupt_before`, `interrupt_after`, `callback_manager` and `shutdown_timeout`.
+
+### HTTP status from the API server
+
+The server maps exceptions to responses in `agentflow_cli/src/app/core/exceptions/handle_errors.py`:
+
+| Exception | Status |
+|---|---|
+| `ValidationError` (input validators), `SchemaVersionError` | 422 |
+| `GraphError`, `NodeError`, `GraphRecursionError`, `StorageError`, `SerializationError`, `MetricsError` | 500 |
+| `TransientStorageError` | 503 |
+
+---
+
 ## Error Code Quick Reference
 
 | Code Prefix | Category | Retryable | Base Class |
@@ -592,5 +632,4 @@ async def retry_with_backoff(func, max_retries=3, base_delay=1.0):
 
 - [Production Troubleshooting](/docs/how-to/production/troubleshooting)
 - [Checkpointing Guide](/docs/how-to/production/checkpointing)
-- [Error Patterns Guide](/docs/troubleshooting/error-patterns)
 - [Validation Reference](/docs/reference/python/testing)

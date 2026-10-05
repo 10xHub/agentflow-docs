@@ -117,7 +117,7 @@ The agent only works if the index is good. Quick checklist for indexing:
 - **Both dense and sparse.** Index for vector + BM25 from day one.
 - **Reindex on doc changes.** A daily diff is usually enough.
 
-For an end-to-end indexing example with Qdrant, see the [qdrant-memory tutorial](/docs/tutorials/from-examples/qdrant-memory).
+For an end-to-end indexing example with Qdrant, see the [memory tutorial](/docs/tutorials/from-examples/memory).
 
 ## When to call human
 
@@ -162,7 +162,7 @@ Same shape. Different documents and different filters.
 ## Further reading
 
 - [Memory and store](/docs/concepts/memory-and-store)
-- [Qdrant memory tutorial](/docs/tutorials/from-examples/qdrant-memory)
+- [Memory tutorial](/docs/tutorials/from-examples/memory)
 - [AI agent memory and checkpointing](/docs/concepts/memory)
 - [Compare 10xGraph vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents). When to pair them
 - [Get started](/docs/get-started)

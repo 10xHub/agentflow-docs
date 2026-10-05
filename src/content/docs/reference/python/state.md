@@ -1,6 +1,7 @@
 ---
 title: State
-description: AgentState, custom state, reducers, and the add_messages pattern for the agentflow Python library.
+seoTitle: "AgentState API reference (Python)"
+description: AgentState, custom state, reducers, and the add_messages pattern for 10xGraph.
 section: Reference
 group: Python library
 order: 1450

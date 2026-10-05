@@ -19,7 +19,7 @@ A memory store is separate from the checkpointer. The checkpointer preserves con
 ### Install
 
 ```bash
-pip install "10xscale-agentflow[qdrant]"
+pip install "10xgraph[qdrant]"
 ```
 
 You also need an embedding service. Both OpenAI and Google embeddings are built in.
@@ -98,21 +98,25 @@ store = QdrantStore(
 ## Mem0Store
 
 ```bash
-pip install "10xscale-agentflow[mem0]"
+pip install "10xgraph[mem0]"
 ```
 
 ```python
 from agentflow.storage.store import Mem0Store, create_mem0_store, create_mem0_store_with_qdrant
 
-# Default Mem0 cloud backend
-store = create_mem0_store(api_key="your-mem0-api-key")
+# Mem0 with its native config mapping (embedder, llm, vector_store keys)
+store = create_mem0_store(
+    config={"llm": {"provider": "openai", "config": {"model": "gpt-4o-mini"}}},
+    user_id="default_user",
+    app_id="support_app",
+)
 
-# Mem0 with your own Qdrant backend
+# Mem0 backed by your own Qdrant
 store = create_mem0_store_with_qdrant(
-    api_key="your-mem0-api-key",
     qdrant_url="https://xyz.qdrant.io",
     qdrant_api_key="your-qdrant-api-key",
-    collection="mem0_collection",
+    collection_name="mem0_collection",
+    app_id="support_app",
 )
 ```
 
@@ -226,7 +230,7 @@ MemoryType.CUSTOM         # domain-specific
 # DistanceMetric values
 DistanceMetric.COSINE     # default; best for text embeddings
 DistanceMetric.EUCLIDEAN  # absolute vector distances
-DistanceMetric.DOT        # normalised vectors, high-dimensional spaces
+DistanceMetric.DOT_PRODUCT # normalised vectors, high-dimensional spaces
 DistanceMetric.MANHATTAN  # L1 distance
 ```
 

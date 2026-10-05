@@ -1,5 +1,6 @@
 ---
 title: Checkpointers
+seoTitle: "Checkpointers API reference (Python)"
 description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer — state persistence for conversation threads.
 section: Reference
 group: Python library
@@ -40,13 +41,15 @@ Each abstract method must be implemented by a subclass:
 | `aclear_state` | `async (config) -> Any` | Delete all state for the thread. |
 | `aput_state_cache` | `async (config, state) -> Any` | Write to the fast cache (Redis or in-memory). |
 | `aget_state_cache` | `async (config) -> StateT \| None` | Read from the fast cache. |
-| `aput_messages` | `async (config, messages) -> Any` | Append messages for the thread. |
-| `aget_messages` | `async (config, search, offset, limit) -> list[Message]` | List messages. |
-| `aget_message` | `async (config, message_id) -> Message \| None` | Fetch a single message by ID. |
-| `adelete_message` | `async (config, message_id) -> Any` | Delete a single message. |
-| `aget_threads` | `async (config, search, offset, limit) -> list[ThreadInfo]` | List threads. |
+| `aput_messages` | `async (config, messages, metadata=None) -> Any` | Append messages for the thread. |
+| `aget_message` | `async (config, message_id) -> Message` | Fetch a single message by ID. |
+| `alist_messages` | `async (config, search=None, offset=None, limit=None) -> list[Message]` | List messages. |
+| `adelete_message` | `async (config, message_id) -> Any \| None` | Delete a single message. |
+| `aput_thread` | `async (config, thread_info) -> Any \| None` | Store thread metadata. |
 | `aget_thread` | `async (config) -> ThreadInfo \| None` | Get thread metadata. |
-| `adelete_thread` | `async (config) -> Any` | Delete a thread and all its state and messages. |
+| `alist_threads` | `async (config, search=None, offset=None, limit=None) -> list[ThreadInfo]` | List threads. |
+| `aclean_thread` | `async (config) -> Any \| None` | Delete a thread and its state and messages. |
+| `arelease` | `async () -> Any \| None` | Release resources (close pools and connections). |
 
 ### Sync wrappers
 
@@ -167,7 +170,7 @@ Single-file SQLite checkpointer. Stores **everything** — durable state, the ho
 
 Requires `aiosqlite`. Install with:
 ```
-pip install 10xscale-agentflow[sqlite_checkpoint]
+pip install 10xgraph[sqlite_checkpoint]
 ```
 
 </aside>
@@ -210,6 +213,7 @@ app = graph.compile(checkpointer=checkpointer)
 from typing import Any
 from agentflow.storage.checkpointer import BaseCheckpointer
 from agentflow.core.state import AgentState, Message
+from agentflow.utils.thread_info import ThreadInfo
 
 class DynamoDBCheckpointer(BaseCheckpointer):
 
@@ -237,26 +241,46 @@ class DynamoDBCheckpointer(BaseCheckpointer):
     async def aget_state_cache(self, config: dict) -> AgentState | None:
         ...
 
-    async def aput_messages(self, config: dict, messages: list[Message]) -> Any:
+    async def aput_messages(
+        self, config: dict, messages: list[Message], metadata: dict | None = None
+    ) -> Any:
         ...
 
-    async def aget_messages(self, config: dict, search: str | None, offset: int, limit: int) -> list[Message]:
+    async def aget_message(self, config: dict, message_id: str | int) -> Message:
         ...
 
-    async def aget_message(self, config: dict, message_id: str) -> Message | None:
+    async def alist_messages(
+        self,
+        config: dict,
+        search: str | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> list[Message]:
         ...
 
-    async def adelete_message(self, config: dict, message_id: str) -> Any:
+    async def adelete_message(self, config: dict, message_id: str | int) -> Any | None:
         ...
 
-    async def aget_threads(self, config: dict, search: str | None, offset: int, limit: int):
+    async def aput_thread(self, config: dict, thread_info: ThreadInfo) -> Any | None:
         ...
 
-    async def aget_thread(self, config: dict):
+    async def aget_thread(self, config: dict) -> ThreadInfo | None:
         ...
 
-    async def adelete_thread(self, config: dict) -> Any:
+    async def alist_threads(
+        self,
+        config: dict,
+        search: str | None = None,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> list[ThreadInfo]:
         ...
+
+    async def aclean_thread(self, config: dict) -> Any | None:
+        ...
+
+    async def arelease(self) -> Any | None:
+        ...  # close connections
 ```
 
 ---
@@ -282,5 +306,5 @@ Additional keys used internally:
 | `StorageError` | Unrecoverable PostgreSQL error. | Check Postgres logs and DSN config. |
 | `TransientStorageError` | Temporary Postgres failure. | Automatically retried by the framework. |
 | `ImportError: asyncpg` | `PgCheckpointer` used without `asyncpg` installed. | Run `pip install asyncpg`. |
-| `ImportError: aiosqlite` | `SqliteCheckpointer` used without `aiosqlite` installed. | Run `pip install 10xscale-agentflow[sqlite_checkpoint]`. |
+| `ImportError: aiosqlite` | `SqliteCheckpointer` used without `aiosqlite` installed. | Run `pip install 10xgraph[sqlite_checkpoint]`. |
 | State lost between requests | Using `InMemoryCheckpointer` with multiple workers. | Switch to `PgCheckpointer` or ensure a single-process deployment. |

@@ -170,7 +170,7 @@ Other recurring causes:
 |---|---|---|
 | Works locally but fails in production | Production secret differs from the issuer's | Align signing configuration |
 | Random auth failures after a deploy | Uncoordinated secret rotation | Rotate keys intentionally and update issuers and consumers together |
-| `ImportError` mentioning PyJWT | The `jwt` extra is not installed | `pip install "10xscale-agentflow-cli[jwt]"` |
+| `ImportError` mentioning PyJWT | The `jwt` extra is not installed | `pip install "10xgraph-api[jwt]"` |
 
 ## Custom auth deployment checklist
 
@@ -185,7 +185,7 @@ Your backend should:
 - never log raw secrets or tokens
 
 Minimal custom auth shape. `authenticate` is **synchronous** and takes
-`(request, response, credential)` — declaring it `async def` returns an un-awaited coroutine
+`(request, response, credential)`, declaring it `async def` returns an un-awaited coroutine
 and breaks auth silently.
 
 ```python
@@ -203,7 +203,7 @@ class ApiKeyAuth(BaseAuth):
         response: Response,
         credential: HTTPAuthorizationCredentials | None,
     ) -> dict[str, Any] | None:
-        # API keys ride in a custom header, not the bearer credential — read headers directly.
+        # API keys ride in a custom header, not the bearer credential, read headers directly.
         api_key = request.headers.get("X-API-Key")
         if not api_key or api_key != "expected-key":
             return None
@@ -218,7 +218,7 @@ user's threads private. Authorization is configured separately, via the `authori
 ### Owner-only access is the production default
 
 The framework ships an `ownership` backend that makes a thread accessible **only to the user
-who created it** — read, stream, stop, fix, delete, and even a fresh `invoke`/`stream` on
+who created it**, read, stream, stop, fix, delete, and even a fresh `invoke`/`stream` on
 someone else's thread are all rejected up front with 403, before the model runs. With
 `MODE=production` this is the **default**: object-level isolation is enforced even if you never
 set `authorization`. Development defaults to `allow_all` for frictionless local iteration. Your
@@ -228,7 +228,7 @@ explicit choice always wins.
 { "agent": "graph.react:app", "auth": "jwt", "authorization": "ownership" }
 ```
 
-It is **scalable** — ownership is immutable, so it is cached by `ThreadOwnershipResolver`:
+It is **scalable**, ownership is immutable, so it is cached by `ThreadOwnershipResolver`:
 a bounded in-process LRU (10,000 entries, no expiry) in front of an optional shared Redis tier
 (key prefix `af:authz:owner`, also no expiry). After the first lookup an authorization check is an
 in-memory hit, not a database round-trip per request. Negative results are never cached, so a
@@ -277,7 +277,7 @@ on top of owner-only isolation:
 ```
 
 This loads `RoleBasedAuthorizationBackend`. `backend` also accepts `"role_based"` or `"roles"`,
-`type` is an accepted alias for `backend`, and `role_scopes` is an accepted alias for `roles` —
+`type` is an accepted alias for `backend`, and `role_scopes` is an accepted alias for `roles` -
 useful to know when reading someone else's config, but pick one spelling and stay with it.
 
 An endpoint requires the scope `"<resource>:<action>"` (for example `graph:invoke`,
@@ -323,7 +323,7 @@ API-layer checks (ownership, scopes) decide *access*. The **data layer** (checkp
 enforces *isolation* from a trusted policy the server stamps after each successful check:
 `user["authz"] = {user_id, scope, scopes}`, where `scope` comes from the backend's
 `isolation_scope()` (`"owner"` or `"none"`). Every service copies that trusted `user` into
-`config["user"]`, so the policy reaches the core library and cannot be forged by the client —
+`config["user"]`, so the policy reaches the core library and cannot be forged by the client -
 with `owner` scope, the checkpointer and store partition every row to the caller.
 
 ## Permission boundaries
@@ -365,7 +365,7 @@ Exactly three paths are public: `/ping`, `/v1/evals/runs`, and `/v1/evals/runs/{
 
 `/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port,
 regardless of your `auth` setting. For that reason they are not mounted when `MODE=production`,
-and the `.dockerignore` from `agentflow build` keeps `eval_reports/` and `uploads/` out of the
+and the `.dockerignore` from `10xgraph build` keeps `eval_reports/` and `uploads/` out of the
 image. On any other deployment reachable by others, block `/v1/evals/*` at your ingress. See
 [REST API: Evals](/docs/reference/rest-api/evals).
 

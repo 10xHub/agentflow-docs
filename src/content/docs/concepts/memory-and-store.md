@@ -1,5 +1,6 @@
 ---
 title: Memory and Store
+seoTitle: "Long-term memory and store in 10xGraph"
 description: How long-term memory works in 10xGraph — memory_tool, retrieval modes, MemoryIntegration, and MemoryConfig.
 section: Concepts
 group: In depth

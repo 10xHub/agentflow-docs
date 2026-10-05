@@ -137,7 +137,7 @@ flowchart TD
 - prefer streaming where appropriate
 - reduce expensive tool-call chains if possible
 
-## Issue: `agentflow play` works locally but deployed users cannot connect
+## Issue: `10xgraph play` works locally but deployed users cannot connect
 
 **Symptoms**
 
@@ -146,12 +146,12 @@ flowchart TD
 
 **Likely cause**
 
-- `agentflow play` was used as a testing tool, but the deployed system needs a proper hosted API endpoint and browser-safe networking setup
+- `10xgraph play` was used as a testing tool, but the deployed system needs a proper hosted API endpoint and browser-safe networking setup
 
 **Fix**
 
-- deploy with `agentflow api` behind HTTPS and correct CORS/auth settings
-- treat `agentflow play` as an interactive test path, not the deployment architecture
+- deploy with `10xgraph api` behind HTTPS and correct CORS/auth settings
+- treat `10xgraph play` as an interactive test path, not the deployment architecture
 
 ## Secret redaction in logs
 

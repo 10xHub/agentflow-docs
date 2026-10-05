@@ -1,5 +1,6 @@
 ---
 title: Stop Stream
+seoTitle: "Stop stream tutorial: app.stop(config)"
 description: Gracefully stop a running 10xGraph stream from the caller by using app.stop(config).
 section: Tutorials
 group: From examples

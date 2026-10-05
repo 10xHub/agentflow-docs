@@ -1,6 +1,7 @@
 ---
 title: Production
-description: Production guide for deploying, configuring, and securing the 10xGraph API server. Covers endpoints, config, auth, rate limiting, storage, and environment variables.
+seoTitle: "Running 10xGraph in production"
+description: "Deploy, configure and secure the 10xGraph API server in production: endpoints, config, auth, rate limiting, storage and environment variables."
 section: How-to guides
 group: Production
 order: 740
@@ -8,7 +9,7 @@ label: Overview
 updated: "2026-09-29"
 ---
 
-The `agentflow api` command starts a FastAPI + Uvicorn server that exposes your compiled graph as a fully-featured REST + WebSocket API. This section is the single source of truth for everything you need to run 10xGraph in production.
+The `10xgraph api` command starts a FastAPI + Uvicorn server that exposes your compiled graph as a fully-featured REST + WebSocket API. This section is the single source of truth for everything you need to run 10xGraph in production.
 
 ## What the server exposes
 
@@ -31,17 +32,17 @@ Sending images and documents to an agent: [Multimodal and vision](/docs/how-to/p
 
 All server behavior is controlled by two inputs:
 
-1. **`agentflow.json`** — which graph to load, which auth backend, which checkpointer, rate limiting, etc. Production guidance: [agentflow.json in production](/docs/how-to/production/agentflow-json). Complete field reference: [configuration reference](/docs/reference/api-cli/configuration)
-2. **Environment variables** — secrets and runtime tunables (`JWT_SECRET_KEY`, `ORIGINS`, `MODE`, `LOG_LEVEL`, etc.). Complete reference: [Environment variables](/docs/how-to/production/environment-variables)
+1. **`agentflow.json`**, which graph to load, which auth backend, which checkpointer, rate limiting, etc. Production guidance: [agentflow.json in production](/docs/how-to/production/agentflow-json). Complete field reference: [configuration reference](/docs/reference/api-cli/configuration)
+2. **Environment variables**, secrets and runtime tunables (`JWT_SECRET_KEY`, `ORIGINS`, `MODE`, `LOG_LEVEL`, etc.). Complete reference: [Environment variables](/docs/how-to/production/environment-variables)
 
 ## Authentication and authorization
 
 All endpoints except `/ping` pass through an auth + authorization layer:
 
-- **No auth** (`"auth": null`) — all requests are allowed without credentials. Safe for internal networks or local dev.
-- **JWT** (`"auth": "jwt"`) — Bearer token checked against `JWT_SECRET_KEY`. Standard stateless auth.
-- **Custom** (`"auth": {"method": "custom", "path": "..."}`) — subclass `BaseAuth` for any identity provider.
-- **Authorization** (`"authorization": "module:Class"`) — subclass `AuthorizationBackend` for per-resource RBAC.
+- **No auth** (`"auth": null`), all requests are allowed without credentials. Safe for internal networks or local dev.
+- **JWT** (`"auth": "jwt"`), Bearer token checked against `JWT_SECRET_KEY`. Standard stateless auth.
+- **Custom** (`"auth": {"method": "custom", "path": "..."}`), subclass `BaseAuth` for any identity provider.
+- **Authorization** (`"authorization": "module:Class"`), subclass `AuthorizationBackend` for per-resource RBAC.
 
 Guide: [Auth and Authorization](/docs/how-to/production/auth-and-authorization)
 
@@ -59,15 +60,15 @@ Guide: [Checkpointing](/docs/how-to/production/checkpointing)
 
 ## Deployment
 
-For Dockerfile generation run `agentflow build`. For multi-worker, Kubernetes, and reverse-proxy deployments see the [Deployment guide](/docs/how-to/production/deployment).
+For Dockerfile generation run `10xgraph build`. For multi-worker, Kubernetes, and reverse-proxy deployments see the [Deployment guide](/docs/how-to/production/deployment).
 
 ## Quick start
 
 ```bash
-pip install 10xscale-agentflow-cli
-agentflow init          # scaffold a project
+pip install 10xgraph-api
+10xgraph init          # scaffold a project
 cp .env.example .env    # fill in API keys
-agentflow api           # start the server
+10xgraph api           # start the server
 ```
 
 Access:

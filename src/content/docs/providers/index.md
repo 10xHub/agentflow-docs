@@ -1,13 +1,24 @@
 ---
 title: Providers
-description: The three model providers 10xGraph builds clients for, and how to reach anything else through an OpenAI-compatible endpoint.
+seoTitle: "Model providers: OpenAI, Google, Anthropic"
+description: 10xGraph supports OpenAI, Google (Gemini, Vertex AI) and Anthropic (direct, Vertex AI, Bedrock), plus any OpenAI-compatible endpoint, via one Agent interface.
 section: Learn more
 group: Providers
 order: 2080
-updated: "2026-09-07"
+updated: "2026-10-06"
 ---
 
-10xGraph talks to model providers through a unified `Agent` interface.
+10xGraph talks to model providers through a unified `Agent` interface. It has built-in clients for three provider families: OpenAI, Google (Gemini API and Vertex AI) and Anthropic (Claude Messages API, Vertex AI and Amazon Bedrock). Anything that speaks the OpenAI API, such as Ollama, vLLM or OpenRouter, works through the OpenAI client with a `base_url`. This page is for engineers choosing a model or switching one: the graph and tools stay the same, only the `model` and `provider` arguments change.
+
+## Start here
+
+Pick the page for the provider you use: [OpenAI](/docs/providers/openai), [Google](/docs/providers/google) or [Anthropic](/docs/providers/anthropic). Each lists the install extra, the credentials it reads and the options specific to that backend. If you are not sure how a model string becomes a client, read [Providers and adapters](/docs/providers), and for the exact function signatures see the [LLM utilities reference](/docs/reference/python/llm).
+
+Provider choice is a small decision in 10xGraph. The same tools, state and checkpointer work with all of them, so you can start with one and swap later. What does not change is the production layer around the agent: the API server, auth and replay-safe tool calls described in [Production runtime](/docs/concepts/production-runtime). If you want to see a first agent running before choosing, follow [Your first agent](/docs/get-started/first-agent).
+
+## Extras at a glance
+
+The core package declares these install extras for providers: `openai`, `google-genai`, `anthropic`, `anthropic-vertex` and `anthropic-bedrock`. A separate `realtime` extra, built on `google-genai`, supports live audio sessions.
 
 ## Available providers
 
@@ -25,7 +36,7 @@ When `provider` is omitted, `detect_provider` infers it from the model name: `ge
 
 ## Other models
 
-Self-hosted and third-party models served behind an OpenAI-compatible API — Ollama, vLLM, OpenRouter, and gateways of that shape — go through the OpenAI provider with a `base_url`.
+Self-hosted and third-party models served behind an OpenAI-compatible API, Ollama, vLLM, OpenRouter, and gateways of that shape, go through the OpenAI provider with a `base_url`.
 
 ```python
 agent = Agent(
@@ -40,6 +51,5 @@ Some of those only implement the legacy Chat Completions endpoint; pass `api_sty
 
 ## Related docs
 
-- [Providers and adapters](/docs/concepts/providers-and-adapters)
 - [Agents and tools](/docs/concepts/agents-and-tools)
 - [LLM utilities reference](/docs/reference/python/llm)

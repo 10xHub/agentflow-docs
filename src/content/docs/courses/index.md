@@ -1,13 +1,22 @@
 ---
 title: GenAI Courses
-description: Learn to build production-grade GenAI systems with 10xGraph through structured, hands-on courses.
+seoTitle: "Free GenAI courses for engineers: 10xGraph"
+description: Two free GenAI courses for engineers, a seven-lesson beginner track and an eight-lesson advanced track, built around 10xGraph, with shared LLM foundations.
 section: Courses
 order: 2290
 label: GenAI Courses
-updated: "2026-07-21"
+updated: "2026-10-06"
 ---
 
-Build real GenAI applications with 10xGraph. These courses teach you how to ship production-grade systems, not just explain LLM concepts in isolation.
+The 10xGraph courses are free, written lessons on building GenAI applications as an engineer. There are two tracks: a seven-lesson beginner course that ends in a small assistant with tools, memory and streaming, and an eight-lesson advanced course on architecture, durable execution and deployment. A shared set of foundation pages covers LLM basics, tokens, embeddings and retrieval. The courses are for software engineers; the beginner track assumes Python and no LLM experience.
+
+## Start here
+
+If you are new to LLM applications, begin with the [GenAI Beginner course](/docs/courses/genai-beginner), and read [LLM basics for engineers](/docs/courses/shared/llm-basics-for-engineers) alongside it for the mental model. It ends with a [capstone](/docs/courses/genai-beginner/capstone) and the [release checklist](/docs/courses/shared/release-checklist).
+
+If you already ship GenAI features, go to the [GenAI Advanced course](/docs/courses/genai-advanced). Lesson 7, [memory, checkpoints, artifacts and durable execution](/docs/courses/genai-advanced/lesson-7-memory-checkpoints-artifacts-and-durable-execution), is the one closest to what sets 10xGraph apart: runs that survive failure. The final lesson covers observability, testing, security and deployment, and the track closes with an [architecture review exercise](/docs/courses/genai-advanced/architecture-review-exercise).
+
+If you want a hands-on build without the theory, use the [beginner path](/docs/beginner) or the [tutorials](/docs/tutorials) instead.
 
 ## Two tracks for different experience levels
 
@@ -121,11 +130,11 @@ Both courses depend on shared foundational concepts:
 
 These courses teach you to:
 
-1. **Start simple** — pick the right use case before adding complexity
-2. **Add tools and structured outputs** — reliable interfaces between model and code
-3. **Introduce memory and checkpoints** — durable conversation state
-4. **Grow into multi-agent only when needed** — not every problem needs orchestration
-5. **Ship with testing, safety, and deployment discipline** — production-minded from day one
+1. **Start simple**, pick the right use case before adding complexity
+2. **Add tools and structured outputs**, reliable interfaces between model and code
+3. **Introduce memory and checkpoints**, durable conversation state
+4. **Grow into multi-agent only when needed**, not every problem needs orchestration
+5. **Ship with testing, safety, and deployment discipline**, production-minded from day one
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Draft</p>
 

@@ -1,6 +1,7 @@
 ---
 title: Connecting Clients
-description: How the @10xscale/agentflow-client TypeScript SDK connects browser and Node.js apps to an 10xGraph API over REST, SSE, and WebSockets.
+seoTitle: "Connect clients to the 10xGraph API"
+description: How the 10xgraph-client TypeScript SDK connects browser and Node.js apps to a 10xGraph API over REST, SSE, and WebSockets.
 section: Concepts
 order: 170
 updated: "2026-09-29"
@@ -247,5 +248,5 @@ There is no `user_id` argument on the memory or thread methods. Scoping is a ser
 |---|---|
 | Build a chat UI with React | [React agent tutorial](/docs/tutorials/from-examples/react-agent) |
 | Server-side auth setup | [Serving Agents](/docs/concepts/serving-agents) |
-| Register remote tools on the server | [Agents, Tools & Control](/docs/concepts/agents-tools-control) |
+| Register remote tools on the server | [Agents and Tools](/docs/concepts/agents-and-tools) |
 | Full client API reference | [API Reference](/docs/reference/client/agentflow-client) |

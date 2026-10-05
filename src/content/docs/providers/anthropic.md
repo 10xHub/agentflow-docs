@@ -1,5 +1,6 @@
 ---
 title: Anthropic
+seoTitle: "Anthropic provider: Claude models"
 description: Configure the Anthropic provider to run Claude models via the Claude API, Google Cloud Vertex AI, or Amazon Bedrock.
 section: Learn more
 group: Providers
@@ -158,5 +159,4 @@ One credential source must resolve. 10xGraph only reads `ANTHROPIC_API_KEY` itse
 ## Related docs
 
 - [Providers](/docs/providers)
-- [Providers and adapters](/docs/concepts/providers-and-adapters)
 - [Installation extras matrix](/docs/get-started/installation)

@@ -8,7 +8,7 @@ label: How to stream responses
 updated: "2026-07-21"
 ---
 
-`client.stream()` lets you display the agent's response as it is generated — word by word — instead of waiting for the full response. This guide shows you how to start a stream, process each event type, and update a UI incrementally.
+`client.stream()` lets you display the agent's response as it is generated, word by word, instead of waiting for the full response. This guide shows you how to start a stream, process each event type, and update a UI incrementally.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ updated: "2026-07-21"
 `client.stream()` returns an `AsyncGenerator` immediately. The HTTP request starts when you begin iterating with `for await`:
 
 ```ts
-import { Message, StreamEventType } from '@10xscale/agentflow-client';
+import { Message, StreamEventType } from '10xgraph-client';
 
 const stream = client.stream([
   Message.text_message('Write a haiku about mountains.'),
@@ -69,11 +69,11 @@ for await (const chunk of stream) {
     .join('');
 
   if (chunk.message.delta) {
-    // Partial token — append to the in-progress message
+    // Partial token, append to the in-progress message
     buffer += text;
     updateStreamingUI(buffer);
   } else {
-    // Final complete message — replace the streaming placeholder
+    // Final complete message, replace the streaming placeholder
     buffer = text;
     finaliseMessage(buffer);
     buffer = '';
@@ -85,7 +85,7 @@ for await (const chunk of stream) {
 
 ## Step 4: Use a persistent thread
 
-Same as `invoke()` — pass `config.thread_id`:
+Same as `invoke()`, pass `config.thread_id`:
 
 ```ts
 const stream = client.stream(
@@ -166,7 +166,7 @@ for await (const chunk of stream) {
 
 ```tsx
 import { useState } from 'react';
-import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamEventType } from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -231,7 +231,7 @@ async function streamToResult(messages: Message[]) {
 
 ## Step 9: WebSocket streaming with wsStream()
 
-`client.wsStream()` is a drop-in replacement for `client.stream()` that uses a persistent WebSocket instead of repeated HTTP requests. The API is identical — same options, same chunk format — but the transport differs.
+`client.wsStream()` is a drop-in replacement for `client.stream()` that uses a persistent WebSocket instead of repeated HTTP requests. The API is identical, same options, same chunk format, but the transport differs.
 
 ```ts
 const stream = client.wsStream(
@@ -264,7 +264,7 @@ for await (const chunk of stream) {
 
 Both methods produce identical `StreamChunk` sequences. The only difference is connection reuse. If your graph makes no remote tool calls, the two methods behave identically. If your graph loops through many tool calls, `wsStream()` avoids the overhead of re-establishing an HTTP connection on each iteration.
 
-The response of `stream()` is sent with `Content-Type: text/event-stream`, but the body is **not** `data:`-prefixed SSE — the server writes one JSON object per line (NDJSON). You only need to care about this if you parse the raw HTTP body yourself; `client.stream()` handles both newline-separated and back-to-back JSON objects for you.
+The response of `stream()` is sent with `Content-Type: text/event-stream`, but the body is **not** `data:`-prefixed SSE, the server writes one JSON object per line (NDJSON). You only need to care about this if you parse the raw HTTP body yourself; `client.stream()` handles both newline-separated and back-to-back JSON objects for you.
 
 ### Run boundaries over the socket
 
@@ -274,7 +274,7 @@ After every run finishes, the server sends a marker chunk on the same socket:
 { "event": "updates", "data": { "status": "done" } }
 ```
 
-`wsStream()` uses that marker to decide when a remote-tool resume can be sent. If you consume the chunks yourself, treat it as the end of the current run rather than the end of the stream — a run that made remote tool calls emits one `status: "done"` per iteration, and the generator only completes when the socket closes.
+`wsStream()` uses that marker to decide when a remote-tool resume can be sent. If you consume the chunks yourself, treat it as the end of the current run rather than the end of the stream, a run that made remote tool calls emits one `status: "done"` per iteration, and the generator only completes when the socket closes.
 
 ### Auth note
 
@@ -286,7 +286,7 @@ The bearer token is never placed in the URL. Browsers cannot set request headers
 
 ```ts
 import WebSocket from 'ws';
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -313,7 +313,7 @@ If you see no output, check that the server is running and that `baseUrl` is cor
 
 ## What you learned
 
-- `stream()` returns an `AsyncGenerator` — iterate it with `for await`.
+- `stream()` returns an `AsyncGenerator`, iterate it with `for await`.
 - Filter for `StreamEventType.MESSAGE` chunks to get text tokens.
 - `chunk.message.delta === true` means partial token; `delta === false` means the final complete message.
 - Use `response_granularity: 'low'` for best streaming performance.

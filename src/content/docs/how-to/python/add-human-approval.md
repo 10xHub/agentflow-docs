@@ -1,5 +1,6 @@
 ---
 title: How to pause a graph for human input with interrupt()
+seoTitle: "Pause a graph for human input: interrupt()"
 description: Use interrupt() inside a node or tool to stop a graph for an approval, a correction, or a choice, then resume it with the answer.
 section: How-to guides
 group: Python library
@@ -10,7 +11,7 @@ updated: "2026-09-29"
 
 `interrupt()` stops a running graph from inside a node or a tool and waits for outside input: an approval, a correction, a choice. The graph saves its state and ends the run. Running the same thread again with a `resume` value continues it, and `interrupt()` returns that value.
 
-Use it when the decision belongs in the middle of a node or tool. To pause at fixed points in the graph instead, use `interrupt_before` / `interrupt_after` on `compile()` (see [StateGraph interrupts](/docs/concepts/state-graph#interrupts)).
+Use it when the decision belongs in the middle of a node or tool. To pause at fixed points in the graph instead, use `interrupt_before` / `interrupt_after` on `compile()` (see [StateGraph interrupts](/docs/concepts/state-graph#what-does-compile-do)).
 
 The graph needs a checkpointer, because the pause is saved in the thread's state. `compile()` uses an in-memory one when you do not pass one.
 

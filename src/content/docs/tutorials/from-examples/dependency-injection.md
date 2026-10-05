@@ -1,5 +1,6 @@
 ---
 title: Dependency Injection
+seoTitle: "Dependency injection tutorial: InjectQ"
 description: Use InjectQ with 10xGraph to inject shared services such as checkpointers, stores, callbacks, and app-specific dependencies into graph nodes and tools.
 section: Tutorials
 group: From examples

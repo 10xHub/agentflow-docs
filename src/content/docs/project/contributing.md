@@ -1,5 +1,6 @@
 ---
 title: Contributing
+seoTitle: "Contributing to 10xGraph"
 description: How to contribute to 10xGraph and to these docs, including the local setup, the writing conventions, and the checks that must pass before a pull request merges.
 section: Project
 order: 2660

@@ -1,5 +1,6 @@
 ---
 title: Shared Foundations
+seoTitle: "GenAI course shared foundations"
 description: Prerequisite concepts shared by both 10xGraph GenAI courses, to read before you start either learning path.
 section: Courses
 group: Shared foundations

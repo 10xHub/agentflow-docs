@@ -16,7 +16,7 @@ When your tools perform long-running tasks (like API calls, file processing, or 
 - **StreamEmitter** is injected into tools **only during streaming** (`app.stream()` / `app.astream()`)
 - During normal execution (`app.invoke()` / `app.ainvoke()`), tools receive `emit=None`
 - Updates are sent to the same stream output that the frontend consumes
-- No external publisher setup required — works with the built-in streaming pipeline
+- No external publisher setup required, works with the built-in streaming pipeline
 
 ---
 
@@ -478,7 +478,7 @@ for i, item in enumerate(items):
 
 ## See Also
 
-- [StreamEmitter Reference](/docs/reference/python/stream-emitter) — Complete API documentation
-- [Streaming Architecture](/docs/concepts/streaming) — How streaming chunks and granularity work
-- [Dependency Injection](/docs/concepts/dependency-injection) — How parameters like `emit` and `state` are injected
-- [Example: react_stream/stream_sync.py](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stream_sync.py) — Full working example in the repository
+- [StreamEmitter Reference](/docs/reference/python/stream-emitter), Complete API documentation
+- [Streaming Architecture](/docs/concepts/streaming), How streaming chunks and granularity work
+- [Dependency Injection](/docs/concepts/dependency-injection), How parameters like `emit` and `state` are injected
+- [Example: react_stream/stream_sync.py](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stream_sync.py), Full working example in the repository

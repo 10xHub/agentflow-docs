@@ -1,5 +1,6 @@
 ---
 title: Authentication
+seoTitle: "API server authentication (JWT, custom)"
 description: How to configure JWT auth or a custom auth backend for the 10xGraph API.
 section: Reference
 group: CLI and configuration

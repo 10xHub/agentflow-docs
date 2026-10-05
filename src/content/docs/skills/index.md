@@ -1,11 +1,20 @@
 ---
 title: Skills
-description: Install bundled 10xGraph assistant skills for Codex, Claude, and GitHub Copilot.
+seoTitle: "10xGraph skills for Codex, Claude and Copilot"
+description: Install the bundled 10xGraph skill for Codex, Claude or GitHub Copilot so your coding assistant knows the framework, or give your own agents skills.
 section: Learn more
 group: Skills
 order: 2120
-updated: "2026-09-29"
+updated: "2026-10-06"
 ---
+
+Skills are folders of instructions, scripts and references that follow the Agent Skills specification. 10xGraph uses them in two places: a bundled skill that teaches your coding assistant (Codex, Claude or GitHub Copilot) how to build with 10xGraph, and a runtime feature that lets your own agents load skills on demand. This page is for developers who want an assistant to write correct 10xGraph code, and for those packaging reusable agent behavior.
+
+## Start here
+
+To teach an assistant, run `agentflow skills --agent claude` (or `codex`, `github`) from your project root. The sections below list exactly which files get installed. For the command itself, see [Install skills](/docs/how-to/api-cli/install-skills) and the [CLI commands reference](/docs/reference/api-cli/commands).
+
+To give your own agents skills, read [How to give an agent skills](/docs/how-to/python/use-skills), then the [Skills reference](/docs/reference/python/skills). The tutorial [Skills](/docs/tutorials/from-examples/skills) walks through a working example from the repository.
 
 10xGraph uses skills in two places. Both follow the [Agent Skills specification](https://agentskills.io/specification), so a skill folder is portable between them:
 

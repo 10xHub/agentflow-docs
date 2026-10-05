@@ -1,6 +1,7 @@
 ---
 title: User Simulation
-description: Test agents with the 10xGraph AI user simulator and goal-driven conversations, covering get_scenarios(), UserSimulator, BatchSimulator, and SimulationGoalsCriterion.
+seoTitle: "User simulation for agent testing"
+description: "Test agents with the 10xGraph user simulator and goal-driven conversations using get_scenarios(), UserSimulator, BatchSimulator, and SimulationGoalsCriterion."
 section: Testing and QA
 group: Evaluation
 order: 1130

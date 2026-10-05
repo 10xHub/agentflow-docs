@@ -1,34 +1,36 @@
 ---
 title: "10xGraph vs LangGraph, CrewAI, AutoGen: Compared"
-description: Side-by-side comparisons of 10xGraph against the leading Python AI agent frameworks. LangGraph, CrewAI, AutoGen, LlamaIndex Agents, and Google ADK.
+seoTitle: "10xGraph compared with other agent frameworks"
+description: Sourced comparisons of 10xGraph with LangGraph, CrewAI, AutoGen, LlamaIndex Agents and Google ADK, led by the production layer each framework includes.
 section: Learn more
 group: Compare
 order: 2220
 label: Overview
-updated: "2026-05-06"
+updated: "2026-10-06"
 ---
 
-If you are evaluating Python frameworks for production AI agents, this section compares **10xGraph** to the most popular alternatives. Each comparison shows the same use case implemented in both frameworks, a TL;DR table of architectural differences, and a short migration guide.
+These pages compare **10xGraph** with other Python agent frameworks, written by the 10xGraph team. Every claim about a competitor links to its official documentation or package metadata, and each page lists its sources with the date they were checked (2026-10-06). Each page also says where the other framework is the better choice, and where 10xGraph is weaker.
 
 ## Pick a comparison
 
-- [**10xGraph vs LangGraph**](/docs/compare/agentflow-vs-langgraph). Graph-based runtimes head-to-head
+- [**10xGraph vs LangGraph**](/docs/compare/agentflow-vs-langgraph). Graph runtimes compared on the production layer
 - [**10xGraph vs CrewAI**](/docs/compare/agentflow-vs-crewai). Role-based crews vs typed graphs
-- [**10xGraph vs AutoGen**](/docs/compare/agentflow-vs-autogen). Microsoft AutoGen vs 10xGraph
-- [**10xGraph vs LlamaIndex Agents**](/docs/compare/agentflow-vs-llamaindex-agents). RAG-first agents vs runtime-first agents
-- [**10xGraph vs Google ADK**](/docs/compare/agentflow-vs-google-adk). Google Agent Development Kit alternative
-- [**Best Python agent framework in 2026**](/docs/compare/best-python-agent-framework-2026). A roundup with our recommendations
+- [**10xGraph vs AutoGen**](/docs/compare/agentflow-vs-autogen). AutoGen (now in maintenance mode) vs 10xGraph
+- [**10xGraph vs LlamaIndex Agents**](/docs/compare/agentflow-vs-llamaindex-agents). Retrieval-first agents vs a runtime-first server
+- [**10xGraph vs Google ADK**](/docs/compare/agentflow-vs-google-adk). Google's Agent Development Kit vs 10xGraph
+- [**Python agent frameworks in 2026**](/docs/compare/best-python-agent-framework-2026). A roundup with a short "when to pick it" for each
 
-## What 10xGraph brings to the comparison
+## What the comparisons focus on
 
-10xGraph is an open-source Python framework for building production-grade multi-agent systems. The runtime ships with:
+Most agent frameworks give you a graph or a crew. The comparisons start with what happens after that, because it is where the frameworks differ most. 10xGraph generates, in the open-source install under the MIT license:
 
-- **Graph-based orchestration**. Typed `StateGraph` with conditional edges, sub-graphs, and recursion limits
-- **Persistence built in**.`InMemoryCheckpointer` for dev, `PgCheckpointer` (Postgres + Redis) for production
-- **REST API and CLI**.`agentflow api` serves any compiled graph at `/v1/graph/invoke`, `/v1/graph/stream`
-- **Typed TypeScript client**.`@10xscale/agentflow-client` for invoking and streaming from any frontend
-- **Hosted playground**. Test a deployed graph in the browser without writing client code
+- **A production server.** REST, SSE, WebSocket and realtime-audio endpoints from the compiled graph, with JWT or custom auth, role scopes and owner-only threads
+- **Rate limits and deploy files.** Memory or Redis rate limiting, and `10xgraph build --docker-compose --k8s` for Docker Compose and Kubernetes manifests
+- **Correct behavior under failure.** Replay-safe tool calls, versioned (compare-and-swap) state writes, and node and tool timeouts
+- **A typed TypeScript client.** `10xgraph-client` for invoking and streaming from any frontend
 
-That stack means you do not glue together `langchain` + `fastapi` + a custom React fetcher to ship an agent. The runtime, API, and client come from one project.
+Table stakes such as graph orchestration, multi-provider models, MCP, streaming and checkpointing are listed at the bottom of each table, because the frameworks here have them too.
 
-If you are migrating, start with [Get started](/docs/get-started). The API matches the patterns you already know from graph-based frameworks, and most LangGraph or CrewAI agents port over in a single sitting.
+## Where to start
+
+If you are migrating, start with [Get started](/docs/get-started). Each comparison page has a migration section that maps the other framework's concepts to 10xGraph.

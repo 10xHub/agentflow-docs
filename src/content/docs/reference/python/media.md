@@ -1,5 +1,6 @@
 ---
 title: Media
+seoTitle: "Media API reference (Python)"
 description: MediaOffloadPolicy, ensure_media_offloaded, BaseMediaStore, MediaRefResolver — handling large binary content in agent messages.
 section: Reference
 group: Python library

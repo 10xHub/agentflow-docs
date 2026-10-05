@@ -1,5 +1,6 @@
 ---
 title: "Lesson 6: Multimodal and Client/Server Integration"
+seoTitle: "Beginner lesson 6: multimodal and clients"
 description: Connect your agent to frontends, handle files, and build full-stack GenAI applications.
 section: Courses
 group: GenAI beginner

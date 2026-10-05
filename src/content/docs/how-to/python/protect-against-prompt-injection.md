@@ -11,7 +11,7 @@ User messages can contain attempts to override your agent's instructions, bypass
 
 ## Prerequisites
 
-You have a working graph. No extra packages required — validation is built into the core library.
+You have a working graph. No extra packages required, validation is built into the core library.
 
 ## Quick start: enable the default validators
 
@@ -78,7 +78,7 @@ from agentflow.utils.validators import ValidationError
 try:
     result = await app.ainvoke({"messages": [user_message]})
 except ValidationError as e:
-    print(f"Blocked: {e.violation_type} — {e}")
+    print(f"Blocked: {e.violation_type}, {e}")
     # return a safe fallback response to the user
 ```
 
@@ -91,7 +91,7 @@ except ValidationError as e:
 
 ## Write a before-invoke callback
 
-For more control — for example, modifying messages instead of blocking them — use a `BeforeInvokeCallback`:
+For more control, for example, modifying messages instead of blocking them, use a `BeforeInvokeCallback`:
 
 ```python
 from agentflow.utils import CallbackManager, InvocationType

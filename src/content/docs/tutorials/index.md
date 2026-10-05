@@ -1,13 +1,22 @@
 ---
 title: Tutorials
-description: Hands-on 10xGraph tutorials that turn example code into step-by-step guides.
+seoTitle: "10xGraph tutorials from the example repo"
+description: Step-by-step 10xGraph tutorials built from the repository examples, covering agents, tools, streaming, MCP, memory, multi-agent handoff, testing and evaluation.
 section: Tutorials
 order: 1140
 label: Overview
-updated: "2026-07-21"
+updated: "2026-10-06"
 ---
 
-10xGraph tutorials are the bridge between the quickstart pages and the reference docs. They take real example code from the repository and turn it into guided, runnable walkthroughs.
+10xGraph tutorials are guided walkthroughs of the example code in the repository's `agentflow/examples/` folder. They sit between the quickstart pages and the reference: each one explains a working script, covering agents, custom state, tools, streaming, MCP, memory, multimodal input, multi-agent handoff, skills, testing and evaluation. They are for developers who learn best by reading and running real code.
+
+## Start here
+
+Begin with the [Agent Class pattern](/docs/tutorials/from-examples/agent-class), the smallest useful graph. Continue with [Custom state](/docs/tutorials/from-examples/custom-state) and the [Tool decorator](/docs/tutorials/from-examples/tool-decorator) to see how state and tools are modeled, then assemble the loop in the [ReAct agent](/docs/tutorials/from-examples/react-agent) tutorial.
+
+For real-time output, [React streaming](/docs/tutorials/from-examples/react-streaming) and [Stop stream](/docs/tutorials/from-examples/stop-stream) cover token streaming and cancellation. For connecting outside systems, see [MCP ReAct agent](/docs/tutorials/from-examples/mcp-react-agent) and [Memory](/docs/tutorials/from-examples/memory). The [Testing](/docs/tutorials/from-examples/testing) and [Evaluation](/docs/tutorials/from-examples/evaluation) tutorials show how to check an agent before release, and [Graceful shutdown](/docs/tutorials/from-examples/graceful-shutdown) covers stopping cleanly.
+
+Tutorials teach the library. To run an agent as a service, with auth and deployment, use the [how-to guides](/docs/how-to) and the [beginner path](/docs/beginner).
 
 ## Tutorial track
 
@@ -50,7 +59,6 @@ These tutorials are based on code in `agentflow/examples/`:
 - [ReAct Agent](/docs/tutorials/from-examples/react-agent)
 - [ReAct Agent with Validation](/docs/tutorials/from-examples/react-agent-validation)
 - [React Streaming](/docs/tutorials/from-examples/react-streaming)
-- [Synchronous Streaming](/docs/tutorials/from-examples/stream-sync)
 - [Stop Stream](/docs/tutorials/from-examples/stop-stream)
 
 ## Advanced integrations
@@ -60,14 +68,11 @@ These tutorials are based on code in `agentflow/examples/`:
 - [MCP Client](/docs/tutorials/from-examples/mcp-client)
 - [MCP ReAct Agent](/docs/tutorials/from-examples/mcp-react-agent)
 - [GitHub MCP](/docs/tutorials/from-examples/github-mcp)
-- [MCP File Download](/docs/tutorials/from-examples/mcp-file-download)
 - [Memory](/docs/tutorials/from-examples/memory)
-- [Qdrant Memory](/docs/tutorials/from-examples/qdrant-memory)
 - [Multimodal](/docs/tutorials/from-examples/multimodal)
 - [Multiagent](/docs/tutorials/from-examples/multiagent)
 - [Handoff](/docs/tutorials/from-examples/handoff)
 - [Skills](/docs/tutorials/from-examples/skills)
-- [Skills Chat](/docs/tutorials/from-examples/skills-chat)
 - [Testing](/docs/tutorials/from-examples/testing)
 - [Evaluation](/docs/tutorials/from-examples/evaluation)
 - [Graceful Shutdown](/docs/tutorials/from-examples/graceful-shutdown)
@@ -89,7 +94,7 @@ If you are new to 10xGraph, follow the pages in the order shown above. The tutor
 Most tutorials assume:
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- 10xGraph installed (`pip install 10xgraph`)
 - Environment variables loaded from `.env`
 - A provider key such as `GEMINI_API_KEY` for Google-based examples
 

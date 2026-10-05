@@ -1,6 +1,7 @@
 ---
 title: Run Evaluations
-description: Run agent evaluations with agentflow eval. Covers parallel runs, user simulation, EvalPresets, reports, thresholds, and agentflow.json configuration.
+seoTitle: "Run agent evaluations from the CLI"
+description: Run agent evaluations with 10xgraph eval. Covers parallel runs, user simulation, EvalPresets, reports, thresholds, and agentflow.json configuration.
 section: How-to guides
 group: CLI
 order: 950
@@ -8,18 +9,18 @@ label: Run Evaluations
 updated: "2026-09-29"
 ---
 
-The `agentflow eval` command discovers evaluation files in your project, runs all cases under a single async event loop, and always generates an HTML and JSON report. No flags required — reports are on by default.
+The `10xgraph eval` command discovers evaluation files in your project, runs all cases under a single async event loop, and always generates an HTML and JSON report. No flags required, reports are on by default.
 
 ## Prerequisites
 
-Your project must have been initialised with `agentflow init`. Eval files live in the `evals/` directory, which is generated when you choose the **Production** setup during `agentflow init`.
+Your project must have been initialised with `10xgraph init`. Eval files live in the `evals/` directory, which is generated when you choose the **Production** setup during `10xgraph init`.
 
 ## Quick start
 
 From the folder that contains `agentflow.json`:
 
 ```bash
-agentflow eval
+10xgraph eval
 ```
 
 This scans `evals/` for files matching `*_eval.py` or `eval_*.py`, collects every case from every file into a flat pool, runs them, and writes reports to `eval_reports/`:
@@ -34,10 +35,10 @@ eval_reports/
 
 ```bash
 # One file
-agentflow eval evals/weather_agents_eval.py
+10xgraph eval evals/weather_agents_eval.py
 
 # A subdirectory
-agentflow eval evals/regression/
+10xgraph eval evals/regression/
 ```
 
 When a file is given, only that file runs. When a directory is given, all matching files are discovered. Results from all files are merged into a single combined report.
@@ -47,11 +48,11 @@ When a file is given, only that file runs. When a directory is given, all matchi
 By default all cases run sequentially. Pass `--parallel` to run them concurrently:
 
 ```bash
-agentflow eval --parallel
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel
+10xgraph eval --parallel --max-concurrency 8
 ```
 
-**How it works:** all cases from all files are collected first into a single flat pool. One asyncio event loop runs the entire pool under a single semaphore capped at `--max-concurrency`. Cases complete out of order — that is expected.
+**How it works:** all cases from all files are collected first into a single flat pool. One asyncio event loop runs the entire pool under a single semaphore capped at `--max-concurrency`. Cases complete out of order, that is expected.
 
 ```
 [  1/50] weather_agents_eval.py::weather_london      PASSED   1.23s
@@ -79,13 +80,13 @@ Console output is always printed as cases complete. The HTML/JSON files are writ
 ### Open the report automatically
 
 ```bash
-agentflow eval --open
+10xgraph eval --open
 ```
 
 ### Skip file output
 
 ```bash
-agentflow eval --no-report
+10xgraph eval --no-report
 ```
 
 Only console output is produced. Useful for fast local feedback.
@@ -93,7 +94,7 @@ Only console output is produced. Useful for fast local feedback.
 ## Set a pass-rate threshold
 
 ```bash
-agentflow eval --threshold 0.8
+10xgraph eval --threshold 0.8
 ```
 
 The command exits with a non-zero code if the overall pass rate is below the threshold. Useful in CI to gate merges on eval quality.
@@ -101,7 +102,7 @@ The command exits with a non-zero code if the overall pass rate is below the thr
 ## Write reports to a custom directory
 
 ```bash
-agentflow eval --output ci/reports
+10xgraph eval --output ci/reports
 ```
 
 ## Configure defaults in agentflow.json
@@ -129,7 +130,7 @@ Add an `evaluation` section to `agentflow.json` to set project-level defaults. C
 | `parallel` | Run all cases from all files in a flat parallel pool |
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
 
-Report filenames from `agentflow eval` always carry a timestamp; `agentflow.json` has no
+Report filenames from `10xgraph eval` always carry a timestamp; `agentflow.json` has no
 setting for it.
 
 ### Enforce threshold in CI
@@ -137,7 +138,7 @@ setting for it.
 ```yaml
 # .github/workflows/ci.yml
 - name: Run evaluations
-  run: agentflow eval --parallel
+  run: 10xgraph eval --parallel
 ```
 
 Set `threshold` in `agentflow.json`. If the pass rate drops below it, the step fails without extra flags.
@@ -161,7 +162,7 @@ An eval file is any `*_eval.py` or `eval_*.py` file. The CLI auto-detects which 
 
 ---
 
-### `get_eval_set()` — minimum required
+### `get_eval_set()`, minimum required
 
 The CLI loads the agent from `agentflow.json`, applies default criteria (60% threshold on all), runs the evaluation, and writes reports. You only define the cases.
 
@@ -200,9 +201,9 @@ def get_eval_set() -> EvalSet:
 
 ---
 
-### `get_eval_config()` — per-file criteria with EvalPresets
+### `get_eval_config()`, per-file criteria with EvalPresets
 
-Add this function when you want to specify which criteria to run and what thresholds to use. The recommended approach is `EvalPresets` — one-line preset configs covering the most common patterns.
+Add this function when you want to specify which criteria to run and what thresholds to use. The recommended approach is `EvalPresets`, one-line preset configs covering the most common patterns.
 
 ```python
 from agentflow.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
@@ -249,7 +250,7 @@ def get_eval_config():
 
 ---
 
-### `EVAL_CONFIG` — constant instead of function
+### `EVAL_CONFIG`, constant instead of function
 
 Same effect as `get_eval_config()` but as a module-level constant. Useful when the config is static.
 
@@ -261,7 +262,7 @@ EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 
 ---
 
-### `confeval.py` — global eval config
+### `confeval.py`, global eval config
 
 Place a file named exactly `confeval.py` in your project root (next to `agentflow.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence and `confeval.py` is ignored for that file.
 
@@ -300,7 +301,7 @@ If `confeval.py` is absent and a file has no per-file config, the built-in defau
 
 ---
 
-### Annotated functions `-> EvalSet` — pytest-style discovery
+### Annotated functions `-> EvalSet`, pytest-style discovery
 
 Any module-level function with return type `-> EvalSet` is auto-discovered as an eval set. Useful when you want multiple named eval sets in one file.
 
@@ -322,11 +323,11 @@ Both `weather_cases` and `booking_cases` are discovered and run. Their results a
 
 ---
 
-### `get_scenarios()` — user simulator
+### `get_scenarios()`, user simulator
 
 Use this protocol when you want the LLM to drive a dynamic multi-turn conversation against your agent rather than using fixed prompt/response pairs.
 
-You only define the scenarios. The CLI handles running the simulator, scoring goal achievement, and writing the report — identical to regular eval cases.
+You only define the scenarios. The CLI handles running the simulator, scoring goal achievement, and writing the report, identical to regular eval cases.
 
 ```python
 # evals/user_simulator_eval.py
@@ -419,13 +420,13 @@ When multiple sources configure the same setting, this priority applies (highest
 **Fast local check, single file, open report:**
 
 ```bash
-agentflow eval evals/weather_agents_eval.py --open
+10xgraph eval evals/weather_agents_eval.py --open
 ```
 
 **Parallel run with 8 concurrent cases:**
 
 ```bash
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 ```
 
 **Strict CI gate at 80% pass rate:**
@@ -441,13 +442,13 @@ agentflow eval --parallel --max-concurrency 8
 ```
 
 ```bash
-agentflow eval
+10xgraph eval
 ```
 
 **Run only a regression suite in a subdirectory:**
 
 ```bash
-agentflow eval evals/regression/ --output reports/regression
+10xgraph eval evals/regression/ --output reports/regression
 ```
 
 **Mix regular evals and user simulator in the same run:**
@@ -459,7 +460,7 @@ evals/
 ```
 
 ```bash
-agentflow eval --parallel
+10xgraph eval --parallel
 ```
 
 Both files are discovered, cases and scenarios are collected into the same flat pool, and results appear in a single merged report.
@@ -469,8 +470,8 @@ Both files are discovered, cases and scenarios are collected into the same flat 
 ## Common issues
 
 **"Eval directory 'evals/' not found"**
-- Create an `evals/` directory or pass a path explicitly: `agentflow eval path/to/evals`
-- Run `agentflow init` and choose the Production setup at the prompt to scaffold the standard project layout, which includes `evals/`.
+- Create an `evals/` directory or pass a path explicitly: `10xgraph eval path/to/evals`
+- Run `10xgraph init` and choose the Production setup at the prompt to scaffold the standard project layout, which includes `evals/`.
 
 **"No eval cases found"**
 - Eval files must expose `get_eval_set()`, `get_scenarios()`, `SCENARIOS`, or functions annotated `-> EvalSet`.

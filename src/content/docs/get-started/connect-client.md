@@ -1,30 +1,31 @@
 ---
 title: Connect Client
-description: Call a running 10xGraph API from TypeScript using AgentFlowClient.
+seoTitle: Connect the 10xGraph TypeScript client
+description: "Install 10xgraph-client and call a running 10xGraph API from TypeScript with AgentFlowClient: invoke, stream, bearer auth and thread ids."
 section: Get started
 order: 40
 label: Connect Client
-updated: "2026-07-21"
+updated: 2026-10-06
 ---
 
-`@10xscale/agentflow-client` is a fully typed TypeScript client for every API endpoint exposed by `agentflow api` — graph execution, thread management, long-term memory, and file uploads.
+`10xgraph-client` is a typed TypeScript client for the endpoints exposed by `10xgraph api`: graph execution, thread management, long-term memory, and file uploads. It needs Node.js 18 or newer.
 
 Make sure the API server is running:
 
 ```bash
-agentflow api --host 127.0.0.1 --port 8000
+10xgraph api --host 127.0.0.1 --port 8000
 ```
 
 ## Install
 
 ```bash
-npm install @10xscale/agentflow-client
+npm install 10xgraph-client
 ```
 
 ## Create a client
 
 ```typescript
-import { AgentFlowClient } from "@10xscale/agentflow-client";
+import { AgentFlowClient } from "10xgraph-client";
 
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
@@ -34,7 +35,7 @@ const client = new AgentFlowClient({
 If your server has auth enabled:
 
 ```typescript
-import { AgentFlowClient, bearerAuth } from "@10xscale/agentflow-client";
+import { AgentFlowClient, bearerAuth } from "10xgraph-client";
 
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
@@ -47,10 +48,10 @@ Auth helpers: `bearerAuth(token)`, `basicAuth(username, password)`, `headerAuth(
 ## Make your first call
 
 ```typescript
-import { Message } from "@10xscale/agentflow-client";
+import { Message } from "10xgraph-client";
 
 const result = await client.invoke(
-  [Message.text_message("What is the weather in London?")],
+  [Message.text_message("Where is order 1042?")],
   {
     config: { thread_id: "my-thread-001" },
     recursion_limit: 10,
@@ -63,10 +64,10 @@ console.log(result.messages.at(-1)?.text());
 ## Stream responses
 
 ```typescript
-import { StreamEventType } from "@10xscale/agentflow-client";
+import { StreamEventType } from "10xgraph-client";
 
 const stream = client.stream(
-  [Message.text_message("Tell me a long story.")],
+  [Message.text_message("Refund order 1042 for 59.00.")],
   { config: { thread_id: "my-thread-002" } }
 );
 
@@ -79,7 +80,7 @@ for await (const chunk of stream) {
 
 ## Go deeper
 
-The client covers three API layers — explore the how-to guides for full usage:
+The how-to guides cover each part of the client in depth:
 
 | Topic | Guide |
 |---|---|
@@ -93,4 +94,4 @@ The client covers three API layers — explore the how-to guides for full usage:
 
 ## Next step
 
-Run `agentflow play` to open the hosted playground and chat with your agent interactively.
+Run `10xgraph play` to open the hosted playground and chat with your agent interactively.

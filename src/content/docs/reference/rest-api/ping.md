@@ -1,6 +1,6 @@
 ---
 title: Health check endpoint
-description: Health check endpoint for the 10xGraph API server.
+description: "Reference for the health check endpoint of the 10xGraph API server, used by load balancers and probes to confirm that the server is running."
 section: Reference
 group: REST API
 order: 1720

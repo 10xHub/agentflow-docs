@@ -1,13 +1,20 @@
 ---
 title: Project and releases
-description: Release notes, versioning policy, upgrade guides, roadmap, security reporting, support channels, and how to contribute to 10xGraph.
+seoTitle: "10xGraph project, releases and maintainers"
+description: "How 10xGraph is run: MIT license, maintained by 10xScale, with a changelog, roadmap, security reporting, support channels and a contributing guide."
 section: Project
 order: 2600
 label: Overview
-updated: "2026-07-28"
+updated: "2026-10-06"
 ---
 
-Everything about 10xGraph as a project rather than as an API.
+This section covers 10xGraph as a project rather than as an API: who maintains it, how releases are announced, how to report a security problem, where to ask for help and how to contribute. 10xGraph is MIT licensed and maintained by 10xScale, with Shudipto Trafder as lead maintainer. It is pre-1.0 and was renamed from Agentflow in October 2026, so the pages here matter most to teams deciding whether to depend on it.
+
+## Start here
+
+Read the [Changelog](/changelog) first to see what has shipped and which versions are current, then the [Roadmap](/docs/project/roadmap) for what is missing, partial or deliberately out of scope. The roadmap is where the honest gaps are listed, so it is worth reading before you commit to the project.
+
+If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/upgrade-to-1.0) explains what to migrate. For the package rename (new PyPI and npm names, CLI and GitHub org), see the launch post [Agentflow is now 10xGraph](/blog/introducing-10xgraph). If something breaks, [Support](/docs/project/support) explains what to collect for a bug report that gets fixed, and [Security](/docs/project/security) describes private vulnerability reporting. To send a fix or a doc improvement, start with [Contributing](/docs/project/contributing); the people involved are listed on [Maintainers](/docs/project/maintainers).
 
 | Page | Answers |
 | --- | --- |

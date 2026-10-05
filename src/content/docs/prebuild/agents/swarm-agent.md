@@ -1,5 +1,6 @@
 ---
 title: SwarmAgent
+seoTitle: "SwarmAgent: peer-to-peer agent handoffs"
 description: SwarmAgent lets peer agents hand off control directly via transfer_to_X tools, with no central supervisor coordinating routing.
 section: Prebuilt
 group: Agents

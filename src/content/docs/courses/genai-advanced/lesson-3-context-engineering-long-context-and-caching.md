@@ -1,6 +1,7 @@
 ---
 title: "Lesson 3: Context Engineering, Long Context, and Caching"
-description: Master context optimization for quality, cost, and latency tradeoffs.
+seoTitle: "Advanced lesson 3: context and caching"
+description: "Context engineering for agents: manage long context, apply caching, and balance answer quality, cost, and latency in production GenAI systems."
 section: Courses
 group: GenAI advanced
 order: 2530

@@ -1,6 +1,6 @@
 ---
 title: How to use MCP tools
-description: Guide to connecting 10xGraph agents to Model Context Protocol (MCP) servers using fastmcp.Client, local stdio servers, HTTP servers, and passing user context to MCP.
+description: "Connect 10xGraph agents to MCP servers with fastmcp.Client over local stdio or HTTP, and pass user context through to the MCP tools."
 section: How-to guides
 group: Python library
 order: 650
@@ -13,7 +13,7 @@ updated: "2026-05-24"
 ## Prerequisites
 
 ```bash
-pip install "10xscale-agentflow[mcp]"
+pip install "10xgraph[mcp]"
 ```
 
 This installs `fastmcp` and `mcp` alongside the core framework.
@@ -263,7 +263,7 @@ print(result["messages"][-1].content)
 
 ## What you learned
 
-- Install `pip install 10xscale-agentflow[mcp]` to enable MCP support.
+- Install `pip install 10xgraph[mcp]` to enable MCP support.
 - Pass a `fastmcp.Client` to `ToolNode(client=...)`. Local tools and MCP tools can coexist.
 - The graph wires exactly the same way as with local tools.
 - `pass_user_info_to_mcp=True` forwards the execution config's `user` dict as MCP request metadata.

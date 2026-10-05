@@ -1,5 +1,6 @@
 ---
 title: Memory Tools
+seoTitle: "Memory tools for long-term agent memory"
 description: memory_tool, user_memory_tool, and agent_memory_tool give an agent long-term memory to store, search, update, and delete facts.
 section: Prebuilt
 group: Tools

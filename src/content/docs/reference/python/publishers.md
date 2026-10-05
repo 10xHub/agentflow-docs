@@ -1,5 +1,6 @@
 ---
 title: Publishers
+seoTitle: "Publishers API reference (Python)"
 description: Reference for ConsolePublisher, RedisPublisher, KafkaPublisher, RabbitMQPublisher, OtelPublisher, LogfirePublisher, and LangsmithPublisher event publishers.
 section: Reference
 group: Python library
@@ -15,6 +16,7 @@ Use a publisher when you need to observe graph execution in real time — for mo
 ## Import paths
 
 ```python
+from agentflow.core.graph import StateGraph
 from agentflow.runtime.publisher import BasePublisher, ConsolePublisher
 from agentflow.runtime.publisher.events import Event, EventType, ContentType, EventModel
 
@@ -51,17 +53,21 @@ from agentflow.runtime.publisher.events import EventModel
 
 | Field | Type | Description |
 |---|---|---|
-| `event_id` | `str` | UUID identifying this event. |
 | `event` | `Event` | Source of the event (graph, node, tool, streaming). |
-| `event_type` | `EventType` | Phase of the event (start, progress, result, end, error…). |
-| `content_type` | `ContentType` | Semantic type of the payload (text, tool_call, state…). |
-| `node_name` | `str \| None` | Graph node that emitted the event. |
-| `data` | `Any` | The event payload. |
-| `content` | `ContentBlock \| None` | Content block if relevant. |
-| `thread_id` | `str \| None` | Thread for this execution. |
-| `run_id` | `str \| None` | Run for this execution. |
-| `timestamp` | `datetime` | When the event was emitted. |
-| `metadata` | `dict` | Additional context. |
+| `event_type` | `EventType` | Phase of the event (`start`, `progress`, `result`, `end`, `update`, `error`...). |
+| `content` | `str` | Streamed textual content. Default `""`. |
+| `content_blocks` | `list[ContentBlock] \| None` | Structured content blocks for multimodal or structured streaming. |
+| `data` | `dict` | Structured payload. Default `{}`. |
+| `content_type` | `list[ContentType] \| None` | Semantic types of the payload (text, tool_call, state...). |
+| `node_name` | `str` | Graph node that emitted the event. |
+| `run_id` | `str` | Unique ID for this run. |
+| `thread_id` | `str \| int` | Thread for this execution. |
+| `user_id` | `str \| int \| None` | User associated with the execution. |
+| `timestamp` | `float` | UNIX timestamp of when the event was created. |
+| `is_error` | `bool` | `True` when the event represents an error state. |
+| `metadata` | `dict` | Additional context for consumers. |
+
+There is no `event_id` field. Use `run_id`, `thread_id` and `timestamp` to correlate events.
 
 ---
 
@@ -145,7 +151,9 @@ from agentflow.runtime.publisher import BasePublisher
 
 ```python
 async with ConsolePublisher() as publisher:
-    app = graph.compile(publisher=publisher)
+    graph = StateGraph(publisher=publisher)
+    # ... add nodes and edges
+    app = graph.compile()
     await app.ainvoke(...)
 # publisher is automatically closed
 ```
@@ -167,7 +175,9 @@ publisher = ConsolePublisher()
 # Route through the logging system instead of stdout
 publisher = ConsolePublisher(config={"use_logger": True})
 
-app = graph.compile(publisher=publisher)
+# Pass the publisher to the graph constructor, not compile()
+graph = StateGraph(publisher=publisher)
+app = graph.compile()
 ```
 
 | Config key | Default | Description |
@@ -186,7 +196,7 @@ Publishes events to a Redis Pub/Sub channel or Redis Stream.
 <aside class="callout callout-note" role="note"><p class="callout-title">Optional dependency</p>
 
 ```
-pip install 10xscale-agentflow[redis]
+pip install 10xgraph[redis]
 # or: pip install redis>=4.2
 ```
 
@@ -206,7 +216,9 @@ publisher = RedisPublisher(config={
     "health_check_interval": 30,
 })
 
-app = graph.compile(publisher=publisher)
+# Pass the publisher to the graph constructor, not compile()
+graph = StateGraph(publisher=publisher)
+app = graph.compile()
 ```
 
 | Config key | Default | Description |
@@ -245,7 +257,9 @@ publisher = KafkaPublisher(config={
     "compression_type": "gzip",
 })
 
-app = graph.compile(publisher=publisher)
+# Pass the publisher to the graph constructor, not compile()
+graph = StateGraph(publisher=publisher)
+app = graph.compile()
 ```
 
 ---
@@ -271,7 +285,9 @@ publisher = RabbitMQPublisher(config={
     "routing_key": "events",
 })
 
-app = graph.compile(publisher=publisher)
+# Pass the publisher to the graph constructor, not compile()
+graph = StateGraph(publisher=publisher)
+app = graph.compile()
 ```
 
 ---
@@ -284,7 +300,9 @@ Broadcasts every event to a list of publishers concurrently. A failure in one pu
 from agentflow.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
 
 publisher = CompositePublisher([ConsolePublisher(), RedisPublisher({"url": "redis://localhost:6379"})])
-app = graph.compile(publisher=publisher)
+# Pass the publisher to the graph constructor, not compile()
+graph = StateGraph(publisher=publisher)
+app = graph.compile()
 ```
 
 `add_publisher(publisher)` and `remove_publisher(publisher)` mutate the list after construction.
@@ -324,7 +342,7 @@ app = graph.compile()
 | `tracer` | `Tracer \| None` | `None` | Explicit OTEL tracer. Uses the global `TracerProvider` when omitted. |
 | `level` | `ObservabilityLevel` | `STANDARD` | How much data lands on the spans. |
 
-`setup_tracing(graph, tracer=None, level=STANDARD)` registers an `OtelPublisher` on the graph and returns it. It raises `ImportError` when `opentelemetry-api` is not installed (`pip install "10xscale-agentflow[otel]"`).
+`setup_tracing(graph, tracer=None, level=STANDARD)` registers an `OtelPublisher` on the graph and returns it. It raises `ImportError` when `opentelemetry-api` is not installed (`pip install "10xgraph[otel]"`).
 
 ### `LogfirePublisher`
 
@@ -347,7 +365,7 @@ app = graph.compile()
 | `additional_span_processors` | `list \| None` | `None` | Extra `SpanProcessor` instances to attach alongside the Logfire processor. |
 | `**configure_kwargs` | any | — | Forwarded verbatim to `logfire.configure()`. |
 
-Requires `pip install "10xscale-agentflow[logfire]"`.
+Requires `pip install "10xgraph[logfire]"`.
 
 ### `LangsmithPublisher`
 
@@ -368,7 +386,7 @@ app = graph.compile()
 | `level` | `ObservabilityLevel` | `STANDARD` | Span detail level. |
 | `tracer_provider` | `Any` | `None` | Existing `TracerProvider` to attach to. A new global one is created when omitted. |
 
-Requires `pip install "10xscale-agentflow[langsmith]"`.
+Requires `pip install "10xgraph[langsmith]"`.
 
 ### `setup_observability`
 
@@ -433,5 +451,5 @@ class WebhookPublisher(BasePublisher):
 | `ImportError: aiokafka` | `KafkaPublisher` used without `aiokafka`. | `pip install aiokafka`. |
 | `ImportError: aio-pika` | `RabbitMQPublisher` used without `aio-pika`. | `pip install aio-pika`. |
 | Events missing from channel | Publisher not passed to `graph.compile()`. | Add `publisher=my_publisher` to `compile()`. |
-| `ImportError: OpenTelemetry is required for tracing` | `OtelPublisher` / `setup_tracing` used without OTEL. | `pip install "10xscale-agentflow[otel]"`. |
+| `ImportError: OpenTelemetry is required for tracing` | `OtelPublisher` / `setup_tracing` used without OTEL. | `pip install "10xgraph[otel]"`. |
 | No spans from a tracing publisher | Attached after `graph.compile()`. | Call `setup_tracing` / `setup_logfire` / `setup_langsmith` before `compile()`. |

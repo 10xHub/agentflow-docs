@@ -1,5 +1,6 @@
 ---
 title: Deployment
+seoTitle: "Deploy 10xGraph APIs to production"
 description: Production deployment guidance for 10xGraph APIs, including containers, runtime settings, shared persistence, and release checks.
 section: How-to guides
 group: Production
@@ -16,7 +17,7 @@ If you need generated container files, start with [Generate Docker Files](/docs/
 
 ```mermaid
 flowchart TD
-    A[Source code + agentflow.json] --> B[agentflow build or custom Dockerfile]
+    A[Source code + agentflow.json] --> B[10xgraph build or custom Dockerfile]
     B --> C[Container image]
     C --> D[Runtime environment]
     D --> E[10xGraph API instances]
@@ -34,12 +35,12 @@ flowchart TD
 | checkpointer | in-memory or omitted | shared durable backend |
 | docs endpoints | enabled | disable or restrict |
 | auth | often disabled locally | enable auth for public or shared deployments |
-| playground | `agentflow play` | use only for testing, not as your deployment model |
+| playground | `10xgraph play` | use only for testing, not as your deployment model |
 
 ## Minimum production command
 
 ```bash
-MODE=production agentflow api --no-reload --host 0.0.0.0 --port 8000
+MODE=production 10xgraph api --no-reload --host 0.0.0.0 --port 8000
 ```
 
 This is the baseline, not the full story. A production-ready deployment usually also needs:
@@ -55,7 +56,7 @@ This is the baseline, not the full story. A production-ready deployment usually 
 If you want the fastest path to a deployable image:
 
 ```bash
-agentflow build --docker-compose
+10xgraph build --docker-compose
 ```
 
 Then review the generated files and run them with production environment values.
@@ -71,7 +72,7 @@ Use the dedicated guide for the actual generated file format:
 Do not use file watching in production.
 
 ```bash
-agentflow api --no-reload
+10xgraph api --no-reload
 ```
 
 ### 2. Use shared persistence
@@ -111,7 +112,7 @@ A deployment is not production-ready until you confirm:
 
 ```mermaid
 flowchart TD
-    A[Do you need public or team access?] -->|No| B[Stay local with agentflow api/play]
+    A[Do you need public or team access?] -->|No| B[Stay local with 10xgraph api/play]
     A -->|Yes| C[Do you need persistence?]
     C -->|No| D[Single-instance simple deployment]
     C -->|Yes| E[Shared durable checkpointer]
@@ -146,7 +147,7 @@ Before shipping a deployment, verify:
 
 ## Common mistakes
 
-- treating `agentflow play` as a deployment strategy instead of a testing workflow
+- treating `10xgraph play` as a deployment strategy instead of a testing workflow
 - deploying multiple instances with in-memory checkpointing
 - leaving `--reload` enabled in containers
 - exposing public docs endpoints without deciding to do so intentionally
@@ -163,4 +164,4 @@ Before shipping a deployment, verify:
 
 - Which settings turn a local 10xGraph API into a production service.
 - Why persistence, auth, and restart testing matter as much as the startup command.
-- How `agentflow build` fits into the deployment path.
+- How `10xgraph build` fits into the deployment path.

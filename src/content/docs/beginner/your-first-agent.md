@@ -1,5 +1,6 @@
 ---
 title: Your First Agent
+seoTitle: "Build your first 10xGraph agent in Python"
 description: Build and run a minimal 10xGraph graph that calls a real language model.
 section: Beginner path
 order: 70

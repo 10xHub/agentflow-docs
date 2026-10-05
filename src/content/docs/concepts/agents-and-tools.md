@@ -1,5 +1,6 @@
 ---
 title: Agents and Tools
+seoTitle: "Agent and ToolNode concepts"
 description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options.
 section: Concepts
 group: In depth
@@ -24,7 +25,7 @@ from agentflow.core.graph import Agent
 agent = Agent(
     # --- Required ---
     model="gemini-2.5-flash",        # Any model name; no parsing needed
-    provider="google",               # "openai" | "google"; auto-detected if omitted
+    provider="google",               # "openai" | "google" | "anthropic"; auto-detected if omitted
 
     # --- Output type ---
     output_type="text",              # "text" | "image" | "video" | "audio"
@@ -121,7 +122,7 @@ agent = Agent(
 # OFF
 reasoning_config=None
 
-# On — medium effort (default for Google: thinking_budget=8192)
+# On, medium effort (default for Google: thinking_budget=8192)
 reasoning_config={"effort": "medium"}
 
 # High effort, Google
@@ -134,28 +135,28 @@ reasoning_config={"thinking_budget": 5000}
 reasoning_config={"effort": "low", "summary": "auto"}
 ```
 
-Default is `{"effort": "medium"}` — thinking is **on by default** for Google models.
+Default is `{"effort": "medium"}`, so thinking is **on by default** for Google models.
 
 ---
 
 ## ToolNode
 
-`ToolNode` is a unified registry and executor for callable functions. It supports local Python functions, MCP tools, Composio integrations, and LangChain tools.
+`ToolNode` is a unified registry and executor for callable functions. It supports local Python functions and MCP tools.
 
 ### Basic usage
 
 ```python
 from agentflow.core.graph import ToolNode
 
-def get_weather(location: str) -> str:
-    """Get the current weather for a location."""
-    return f"Sunny in {location}, 22°C."
+def lookup_order(order_id: str) -> str:
+    """Look up the status of a customer order."""
+    return f"Order {order_id}: shipped"
 
-def calculate(expression: str) -> str:
-    """Evaluate a mathematical expression."""
-    return str(eval(expression))
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund an order for the given amount."""
+    return f"Refunded {amount:.2f} for order {order_id}"
 
-tool_node = ToolNode([get_weather, calculate])
+tool_node = ToolNode([lookup_order, refund_order])
 ```
 
 The function's **docstring** becomes the tool description shown to the model. **Type annotations** define the parameter schema. Both are required for good model behavior.
@@ -163,7 +164,7 @@ The function's **docstring** becomes the tool description shown to the model. **
 ### Adding tools after creation
 
 ```python
-tool_node = ToolNode([get_weather])
+tool_node = ToolNode([lookup_order])
 
 def search_db(query: str) -> str:
     """Search the internal database."""
@@ -174,26 +175,35 @@ tool_node.add_tool(search_db)
 
 ### Injectable parameters
 
-Tool functions can declare special parameters that `ToolNode` injects automatically. These are invisible to the model — they do not appear in the tool schema:
+Tool functions can declare special parameters that `ToolNode` injects automatically. These are invisible to the model and do not appear in the tool schema:
 
 | Parameter | Type | What is injected |
 |---|---|---|
 | `state` | `AgentState \| None` | Current graph state |
 | `tool_call_id` | `str \| None` | ID of this specific tool call |
 | `config` | `dict` | Current execution config (includes `thread_id`, `user_id`, etc.) |
+| `emit` | stream emitter | Emit custom stream chunks |
+| `generated_id` | `str` | A newly generated ID from the graph's ID generator |
+| `context_manager` | context manager | The configured message context manager |
+| `publisher` | `BasePublisher` | The graph's event publisher |
+| `checkpointer` | `BaseCheckpointer` | The configured checkpointer |
+| `store` | `BaseStore` | The configured memory store |
+| `task_manager` | `BackgroundTaskManager` | Fire-and-forget task manager |
+
+The full set is `INJECTABLE_PARAMS` in `agentflow/core/graph/tool_node/constants.py`. Services can also be injected with `Inject[...]` defaults; see [Dependency injection](/docs/concepts/dependency-injection).
 
 ```python
 from agentflow.core.state import AgentState
 
-def get_weather(
-    location: str,                        # from model tool call
-    state: AgentState | None = None,       # injected — invisible to model
-    tool_call_id: str | None = None,       # injected — invisible to model
-    config: dict | None = None,            # injected — invisible to model
+def lookup_order(
+    order_id: str,                        # from model tool call
+    state: AgentState | None = None,       # injected, invisible to model
+    tool_call_id: str | None = None,       # injected, invisible to model
+    config: dict | None = None,            # injected, invisible to model
 ) -> str:
-    """Get weather for a location."""
+    """Look up the status of a customer order."""
     user = config.get("user_id", "anon") if config else "anon"
-    return f"Sunny in {location} (user: {user})"
+    return f"Order {order_id}: shipped (requested by {user})"
 ```
 
 ### Returning state updates from a tool
@@ -219,7 +229,7 @@ def select_city(city: str) -> ToolResult:
 Connect to an MCP server and expose its tools alongside local functions:
 
 ```bash
-pip install "10xscale-agentflow[mcp]"
+pip install "10xgraph[mcp]"
 ```
 
 ```python
@@ -239,7 +249,7 @@ tool_node = ToolNode(
 
 ## The `@tool` decorator
 
-Use `@tool` to attach metadata to any function. Metadata does not change injection behavior — it enriches the schema the model receives:
+Use `@tool` to attach metadata to any function. Metadata does not change injection behavior. It enriches the schema the model receives:
 
 ```python
 from agentflow.utils import tool
@@ -285,7 +295,7 @@ def route(state: AgentState) -> str:
     # Model wants to call a tool
     if hasattr(last, "tools_calls") and last.tools_calls and last.role == "assistant":
         return "TOOL"
-    # Tool result came back — go back to agent for final answer
+    # Tool result came back, so go back to agent for final answer
     if last.role == "tool":
         return "MAIN"
     return END
@@ -295,7 +305,7 @@ def route(state: AgentState) -> str:
 from agentflow.core.graph import StateGraph, Agent, ToolNode
 from agentflow.utils import END
 
-tool_node = ToolNode([get_weather, search_web])
+tool_node = ToolNode([lookup_order, refund_order])
 agent = Agent(model="gemini-2.5-flash", provider="google", tool_node=tool_node)
 
 graph = StateGraph()
@@ -336,11 +346,26 @@ This is useful when you want to share one `ToolNode` across multiple agents.
 
 ---
 
+## Execution methods compared
+
+| Method | Returns | Use when |
+|---|---|---|
+| `compiled.invoke(input, config)` | Final `AgentState` | You only need the end result |
+| `compiled.stream(input, config)` | Sync generator of `StreamChunk` | Sync context, real-time display |
+| `compiled.astream(input, config)` | Async generator of `StreamChunk` | Async context (FastAPI, WebSocket) |
+| `compiled.ainvoke(input, config)` | Awaitable `AgentState` | Async context, no streaming needed |
+
+Use `ainvoke` and `astream` inside an async context. `invoke` and `stream` are sync wrappers. See [Streaming](/docs/concepts/streaming) for chunk fields and events.
+
+For prebuilt agents, callbacks, `Command`, validators and background tasks, see [Callbacks and Command](/docs/concepts/callbacks-and-command), [Prebuilt agents and tools](/docs/concepts/prebuilt-agents-and-tools), [Security and validators](/docs/concepts/security-and-validators) and [Context ID and background tasks](/docs/concepts/context-id-background).
+
+---
+
 ## What you learned
 
 - `Agent` wraps a language model and handles system prompt templating.
 - `ToolNode` dispatches the tool calls returned by the model.
-- `state` and `tool_call_id` are injectable parameters that do not appear in the tool schema.
+- `state`, `tool_call_id`, `config` and other services are injectable parameters that do not appear in the tool schema.
 - The ReAct loop uses a conditional edge to route between `Agent` and `ToolNode`.
 
 ## Related concepts

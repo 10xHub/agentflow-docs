@@ -46,7 +46,7 @@ All standard Pydantic features work: validators, default factories, optional fie
 ```python
 from agentflow.core.graph import StateGraph
 
-# Pass the class — StateGraph instantiates it
+# Pass the class, StateGraph instantiates it
 graph = StateGraph(CustomerSupportState)
 
 # Or pass an instance with pre-populated defaults
@@ -130,7 +130,7 @@ A reducer controls how a field is updated when a node returns a new value.
 
 ### `add_messages` (used by `context`)
 
-The built-in `add_messages` reducer appends new messages to the list and deduplicates by message ID. It is already applied to `AgentState.context` — you do not need to apply it yourself unless you add a second message list field.
+The built-in `add_messages` reducer appends new messages to the list and deduplicates by message ID. It is already applied to `AgentState.context`, you do not need to apply it yourself unless you add a second message list field.
 
 ```python
 from typing import Annotated
@@ -210,7 +210,7 @@ print(result["messages"][-1].content)
 
 - Subclass `AgentState` to add typed, persisted application fields.
 - Node functions return dicts with only the changed fields; the reducer or default replace logic handles the rest.
-- `add_messages` is the only built-in reducer — it appends and deduplicates messages.
+- `add_messages` is the only built-in reducer, it appends and deduplicates messages.
 - `system_prompt` placeholders like `{field_name}` are interpolated from the state at runtime.
 - Pass initial field values in the `input_data` dict when calling `invoke()`.
 

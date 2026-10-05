@@ -1,5 +1,6 @@
 ---
 title: LLM Utilities
+seoTitle: "LLM utilities API reference (Python)"
 description: call_llm, create_llm_client, detect_provider, and the default LLM timeout controls exported from agentflow.core.llm.
 section: Reference
 group: Python library

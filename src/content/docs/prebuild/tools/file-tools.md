@@ -1,5 +1,6 @@
 ---
 title: File Tools
+seoTitle: "File tools: file_read, file_write, search"
 description: file_read, file_write, and file_search — workspace-scoped prebuilt tools for reading, writing, and searching files.
 section: Prebuilt
 group: Tools

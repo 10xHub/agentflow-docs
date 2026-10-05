@@ -1,5 +1,6 @@
 ---
 title: MCP Server
+seoTitle: "MCP server tutorial with FastMCP"
 description: Expose tools over Model Context Protocol using FastMCP so 10xGraph and other MCP clients can call them remotely.
 section: Tutorials
 group: From examples

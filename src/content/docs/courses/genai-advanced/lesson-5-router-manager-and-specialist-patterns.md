@@ -1,5 +1,6 @@
 ---
 title: "Lesson 5: Router, Manager, and Specialist Patterns"
+seoTitle: "Advanced lesson 5: router and specialists"
 description: Design multi-agent systems with routing, delegation, and coordination.
 section: Courses
 group: GenAI advanced

@@ -1,6 +1,6 @@
 ---
 title: How to send images and documents
-description: Task-oriented guide to sending images, PDFs, and other media to an agent from TypeScript using uploadFile, Message.withImage, Message.withFile, and Message.multimodal.
+description: "Send images, PDFs, and other media to an agent from TypeScript with uploadFile, Message.withImage, Message.withFile, and Message.multimodal."
 section: How-to guides
 group: TypeScript client
 order: 1020
@@ -57,7 +57,7 @@ Enforce `maxBytes` before uploading. The server rejects an oversized file, but c
 
 ## Step 2: Upload the file
 
-`uploadFile()` takes exactly one argument: a `File`, a `Blob`, or `{ data: Blob; filename: string }`. There are no options — no `purpose`, no MIME override. The server infers the type from the upload itself.
+`uploadFile()` takes exactly one argument: a `File`, a `Blob`, or `{ data: Blob; filename: string }`. There are no options, no `purpose`, no MIME override. The server infers the type from the upload itself.
 
 ```ts
 // Browser: straight from a file input
@@ -90,7 +90,7 @@ Read `upload.data.file_id`, not `upload.file_id`.
 ### One image
 
 ```ts
-import { Message } from '@10xscale/agentflow-client';
+import { Message } from '10xgraph-client';
 
 const msg = Message.withFile(
   'What is shown in this image?',
@@ -103,7 +103,7 @@ const msg = Message.withFile(
 
 ### One document
 
-Same call — the MIME type steers it:
+Same call, the MIME type steers it:
 
 ```ts
 const upload = await client.uploadFile(pdfFile);
@@ -125,14 +125,14 @@ If the image is already on a URL the server can fetch, skip the upload entirely:
 const msg = Message.withImage('Describe this', 'https://example.com/photo.jpg');
 ```
 
-`withImage()` also accepts a `data:` URI for inline base64. Prefer `uploadFile()` plus `withFile()` for anything user-supplied — it keeps the request small and gives the server a stable id to enforce access control against.
+`withImage()` also accepts a `data:` URI for inline base64. Prefer `uploadFile()` plus `withFile()` for anything user-supplied, it keeps the request small and gives the server a stable id to enforce access control against.
 
 ### Several files, or a specific block order
 
 `Message.multimodal()` takes the blocks verbatim, so you control the ordering the model sees:
 
 ```ts
-import { Message, TextBlock, ImageBlock, MediaRef } from '@10xscale/agentflow-client';
+import { Message, TextBlock, ImageBlock, MediaRef } from '10xgraph-client';
 
 const imageRef = (fileId: string, mime: string) => {
   const media = new MediaRef('file_id');
@@ -149,7 +149,7 @@ const msg = Message.multimodal([
 ]);
 ```
 
-The `MediaRef` constructor is positional — `(kind, url, file_id, data_base64, mime_type, ...)` — so building it by field name, as above, is far less error-prone than `new MediaRef('file_id', undefined, id, undefined, mime)`.
+The `MediaRef` constructor is positional, `(kind, url, file_id, data_base64, mime_type, ...)`, so building it by field name, as above, is far less error-prone than `new MediaRef('file_id', undefined, id, undefined, mime)`.
 
 ### Adding media to a message you already have
 
@@ -187,7 +187,7 @@ console.log(result.messages.at(-1)?.text());
 Nothing about the message changes; only the call does:
 
 ```ts
-import { StreamEventType } from '@10xscale/agentflow-client';
+import { StreamEventType } from '10xgraph-client';
 
 const stream = client.stream([msg], {
   config: { thread_id: 'vision-demo-1' },
@@ -221,7 +221,7 @@ await client.invoke([followUp], { config: { thread_id: 'vision-demo-1' } });
 
 Because the thread is checkpointed, the earlier turn is already in context; re-attaching the file just makes sure the model can look at the pixels again rather than relying on its own earlier description.
 
-To render the file back in your own UI, use `getFileAccessUrl()` rather than caching `upload.data.url` — on cloud-backed storage that URL is signed and expires:
+To render the file back in your own UI, use `getFileAccessUrl()` rather than caching `upload.data.url`, on cloud-backed storage that URL is signed and expires:
 
 ```ts
 const { data } = await client.getFileAccessUrl(upload.data.file_id);
@@ -233,7 +233,7 @@ renderImage(data.url);   // data.expires_at is a UNIX timestamp when signed
 ## Complete example
 
 ```ts
-import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message } from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 

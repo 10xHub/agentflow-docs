@@ -1,5 +1,6 @@
 ---
 title: Streaming
+seoTitle: "Streaming agent responses with astream"
 description: How invoke, stream, and astream work; StreamChunk fields; ResponseGranularity; and how to consume SSE in TypeScript.
 section: Concepts
 group: In depth

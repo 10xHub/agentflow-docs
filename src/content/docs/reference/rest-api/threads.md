@@ -1,6 +1,7 @@
 ---
 title: Thread endpoints
-description: Reference for the thread state and messages endpoints.
+seoTitle: "Threads REST API reference"
+description: "Reference for the 10xGraph REST endpoints that read and write thread state and messages, with request fields, responses, and auth requirements."
 section: Reference
 group: REST API
 order: 1670

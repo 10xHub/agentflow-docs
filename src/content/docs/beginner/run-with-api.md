@@ -1,6 +1,7 @@
 ---
 title: Run with the API
-description: Expose your agent over HTTP using agentflow init and agentflow api.
+seoTitle: "Run your agent as an HTTP API"
+description: "Run your 10xGraph agent as an HTTP API: scaffold a project with 10xgraph init, start the server with 10xgraph api, and call your agent over HTTP."
 section: Beginner path
 order: 100
 label: Run with the API

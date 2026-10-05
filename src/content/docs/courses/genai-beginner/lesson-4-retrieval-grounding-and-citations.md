@@ -355,5 +355,5 @@ Continue to [Lesson 5: State, memory, threads, and streaming](/docs/courses/gena
 
 ### Or Explore
 
-- [Qdrant Memory Tutorial](/docs/tutorials/from-examples/qdrant-memory) — Vector store setup
+- [Memory Tutorial](/docs/tutorials/from-examples/memory) — Vector store setup
 - [Memory and Store concepts](/docs/concepts/memory-and-store) — Memory architecture

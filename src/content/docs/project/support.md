@@ -1,5 +1,6 @@
 ---
 title: Getting help
+seoTitle: "Getting help with 10xGraph"
 description: Where to ask questions, how to file a good bug report for 10xGraph, and what information to collect before you do.
 section: Project
 order: 2650

@@ -1,6 +1,6 @@
 ---
 title: Deploy on Kubernetes
-description: Generate a Deployment and Service with agentflow build --k8s, and configure grace periods, probes, and scaling so a rolling deploy never truncates an in-flight agent run.
+description: "Generate a Kubernetes Deployment and Service with 10xgraph build --k8s, and set grace periods, probes, and scaling so rolling deploys never cut off a run."
 section: How-to guides
 group: Production
 order: 820
@@ -13,7 +13,7 @@ and a stream open for minutes. That makes the default Kubernetes lifecycle
 hostile: a 30-second termination grace period kills a pod mid-run on every
 rolling deploy.
 
-`agentflow build --k8s` generates a manifest with those numbers already set
+`10xgraph build --k8s` generates a manifest with those numbers already set
 correctly.
 
 ## Prerequisites
@@ -29,7 +29,7 @@ correctly.
 ## Generate the manifest
 
 ```bash
-agentflow build --docker-compose --k8s --service-name my-agent --port 8000
+10xgraph build --docker-compose --k8s --service-name my-agent --port 8000
 ```
 
 This writes `k8s.yaml` next to the `Dockerfile`, containing a Deployment and a

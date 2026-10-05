@@ -1,5 +1,6 @@
 ---
 title: AudioAgent
+seoTitle: "AudioAgent: realtime audio agent"
 description: AudioAgent wraps a Gemini Live LiveAgent for realtime audio-to-audio sessions, driven via arealtime() or realtime().
 section: Prebuilt
 group: Agents

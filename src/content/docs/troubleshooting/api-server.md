@@ -142,7 +142,7 @@ same as no scopes.
 
 A `404` on `/v1/evals/*` means the server runs with `MODE=production`: the eval report viewer
 has no auth, so it is mounted only outside production. A `404` on `POST /v1/ag-ui` means
-[`ag_ui.enabled`](/docs/reference/api-cli/configuration#ag_ui) is not `true`. The threads,
+[`ag_ui.enabled`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability) is not `true`. The threads,
 store, and files routers are always mounted.
 
 A `1008` accompanied by an `error` event with `code: "not_live"` or `"not_authorized"` tells you

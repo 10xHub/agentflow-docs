@@ -1,5 +1,6 @@
 ---
 title: Skills
+seoTitle: "Skills API reference (Python)"
 description: SkillConfig, SkillMeta and SkillsRegistry — load Agent Skills (agentskills.io) into an Agent and let the model activate them on demand.
 section: Reference
 group: Python library

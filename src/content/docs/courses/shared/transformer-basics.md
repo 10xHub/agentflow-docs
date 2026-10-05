@@ -1,5 +1,6 @@
 ---
 title: Transformer Basics
+seoTitle: "Transformer basics for GenAI builders"
 description: Enough transformer architecture intuition to understand attention, context windows, and scaling implications for building GenAI systems.
 section: Courses
 group: Shared foundations

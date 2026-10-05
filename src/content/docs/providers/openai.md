@@ -1,6 +1,7 @@
 ---
 title: OpenAI
-description: Configure the OpenAI provider for GPT and reasoning models.
+seoTitle: "OpenAI provider: GPT models"
+description: "Configure the OpenAI provider in 10xGraph to run GPT and reasoning models, including the install extra, API key, and model settings."
 section: Learn more
 group: Providers
 order: 2090

@@ -1,12 +1,13 @@
 ---
 title: The Big Picture
-description: Overview of 10xGraph's three layers — the core Python library, the API/CLI server, and the TypeScript client SDK.
+seoTitle: 10xGraph architecture and core concepts
+description: "How 10xGraph fits together: a Python graph engine, a generated production server and a typed TypeScript client, plus the core execution model."
 section: Concepts
 order: 130
-updated: "2026-07-21"
+updated: "2026-10-06"
 ---
 
-10xGraph is a production-grade multi-agent framework: you wire Python functions and LLMs into a graph, compile it once, and the runtime handles state persistence, streaming, memory, auth, and observability — so you ship agents instead of plumbing.
+10xGraph is a Python framework that gives you the agent graph and the production server around it. You wire Python functions and LLMs into a graph and compile it once. The server layer is generated from that graph, and the runtime keeps runs correct under failure: tool calls are [replay-safe](/docs/concepts/replay-safe-tools), durable writes are versioned, and nodes and tools have timeouts.
 
 ---
 
@@ -14,15 +15,15 @@ updated: "2026-07-21"
 
 ```mermaid
 flowchart TB
-  subgraph "Python Library  (10xscale-agentflow)"
+  subgraph "Python library (10xgraph)"
     Graph[StateGraph · Agent · ToolNode]
     Storage[Checkpointer · Memory Store · Media Store]
   end
-  subgraph "API / CLI  (10xscale-agentflow-cli)"
-    CLI[agentflow CLI]
+  subgraph "API and CLI (10xgraph-api)"
+    CLI[10xgraph CLI]
     API[FastAPI Server]
   end
-  subgraph "TypeScript Client  (@10xscale/agentflow-client)"
+  subgraph "TypeScript client (10xgraph-client)"
     SDK[AgentFlowClient]
   end
   SDK -->|HTTP / SSE / WS| API
@@ -33,9 +34,11 @@ flowchart TB
 
 | Layer | Package | Role |
 |---|---|---|
-| Core library | `10xscale-agentflow` | Graph engine, agents, tools, state, storage |
-| API / CLI | `10xscale-agentflow-cli` | FastAPI server, `agentflow` CLI, auth, publishers |
-| TypeScript client | `@10xscale/agentflow-client` | Typed HTTP wrapper for browser and Node.js |
+| Core library | `10xgraph` | Graph engine, agents, tools, state, storage |
+| API / CLI | `10xgraph-api` | FastAPI server, `10xgraph` CLI, auth, authorization, rate limits, publishers |
+| TypeScript client | `10xgraph-client` | Typed HTTP wrapper for browser and Node.js |
+
+Python imports keep the old module name: `from agentflow...`.
 
 ---
 
@@ -66,7 +69,7 @@ The moving container passed from node to node. `AgentState` has three built-in f
 |---|---|---|
 | `context` | `list[Message]` | Live message list; appended to by every node via the `add_messages` reducer |
 | `context_summary` | `str \| None` | Optional summary text written by `SummaryContextManager` when old messages are trimmed |
-| `execution_meta` | `ExecMeta` | Internal runtime bookkeeping (current node, step count, interrupt status) — managed by the framework, not by user code |
+| `execution_meta` | `ExecMeta` | Internal runtime bookkeeping (current node, step count, interrupt status), managed by the framework, not by user code |
 
 ```python
 from agentflow.core.state import AgentState
@@ -96,7 +99,7 @@ async def my_node(state: MyState) -> Message:
     return Message.text_message(f"Hello {state.user_name}", role="assistant")
 ```
 
-The graph injects `state`, `config`, and any `Inject[T]` dependencies automatically — you never construct a node manually.
+The graph injects `state`, `config`, and any `Inject[T]` dependencies automatically. You never construct a node manually.
 
 ### Message → State → Node → State
 
@@ -115,9 +118,9 @@ flowchart LR
 Edges connect nodes. Two kinds:
 
 ```python
-graph.add_edge("A", "B")                          # static — always goes to B
-graph.add_conditional_edges("A", route_fn)         # dynamic — route_fn(state) returns node name
-graph.add_conditional_edges("A", route_fn, {       # mapped — route_fn returns a key
+graph.add_edge("A", "B")                          # static: always goes to B
+graph.add_conditional_edges("A", route_fn)         # dynamic: route_fn(state) returns node name
+graph.add_conditional_edges("A", route_fn, {       # mapped: route_fn returns a key
     "tool":  "TOOL",
     "done":  END,
 })
@@ -140,7 +143,7 @@ flowchart LR
 ```python
 from agentflow.core.graph import ToolNode
 
-tool_node = ToolNode([search, calculator])
+tool_node = ToolNode([lookup_order, refund_order])
 ```
 
 ---
@@ -159,7 +162,7 @@ agent = Agent(
 )
 ```
 
-`Agent` extends `BaseAgent` — you can subclass it to bring your own LLM or override the call logic entirely. See [Extensibility](/docs/concepts/extensibility).
+`Agent` extends `BaseAgent`. You can subclass it to bring your own LLM or override the call logic entirely. See [Extensibility](/docs/concepts/extensibility).
 
 ---
 
@@ -181,7 +184,7 @@ flowchart LR
   Define --> Compile --> Run
 ```
 
-The snippet below is illustrative — `route_fn`, `search`, and `calculator` are placeholders for your own routing logic and tool functions:
+The snippet below is illustrative: `route_fn`, `lookup_order`, and `refund_order` are placeholders for your own routing logic and tool functions:
 
 ```python
 from agentflow.core.graph import StateGraph, Agent, ToolNode
@@ -204,12 +207,12 @@ graph.add_edge("TOOL", "MAIN")       # tool results loop back to agent
 compiled = graph.compile()
 ```
 
-Execution — pass `messages` as the initial message list:
+Execution: pass `messages` as the initial message list:
 
 ```python
 from agentflow.core.state import Message
 
-input_state = {"messages": [Message.text_message("What is the weather in Paris?", role="user")]}
+input_state = {"messages": [Message.text_message("Where is order 1042?", role="user")]}
 config      = {"thread_id": "abc"}
 
 # sync
@@ -223,21 +226,21 @@ async for chunk in compiled.astream(input_state, config):
     print(chunk)
 ```
 
-Pass the same `thread_id` on the next call and the graph resumes exactly where it left off — the checkpointer handles it.
+Pass the same `thread_id` on the next call and the graph resumes where it left off. The checkpointer handles it, and it also records finished tool calls so a resumed run does not repeat them (see [Replay-safe tools](/docs/concepts/replay-safe-tools)).
 
 ---
 
 ## Prebuilt agents
 
-For common patterns you don't need to wire the graph manually. 10xGraph ships six prebuilt agents — `ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, and `SwarmAgent` — each exposing `.compile()` and returning a ready `CompiledGraph`. Full details and examples are on [Agents, Tools & Control](/docs/concepts/agents-tools-control).
+For common patterns you don't need to wire the graph manually. 10xGraph ships six prebuilt agents (`ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, and `SwarmAgent`), each exposing `.compile()` and returning a ready `CompiledGraph`. Full details and examples are on [Agents and Tools](/docs/concepts/agents-and-tools).
 
 ```python
 from agentflow.prebuilt.agent import ReactAgent
 
-# compile() returns a CompiledGraph — same API as the manual graph above
+# compile() returns a CompiledGraph, same API as the manual graph above
 compiled = ReactAgent(
     model="gpt-4o",
-    tools=[search, calculator],   # your tool functions
+    tools=[lookup_order, refund_order],   # your tool functions
 ).compile()
 ```
 
@@ -247,9 +250,10 @@ compiled = ReactAgent(
 
 | Page | What it covers |
 |---|---|
-| [Agents, Tools & Control](/docs/concepts/agents-tools-control) | ReAct loop, tool authoring, prebuilt agents, callbacks, validators, `Command` |
+| [Agents and Tools](/docs/concepts/agents-and-tools) | ReAct loop, tool authoring, prebuilt agents, callbacks, validators, `Command` |
 | [Memory](/docs/concepts/memory) | Three memory layers: running state, per-thread checkpointing, long-term vector store |
 | [Serving Agents](/docs/concepts/serving-agents) | FastAPI server, CLI, auth, authorization, publishers, production runtime |
 | [Connecting Clients](/docs/concepts/connecting-clients) | TypeScript SDK, streaming, remote tools |
-| [Extensibility](/docs/concepts/extensibility) | Every ABC you can subclass — 16 extension points |
-| [Quality & Observability](/docs/concepts/qa) | Unit testing, evaluation criteria, user simulation, observability hooks |
+| [Replay-safe tools](/docs/concepts/replay-safe-tools) | How a crashed run avoids executing a finished tool twice |
+| [Extensibility](/docs/concepts/extensibility) | Every ABC you can subclass |
+| [Quality & Observability](/docs/qa) | Unit testing, evaluation criteria, user simulation, observability hooks |

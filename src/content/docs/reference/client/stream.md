@@ -1,5 +1,6 @@
 ---
 title: "stream()"
+seoTitle: "stream() in the TypeScript client"
 description: Reference for the AgentFlowClient.stream() method — receive real-time streaming chunks from the agent.
 section: Reference
 group: TypeScript client

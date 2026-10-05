@@ -1,5 +1,6 @@
 ---
 title: Checkpointing
+seoTitle: "Checkpointing for production deployments"
 description: How to choose, configure, and troubleshoot checkpointers for development and production 10xGraph deployments.
 section: How-to guides
 group: Production
@@ -93,7 +94,7 @@ Why this is the production choice:
 
 `PgCheckpointer` keeps a bounded, per-thread history of state snapshots and
 prunes older ones automatically. Tune how many are retained with
-`state_history_limit` (default `20`; set `1` to keep only the current state) —
+`state_history_limit` (default `20`; set `1` to keep only the current state) -
 see [State history retention](/docs/how-to/python/set-up-checkpointing#state-history-retention-state_history_limit).
 
 ## Deployment topology

@@ -1,5 +1,6 @@
 ---
 title: Messages
+seoTitle: "Messages API reference (Python)"
 description: Message, ContentBlock types, MediaRef, TokenUsages — the wire format for all agent communication.
 section: Reference
 group: Python library
@@ -46,6 +47,7 @@ The top-level message object. All conversations are `list[Message]`.
 | `metadata` | `dict` | `{}` | Arbitrary key-value metadata. |
 | `usages` | `TokenUsages \| None` | `None` | Token usage for this message's LLM call. |
 | `raw` | `dict \| None` | `None` | The raw provider API response. |
+| `parsed_content` | `dict \| BaseModel \| None` | `None` | Structured output parsed by the provider converter when the agent uses `output_schema`. Read it in preference to parsing the text block yourself. |
 
 ### Constructors
 
@@ -217,15 +219,16 @@ Sent by the server to the TypeScript client when a tool needs to run in the brow
 The result of a tool call execution. Constructed by `ToolNode` and returned to the LLM.
 
 ```python
-ToolResultBlock(tool_call_id="call_abc", content="Sunny, 25°C", is_error=False)
+ToolResultBlock(call_id="call_abc", output={"order_id": "A1001", "status": "shipped"}, is_error=False)
 ```
 
 | Field | Type | Description |
 |---|---|---|
 | `type` | `"tool_result"` | Discriminator. |
-| `tool_call_id` | `str` | Matches the `ToolCallBlock.id` this is a response to. |
-| `content` | `str \| list \| dict` | The result returned by the tool. |
-| `is_error` | `bool` | `True` if the tool execution raised an exception. |
+| `call_id` | `str` | Matches the `ToolCallBlock.id` this is a response to. |
+| `output` | `Any` | The result returned by the tool (string, dict, `MediaRef` or a list of blocks). |
+| `is_error` | `bool` | `True` if the tool execution failed. Default `False`. |
+| `status` | `"completed" \| "failed" \| None` | Status of the tool call. |
 
 ---
 
@@ -236,19 +239,21 @@ Returned by reasoning models (`o1`, `o3`, Gemini thinking) to expose the model's
 | Field | Type | Description |
 |---|---|---|
 | `type` | `"reasoning"` | Discriminator. |
-| `thinking` | `str` | The reasoning/thinking text. |
-| `signature` | `str \| None` | Provider-specific signature for verifying thinking. |
+| `summary` | `str` | Summary of the reasoning. |
+| `details` | `list[str] \| None` | Detailed reasoning steps. |
 
 ---
 
 ### `AnnotationBlock`
 
-Structured annotation/citation attached to a text response.
+Structured annotation or citation attached to a text response.
 
 | Field | Type | Description |
 |---|---|---|
 | `type` | `"annotation"` | Discriminator. |
-| `annotation` | `AnnotationRef` | The annotation reference. |
+| `kind` | `"citation" \| "note"` | Kind of annotation. Default `"citation"`. |
+| `refs` | `list[AnnotationRef]` | Annotation references. |
+| `spans` | `list[tuple[int, int]] \| None` | Spans covered by the annotation. |
 
 ---
 
@@ -259,8 +264,9 @@ Represents an error that occurred during execution.
 | Field | Type | Description |
 |---|---|---|
 | `type` | `"error"` | Discriminator. |
-| `error` | `str` | Error message. |
+| `message` | `str` | Error message. |
 | `code` | `str \| None` | Optional error code. |
+| `data` | `dict \| None` | Additional error data. |
 
 ---
 

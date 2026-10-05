@@ -61,7 +61,7 @@ System messages (role `"system"`) are **always kept**, regardless of `max_messag
 
 ## Write a custom context manager
 
-`MessageContextManager` covers most cases. If you need different logic — for example, token-based trimming or summarisation — subclass `BaseContextManager`:
+`MessageContextManager` covers most cases. If you need different logic, for example, token-based trimming or summarisation, subclass `BaseContextManager`:
 
 ```python
 from agentflow.core.state import BaseContextManager, AgentState

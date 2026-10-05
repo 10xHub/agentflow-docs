@@ -1,5 +1,6 @@
 ---
 title: Graceful Shutdown
+seoTitle: "Graceful shutdown tutorial for services"
 description: Build a long-running 10xGraph service that handles SIGINT and SIGTERM cleanly, protects initialization and cleanup, and closes graph resources safely.
 section: Tutorials
 group: From examples

@@ -1,6 +1,7 @@
 ---
 slug: project/upgrade-to-1.0
 title: Upgrade to 1.0
+seoTitle: "Upgrade 10xGraph to 1.0: breaking changes"
 description: Migration guide from 10xGraph 0.8 and 0.9 to 1.0, covering the four breaking changes and the new defaults that change runtime behaviour.
 section: Project
 order: 2620
@@ -9,7 +10,7 @@ updated: "2026-07-21"
 ---
 
 1.0 is the first release covered by the [deprecation
-policy](/changelog#versioning-policy). It contains four breaking changes and
+policy](/changelog). It contains four breaking changes and
 several new defaults that change runtime behaviour without changing any API you
 call. Work through this page before upgrading a running deployment.
 

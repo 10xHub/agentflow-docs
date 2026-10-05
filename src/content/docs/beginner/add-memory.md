@@ -1,6 +1,7 @@
 ---
 title: Add Memory
-description: Persist conversation state across calls using InMemoryCheckpointer.
+seoTitle: "Add memory with InMemoryCheckpointer"
+description: "Add memory to a 10xGraph agent by compiling the graph with InMemoryCheckpointer, so conversation state persists across calls on the same thread."
 section: Beginner path
 order: 90
 label: Add Memory

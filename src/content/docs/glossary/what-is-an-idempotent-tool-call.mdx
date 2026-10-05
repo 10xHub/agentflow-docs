@@ -1,0 +1,80 @@
+---
+title: What Is an Idempotent Tool Call?
+seoTitle: "What is an idempotent tool call?"
+description: An idempotent tool call has the same effect whether it runs once or many times. See why agents need it, how idempotency keys work and how 10xGraph helps.
+section: Learn more
+group: Glossary
+order: 2230
+label: What is an idempotent tool call?
+updated: "2026-10-06"
+faq:
+  - q: What is an idempotency key?
+    a: An idempotency key is a unique value a client sends with a request. The server stores the result under that key and returns the stored result if it sees the same key again, instead of repeating the operation. Many payment APIs support one.
+  - q: Is a read-only tool automatically idempotent?
+    a: Calling it repeatedly has no side effects, so repeating it is safe. Results can still differ between calls if the underlying data changes, but nothing is duplicated.
+  - q: Does 10xGraph make my tools idempotent?
+    a: No. It stops a recorded tool call from being executed again on replay, which protects most crash cases. It cannot cover a crash before a tool returns, so tools with external side effects should still pass an idempotency key.
+  - q: How do I choose an idempotency key for a tool call?
+    a: Derive it from stable inputs that identify the intended action, such as the order id and refund reason, or the thread and tool call id. Do not generate a fresh random value inside the tool, because a retry would then produce a different key.
+---
+
+**An idempotent tool call is a tool call whose effect is the same whether it runs once or several times with the same input.** Reading an order is idempotent. Sending a refund is not, unless it carries an identifier that lets the receiving system recognize and ignore a repeat. Agents need this because tool calls get retried and replayed.
+
+## Why does it matter for agents?
+
+Agents repeat tool calls more often than ordinary code does, for several reasons.
+
+- **Crash and resume.** A run that dies mid-step is resumed by re-running that step, which repeats its tool calls. See [what durable execution is](/docs/glossary/what-is-durable-execution).
+- **Retries.** Network timeouts and 5xx responses lead callers to retry. A timeout does not tell you whether the first attempt succeeded.
+- **Model behavior.** A model may issue the same call twice in a conversation, for example after losing track of an earlier result.
+- **Parallel calls.** A model can emit several calls in one response, and duplicates are possible.
+
+If the tool moves money or sends a message, any of these produces a duplicate effect.
+
+## Which tools are naturally idempotent?
+
+| Tool | Idempotent? | Why |
+|---|---|---|
+| `lookup_order(order_id)` | Yes | Read only |
+| `set_order_status(order_id, "shipped")` | Yes | Setting the same value again changes nothing |
+| `refund_order(order_id, amount)` | No | Each call moves money again |
+| `send_email(to, body)` | No | Each call sends another email |
+| `create_ticket(title)` | No | Each call creates another ticket |
+
+Operations that set a value are usually idempotent. Operations that append, increment or trigger an external action are not.
+
+## How do you make a tool idempotent?
+
+1. **Use an idempotency key.** Send a stable key with the request. The service stores the result and returns it for repeats. Stripe, for example, documents an `Idempotency-Key` header for this purpose.
+2. **Check before acting.** Look up whether the effect already exists, such as a refund for this order, and skip if it does. This needs care under concurrency, because check-then-act can race.
+3. **Use a uniqueness constraint.** Store the action with a unique key in your own database, so a second insert fails instead of duplicating.
+4. **Prefer set over increment.** Design operations to state the desired outcome, not a delta.
+
+Derive the key from stable inputs. A key generated randomly inside the tool changes on every retry and protects nothing.
+
+```python
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund an order once, even if the call is repeated."""
+    key = f"refund:{order_id}:{amount}"
+    # Pass `key` as the idempotency key to your payment provider's refund call.
+    return f"Refunded {amount:.2f} for order {order_id} (key {key})"
+```
+
+## How does 10xGraph help?
+
+10xGraph does not rewrite your tools. It adds a record around each call. When a run is replayed after a crash, the checkpointer's ledger is checked before a tool is invoked. The key is the issuing assistant message id plus the `tool_call_id`, so reused ids such as `call_1` do not collide across turns. A call that already finished is not executed again, and its recorded result is returned to the model. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
+
+This covers the common case, a crash after a tool returned. It does not cover a crash while the tool is still running, the short gap before the record is written, or a timeout that cancels a tool after the provider acted. For those, the tool itself must be idempotent. Treat the ledger and idempotency keys as two layers: the ledger prevents most repeats cheaply, and the key makes the remaining repeats harmless.
+
+The ledger requires a checkpointer that implements it. `PgCheckpointer` stores it durably in PostgreSQL. `InMemoryCheckpointer` keeps it only for the life of the process.
+
+## Next steps
+
+<CardGrid>
+
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="The tool ledger, its limits and how to enable it." eyebrow="Concept" />
+<LinkCard title="Durable execution" href="/docs/glossary/what-is-durable-execution" description="How agents resume after a crash." eyebrow="Glossary" />
+<LinkCard title="Use the tool decorator" href="/docs/how-to/python/use-tool-decorator" description="Define tools with schemas and metadata." eyebrow="Guide" />
+<LinkCard title="Add human approval" href="/docs/how-to/python/add-human-approval" description="Pause before a risky tool runs." eyebrow="Guide" />
+
+</CardGrid>

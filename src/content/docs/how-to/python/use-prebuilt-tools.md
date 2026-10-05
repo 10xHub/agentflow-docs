@@ -1,6 +1,6 @@
 ---
 title: How to use prebuilt tools
-description: Guide to fetch_url, file_read/write/search, safe_calculator, google_web_search, vertex_ai_search, memory tools, and create_handoff_tool from agentflow.prebuilt.tools.
+description: "Use the prebuilt tools in agentflow.prebuilt.tools: fetch_url, file tools, safe_calculator, web search, memory tools, and create_handoff_tool."
 section: How-to guides
 group: Python library
 order: 610

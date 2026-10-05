@@ -1,6 +1,7 @@
 ---
 title: Backup and restore
-description: What 10xGraph actually persists, how to back up the Postgres tables that hold threads and state, and how to restore or roll back without corrupting a running deployment.
+seoTitle: "Back up and restore 10xGraph deployments"
+description: "What 10xGraph persists, how to back up the Postgres tables that hold threads and state, and how to restore or roll back a running deployment safely."
 section: How-to guides
 group: Production
 order: 830

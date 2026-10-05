@@ -8,7 +8,7 @@ label: Custom nodes
 updated: "2026-05-24"
 ---
 
-A graph node does not have to be an `Agent` or a `ToolNode`. Any plain Python function — sync or async — can be registered as a node. This is the lower-level building block for custom logic, pre-processing, routing, side effects, or anything that does not need an LLM call.
+A graph node does not have to be an `Agent` or a `ToolNode`. Any plain Python function, sync or async, can be registered as a node. This is the lower-level building block for custom logic, pre-processing, routing, side effects, or anything that does not need an LLM call.
 
 ---
 
@@ -46,7 +46,7 @@ The runtime inspects the function signature and provides two parameters by name,
 
 | Parameter | Type | What it contains |
 |---|---|---|
-| `state` | `AgentState` | The current graph state — messages, context, custom fields. |
+| `state` | `AgentState` | The current graph state - messages, context, custom fields. |
 | `config` | `dict` | Runtime config: `thread_id`, `user_id`, and any keys you passed to `invoke()`. |
 
 Declare only the ones you need. A node that only reads `config` can omit `state` entirely, and vice versa.
@@ -82,7 +82,7 @@ A node function can return any of the following:
 ```python
 from agentflow.core.state import AgentState, Message
 
-# Return a string — wrapped automatically
+# Return a string, wrapped automatically
 def node_str(state: AgentState, config: dict) -> str:
     return "Processing complete."
 
@@ -110,7 +110,7 @@ def node_state(state: AgentState, config: dict) -> AgentState:
 
 If your node calls an LLM directly you have three options.
 
-**Option 1 — return a `str`:** simplest; the framework wraps it as an assistant message.
+**Option 1, return a `str`:** simplest; the framework wraps it as an assistant message.
 
 ```python
 import openai
@@ -124,7 +124,7 @@ async def call_llm(state: AgentState, config: dict) -> str:
     return response.choices[0].message.content
 ```
 
-**Option 2 — build a `Message` yourself:** gives full control over content blocks, role, and metadata.
+**Option 2, build a `Message` yourself:** gives full control over content blocks, role, and metadata.
 
 ```python
 from agentflow.core.state import Message
@@ -141,7 +141,7 @@ async def call_llm_message(state: AgentState, config: dict) -> Message:
     )
 ```
 
-**Option 3 — use `ModelResponseConverter`:** lets you hand the raw SDK response to 10xGraph's built-in converters so tool calls, content blocks, and metadata are normalized automatically.
+**Option 3, use `ModelResponseConverter`:** lets you hand the raw SDK response to 10xGraph's built-in converters so tool calls, content blocks, and metadata are normalized automatically.
 
 ```python
 from agentflow.runtime.adapters.llm.model_response_converter import ModelResponseConverter
@@ -162,7 +162,7 @@ The framework awaits `ModelResponseConverter.invoke()` internally and appends th
 
 ## Requesting framework services via InjectQ
 
-For anything beyond `state` and `config` — checkpointer, store, publisher, context manager, background task manager — use `Inject[T]` as the parameter default. The DI container resolves the dependency automatically at call time.
+For anything beyond `state` and `config`, checkpointer, store, publisher, context manager, background task manager, use `Inject[T]` as the parameter default. The DI container resolves the dependency automatically at call time.
 
 ```python
 from injectq import Inject
@@ -178,12 +178,12 @@ async def persist_result(
     store: BaseStore = Inject[BaseStore],
     publisher: BasePublisher = Inject[BasePublisher],
 ) -> dict:
-    # checkpointer, store, and publisher are resolved by the container —
+    # checkpointer, store, and publisher are resolved by the container -
     # you never pass them manually.
-    await store.aput(
-        namespace=("results", config["user_id"]),
-        key=config["thread_id"],
-        value={"count": len(state.context)},
+    await store.astore(
+        config,
+        content=f"Thread {config['thread_id']} has {len(state.context)} messages.",
+        category="results",
     )
     return {}
 ```
@@ -199,7 +199,7 @@ async def persist_result(
 | `task_manager` | `BackgroundTaskManager` | `Inject[BackgroundTaskManager]` |
 | `generated_id` | `str` | `Inject[...]` or `container.try_get("generated_id")` |
 
-The framework registers all of these automatically when `compile()` is called. If a service was not configured (e.g. no store passed to `compile()`), the injected value is `None` — guard accordingly.
+The framework registers all of these automatically when `compile()` is called. If a service was not configured (e.g. no store passed to `compile()`), the injected value is `None`, guard accordingly.
 
 For your own services, bind them first:
 
@@ -260,11 +260,11 @@ def router(state: AgentState, config: dict) -> Command:
     return Command(goto=END)
 ```
 
-Use `Command` for exceptional branching. For normal routing, prefer `add_conditional_edges` — it is easier to visualize and test.
+Use `Command` for exceptional branching. For normal routing, prefer `add_conditional_edges`, it is easier to visualize and test.
 
 ---
 
-## Sync vs async — quick reference
+## Sync vs async, quick reference
 
 ```python
 # Both are valid.
@@ -342,7 +342,7 @@ print(result["messages"][-1].content)
 
 ## What you learned
 
-- Any Python function (sync or async) can be a graph node — no class required.
+- Any Python function (sync or async) can be a graph node, no class required.
 - The runtime auto-injects `state` and `config` by parameter name.
 - Framework services (checkpointer, store, publisher, etc.) are requested via `Inject[T]` defaults.
 - Your own services are registered with `InjectQ.get_instance().bind_instance(...)` and injected the same way.
@@ -357,8 +357,8 @@ Both are valid graph nodes and share the same execution path. The difference is 
 | | `Agent` class | Custom node |
 |---|---|---|
 | **LLM call** | Handled internally | You make the call (or skip it) |
-| **Message conversion** | Automatic — raw SDK response normalized to `Message` | Your responsibility; return `str`, `Message`, or `ModelResponseConverter` |
-| **Tool call loop** | Built-in — detects tool calls, routes to `ToolNode` | Manual |
+| **Message conversion** | Automatic - raw SDK response normalized to `Message` | Your responsibility; return `str`, `Message`, or `ModelResponseConverter` |
+| **Tool call loop** | Built-in - detects tool calls, routes to `ToolNode` | Manual |
 | **System prompt** | Declared at construction, supports `{state_field}` interpolation | You compose the prompt |
 | **Context trimming** | `trim_context=True` | Manual |
 | **Retry / fallback** | `retry_config`, `fallback_models` built in | Manual |
@@ -377,11 +377,11 @@ Both are valid graph nodes and share the same execution path. The difference is 
 
 ### When to use a custom node
 
-- **Pre/post-processing** — enrich state, validate input, log output, write to a database.
-- **Routing** — inspect state and return `Command` to choose the next node dynamically.
-- **Side effects** — publish an event, send a notification, update an external system.
-- **Custom LLM integration** — call a provider `Agent` does not support, or apply prompt logic too complex for `system_prompt` interpolation.
-- **Non-LLM steps** — retrieve documents, run a calculation, call an external API.
+- **Pre/post-processing**, enrich state, validate input, log output, write to a database.
+- **Routing**, inspect state and return `Command` to choose the next node dynamically.
+- **Side effects**, publish an event, send a notification, update an external system.
+- **Custom LLM integration**, call a provider `Agent` does not support, or apply prompt logic too complex for `system_prompt` interpolation.
+- **Non-LLM steps**, retrieve documents, run a calculation, call an external API.
 
 ### Quick decision
 
@@ -399,7 +399,7 @@ Does this node need to call an LLM?
 
 ## Next steps
 
-- [Dependency injection reference](/docs/how-to/python/use-dependency-injection) — full guide to InjectQ bindings.
-- [Build a graph](/docs/how-to/python/build-a-graph) — wire custom nodes into a full workflow.
-- [Configure Agent](/docs/how-to/python/configure-agent) — all `Agent` constructor options.
-- [Callbacks and Command](/docs/concepts/callbacks-and-command) — observe, validate, and intercept node execution.
+- [Dependency injection reference](/docs/how-to/python/use-dependency-injection), full guide to InjectQ bindings.
+- [Build a graph](/docs/how-to/python/build-a-graph), wire custom nodes into a full workflow.
+- [Configure Agent](/docs/how-to/python/configure-agent), all `Agent` constructor options.
+- [Callbacks and Command](/docs/concepts/callbacks-and-command), observe, validate, and intercept node execution.

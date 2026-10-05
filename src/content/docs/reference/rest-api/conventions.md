@@ -1,6 +1,6 @@
 ---
 title: Conventions and permissions
-description: The response envelope, authentication for HTTP and WebSocket routes, the full endpoint permission table, and the HTTP status codes the 10xGraph API server returns.
+description: "The 10xGraph REST API response envelope, HTTP and WebSocket authentication, the endpoint permission table, and the HTTP status codes the server returns."
 section: Reference
 group: REST API
 order: 1640

@@ -9,7 +9,7 @@ export const GET: APIRoute = async () => {
   const out: string[] = [
     `# ${SITE.name}`,
     '',
-    `> ${SITE.name} is an open-source Python framework for production multi-agent AI. You write the agent, and ${SITE.name} generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by ${SITE.org.name}. Formerly named ${SITE.formerName}.`,
+    `> ${SITE.name} is an open-source Python framework for production multi-agent AI. You write the agent, and ${SITE.name} generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by ${SITE.org.name}. Formerly named ${SITE.formerName}.`,
     '',
     `Current version: ${SITE.version}. Install: \`pip install 10xgraph 10xgraph-api\`. Source: ${SITE.github}`,
     '',

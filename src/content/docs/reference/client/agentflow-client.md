@@ -1,5 +1,6 @@
 ---
 title: "AgentFlowClient"
+seoTitle: "AgentFlowClient reference (TypeScript)"
 description: Complete reference for the AgentFlowClient class — the main entry point for calling 10xGraph from TypeScript or JavaScript.
 section: Reference
 group: TypeScript client
@@ -156,7 +157,7 @@ See [`reference/client/files`](/docs/reference/client/files) for full details.
 | `registerToolHandler(name, handler)` | `void` | Register the client-side implementation for a schema declared in server `agentflow.json`. |
 | `registerTool(registration)` | `void` | Compatibility form; schema metadata remains local and is not sent to the server. |
 
-See [`reference/client/tools`](/docs/reference/client/tools) for full details.
+See [Register remote tools](/docs/how-to/client/register-remote-tools) for full details.
 
 ---
 

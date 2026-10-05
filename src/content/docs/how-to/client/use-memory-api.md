@@ -7,7 +7,7 @@ order: 1000
 updated: "2026-07-21"
 ---
 
-The memory API stores information that persists across threads and sessions — user preferences, facts learned during conversations, and anything else the agent should remember long-term. This guide shows you how to store, search, and manage memories.
+The memory API stores information that persists across threads and sessions, user preferences, facts learned during conversations, and anything else the agent should remember long-term. This guide shows you how to store, search, and manage memories.
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
@@ -27,7 +27,7 @@ All memory operations require the `store` field to be configured in `agentflow.j
 Use `storeMemory()` to store any piece of information:
 
 ```ts
-import { MemoryType } from '@10xscale/agentflow-client';
+import { MemoryType } from '10xgraph-client';
 
 const response = await client.storeMemory({
   content: 'User prefers responses in French.',
@@ -49,7 +49,7 @@ Save `memory_id` if you need to update or delete the memory later.
 `searchMemory()` uses vector similarity to find memories that are semantically related to your query:
 
 ```ts
-import { MemoryType, RetrievalStrategy } from '@10xscale/agentflow-client';
+import { MemoryType, RetrievalStrategy } from '10xgraph-client';
 
 const results = await client.searchMemory({
   query: 'What language does the user prefer?',
@@ -61,7 +61,7 @@ const results = await client.searchMemory({
 });
 
 for (const r of results.data.results) {
-  console.log(`Score: ${r.score.toFixed(3)} — ${r.content}`);
+  console.log(`Score: ${r.score.toFixed(3)}, ${r.content}`);
 }
 ```
 
@@ -190,7 +190,7 @@ Choose the right `MemoryType` for each piece of information:
 | `DECLARATIVE` | Explicit facts stated directly by the user or administrator. |
 | `CUSTOM` | Domain-specific memory types unique to your application. |
 
-Using consistent types makes retrieval more accurate — `searchMemory` can filter by type.
+Using consistent types makes retrieval more accurate, `searchMemory` can filter by type.
 
 ---
 
@@ -218,7 +218,7 @@ The `distance_metric` option on `searchMemory()` controls how vector similarity 
 | `MANHATTAN` | L1 distance. Less common but supported for completeness. |
 
 ```ts
-import { RetrievalStrategy, DistanceMetric } from '@10xscale/agentflow-client';
+import { RetrievalStrategy, DistanceMetric } from '10xgraph-client';
 
 const results = await client.searchMemory({
   query: 'user preferences',
@@ -239,7 +239,7 @@ import {
   Message,
   MemoryType,
   RetrievalStrategy,
-} from '@10xscale/agentflow-client';
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 const THREAD_ID = 'user-abc-session';
@@ -301,7 +301,7 @@ console.log(result.messages);
 ## What you learned
 
 - `storeMemory()` requires `content`, `memory_type`, and `category`.
-- `searchMemory()` with `RetrievalStrategy.SIMILARITY` does vector search — the store must support embeddings.
+- `searchMemory()` with `RetrievalStrategy.SIMILARITY` does vector search, the store must support embeddings.
 - Use memory search results to build a system prompt that gives the agent long-term context.
 - `forgetMemories()` bulk-deletes by type, category, or filter.
 

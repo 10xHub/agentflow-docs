@@ -126,6 +126,6 @@ return Command(goto=END, graph=Command.PARENT)
 | Error | Cause | Fix |
 |---|---|---|
 | Agent keeps calling `transfer_to_X` but never moves | Target node name doesn't exist in the graph. | Verify `agent_name` matches an `add_node` call exactly. |
-| Handoff tool is actually *executed* (logs show "should have been intercepted") | Node handler is not the framework's built-in handler. | Use `Agent`/`ToolNode` — don't replace the node execution logic. |
+| Handoff tool is actually *executed* (logs show "should have been intercepted") | Node handler is not the framework's built-in handler. | Use `Agent`/`ToolNode` - don't replace the node execution logic. |
 | Routing loop (agents keep handing off to each other) | No base-case conditional edge to `END`. | Add a final `END` condition on at least one agent's routing function. |
 | `Command.goto` is ignored | Returned from a plain `Agent` node instead of a custom node. | Only return `Command` from custom node functions, not from `Agent` instances. |

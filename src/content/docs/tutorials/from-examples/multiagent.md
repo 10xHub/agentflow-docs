@@ -1,5 +1,6 @@
 ---
 title: Multiagent
+seoTitle: "Multi-agent tutorial: routing nodes"
 description: Route work between multiple specialized nodes in a single 10xGraph graph using conditional edges and a coordinator-style main node.
 section: Tutorials
 group: From examples

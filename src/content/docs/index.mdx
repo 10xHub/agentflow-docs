@@ -1,12 +1,13 @@
 ---
 title: Introduction
+seoTitle: 10xGraph documentation and introduction
 description: What 10xGraph is, what it generates for you, and where to start. An open-source Python framework for production multi-agent AI.
 section: Get started
 order: 0
 updated: 2026-10-03
 ---
 
-10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, per-tool permissions, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL.
+10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL.
 
 ## What you write
 
@@ -17,7 +18,7 @@ A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for t
 | Piece | What you get |
 |---|---|
 | API server | REST, SSE streaming, WebSocket and realtime audio endpoints on port 8000 |
-| Security | JWT or custom auth, owner-only threads, per-tool permissions, rate limits |
+| Security | JWT or custom auth, owner-only threads, role scopes on every endpoint, rate limits |
 | Reliability | Replay-safe tools, versioned state writes, node and tool timeouts |
 | Deployment | Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service |
 
@@ -28,7 +29,7 @@ A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for t
 ## Where to go next
 
 <CardGrid>
-<LinkCard eyebrow="5 min" title="Quickstart" href="/docs/get-started/first-agent" description="Build an agent with a tool, run it, then serve it over HTTP." />
+<LinkCard eyebrow="Get started" title="Quickstart" href="/docs/get-started/first-agent" description="Build an agent with a tool, run it, then serve it over HTTP." />
 <LinkCard eyebrow="Get started" title="Project structure" href="/docs/get-started/project-structure" description="Every file the production template generates and what it does." />
 <LinkCard eyebrow="Concept" title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How a resumed run skips tools that already finished." />
 <LinkCard eyebrow="Concept" title="Memory: hot and cold" href="/docs/concepts/memory" description="Redis for the hot path, PostgreSQL for durable history." />

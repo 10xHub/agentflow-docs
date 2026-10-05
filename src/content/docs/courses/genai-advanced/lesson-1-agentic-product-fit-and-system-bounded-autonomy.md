@@ -1,5 +1,6 @@
 ---
 title: "Lesson 1: Agentic Product Fit and System Boundaries"
+seoTitle: "Advanced lesson 1: product fit and boundaries"
 description: Learn when to use deterministic workflows, single agents, or multi-agent systems.
 section: Courses
 group: GenAI advanced

@@ -8,7 +8,7 @@ label: Publishers
 updated: "2026-07-01"
 ---
 
-Publishers emit structured `EventModel` events during graph execution — node starts and ends, tool calls, streaming tokens, state updates, and errors. They are optional: graphs run without them. Add a publisher when you need to observe, audit, or forward execution events to external systems.
+Publishers emit structured `EventModel` events during graph execution, node starts and ends, tool calls, streaming tokens, state updates, and errors. They are optional: graphs run without them. Add a publisher when you need to observe, audit, or forward execution events to external systems.
 
 ---
 
@@ -17,9 +17,9 @@ Publishers emit structured `EventModel` events during graph execution — node s
 | Class | Transport | Install extra |
 |---|---|---|
 | `ConsolePublisher` | `print()` to stdout | none (built-in) |
-| `RedisPublisher` | Redis Pub/Sub or Redis Streams | `pip install 10xscale-agentflow[redis]` |
-| `KafkaPublisher` | Kafka topic via `aiokafka` | `pip install 10xscale-agentflow[kafka]` |
-| `RabbitMQPublisher` | RabbitMQ exchange via `aio-pika` | `pip install 10xscale-agentflow[rabbitmq]` |
+| `RedisPublisher` | Redis Pub/Sub or Redis Streams | `pip install 10xgraph[redis]` |
+| `KafkaPublisher` | Kafka topic via `aiokafka` | `pip install 10xgraph[kafka]` |
+| `RabbitMQPublisher` | RabbitMQ exchange via `aio-pika` | `pip install 10xgraph[rabbitmq]` |
 | `CompositePublisher` | Fan-out to multiple publishers | none (built-in) |
 | `OtelPublisher` | OpenTelemetry traces | install `opentelemetry-*` packages |
 
@@ -35,7 +35,7 @@ Prints every event to stdout. Good for debugging locally. This publisher is opt-
 from agentflow.runtime.publisher import ConsolePublisher
 from agentflow.core.graph import StateGraph
 
-# Default — writes to stdout
+# Default, writes to stdout
 publisher = ConsolePublisher()
 
 # Route through the logging system
@@ -51,7 +51,7 @@ Do not use `ConsolePublisher` in production. Use a real transport (`RedisPublish
 
 ## RedisPublisher
 
-Publishes events as JSON to a Redis channel or stream. Requires `pip install 10xscale-agentflow[redis]`.
+Publishes events as JSON to a Redis channel or stream. Requires `pip install 10xgraph[redis]`.
 
 ### Pub/Sub mode (default)
 
@@ -116,7 +116,7 @@ publisher = RedisPublisher({
 
 ## KafkaPublisher
 
-Publishes events to a Kafka topic. Requires `pip install 10xscale-agentflow[kafka]`.
+Publishes events to a Kafka topic. Requires `pip install 10xgraph[kafka]`.
 
 ```python
 from agentflow.runtime.publisher import KafkaPublisher
@@ -148,7 +148,7 @@ graph = StateGraph(publisher=publisher)
 
 ## RabbitMQPublisher
 
-Publishes events to a RabbitMQ exchange. Requires `pip install 10xscale-agentflow[rabbitmq]`.
+Publishes events to a RabbitMQ exchange. Requires `pip install 10xgraph[rabbitmq]`.
 
 ```python
 from agentflow.runtime.publisher import RabbitMQPublisher

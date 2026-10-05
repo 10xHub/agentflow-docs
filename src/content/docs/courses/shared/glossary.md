@@ -1,6 +1,7 @@
 ---
 title: Glossary
-description: Key terms and definitions used throughout the GenAI courses.
+seoTitle: "GenAI glossary: key terms for the courses"
+description: "Definitions of the key GenAI and agent terms used throughout the 10xGraph beginner and advanced courses, for quick reference while you work."
 section: Courses
 group: Shared foundations
 order: 2310

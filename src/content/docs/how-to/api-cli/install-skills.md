@@ -1,6 +1,7 @@
 ---
 title: Install Skills
-description: How to use agentflow skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot, and to validate skills against the Agent Skills specification.
+seoTitle: "Install coding-agent skills with the CLI"
+description: "Use 10xgraph skills to install bundled coding-agent skills for Codex, Claude, and GitHub Copilot, and validate them against the Agent Skills spec."
 section: How-to guides
 group: CLI
 order: 930
@@ -8,7 +9,7 @@ label: Install Skills
 updated: "2026-09-29"
 ---
 
-`agentflow skills` installs bundled 10xGraph coding-agent skills into your project. These skills teach Codex, Claude, or GitHub Copilot how to work with the 10xGraph framework in your codebase.
+`10xgraph skills` installs bundled 10xGraph coding-agent skills into your project. These skills teach Codex, Claude, or GitHub Copilot how to work with the 10xGraph framework in your codebase.
 
 ## What skills are
 
@@ -27,7 +28,7 @@ The bundled skill follows the [Agent Skills specification](https://agentskills.i
 List supported agents:
 
 ```bash
-agentflow skills --list
+10xgraph skills --list
 ```
 
 ## Quick install (interactive)
@@ -35,7 +36,7 @@ agentflow skills --list
 From the root of your project:
 
 ```bash
-agentflow skills
+10xgraph skills
 ```
 
 If stdin is a terminal, the CLI shows a numbered menu and prompts you to choose an agent. Enter a number (`1`, `2`, or `3`) or type the agent name.
@@ -45,9 +46,9 @@ If stdin is a terminal, the CLI shows a numbered menu and prompts you to choose 
 Skip the interactive menu by naming the agent:
 
 ```bash
-agentflow skills --agent claude
-agentflow skills --agent codex
-agentflow skills --agent github
+10xgraph skills --agent claude
+10xgraph skills --agent codex
+10xgraph skills --agent github
 ```
 
 The `--agent` flag accepts the agent name (case-insensitive) or its menu number.
@@ -55,7 +56,7 @@ The `--agent` flag accepts the agent name (case-insensitive) or its menu number.
 ## Install for all agents at once
 
 ```bash
-agentflow skills --all
+10xgraph skills --all
 ```
 
 This installs skills for Codex, Claude, and GitHub in a single command. Any agent that already has skills installed is skipped unless `--force` is also passed.
@@ -65,7 +66,7 @@ This installs skills for Codex, Claude, and GitHub in a single command. Any agen
 By default the skills are installed relative to the current working directory. Pass `--path` to target a different project root:
 
 ```bash
-agentflow skills --agent claude --path ./my-other-project
+10xgraph skills --agent claude --path ./my-other-project
 ```
 
 The CLI refuses to install skills at the filesystem root or directly in the home directory.
@@ -75,8 +76,8 @@ The CLI refuses to install skills at the filesystem root or directly in the home
 If skills are already installed, the command exits with an error to prevent accidental overwrites. Pass `--force` to replace the existing installation:
 
 ```bash
-agentflow skills --agent claude --force
-agentflow skills --all --force
+10xgraph skills --agent claude --force
+10xgraph skills --all --force
 ```
 
 ## What gets installed
@@ -91,8 +92,8 @@ A manifest file (`.agentflow-skill.json`) is written into the installed director
 
 Two artifacts are installed:
 
-1. `.github/instructions/agentflow.instructions.md` — a single instruction file read by GitHub Copilot
-2. `.github/skills/agentflow/` — the full skills folder with the same content as Codex and Claude
+1. `.github/instructions/agentflow.instructions.md`, a single instruction file read by GitHub Copilot
+2. `.github/skills/agentflow/`, the full skills folder with the same content as Codex and Claude
 
 A manifest is written into the skills folder.
 
@@ -116,8 +117,8 @@ Once installed, open your AI coding assistant and it can reference the 10xGraph 
 To update skills after a CLI upgrade, re-run the install with `--force`:
 
 ```bash
-pip install --upgrade 10xscale-agentflow-cli
-agentflow skills --agent claude --force
+pip install --upgrade 10xgraph-api
+10xgraph skills --agent claude --force
 ```
 
 ## Validate skills
@@ -125,8 +126,8 @@ agentflow skills --agent claude --force
 `--validate` checks skills you write yourself, for your coding agent or for an 10xGraph `Agent` (see the [Skills reference](/docs/reference/python/skills)), against the [Agent Skills specification](https://agentskills.io/specification):
 
 ```bash
-agentflow skills --validate ./.agents/skills
-agentflow skills --validate ./skills/pdf-processing --validate ./shared-skills
+10xgraph skills --validate ./.agents/skills
+10xgraph skills --validate ./skills/pdf-processing --validate ./shared-skills
 ```
 
 Each path can be a single skill directory or a folder whose subdirectories are skills. The command prints a table with each skill's status and lists every problem:
@@ -134,7 +135,7 @@ Each path can be a single skill directory or a folder whose subdirectories are s
 - **Errors** break the specification: missing or invalid `name` / `description`, a name that does not match its folder, unknown frontmatter fields, non-string `metadata` values, invalid YAML.
 - **Warnings** are recommendations: a `SKILL.md` body over 500 lines, or a `references/...`, `scripts/...` or `assets/...` path that does not exist.
 
-The command exits with status `1` when any skill has an error, so it can run in CI. It needs a `10xscale-agentflow` release that includes `agentflow.core.skills.validate_skill`.
+The command exits with status `1` when any skill has an error, so it can run in CI. It needs a `10xgraph` release that includes `agentflow.core.skills.validate_skill`.
 
 ## Troubleshooting
 
@@ -142,7 +143,7 @@ The command exits with status `1` when any skill has an error, so it can run in 
 - The target path already exists. Pass `--force` to overwrite.
 
 **"stdin is not interactive" error when no `--agent` is given**
-- You are running in a non-interactive environment (CI, pipe). Pass `--agent` explicitly: `agentflow skills --agent claude`.
+- You are running in a non-interactive environment (CI, pipe). Pass `--agent` explicitly: `10xgraph skills --agent claude`.
 
 **"Bundled skills template not found"**
-- The CLI installation may be corrupted. Try reinstalling: `pip install --force-reinstall 10xscale-agentflow-cli`.
+- The CLI installation may be corrupted. Try reinstalling: `pip install --force-reinstall 10xgraph-api`.

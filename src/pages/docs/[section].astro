@@ -25,7 +25,7 @@ interface Props {
 }
 const { section, docs, intro } = Astro.props;
 const Intro = intro ? (await render(intro)).Content : undefined;
-const { slug, blurb } = SECTION_INFO[section];
+const { slug, title: seoTitle, blurb } = SECTION_INFO[section];
 const pages = docs.filter((d) => d.data.section === section);
 // Pages grouped by their `group` frontmatter, in reading order; ungrouped pages come first.
 const grouped: { group?: string; items: Doc[] }[] = [];
@@ -59,7 +59,7 @@ const jsonLd = [
   },
 ];
 ---
-<BaseLayout title={`${section}: docs`} description={blurb} jsonLd={jsonLd}>
+<BaseLayout title={seoTitle} exactTitle description={blurb} jsonLd={jsonLd}>
   <div class="reader" data-lens="read">
     <aside class="reader-map">
       <button class="map-toggle" type="button" aria-expanded="false" aria-controls="docs-map">

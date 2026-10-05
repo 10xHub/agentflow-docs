@@ -1,5 +1,6 @@
 ---
 title: Lesson 7 Memory Checkpoints Artifacts And Durable Execution
+seoTitle: "Advanced lesson 7: memory and durability"
 description: Implement durable execution with memory patterns, checkpointing, and operational replay.
 section: Courses
 group: GenAI advanced

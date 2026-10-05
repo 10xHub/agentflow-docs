@@ -1,5 +1,6 @@
 ---
 title: MCP ReAct Agent
+seoTitle: "MCP ReAct agent tutorial: remote tools"
 description: Connect 10xGraph ToolNode to MCP servers so a ReAct graph can call remote tools as part of normal agent execution.
 section: Tutorials
 group: From examples

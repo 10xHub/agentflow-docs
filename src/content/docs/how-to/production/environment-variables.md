@@ -1,6 +1,7 @@
 ---
 title: Environment Variables
-description: Reference for every environment variable the 10xGraph server reads, including auth, CORS, logging, security headers, Snowflake IDs, OpenTelemetry, and media storage.
+seoTitle: "How to configure server environment variables"
+description: "Every environment variable the 10xGraph server reads: auth, CORS, logging, security headers, Snowflake IDs, OpenTelemetry, and media storage."
 section: How-to guides
 group: Production
 order: 760
@@ -25,7 +26,7 @@ Environment variables take precedence over defaults. The `.env` file pointed to 
 | `IS_DEBUG` | `bool` | `true` | Enables FastAPI debug mode. Set to `false` in production. |
 | `SUMMARY` | `string` | `"Agentflow Backend"` | One-line summary shown in Swagger UI. |
 | `LOGGER_NAME` | `string` | `"agentflow-cli"` | Name of the root logger the server writes under. Read at module import time, so it must be a process environment variable; setting it in `.env` is too late to take effect. |
-| `GRAPH_PATH` | `string` | `"agentflow.json"` | Path to the config file the ASGI app loads at import. `agentflow api --config` sets this for you. Set it explicitly when running the app under an external server such as Gunicorn. |
+| `GRAPH_PATH` | `string` | `"agentflow.json"` | Path to the config file the ASGI app loads at import. `10xgraph api --config` sets this for you. Set it explicitly when running the app under an external server such as Gunicorn. |
 
 The settings model allows extra fields, so unrecognised variables in the environment are tolerated rather than rejected at startup.
 
@@ -212,7 +213,7 @@ Restrict the allowlist before exposing uploads to untrusted callers:
 MEDIA_ALLOWED_CONTENT_TYPES=image/*,application/pdf
 ```
 
-Document text extraction needs the extra: `pip install "10xscale-agentflow-cli[media]"`. See [Multimodal and vision](/docs/how-to/production/multimodal-and-vision).
+Document text extraction needs the extra: `pip install "10xgraph-api[media]"`. See [Multimodal and vision](/docs/how-to/production/multimodal-and-vision).
 
 ### Cloud storage (S3 / GCS)
 
@@ -246,9 +247,9 @@ Used when `MEDIA_STORAGE_TYPE=cloud`.
 
 | Variable | Type | Default | Description |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | `string` | — | API key for the OpenAI provider. |
-| `GEMINI_API_KEY` | `string` | — | API key for the Google Gemini API (preferred over `GOOGLE_API_KEY`). |
-| `GOOGLE_API_KEY` | `string` | — | Fallback name for the Gemini API key. |
+| `OPENAI_API_KEY` | `string` | - | API key for the OpenAI provider. |
+| `GEMINI_API_KEY` | `string` | - | API key for the Google Gemini API (preferred over `GOOGLE_API_KEY`). |
+| `GOOGLE_API_KEY` | `string` | - | Fallback name for the Gemini API key. |
 | `AGENTFLOW_LLM_TIMEOUT` | `float` | `600.0` | Default request timeout in seconds applied to every LLM client. Override with `set_default_llm_timeout()` at runtime. Must be a positive number. |
 
 ---
@@ -272,7 +273,7 @@ ALLOWED_HOST=yourapp.com
 DOCS_PATH=
 REDOCS_PATH=
 
-# Distributed IDs — set unique values per instance
+# Distributed IDs, set unique values per instance
 SNOWFLAKE_NODE_ID=1
 SNOWFLAKE_WORKER_ID=1
 

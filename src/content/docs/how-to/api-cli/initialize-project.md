@@ -1,6 +1,6 @@
 ---
 title: Initialize a Project
-description: How to scaffold an 10xGraph project with agentflow init.
+description: "Scaffold a new 10xGraph project with the 10xgraph init command, and see what it generates and which files to edit first."
 section: How-to guides
 group: CLI
 order: 860
@@ -8,14 +8,14 @@ label: Initialize a Project
 updated: "2026-09-29"
 ---
 
-`agentflow init` scaffolds the minimum files needed to run an agent behind the API. It is fully interactive — it prompts for your preferences and generates a project tailored to your answers.
+`10xgraph init` scaffolds the minimum files needed to run an agent behind the API. It is fully interactive, it prompts for your preferences and generates a project tailored to your answers.
 
 ## Prerequisites
 
 Install the CLI:
 
 ```bash
-pip install 10xscale-agentflow-cli
+pip install 10xgraph-api
 ```
 
 ## Run init
@@ -23,18 +23,18 @@ pip install 10xscale-agentflow-cli
 Navigate to an empty directory and run:
 
 ```bash
-agentflow init
+10xgraph init
 ```
 
 To scaffold in a specific directory without changing into it first:
 
 ```bash
-agentflow init --path ./my-agent-project
+10xgraph init --path ./my-agent-project
 ```
 
 ## Interactive prompts
 
-`agentflow init` asks a series of questions:
+`10xgraph init` asks a series of questions:
 
 ### 1. Agent name
 
@@ -52,7 +52,7 @@ Quick Start or Production setup?
     Production
 ```
 
-**Quick Start** generates a minimal project — a graph module, config file, and env template. Choose this when you want to get something running immediately.
+**Quick Start** generates a minimal project, a graph module, config file, and env template. Choose this when you want to get something running immediately.
 
 **Production** generates a full project structure with tests, evaluations, a `pyproject.toml`, optional authentication, and optional rate limiting. Choose this for projects you will deploy or share with a team.
 
@@ -65,9 +65,9 @@ Authentication type?
     Custom
 ```
 
-- **None** — No authentication. All endpoints are open.
-- **JWT** — Bearer token auth using `JWT_SECRET_KEY`. Set `JWT_SECRET_KEY` in `.env` before starting the server.
-- **Custom** — Generates an `auth/agent_auth.py` stub where you implement your own `BaseAuth` subclass.
+- **None**, No authentication. All endpoints are open.
+- **JWT**, Bearer token auth using `JWT_SECRET_KEY`. Set `JWT_SECRET_KEY` in `.env` before starting the server.
+- **Custom**, Generates an `auth/agent_auth.py` stub where you implement your own `BaseAuth` subclass.
 
 ### 4. Rate limiting (Production only)
 
@@ -170,16 +170,16 @@ Production example with JWT auth and memory rate limiting:
 
 **Field explanation:**
 
-- `agent` (required) — import path to your compiled graph, expressed as `module:attribute`. The server imports the module and retrieves the attribute (a compiled `StateGraph`).
-- `env` — path to a `.env` file. Loaded with `python-dotenv` before the graph module is imported.
-- `auth` — `null` for no auth, `{"method": "jwt"}` for JWT bearer tokens, or `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` for a custom backend.
-- `thread_name_generator` — import path to a thread name generator. When set, the API generates human-readable thread names automatically.
-- `injectq` — import path to your dependency-injection container (Production only).
-- `rate_limit` — rate limiting configuration. `backend` can be `memory` or `redis`.
+- `agent` (required), import path to your compiled graph, expressed as `module:attribute`. The server imports the module and retrieves the attribute (a compiled `StateGraph`).
+- `env`, path to a `.env` file. Loaded with `python-dotenv` before the graph module is imported.
+- `auth`, `null` for no auth, `{"method": "jwt"}` for JWT bearer tokens, or `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` for a custom backend.
+- `thread_name_generator`, import path to a thread name generator. When set, the API generates human-readable thread names automatically.
+- `injectq`, import path to your dependency-injection container (Production only).
+- `rate_limit`, rate limiting configuration. `backend` can be `memory` or `redis`.
 
 ### graph/agent.py
 
-A starter ReAct agent. Replace the graph logic with your own while keeping the `app` variable defined — the server imports it by name.
+A starter ReAct agent. Replace the graph logic with your own while keeping the `app` variable defined, the server imports it by name.
 
 ### .env.example
 
@@ -195,21 +195,21 @@ Python package definition. Allows `pip install -e .` for editable installs and i
 
 ### evals/ (Production only)
 
-Starter evaluation files. Run them with `agentflow eval`.
+Starter evaluation files. Run them with `10xgraph eval`.
 
 ### tests/ (Production only)
 
-Starter pytest tests. Run them with `agentflow test`.
+Starter pytest tests. Run them with `10xgraph test`.
 
 ## Overwrite existing files
 
 If you want to regenerate files in an already-initialized project:
 
 ```bash
-agentflow init --force
+10xgraph init --force
 ```
 
-This overwrites all files without prompting. Use carefully — it replaces your existing graph code and configuration.
+This overwrites all files without prompting. Use carefully, it replaces your existing graph code and configuration.
 
 ## Options reference
 
@@ -222,19 +222,19 @@ This overwrites all files without prompting. Use carefully — it replaces your 
 
 ## Next steps
 
-After `agentflow init`:
+After `10xgraph init`:
 
-1. Run `agentflow skills` to install coding-agent skills for your AI assistant.
+1. Run `10xgraph skills` to install coding-agent skills for your AI assistant.
 2. Copy `.env.example` to `.env` and add your API keys.
-3. Run `agentflow play` to start the server and open the playground.
+3. Run `10xgraph play` to start the server and open the playground.
 
 ## Troubleshooting
 
 **"ModuleNotFoundError: No module named 'agentflow_cli'"**
-- Install the CLI: `pip install 10xscale-agentflow-cli`
+- Install the CLI: `pip install 10xgraph-api`
 
 **"File already exists" error**
-- Pass `--force` to overwrite: `agentflow init --force`
+- Pass `--force` to overwrite: `10xgraph init --force`
 
 **Server fails to start after init**
 - Check that the `agent` field in `agentflow.json` matches the actual module path.

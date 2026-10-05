@@ -1,5 +1,6 @@
 ---
 title: Threads
+seoTitle: "Thread methods in the TypeScript client"
 description: Reference for all thread, state, and message methods on AgentFlowClient.
 section: Reference
 group: TypeScript client

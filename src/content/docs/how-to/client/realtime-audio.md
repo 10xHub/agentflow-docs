@@ -8,7 +8,7 @@ label: How to build a realtime audio session
 updated: "2026-07-21"
 ---
 
-`client.realtime()` gives you a bidirectional audio socket to a live agent. It is transport only: it moves PCM16 bytes and JSON events, and deliberately ships no microphone or speaker code, so the browser side is yours to write. This guide is that missing half — capture the mic, send it, play the reply.
+`client.realtime()` gives you a bidirectional audio socket to a live agent. It is transport only: it moves PCM16 bytes and JSON events, and deliberately ships no microphone or speaker code, so the browser side is yours to write. This guide is that missing half, capture the mic, send it, play the reply.
 
 For the full API surface of `RealtimeSession` (every event channel, the reconnect policy, the init fields) see [`reference/client/realtime`](/docs/reference/client/realtime).
 
@@ -25,7 +25,7 @@ For the full API surface of `RealtimeSession` (every event channel, the reconnec
 | Up, via `sendAudio()` | PCM16, mono, **16 kHz** |
 | Down, on the `'audio'` channel | PCM16, mono, **24 kHz** |
 
-The two rates differ, and getting them backwards produces audio that plays at the wrong speed rather than an error. The package exports `REALTIME_INPUT_SAMPLE_RATE` (16000) and `REALTIME_OUTPUT_SAMPLE_RATE` (24000) — use them rather than literals.
+The two rates differ, and getting them backwards produces audio that plays at the wrong speed rather than an error. The package exports `REALTIME_INPUT_SAMPLE_RATE` (16000) and `REALTIME_OUTPUT_SAMPLE_RATE` (24000), use them rather than literals.
 
 ---
 
@@ -147,7 +147,7 @@ Always keep the returned handle. Failing to call `stop()` leaves the mic indicat
 ## Step 3: Open the session
 
 ```ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '10xgraph-client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -209,7 +209,7 @@ const toggleMic = async () => {
 };
 ```
 
-For hands-free operation, leave server-side VAD on (the default) and skip `activityStart` / `activityEnd` entirely — just stream mic frames continuously and let the server detect turn boundaries. Set `vad: { enabled: false }` in the init frame only when you are driving turns manually as above.
+For hands-free operation, leave server-side VAD on (the default) and skip `activityStart` / `activityEnd` entirely, just stream mic frames continuously and let the server detect turn boundaries. Set `vad: { enabled: false }` in the init frame only when you are driving turns manually as above.
 
 ---
 
@@ -251,7 +251,7 @@ session.on('interrupted', () => {
 });
 ```
 
-Tear down on unmount as well as on the explicit End button — navigating away mid-session otherwise leaves the mic open and the socket connected:
+Tear down on unmount as well as on the explicit End button, navigating away mid-session otherwise leaves the mic open and the socket connected:
 
 ```ts
 useEffect(() => () => {
@@ -292,7 +292,7 @@ The 10xGraph playground ships a complete working version of everything above:
 | `src/pages/live/components/live-session.jsx` | Session lifecycle, push-to-talk, transcript coalescing, teardown. |
 | `src/pages/live/live-page.jsx` | The connect-first and not-live-capable gates. |
 
-Run it with `agentflow play` and open the **Live** page.
+Run it with `10xgraph play` and open the **Live** page.
 
 ---
 

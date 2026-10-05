@@ -1,5 +1,6 @@
 ---
 title: Remote Tools
+seoTitle: "Remote tools: run tools in the client"
 description: How 10xGraph lets a Python graph request tools that execute in a TypeScript client or browser.
 section: Concepts
 group: In depth
@@ -95,6 +96,6 @@ Over the API server, `remote_tools` is a server-owned config key: `/v1/graph/inv
 
 ## Related docs
 
-- [TypeScript tools reference](/docs/reference/client/tools)
+- [Register remote tools](/docs/how-to/client/register-remote-tools)
 - [Agents and tools](/docs/concepts/agents-and-tools)
 - [State and messages](/docs/concepts/state-and-messages)

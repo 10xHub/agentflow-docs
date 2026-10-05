@@ -1,6 +1,7 @@
 ---
 title: "10xGraph with Next.js: Build a Streaming Agent Frontend"
-description: How to call an 10xGraph Python agent from a Next.js frontend with streaming, auth, and typed responses. Server actions, route handlers, and 10xGraph.
+seoTitle: "10xGraph with Next.js streaming frontend"
+description: How to call a 10xGraph Python agent from a Next.js frontend with streaming, auth, and typed responses. Server actions, route handlers, and 10xGraph.
 section: Learn more
 group: Integrations
 order: 2050

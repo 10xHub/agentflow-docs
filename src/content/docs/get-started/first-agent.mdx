@@ -1,9 +1,10 @@
 ---
 title: Quickstart
-description: Build a 10xGraph agent with one tool in about 20 lines of Python, run it locally, then serve it over HTTP and call it with curl.
+seoTitle: "10xGraph quickstart: build and serve an agent"
+description: Build a 10xGraph support agent with lookup and refund tools in Python, run it locally, then serve it over HTTP and call it with curl.
 section: Get started
 order: 30
-updated: 2026-10-03T00:00:00.000Z
+updated: 2026-10-06
 faq:
   - q: Do I need ReactAgent, or should I write a StateGraph myself?
     a: Start with ReactAgent. It builds the standard reason-and-act graph for you (one agent node, one tool node, a conditional edge between them) and returns a normal compiled graph. Move to StateGraph when you need custom routing or several agents.
@@ -13,7 +14,7 @@ faq:
     a: Both calls send the same thread_id, and the compiled graph has a checkpointer. The checkpointer stores the conversation per thread, so the next call on that thread continues it.
 ---
 
-This page builds a working agent with one tool, runs it from a Python script, then serves it with the 10xGraph API server and calls `POST /v1/graph/invoke` with curl. You need Python 3.12 or newer and a Google API key.
+This page builds a working support agent with two tools, runs it from a Python script, then serves it with the 10xGraph API server and calls `POST /v1/graph/invoke` with curl. You need Python 3.12 or newer and a Google API key.
 
 ## Install the packages
 
@@ -22,7 +23,7 @@ This page builds a working agent with one tool, runs it from a Python script, th
 <TabItem label="pip">
 
 ```bash
-pip install 10xgraph 10xgraph-api google-genai
+pip install "10xgraph[google-genai]" 10xgraph-api
 ```
 
 </TabItem>
@@ -30,14 +31,14 @@ pip install 10xgraph 10xgraph-api google-genai
 <TabItem label="uv">
 
 ```bash
-uv add 10xgraph 10xgraph-api google-genai
+uv add "10xgraph[google-genai]" 10xgraph-api
 ```
 
 </TabItem>
 
 </Tabs>
 
-`10xgraph` is the framework, `10xgraph-api` adds the server and the `10xgraph` command, and `google-genai` is the model provider used below. See [Installation](/docs/get-started/installation) for the full list of extras.
+`10xgraph` is the framework, `10xgraph-api` adds the server and the `10xgraph` command, and the `google-genai` extra adds the model provider used below. See [Installation](/docs/get-started/installation) for the full list of extras.
 
 Export your key. The Google provider reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`:
 
@@ -58,16 +59,21 @@ export GOOGLE_API_KEY="your-key"
    from agentflow.storage.checkpointer import InMemoryCheckpointer
 
 
-   def get_weather(location: str) -> str:
-       """Get the current weather for a location."""
-       return f"The weather in {location} is sunny, 24 C."
+   def lookup_order(order_id: str) -> dict:
+       """Look up an order by id and return its status and total."""
+       return {"order_id": order_id, "status": "delivered", "total": 59.0}
+
+
+   def refund_order(order_id: str, amount: float) -> str:
+       """Refund an order. This moves money, so it must run once per request."""
+       return f"Refunded {amount:.2f} for order {order_id}"
 
 
    agent = ReactAgent(
        model="google/gemini-2.5-flash",
        provider="google",
-       system_prompt=[{"role": "system", "content": "You are a concise weather assistant."}],
-       tools=[get_weather],  # [!code highlight]
+       system_prompt=[{"role": "system", "content": "You are a concise support agent for an online shop."}],
+       tools=[lookup_order, refund_order],  # [!code highlight]
    )
 
    app = agent.compile(checkpointer=InMemoryCheckpointer())
@@ -85,7 +91,7 @@ export GOOGLE_API_KEY="your-key"
    from agent import app
 
    result = app.invoke(
-       {"messages": [Message.text_message("What is the weather in London?")]},
+       {"messages": [Message.text_message("Where is order 1042?")]},
        config={"thread_id": "quickstart-1"},
    )
    print(result["messages"][-1].text())
@@ -95,7 +101,7 @@ export GOOGLE_API_KEY="your-key"
    python run.py
    ```
 
-   The model decides to call `get_weather`, the tool node runs it, and the agent node writes the final answer.
+   The model decides to call `lookup_order`, the tool node runs it, and the agent node writes the final answer. Ask it to refund an order and it calls `refund_order` the same way.
 
 3. **Add the config file**
 
@@ -124,7 +130,7 @@ export GOOGLE_API_KEY="your-key"
      -H "Content-Type: application/json" \
      -d '{
        "messages": [
-         {"role": "user", "content": [{"type": "text", "text": "What is the weather in London?"}]}
+         {"role": "user", "content": [{"type": "text", "text": "Where is order 1042?"}]}
        ],
        "config": {"thread_id": "quickstart-2"}
      }'
@@ -161,6 +167,12 @@ If you leave `thread_id` out, the server generates a fresh one for every call. T
 
 </Callout>
 
+<Callout type="note" title="Why refund_order matters">
+
+A refund must not run twice if the process dies mid-run. With a checkpointer, 10xGraph records each finished tool call and skips it on resume. `InMemoryCheckpointer` only protects within one process, so use `PgCheckpointer` for crash recovery. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
+
+</Callout>
+
 ## Where to go next
 
 <CardGrid>
@@ -168,5 +180,6 @@ If you leave `thread_id` out, the server generates a fresh one for every call. T
 <LinkCard title="Project structure" href="/docs/get-started/project-structure" description="What 10xgraph init generates for a production project." eyebrow="Get started" />
 <LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Nodes, edges and routing, the layer ReactAgent is built on." eyebrow="Concept" />
 <LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="Persist threads with Redis and PostgreSQL." eyebrow="Concept" />
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How a resumed run skips tools that already finished." eyebrow="Concept" />
 <LinkCard title="Add JWT auth" href="/docs/how-to/api-cli/add-auth" description="Protect the endpoints before you deploy." eyebrow="How-to" />
 </CardGrid>

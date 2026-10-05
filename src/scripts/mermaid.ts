@@ -33,7 +33,7 @@ export async function renderMermaid() {
   let run = 0;
   const draw = async () => {
     const dark = document.documentElement.getAttribute('data-theme') !== 'light';
-    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: 'IBM Plex Sans, system-ui, sans-serif', securityLevel: 'strict' });
+    mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: "'IBM Plex Sans Variable', system-ui, sans-serif", securityLevel: 'strict' });
     run++;
     for (const [i, f] of figures.entries()) {
       try {

@@ -1,5 +1,6 @@
 ---
 title: Extensibility
+seoTitle: "Extending 10xGraph with base classes"
 description: The abstract base classes — BaseCheckpointer, BaseStore, BaseAuth, BasePublisher, and more — used to extend 10xGraph's storage, auth, and event layers.
 section: Concepts
 order: 180
@@ -248,7 +249,8 @@ Five built-in generators cover most needs. Swap them globally or per-graph.
 ```python
 from agentflow.utils.id_generator import TimestampIDGenerator
 
-compiled = graph.compile(id_generator=TimestampIDGenerator())
+graph = StateGraph(id_generator=TimestampIDGenerator())
+compiled = graph.compile()
 ```
 
 Custom generator:
@@ -265,7 +267,7 @@ class PrefixedIDGenerator(BaseIDGenerator):
 
 ## API / server extension
 
-All four server-layer ABCs are wired via `agentflow.json` — no code changes to the server required.
+All four server-layer ABCs are wired via `agentflow.json`, with no code changes to the server required.
 
 ### `BaseAuth`
 
@@ -277,7 +279,7 @@ from agentflow_cli import BaseAuth
 class ApiKeyAuth(BaseAuth):
     def authenticate(self, request, response, credential) -> dict | None:
         key = request.headers.get("X-API-Key")
-        return lookup_api_key(key)   # dict with user_id, or None → 401
+        return lookup_api_key(key)   # dict with user_id, or None for 401
 ```
 
 ### `AuthorizationBackend`
@@ -300,21 +302,25 @@ owner-only threads with no code.
 from agentflow_cli.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
 
 class RedisClusterRateLimiter(BaseRateLimitBackend):
-    async def check(self, key: str, limit: int, window: int) -> bool: ...
+    async def check(self, key: str, *, limit: int, window: int) -> RateLimitDecision: ...
     async def close(self) -> None: ...
 ```
 
+`check` returns a `RateLimitDecision(allowed, remaining, reset_after)` (import it from the same `base` module). Bind an instance of your backend in the InjectQ container and set `"backend": "custom"`; there is no import-path key for rate-limit backends.
+
 ### `ThreadNameGenerator`
+
+`ThreadNameGenerator` is deprecated in favour of the built-in `AIThreadNameGenerator`, but the `thread_name_generator` config loader still requires a `ThreadNameGenerator` subclass or instance, so a custom generator extends it. `generate_name` receives the message texts as `list[str]`:
 
 ```python
 from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 class DatePrefixNameGenerator(ThreadNameGenerator):
-    async def generate_name(self, messages: list) -> str:
-        return f"{date.today()} — {messages[0].text[:30]}"
+    async def generate_name(self, messages: list[str]) -> str:
+        return f"{date.today()}: {messages[0][:30]}"
 ```
 
-Wire any of these in `agentflow.json`. Each server-layer ABC has a dedicated top-level key — they are not registered in `injectq`:
+Wire any of these in `agentflow.json`. Auth, authorization and thread naming each have a dedicated top-level key in `agentflow.json`. Custom rate-limit backends are bound in the InjectQ container instead (see below):
 
 ```json
 {
@@ -324,14 +330,21 @@ Wire any of these in `agentflow.json`. Each server-layer ABC has a dedicated top
   "rate_limit": {
     "enabled": true,
     "backend": "custom",
-    "backend_path": "services.rate_limit:RedisClusterRateLimiter",
     "requests": 100,
     "window": 60
   }
 }
 ```
 
-The string format for class references is `module.path:ClassName` (dot-separated module path, colon, then the class or instance name).
+The string format for class references is `module.path:ClassName` (dot-separated module path, colon, then the class or instance name). For the custom rate-limit backend, bind it in the module your `injectq` key points to:
+
+```python
+from injectq import InjectQ
+from agentflow_cli.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+
+container = InjectQ.get_instance()
+container.bind_instance(BaseRateLimitBackend, RedisClusterRateLimiter())
+```
 
 ---
 
@@ -360,9 +373,10 @@ Compose multiple publishers:
 ```python
 from agentflow.runtime.publisher import CompositePublisher
 
-compiled = graph.compile(
+graph = StateGraph(
     publisher=CompositePublisher([ConsolePublisher(), WebhookPublisher("https://...")])
 )
+compiled = graph.compile()
 ```
 
 ---
@@ -416,7 +430,7 @@ class SlackReporter(BaseReporter):
 
 | Page | What it covers |
 |---|---|
-| [Agents, Tools & Control](/docs/concepts/agents-tools-control) | `BaseValidator`, `CallbackManager`, `GraphLifecycleHook` in practice |
+| [Agents and Tools](/docs/concepts/agents-and-tools) | `BaseValidator`, `CallbackManager`, `GraphLifecycleHook` in practice |
 | [Serving Agents](/docs/concepts/serving-agents) | `BaseAuth`, `AuthorizationBackend`, `BasePublisher` wired to a running server |
 | [Memory](/docs/concepts/memory) | `BaseCheckpointer`, `BaseStore`, `BaseEmbedding` in the memory layer context |
-| [Quality & Observability](/docs/concepts/qa) | `BaseCriterion`, `BaseReporter` in the evaluation pipeline |
+| [Quality & Observability](/docs/qa) | `BaseCriterion`, `BaseReporter` in the evaluation pipeline |

@@ -1,5 +1,6 @@
 ---
 title: Dependency Injection
+seoTitle: "Dependency injection concepts (InjectQ)"
 description: Injectable parameters, injectq service containers, and how to wire custom services into 10xGraph nodes and tools.
 section: Concepts
 group: In depth

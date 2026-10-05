@@ -19,7 +19,7 @@ Use lifecycle callbacks to:
 
 Lifecycle callbacks operate at the **graph orchestration level** — they fire once per graph run (or once per node transition for `on_state_update`), not once per LLM/tool invocation. For finer-grained invocation-level hooks, see [Callback Manager](/docs/reference/python/callback-manager).
 
-Pass a `GraphLifecycleHook` to `graph.compile(lifecycle_hook=...)` or register it via `callback_manager.register_lifecycle_hook(...)`.
+Register a `GraphLifecycleHook` with `callback_manager.register_lifecycle_hook(hook)` and pass the manager to `graph.compile(callback_manager=...)`. `compile()` has no `lifecycle_hook` argument.
 
 ## Import paths
 
@@ -37,8 +37,20 @@ from agentflow.core.state import AgentState, Message
 
 Passed to every lifecycle hook with metadata about the current execution.
 
+`GraphLifecycleContext` is a dataclass with one field.
+
 | Field | Type | Description |
 |---|---|---|
+| `config` | `dict[str, Any]` | Full config dict passed to `invoke()` / `stream()`. Read application-specific keys (including `config.get("timestamp")`) from here. |
+
+### Properties
+
+| Property | Type | Returns |
+|---|---|---|
+| `thread_id` | `str` | `config.get("thread_id", "")`, the conversation ID (empty string if unset). |
+| `run_id` | `str` | `config.get("run_id", "")`, the execution ID (empty string if unset). |
+
+---|---|---|
 | `config` | `dict[str, Any]` | Full config dict passed to `invoke()` / `stream()`. |
 | `timestamp` | `str` | ISO8601 start time (from `config["timestamp"]`). |
 | `metadata` | `dict[str, Any] \| None` | Optional extra context. |
@@ -120,7 +132,7 @@ class MetricsEndHook(GraphLifecycleHook):
             "run_id": context.run_id,
             "total_steps": total_steps,
             "message_count": len(messages),
-            "completed_at": context.timestamp,
+            "completed_at": context.config.get("timestamp"),
         }
         print(f"[METRICS] {json.dumps(metrics)}")
         
@@ -251,7 +263,7 @@ class InterruptNotificationHook(GraphLifecycleHook):
         print(f"[INTERRUPT] node={interrupted_node} type={interrupt_type}")
         
         # Mark in state for frontend to pick up
-        state.execution_meta.internal_data["paused_at"] = context.timestamp
+        state.execution_meta.internal_data["paused_at"] = context.config.get("timestamp")
         state.execution_meta.internal_data["interrupt_type"] = interrupt_type
         
         # Notify frontend via WebSocket or server-sent events
@@ -326,7 +338,7 @@ class ResumeValidationHook(GraphLifecycleHook):
                 raise ValueError("Invalid approval code")
         
         # Record approval in audit log
-        state.execution_meta.internal_data["resumed_at"] = context.timestamp
+        state.execution_meta.internal_data["resumed_at"] = context.config.get("timestamp")
         state.execution_meta.internal_data["resumed_by"] = resume_data.get("approved_by", "unknown")
         
         # Cancel the timeout timer from on_interrupt
@@ -401,7 +413,7 @@ class RedactionCheckpointHook(GraphLifecycleHook):
         
         # Write to compliance audit log (HIPAA, SOC2, etc.)
         audit_entry = {
-            "timestamp": context.timestamp,
+            "timestamp": context.config.get("timestamp"),
             "thread_id": context.thread_id,
             "run_id": context.run_id,
             "context_trimmed": is_context_trimmed,
@@ -510,6 +522,17 @@ class ObserveNodeTransitionHook(GraphLifecycleHook):
 - Implement circuit breakers on specific nodes.
 - Feed node transitions to external monitoring (Jaeger, Datadog).
 
+### `on_turn_start` and `on_turn_end`
+
+Realtime sessions only. `on_turn_start(context, state, turn_index)` fires when a new conversation turn begins; `on_turn_end(context, state, turn_index)` fires when it completes or is interrupted. A turn spans one model generation, and `turn_index` is 1-based. Return a modified state to replace the current one, or `None` to keep it. They never fire for turn-based `invoke` or `stream` runs.
+
+```python
+class TurnLogHook(GraphLifecycleHook):
+    async def on_turn_end(self, context, state, turn_index):
+        print(f"turn {turn_index} ended on thread {context.thread_id}")
+        return None
+```
+
 ---
 
 ## Common patterns
@@ -595,7 +618,7 @@ class ApprovalWorkflowHook(GraphLifecycleHook):
             approval_id=approval_id,
             decision=resume_data.get("decision"),
             approved_by=resume_data.get("approved_by"),
-            timestamp=context.timestamp,
+            timestamp=context.config.get("timestamp"),
         )
         return None
 
@@ -667,44 +690,31 @@ class MetricsHook(GraphLifecycleHook):
 
 ## Usage
 
-Register a lifecycle hook when compiling your graph:
+Register a lifecycle hook on a `CallbackManager` and pass the manager to `compile()`:
 
 ```python
 from agentflow.core.graph import StateGraph
-from agentflow.utils.callbacks import GraphLifecycleHook
+from agentflow.utils.callbacks import CallbackManager, GraphLifecycleHook
 
-# Define your hook(s)
 class MyLifecycleHook(GraphLifecycleHook):
     async def on_graph_start(self, context, state):
         print(f"Starting graph run: {context.run_id}")
         return None
-    
+
     async def on_graph_end(self, context, final_state, messages, total_steps):
         print(f"Completed in {total_steps} steps with {len(messages)} messages")
         return None
 
-# Build your graph
-builder = StateGraph(MyState)
-# ... define nodes ...
-
-# Compile with lifecycle hook
-graph = builder.compile(
-    lifecycle_hook=MyLifecycleHook()
-)
-
-# Run the graph — hooks fire automatically
-result = await graph.ainvoke({"messages": [...]})
-```
-
-Alternatively, register via `CallbackManager`:
-
-```python
-from agentflow.utils.callbacks import CallbackManager
-
 cbm = CallbackManager()
 cbm.register_lifecycle_hook(MyLifecycleHook())
 
-graph = builder.compile(callback_manager=cbm)
+builder = StateGraph(MyState)
+# ... define nodes ...
+
+app = builder.compile(callback_manager=cbm)
+
+# Hooks fire automatically
+result = await app.ainvoke({"messages": [...]})
 ```
 
 ---
@@ -713,8 +723,8 @@ graph = builder.compile(callback_manager=cbm)
 
 | Error | Cause | Fix |
 |---|---|---|
-| Lifecycle hook never fires | `lifecycle_hook` not passed to `compile()`. | Pass `lifecycle_hook=MyHook()` or use `CallbackManager`. |
+| Lifecycle hook never fires | The hook was not registered on the `CallbackManager` passed to `compile()`. | Call `cbm.register_lifecycle_hook(MyHook())` and use `compile(callback_manager=cbm)`. |
 | `on_state_update` sees `old_state == new_state` | Both reference same object (not deep copied). | Framework handles this; report as bug if issue persists. |
 | `on_graph_error` doesn't suppress error | Hook designed to alert/log, not recover. | Use node-level `on_error` callbacks for error recovery. |
-| `on_interrupt` not called | Interrupt not triggered (node completed successfully). | Add `.interrupt()` call in node or use external interrupt API. |
-| `on_resume` receives `None` in `resume_data` | Resume called without input data. | Pass `input_data` dict to resume call: `ainvoke(input_data={...}, resume=True)`. |
+| `on_interrupt` not called | Interrupt not triggered (node completed successfully). | Set `interrupt_before` or `interrupt_after` in `compile()`, or stop the run through the API. |
+| `on_resume` receives `None` in `resume_data` | Resume called without input data. | Call `ainvoke(input_data, config)` with the same `thread_id`; resume is detected from the saved execution state, so pass the resume payload in `input_data`. |

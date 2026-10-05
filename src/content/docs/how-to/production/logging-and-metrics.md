@@ -150,7 +150,7 @@ This is enough for a `/metrics`-style debug endpoint or a health check. It is pr
 ### Exporting to OpenTelemetry
 
 ```bash
-pip install "10xscale-agentflow[otel]"
+pip install "10xgraph[otel]"
 ```
 
 ```python
@@ -178,16 +178,16 @@ Pass an explicit `meter` to use a specific one; otherwise a meter named `agentfl
 | `agentflow.tool.errors` | counter | `node`, `tool` |
 | `agentflow.tool.timeouts` | counter | `node`, `tool` |
 | `agentflow.tool.duration` | timer | `node`, `tool`, `outcome` |
-| `background_task_manager.tasks_created` | counter | — |
-| `background_task_manager.tasks_completed` | counter | — |
-| `background_task_manager.tasks_failed` | counter | — |
-| `background_task_manager.tasks_dropped` | counter | — |
-| `background_task_manager.tasks_cancelled` | counter | — |
-| `background_task_manager.tasks_timed_out` | counter | — |
-| `pg_checkpointer.save_state.attempts` / `.success` / `.error` / `.conflict` | counter | — |
-| `pg_checkpointer.save_state.duration` | timer | — |
-| `pg_checkpointer.save_checkpoint.attempts` / `.success` / `.error` / `.conflict` | counter | — |
-| `pg_checkpointer.save_checkpoint.duration` | timer | — |
+| `background_task_manager.tasks_created` | counter | - |
+| `background_task_manager.tasks_completed` | counter | - |
+| `background_task_manager.tasks_failed` | counter | - |
+| `background_task_manager.tasks_dropped` | counter | - |
+| `background_task_manager.tasks_cancelled` | counter | - |
+| `background_task_manager.tasks_timed_out` | counter | - |
+| `pg_checkpointer.save_state.attempts` / `.success` / `.error` / `.conflict` | counter | - |
+| `pg_checkpointer.save_state.duration` | timer | - |
+| `pg_checkpointer.save_checkpoint.attempts` / `.success` / `.error` / `.conflict` | counter | - |
+| `pg_checkpointer.save_checkpoint.duration` | timer | - |
 
 `pg_checkpointer.save_state.conflict` counts optimistic-concurrency rejections, and `background_task_manager.tasks_dropped` counts events shed under backpressure. Both are good alert candidates: a rising rate means concurrent writers are contending, or a publisher is not keeping up.
 

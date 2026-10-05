@@ -1,5 +1,6 @@
 ---
 title: Building Eval Sets
+seoTitle: "Build eval sets with EvalSetBuilder"
 description: How to build evaluation datasets with EvalSetBuilder — single-turn cases, multi-turn conversations, tool call assertions, and loading from files.
 section: Testing and QA
 group: Evaluation

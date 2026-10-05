@@ -27,7 +27,7 @@ Built-in bindings (registered by the framework after `compile()`):
 | `get_node` | factory that returns `self.nodes[name]` |
 | `get_entry_point_node` | factory that returns the entry-point node |
 | `generated_id_type` | the current ID type from the ID generator |
-| `generated_id` | `str` — a freshly generated ID on each call |
+| `generated_id` | `str` - a freshly generated ID on each call |
 
 These bindings are available automatically to node functions and tools. You can also register your own bindings alongside them.
 
@@ -254,7 +254,7 @@ print(result["messages"][-1].content)
 - `container.bind_instance(Type, instance)` registers a singleton for injection.
 - `container["key"] = value` registers a plain key-value pair.
 - Declare `param: MyService = Inject[MyService]` in any node function or tool function to receive the service automatically.
-- Tool functions also receive `tool_call_id`, `state`, and `config` from the runtime — declare them as plain parameters with no default when you need them.
+- Tool functions also receive `tool_call_id`, `state`, and `config` from the runtime, declare them as plain parameters with no default when you need them.
 - Pass `StateGraph(container=container)` for an isolated container in tests or scoped graphs.
 
 ## Next steps

@@ -1,13 +1,22 @@
 ---
 title: API reference
-description: "Entry point for the 10xGraph reference: the Python library, the REST and WebSocket API, the CLI and agentflow.json, and the TypeScript client."
+seoTitle: "10xGraph API reference: Python, REST, CLI, TS"
+description: "Reference for 10xGraph: the Python library, the REST and WebSocket API, the CLI and agentflow.json configuration, and the typed TypeScript client."
 section: Reference
 order: 1400
 label: Overview
-updated: "2026-07-21"
+updated: "2026-10-06"
 ---
 
-Four surfaces, one system. Pick the one you are calling from.
+The 10xGraph reference documents four surfaces of one system: the Python library, the REST and WebSocket API that the server generates from your graph, the CLI with its `agentflow.json` configuration, and the TypeScript client. It is for developers who already know what they want to call and need exact signatures, options and error conditions. Pick the surface you are calling from.
+
+## Start here
+
+Python developers should open [Graph](/docs/reference/python/graph) and [Agent](/docs/reference/python/agent) first: they define `StateGraph`, `CompiledGraph`, `invoke`, `stream` and how a model is wired into a node. [Checkpointers](/docs/reference/python/checkpointers) matters for production, because durable threads and replay-safe tool calls depend on one.
+
+If you run the server, the [CLI commands](/docs/reference/api-cli/commands) and [configuration](/docs/reference/api-cli/configuration) pages cover every `agentflow.json` key, with [auth](/docs/reference/api-cli/auth) and [rate limiting](/docs/reference/api-cli/rate-limiting) for the production settings. Frontend developers should start with [AgentFlowClient](/docs/reference/client/agentflow-client) and [Stream](/docs/reference/client/stream). The REST contract starts at [conventions](/docs/reference/rest-api/conventions) and the [graph endpoints](/docs/reference/rest-api/graph).
+
+If you do not yet know which call you need, the [how-to guides](/docs/how-to) are organized by task.
 
 ## Python library
 

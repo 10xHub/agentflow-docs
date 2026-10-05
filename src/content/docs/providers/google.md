@@ -1,5 +1,6 @@
 ---
 title: Google
+seoTitle: "Google provider: Gemini models"
 description: Configure the Google provider to run Gemini models via Google AI Studio or Vertex AI.
 section: Learn more
 group: Providers

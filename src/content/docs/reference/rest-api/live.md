@@ -1,6 +1,6 @@
 ---
 title: Live WebSocket endpoints
-description: Reference for WS /v1/graph/live WebSocket endpoint bridging audio to a realtime AudioAgent (Gemini Live). Covers the init frame, binary and JSON frames, and auth.
+description: "Reference for the WS /v1/graph/live WebSocket endpoint that bridges audio to a realtime AudioAgent (Gemini Live): init frame, binary and JSON frames, auth."
 section: Reference
 group: REST API
 order: 1660

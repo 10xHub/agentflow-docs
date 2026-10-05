@@ -1,5 +1,6 @@
 ---
 title: Command & Handoff
+seoTitle: "Command and handoff API reference (Python)"
 description: Command and create_handoff_tool — control graph routing from inside nodes and transfer execution between agents.
 section: Reference
 group: Python library

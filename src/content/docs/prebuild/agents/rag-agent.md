@@ -1,5 +1,6 @@
 ---
 title: RAGAgent
+seoTitle: "RAGAgent: retrieval-augmented agent"
 description: RAGAgent retrieves documents with vector search, optionally reranks with CohereReranker or CrossEncoderReranker, then synthesizes an answer.
 section: Prebuilt
 group: Agents

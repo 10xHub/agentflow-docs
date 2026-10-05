@@ -24,7 +24,7 @@ updated: "2026-05-24"
 
 ## Prebuilt agents
 
-Prebuilt agents are complete, compiled graphs. One constructor call gives you a runnable `CompiledGraph` — no `StateGraph`, no edges, no `compile()`.
+Prebuilt agents are complete, compiled graphs. One constructor call gives you a runnable `CompiledGraph`, no `StateGraph`, no edges, no `compile()`.
 
 **Available prebuilts:**
 
@@ -32,7 +32,7 @@ Prebuilt agents are complete, compiled graphs. One constructor call gives you a 
 |---|---|
 | `ReactAgent` | Single agent with tool use (react loop) |
 | `PlanActReflectAgent` | Plan → execute → reflect loop |
-| `RagAgent` | Retrieval-augmented generation |
+| `RAGAgent` | Retrieval-augmented generation |
 | `StructuredOutputAgent` | Forces structured JSON output |
 | `SupervisorTeamAgent` | Supervisor routes tasks to specialist workers |
 | `SwarmAgent` | Peer-to-peer handoff between agents |
@@ -60,7 +60,7 @@ result = app.invoke(
 
 **Do not use a prebuilt when:**
 
-- You need a custom graph topology — extra nodes, non-standard edges, or a node before/after the agent.
+- You need a custom graph topology, extra nodes, non-standard edges, or a node before/after the agent.
 - You need to inject custom services (`Inject[T]`) into graph nodes.
 - You need to share a `ToolNode` across multiple agents in a single graph.
 
@@ -107,7 +107,7 @@ app = graph.compile()
 
 - The node's job is to call an LLM on a standard provider (OpenAI, Google, or any OpenAI-compatible API).
 - You need built-in tool call detection, retry logic, fallback models, or reasoning config.
-- You want to add custom nodes around the LLM call (pre-processing, post-processing, routing) — something a prebuilt cannot do.
+- You want to add custom nodes around the LLM call (pre-processing, post-processing, routing), something a prebuilt cannot do.
 - You have multiple agents in one graph (supervisor, swarm, pipeline).
 
 **Do not use `Agent` when:**
@@ -119,7 +119,7 @@ app = graph.compile()
 
 ## Custom function node
 
-A plain Python function — sync or async — registered as a graph node. The framework auto-injects `state` and `config` by name; everything else comes via `Inject[T]`.
+A plain Python function, sync or async, registered as a graph node. The framework auto-injects `state` and `config` by name; everything else comes via `Inject[T]`.
 
 ```python
 from injectq import Inject
@@ -142,10 +142,10 @@ Return types: `str`, `Message`, `list[Message]`, `AgentState`, or `Command`.
 
 **Use a custom function node when:**
 
-- The node does not need an LLM — loading data, logging, routing, calling an external API, running a calculation.
+- The node does not need an LLM, loading data, logging, routing, calling an external API, running a calculation.
 - You need to run something before or after an `Agent` node in the graph.
-- You are calling a custom or unsupported LLM provider — call it yourself and return a `str`, `Message`, or `ModelResponseConverter`.
-- The routing logic is dynamic and depends on side effects inside the node — return `Command`.
+- You are calling a custom or unsupported LLM provider, call it yourself and return a `str`, `Message`, or `ModelResponseConverter`.
+- The routing logic is dynamic and depends on side effects inside the node, return `Command`.
 - You need direct access to framework services (checkpointer, store, publisher) via `Inject[T]`.
 
 ---

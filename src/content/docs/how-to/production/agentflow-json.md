@@ -1,6 +1,6 @@
 ---
 title: agentflow.json in production
-description: Which agentflow.json fields matter in production, the values to set for auth, persistence, and rate limiting, and the defaults that are unsafe once real traffic arrives.
+description: "The agentflow.json fields that matter in production: values to set for auth, persistence, and rate limiting, and defaults that are unsafe under real traffic."
 section: How-to guides
 group: Production
 order: 750
@@ -107,7 +107,7 @@ than one that refuses to start.
 
 ```bash
 # 1. Config resolves, graph imports, server boots with no reloader
-agentflow api --no-reload
+10xgraph api --no-reload
 
 # 2. Auth is really on: an unauthenticated call must be rejected, not served
 curl -s -o /dev/null -w "%{http_code}\n" \
@@ -124,7 +124,7 @@ and read the thread back.
 
 ## Related
 
-- [Configuration reference](/docs/reference/api-cli/configuration) — every field and default
+- [Configuration reference](/docs/reference/api-cli/configuration), every field and default
 - [Environment variables](/docs/how-to/production/environment-variables)
 - [Deployment](/docs/how-to/production/deployment) and [Deploy on Kubernetes](/docs/how-to/production/kubernetes)
 - [Backup and restore](/docs/how-to/production/backup-and-restore)
