@@ -52,8 +52,8 @@ A chatbot responds to one message with one LLM call. An agent may make dozens of
 10xGraph provides a prebuilt `ReactAgent` that implements the full agent loop. You supply the tools; the framework handles routing, tool execution, and state.
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
 
 def search_web(query: str) -> str:
     """Search the web and return a summary of results."""

@@ -17,7 +17,7 @@ If you need generated container files, start with [Generate Docker Files](/docs/
 
 ```mermaid
 flowchart TD
-    A[Source code + agentflow.json] --> B[10xgraph build or custom Dockerfile]
+    A[Source code + 10xgraph.json] --> B[10xgraph build or custom Dockerfile]
     B --> C[Container image]
     C --> D[Runtime environment]
     D --> E[10xGraph API instances]

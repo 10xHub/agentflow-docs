@@ -1,6 +1,6 @@
 ---
 title: Add JWT authentication
-description: Turn on JWT auth in agentflow.json, send bearer tokens, read the user in tools, and restrict each thread to its owner. Includes a custom BaseAuth option.
+description: Turn on JWT auth in 10xgraph.json, send bearer tokens, read the user in tools, and restrict each thread to its owner. Includes a custom BaseAuth option.
 section: How-to guides
 order: 900
 updated: 2026-10-03T00:00:00.000Z
@@ -14,7 +14,7 @@ faq:
 group: CLI
 ---
 
-Set `"auth": "jwt"` in `agentflow.json`, put `JWT_SECRET_KEY` and `JWT_ALGORITHM` in your environment, and send `Authorization: Bearer <token>` on every request. The token must carry `exp` and `user_id` claims. The `user_id` becomes the thread owner and reaches your tools through the run config.
+Set `"auth": "jwt"` in `10xgraph.json`, put `JWT_SECRET_KEY` and `JWT_ALGORITHM` in your environment, and send `Authorization: Bearer <token>` on every request. The token must carry `exp` and `user_id` claims. The `user_id` becomes the thread owner and reaches your tools through the run config.
 
 <Steps>
 
@@ -37,11 +37,11 @@ Set `"auth": "jwt"` in `agentflow.json`, put `JWT_SECRET_KEY` and `JWT_ALGORITHM
 
    Generate a secret with `python -c 'import secrets; print(secrets.token_urlsafe(48))'`. The server refuses a shorter HS* secret at startup when `MODE=production`, and warns otherwise.
 
-3. **Enable JWT in agentflow.json**
+3. **Enable JWT in 10xgraph.json**
 
    Use the bare string `"jwt"`. The object form is only for custom auth.
 
-   ```jsonc title="agentflow.json"
+   ```jsonc title="10xgraph.json"
    {
      "agent": "graph.agent:app",
      "env": ".env",
@@ -104,7 +104,7 @@ Set `"authorization": "ownership"`. A thread is read, continued, stopped or fixe
 
 If you leave `authorization` unset, the default depends on `MODE`: `ownership` when `MODE=production`, and allow-all otherwise. Setting it explicitly keeps development and production consistent.
 
-Ownership is looked up through the checkpointer you pass to `compile()`. Use a durable one such as `PgCheckpointer` so owners survive restarts. Set `redis` in `agentflow.json` (or `REDIS_URL`) to share the ownership cache across workers.
+Ownership is looked up through the checkpointer you pass to `compile()`. Use a durable one such as `PgCheckpointer` so owners survive restarts. Set `redis` in `10xgraph.json` (or `REDIS_URL`) to share the ownership cache across workers.
 
 For roles and scopes, `authorization` also accepts an object with `"backend": "rbac"`, a `roles` map and optional `default_scopes`. See the [configuration reference](/docs/reference/api-cli/configuration).
 
@@ -126,7 +126,7 @@ class AgentAuth(BaseAuth):
 
 Point the config at it with the object form:
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "auth": { "method": "custom", "path": "auth.agent_auth:AgentAuth" }
 }

@@ -9,7 +9,7 @@ label: Stop Stream
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react_stream/stop_stream.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stop_stream.py)
+**Source example:** [`examples/react_stream/stop_stream.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react_stream/stop_stream.py)
 
 ## What you will build
 
@@ -18,7 +18,7 @@ A long-running streaming graph that emits output over time and a caller that sto
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 
 ## Why stream cancellation matters
 
@@ -56,7 +56,7 @@ This example uses an async node that yields `Message` objects over time:
 ```python
 import asyncio
 
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 
 async def main_agent(state: AgentState, config: dict | None = None):
     for idx in range(50):
@@ -75,9 +75,9 @@ This simulates a long-running task. In a real system this could be:
 The graph itself is intentionally simple. The node streams chunks and then exits.
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 checkpointer = InMemoryCheckpointer()
 
@@ -100,7 +100,7 @@ The example starts a background thread that iterates over `app.stream(...)`:
 import logging
 import threading
 
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 def run_and_stop():
     app = build_app()
@@ -141,10 +141,10 @@ import time
 
 from dotenv import load_dotenv
 
-from agentflow.core.graph import StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()

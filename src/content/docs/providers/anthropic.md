@@ -14,7 +14,7 @@ Run Claude models through the Anthropic Messages API. The same provider also rea
 ## Setup
 
 ```bash
-pip install "10xscale-agentflow[anthropic]"
+pip install "10xgraph[anthropic]"
 ```
 
 Get an API key from [console.anthropic.com](https://console.anthropic.com) and export it:
@@ -34,7 +34,7 @@ An unset `ANTHROPIC_API_KEY` is not fatal. The SDK also resolves `ANTHROPIC_AUTH
 ## Basic usage
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     model="claude-opus-5",
@@ -123,7 +123,7 @@ The minimum cacheable prefix is roughly 1024 tokens; a shorter prefix silently d
 `AnthropicBatch` wraps the Message Batches API for offline, high-volume work.
 
 ```python
-from agentflow.core.llm import AnthropicBatch
+from tenxgraph.core.llm import AnthropicBatch
 
 batch = AnthropicBatch(model="claude-haiku-4-5")
 batch.add("row-1", [{"role": "user", "content": "Summarise: ..."}])
@@ -149,9 +149,9 @@ One credential source must resolve. 10xGraph only reads `ANTHROPIC_API_KEY` itse
 
 | Error | Fix |
 |---|---|
-| `ImportError: anthropic SDK is required` | `pip install "10xscale-agentflow[anthropic]"` |
-| `ImportError: ... Vertex support` | `pip install "10xscale-agentflow[anthropic-vertex]"` |
-| `ImportError: ... Bedrock support` | `pip install "10xscale-agentflow[anthropic-bedrock]"` |
+| `ImportError: anthropic SDK is required` | `pip install "10xgraph[anthropic]"` |
+| `ImportError: ... Vertex support` | `pip install "10xgraph[anthropic-vertex]"` |
+| `ImportError: ... Bedrock support` | `pip install "10xgraph[anthropic-bedrock]"` |
 | `ValueError: Unsupported anthropic_backend` | Use `None`, `"vertex"`, or `"bedrock"` |
 | `ValueError: Anthropic provider doesn't support output_type=...` | Only `"text"` and `"json"` are valid |
 | 400 on `budget_tokens` | Drop it; use `reasoning_config={"effort": ...}` |

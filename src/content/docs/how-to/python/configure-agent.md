@@ -13,7 +13,7 @@ updated: "2026-06-16"
 ## Minimal example
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(model="gpt-4o")
 ```
@@ -92,7 +92,7 @@ agent = Agent(
 Placeholders like `{field_name}` are replaced at runtime with values from the current `AgentState`:
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class MyState(AgentState):
     user_name: str = "Guest"
@@ -114,7 +114,7 @@ agent = Agent(
 Pass a `ToolNode` instance directly, or reference a graph node by name.
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 def search(query: str) -> str:
     """Search the web."""
@@ -137,7 +137,7 @@ agent = Agent(model="gpt-4o", tool_node="TOOL")
 `tools_tags` limits which tools from the `ToolNode` are exposed to the LLM. Tools without matching tags are hidden.
 
 ```python
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool(tags=["safe"])
 def safe_search(query: str) -> str:
@@ -193,7 +193,7 @@ agent = Agent(model="gemini-2.5-flash", reasoning_config={"thinking_budget": 500
 `Agent` retries on HTTP 429, 500, 502, 503, and 529 with exponential back-off.
 
 ```python
-from agentflow.core.graph.agent_internal.constants import RetryConfig
+from tenxgraph.core.graph.agent_internal.constants import RetryConfig
 
 # Default (3 retries, 1s initial, 2x backoff, 30s cap)
 agent = Agent(model="gpt-4o")
@@ -232,7 +232,7 @@ The circuit breaker is an opt-in complement to retries and `fallback_models`. On
 This prevents a dead provider from being retried on every call while other fallbacks are available.
 
 ```python
-from agentflow.core.graph.agent_internal.constants import RetryConfig
+from tenxgraph.core.graph.agent_internal.constants import RetryConfig
 
 agent = Agent(
     model="gpt-4o",
@@ -263,7 +263,7 @@ AGENTFLOW_LLM_TIMEOUT=120   # seconds
 ### Override programmatically
 
 ```python
-from agentflow.core.llm import set_default_llm_timeout, get_default_llm_timeout
+from tenxgraph.core.llm import set_default_llm_timeout, get_default_llm_timeout
 
 set_default_llm_timeout(120.0)   # apply globally from this point on
 set_default_llm_timeout(None)    # reset to env var / built-in default
@@ -346,7 +346,7 @@ The agent's response message will contain a JSON string conforming to `ReviewAna
 `extra_messages` are injected into every LLM call after the system prompt and before the context. Use them for few-shot examples or static instructions that should always appear.
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 examples = [
     Message.text_message("Q: What is 2+2?", role="user"),

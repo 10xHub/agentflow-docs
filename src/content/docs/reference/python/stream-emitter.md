@@ -17,7 +17,7 @@ Use `StreamEmitter` when you want your tools to send **live progress updates** b
 ## Import path
 
 ```python
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 ```
 
 ---
@@ -317,9 +317,9 @@ def intelligent_search(query: str, emit: StreamEmitter | None = None) -> str:
 ## Example: Complete Tool with StreamEmitter
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.core.state import AgentState
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 import time
 
 def get_weather(

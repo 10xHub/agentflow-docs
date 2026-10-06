@@ -144,7 +144,7 @@ flowchart LR
 You do not need your own dataclass. A golden example is an `EvalCase`, and a suite of them is an `EvalSet`. Categories are `tags`, which `filter_by_tags()` selects on. `EvalSet` round-trips to JSON with `to_file()` / `from_file()`, so the suite can live in version control next to the code.
 
 ```python
-from agentflow.qa.evaluation import EvalCase, EvalSet, ToolCall
+from tenxgraph.qa.evaluation import EvalCase, EvalSet, ToolCall
 
 def tagged(case: EvalCase, *tags: str) -> EvalCase:
     """single_turn() has no tags parameter — tags is a field on the case."""
@@ -194,7 +194,7 @@ The runner is `AgentEvaluator`. It takes a compiled graph paired with the `Traje
 
 ```python
 import pytest
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     CriteriaConfig,
     CriterionConfig,

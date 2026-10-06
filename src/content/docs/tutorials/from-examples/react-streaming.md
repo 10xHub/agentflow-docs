@@ -9,7 +9,7 @@ label: React Streaming
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react_stream/stream_react_agent.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stream_react_agent.py)
+**Source example:** [`examples/react_stream/stream_react_agent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react_stream/stream_react_agent.py)
 
 ## What you will build
 
@@ -53,7 +53,7 @@ flowchart LR
 The tool returns a structured `Message` object instead of a plain string. This is the recommended pattern when you want the tool result to carry explicit role and `tool_call_id` metadata.
 
 ```python
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 
 def lookup_order(
     order_id: str,
@@ -71,9 +71,9 @@ def lookup_order(
 ## Step 2 — Build agent and graph
 
 ```python
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 checkpointer = InMemoryCheckpointer()
 tool_node = ToolNode([lookup_order])
@@ -113,7 +113,7 @@ app = graph.compile(checkpointer=checkpointer)
 
 ```python
 import asyncio
-from agentflow.utils import ResponseGranularity
+from tenxgraph.utils import ResponseGranularity
 
 async def run_stream_test():
     inp = {"messages": [Message.text_message("Call lookup_order for order A-1001, then reply.")]}
@@ -169,11 +169,11 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message, StreamEvent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import ResponseGranularity
-from agentflow.utils.constants import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message, StreamEvent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import ResponseGranularity
+from tenxgraph.utils.constants import END
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()

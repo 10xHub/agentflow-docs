@@ -17,7 +17,7 @@ Without `@tool`, 10xGraph still registers the function, it falls back to `__name
 ## Basic usage
 
 ```python
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool
 def get_weather(city: str, units: str = "celsius") -> str:
@@ -68,7 +68,7 @@ def local_search(query: str) -> str:
 Pass `tools_tags` to `Agent` to restrict which tools are visible:
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.core.graph import Agent, ToolNode
 
 tool_node = ToolNode([web_search, run_query, local_search])
 
@@ -148,7 +148,7 @@ async def fetch_page(url: str) -> str:
 ## Inspect tool metadata programmatically
 
 ```python
-from agentflow.utils.decorators import get_tool_metadata, has_tool_decorator
+from tenxgraph.utils.decorators import get_tool_metadata, has_tool_decorator
 
 print(has_tool_decorator(get_weather))  # True
 
@@ -181,10 +181,10 @@ The decorator sets these private attributes directly on the function object:
 ## Complete example
 
 ```python
-from agentflow.utils.decorators import tool
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.utils.decorators import tool
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 @tool(
     name="search_knowledge_base",

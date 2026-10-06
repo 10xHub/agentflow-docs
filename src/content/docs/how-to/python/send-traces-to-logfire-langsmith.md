@@ -1,6 +1,6 @@
 ---
 title: How to send traces to Logfire and LangSmith
-description: Send 10xGraph graph, node, LLM, and tool spans to Pydantic Logfire or LangSmith over OpenTelemetry using Python helpers, publishers, or agentflow.json.
+description: Send 10xGraph graph, node, LLM, and tool spans to Pydantic Logfire or LangSmith over OpenTelemetry using Python helpers, publishers, or 10xgraph.json.
 section: How-to guides
 group: Python library
 order: 630
@@ -14,7 +14,7 @@ You have three ways to wire it up:
 
 - **Python helpers**, `setup_logfire`, `setup_langsmith`, or the unified `setup_observability`.
 - **Dedicated publishers**, `LogfirePublisher` / `LangsmithPublisher`, if you prefer a publisher object to assign or compose.
-- **Declarative config**, an `observability` block in `agentflow.json` (auto-wired by the API server; see [below](#declarative-config-in-agentflowjson)).
+- **Declarative config**, an `observability` block in `10xgraph.json` (auto-wired by the API server; see [below](#declarative-config-in-agentflowjson)).
 
 ---
 
@@ -32,7 +32,7 @@ The `langsmith` extra pulls only the OpenTelemetry OTLP HTTP exporter, not the L
 
 ## Secrets stay in the environment
 
-Never put tokens in code or `agentflow.json`. Set them as environment variables:
+Never put tokens in code or `10xgraph.json`. Set them as environment variables:
 
 ```bash
 # Logfire
@@ -51,9 +51,9 @@ Both helpers fall back to these variables when you do not pass `token=` / `api_k
 Call `setup_logfire(graph, ...)` **before** `graph.compile()`. It runs `logfire.configure(...)` to install the global `TracerProvider`, then attaches the `OtelPublisher`.
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.runtime.publisher import setup_logfire, ObservabilityLevel
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.runtime.publisher import setup_logfire, ObservabilityLevel
+from tenxgraph.utils import END
 
 graph = StateGraph()
 graph.add_node("MAIN", Agent(model="gpt-4o"))
@@ -79,7 +79,7 @@ app = graph.compile()
 Call `setup_langsmith(graph, ...)` **before** `graph.compile()`. It builds an OTLP HTTP exporter pointing at LangSmith, wraps it in a `BatchSpanProcessor`, and attaches the `OtelPublisher`.
 
 ```python
-from agentflow.runtime.publisher import setup_langsmith, ObservabilityLevel
+from tenxgraph.runtime.publisher import setup_langsmith, ObservabilityLevel
 
 setup_langsmith(
     graph,
@@ -103,7 +103,7 @@ setup_langsmith(graph, project="my-agent", endpoint="https://eu.api.smith.langch
 `setup_observability` reads a config dict and enables Logfire and/or LangSmith. When both are on, they share a single `TracerProvider` (the LangSmith processor is passed to Logfire via `additional_span_processors`):
 
 ```python
-from agentflow.runtime.publisher import setup_observability
+from tenxgraph.runtime.publisher import setup_observability
 
 setup_observability(graph, {
     "level": "standard",
@@ -121,7 +121,7 @@ app = graph.compile()
 If you prefer a publisher object, for example to fan out with `CompositePublisher`, use `LogfirePublisher` or `LangsmithPublisher`. They subclass `OtelPublisher` and configure the provider on construction, so assign them before `compile()`:
 
 ```python
-from agentflow.runtime.publisher import LangsmithPublisher, ObservabilityLevel
+from tenxgraph.runtime.publisher import LangsmithPublisher, ObservabilityLevel
 
 publisher = LangsmithPublisher(project="my-agent", level=ObservabilityLevel.STANDARD)
 graph = StateGraph(publisher=publisher)
@@ -147,9 +147,9 @@ The `level` controls how much data lands on each span. It reuses `ObservabilityL
 
 ---
 
-## Declarative config in agentflow.json
+## Declarative config in 10xgraph.json
 
-When you serve a graph with `10xgraph api`, you do not call the helpers yourself. Add an `observability` block to [`agentflow.json`](/docs/how-to/api-cli/configure-agentflow-json) and the server wires it up during startup:
+When you serve a graph with `10xgraph api`, you do not call the helpers yourself. Add an `observability` block to [`10xgraph.json`](/docs/how-to/api-cli/configure-agentflow-json) and the server wires it up during startup:
 
 ```json
 {
@@ -162,11 +162,11 @@ When you serve a graph with `10xgraph api`, you do not call the helpers yourself
 }
 ```
 
-Keep `LOGFIRE_TOKEN` / `LANGSMITH_API_KEY` in your `.env`, never in `agentflow.json`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter rather than failing.
+Keep `LOGFIRE_TOKEN` / `LANGSMITH_API_KEY` in your `.env`, never in `10xgraph.json`. If a backend is enabled but its package or key is missing, the server logs a warning and starts without that exporter rather than failing.
 
 ---
 
 ## Related
 
 - [How to use publishers](/docs/how-to/python/use-publishers), the full publisher catalog, including the raw `OtelPublisher`.
-- [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json), every top-level config key.
+- [Configure 10xgraph.json](/docs/how-to/api-cli/configure-agentflow-json), every top-level config key.

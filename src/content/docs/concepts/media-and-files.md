@@ -15,7 +15,7 @@ updated: "2026-07-21"
 
 ## Content block types
 
-All block types live in `agentflow.core.state` (re-exported from the top-level `agentflow` package).
+All block types live in `tenxgraph.core.state`.
 
 | Class | type discriminator | When to use |
 |---|---|---|
@@ -38,7 +38,7 @@ All block types live in `agentflow.core.state` (re-exported from the top-level `
 `MediaRef` is how you tell a block *where* the binary data is. It has three `kind` values:
 
 ```python
-from agentflow.core.state import MediaRef
+from tenxgraph.core.state import MediaRef
 
 # 1. External URL — the agent fetches it per provider
 MediaRef(kind="url", url="https://example.com/photo.png", mime_type="image/png")
@@ -55,7 +55,7 @@ MediaRef(kind="file_id", file_id="a1b2c3d4...", mime_type="image/png")
 ```python
 class MediaRef(BaseModel):
     kind: Literal["url", "file_id", "data"] = "url"
-    url: str | None = None          # https:// or agentflow://media/<key>
+    url: str | None = None          # https:// or graph://media/<key>
     file_id: str | None = None      # opaque key from MediaStore.store()
     data_base64: str | None = None  # base64-encoded bytes (small payloads only)
     mime_type: str | None = None
@@ -73,10 +73,10 @@ class MediaRef(BaseModel):
 
 ## Building multimodal messages
 
-Importing `agentflow` itself only exposes `__version__`. Blocks live in `agentflow.core.state`:
+Import blocks from the `tenxgraph.core.state` module rather than guessing a top-level name. Blocks live in `tenxgraph.core.state`:
 
 ```python
-from agentflow.core.state import (
+from tenxgraph.core.state import (
     AudioBlock,
     DocumentBlock,
     ImageBlock,
@@ -140,8 +140,8 @@ Upload the file once and reference it by key in any number of subsequent message
 
 ```python
 import asyncio
-from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
-from agentflow.storage.media import InMemoryMediaStore
+from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
+from tenxgraph.storage.media import InMemoryMediaStore
 
 media_store = InMemoryMediaStore()
 
@@ -247,14 +247,14 @@ async def get_metadata(storage_key: str) -> dict | None                      # w
 
 | Class | Module | Use case |
 |---|---|---|
-| `InMemoryMediaStore` | `agentflow.storage.media.storage` | Development, tests |
-| `LocalFileMediaStore` | `agentflow.storage.media.storage` | Single-server, dev |
-| `CloudMediaStore` | `agentflow.storage.media.storage` | S3 / GCS (production) |
+| `InMemoryMediaStore` | `tenxgraph.storage.media.storage` | Development, tests |
+| `LocalFileMediaStore` | `tenxgraph.storage.media.storage` | Single-server, dev |
+| `CloudMediaStore` | `tenxgraph.storage.media.storage` | S3 / GCS (production) |
 
 #### InMemoryMediaStore
 
 ```python
-from agentflow.storage.media import InMemoryMediaStore
+from tenxgraph.storage.media import InMemoryMediaStore
 
 store = InMemoryMediaStore()
 key = await store.store(data=image_bytes, mime_type="image/png")
@@ -266,7 +266,7 @@ Data is lost on process restart. Thread-safe via asyncio.
 #### LocalFileMediaStore
 
 ```python
-from agentflow.storage.media.storage import LocalFileMediaStore
+from tenxgraph.storage.media.storage import LocalFileMediaStore
 
 store = LocalFileMediaStore(base_dir="./agentflow_media")
 key = await store.store(data=pdf_bytes, mime_type="application/pdf")
@@ -277,18 +277,18 @@ Files are sharded on disk as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with 
 #### CloudMediaStore (S3 / GCS)
 
 ```bash
-pip install "10xscale-agentflow[cloud-storage]"
+pip install "10xgraph[cloud-storage]"
 ```
 
 ```python
 from cloud_storage_manager import CloudStorageFactory, StorageProvider, StorageConfig, AwsConfig
-from agentflow.storage.media.storage import CloudMediaStore
+from tenxgraph.storage.media.storage import CloudMediaStore
 
 config = StorageConfig(
     aws=AwsConfig(bucket_name="my-bucket", access_key_id="...", secret_access_key="...")
 )
 cloud_storage = CloudStorageFactory.get_storage(StorageProvider.AWS, config)
-store = CloudMediaStore(cloud_storage, prefix="agentflow-media")
+store = CloudMediaStore(cloud_storage, prefix="10xgraph-media")
 ```
 
 Stores binary blobs in the cloud bucket. Supports generating signed URLs via `get_direct_url()` so providers can fetch media directly.
@@ -300,8 +300,8 @@ Stores binary blobs in the cloud bucket. Supports generating signed URLs via `ge
 Pass `MultimodalConfig` to `Agent` to control how media is delivered to the LLM provider:
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
+from tenxgraph.core.graph import Agent
+from tenxgraph.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
 
 agent = Agent(
     model="gemini-2.5-flash",
@@ -339,16 +339,16 @@ agent = Agent(
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.storage.media import (
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.media import (
     DocumentHandling,
     ImageHandling,
     InMemoryMediaStore,
     MultimodalConfig,
 )
-from agentflow.utils import END
+from tenxgraph.utils import END
 
 checkpointer = InMemoryCheckpointer()
 media_store = InMemoryMediaStore()
@@ -456,7 +456,7 @@ const result = await client.invoke(
 
 ## Provider capability matrix
 
-Not all providers support all media types and transport modes. 10xGraph's internal capability matrix (`agentflow.storage.media.capabilities`) determines the best transport for each provider/model combination. The resolver tries transport modes in preference order:
+Not all providers support all media types and transport modes. 10xGraph's internal capability matrix (`tenxgraph.storage.media.capabilities`) determines the best transport for each provider/model combination. The resolver tries transport modes in preference order:
 
 | Transport mode | Description |
 |---|---|

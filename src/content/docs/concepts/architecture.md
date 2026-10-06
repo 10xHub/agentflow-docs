@@ -26,7 +26,7 @@ flowchart TB
     Routers[REST routers]
   end
 
-  subgraph Core["10xscale-agentflow (Python)"]
+  subgraph Core["10xgraph (Python)"]
     Graph[StateGraph / Agent / ToolNode]
     State[AgentState / Message]
     Prebuilt[ReactAgent / SupervisorTeamAgent / SwarmAgent / prebuilt tools]
@@ -51,25 +51,25 @@ flowchart TB
 
 ---
 
-### `10xscale-agentflow` — core Python library
+### `10xgraph` — core Python library
 
 | Sub-package | Key exports |
 |---|---|
-| `agentflow.core` | `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, `StreamChunk` |
-| `agentflow.prebuilt.agent` | `ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `AudioAgent` |
-| `agentflow.prebuilt.tools` | `safe_calculator`, `fetch_url`, `google_web_search`, `file_read`, `file_write`, `memory_tool`, `create_handoff_tool` |
-| `agentflow.storage.checkpointer` | `InMemoryCheckpointer`, `PgCheckpointer` |
-| `agentflow.storage.store` | `QdrantStore`, `Mem0Store` |
-| `agentflow.storage.media` | `InMemoryMediaStore`, `LocalFileMediaStore`, `CloudMediaStore` |
-| `agentflow.runtime` | Publishers (`ConsolePublisher`, `RedisPublisher`, `KafkaPublisher`, `RabbitMQPublisher`, `OtelPublisher`) and LLM SDK converters |
-| `agentflow.utils` | `ResponseGranularity`, `CallbackManager`, `tool` decorator |
-| `agentflow.qa` | Testing helpers and evaluation tools |
+| `tenxgraph.core` | `StateGraph`, `Agent`, `ToolNode`, `AgentState`, `Message`, `StreamChunk` |
+| `tenxgraph.prebuilt.agent` | `ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, `SwarmAgent`, `AudioAgent` |
+| `tenxgraph.prebuilt.tools` | `safe_calculator`, `fetch_url`, `google_web_search`, `file_read`, `file_write`, `memory_tool`, `create_handoff_tool` |
+| `tenxgraph.storage.checkpointer` | `InMemoryCheckpointer`, `PgCheckpointer` |
+| `tenxgraph.storage.store` | `QdrantStore`, `Mem0Store` |
+| `tenxgraph.storage.media` | `InMemoryMediaStore`, `LocalFileMediaStore`, `CloudMediaStore` |
+| `tenxgraph.runtime` | Publishers (`ConsolePublisher`, `RedisPublisher`, `KafkaPublisher`, `RabbitMQPublisher`, `OtelPublisher`) and LLM SDK converters |
+| `tenxgraph.utils` | `ResponseGranularity`, `CallbackManager`, `tool` decorator |
+| `tenxgraph.qa` | Testing helpers and evaluation tools |
 
 ### `10xscale-agentflow-cli` — API and CLI
 
 - **`agentflow api`** — starts a FastAPI server that serves a compiled graph
 - **`agentflow play`** — same as `api`, plus opens the hosted playground
-- **`agentflow init`** — scaffolds `agentflow.json` and `graph/react.py`
+- **`agentflow init`** — scaffolds `10xgraph.json` and `graph/react.py`
 - **`agentflow build`** — generates a Dockerfile and docker-compose
 - REST routers for graph invoke, streaming, threads, memory store, and file uploads
 

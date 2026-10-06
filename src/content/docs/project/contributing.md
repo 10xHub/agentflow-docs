@@ -13,7 +13,7 @@ documentation, and examples are all welcome.
 
 | You want to change | Repository |
 | --- | --- |
-| The core Python framework | [10xHub/10xGraph](https://github.com/10xHub/Agentflow) |
+| The core Python framework | [10xGraph/10xGraph](https://github.com/10xGraph/10xGraph) |
 | The API server or CLI | [10xHub/agentflow-cli](https://github.com/10xHub/agentflow-cli) |
 | The TypeScript client | [10xHub/agentflow-client](https://github.com/10xHub/agentflow-client) |
 | This documentation site | [10xHub/agentflow-docs](https://github.com/10xHub/agentflow-docs) |
@@ -28,8 +28,8 @@ right file in the docs repository.
 The core library uses [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
-git clone https://github.com/10xHub/Agentflow
-cd Agentflow
+git clone https://github.com/10xGraph/10xGraph
+cd 10xGraph
 uv sync --dev              # create .venv and install the package plus dev tools
 uv run pre-commit install  # enable the git hooks
 ```
@@ -89,7 +89,7 @@ npm run verify:api         # documented symbols and routes must exist
 the packages users actually get:
 
 ```bash
-pip install 10xscale-agentflow 10xscale-agentflow-cli
+pip install 10xgraph 10xscale-agentflow-cli
 npm run verify:api
 ```
 
@@ -109,7 +109,7 @@ four-quadrant split. Put a page where its reader is, not where its topic is.
 
 If a topic needs coverage in more than one quadrant, write the reference page and
 link to it. Do not restate the same parameter table in four places: that is how
-the site accumulated four pages about `agentflow.json`.
+the site accumulated four pages about `10xgraph.json`.
 
 ### Writing conventions
 

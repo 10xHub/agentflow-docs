@@ -10,7 +10,7 @@ updated: "2026-07-21"
 
 `WS /v1/graph/live` is a WebSocket bridge between a client (browser, SDK, native app) and a `CompiledGraph` rooted at a `LiveAgent` (built with `AudioAgent`). It maps audio frames to `LiveInputQueue` calls and streams `RealtimeEvent` objects back.
 
-The endpoint is only available when the graph configured in `agentflow.json` contains a `LiveAgent`. Calling it against a non-live graph sends a fatal `error` event with `code: "not_live"` and closes the socket with code `1008`. Check `info.is_realtime` on `GET /v1/graph` to decide which socket to open.
+The endpoint is only available when the graph configured in `10xgraph.json` contains a `LiveAgent`. Calling it against a non-live graph sends a fatal `error` event with `code: "not_live"` and closes the socket with code `1008`. Check `info.is_realtime` on `GET /v1/graph` to decide which socket to open.
 
 Base URL: `ws://<host>/v1/graph/live`
 
@@ -45,7 +45,7 @@ An authentication or authorization failure closes the handshake with code `1008`
 
 WebSocket handshakes bypass the HTTP rate-limit and request-size middleware (Starlette runs `BaseHTTPMiddleware` for HTTP scopes only), so the endpoint re-applies two protections at the handshake itself:
 
-- **The global rate limit.** A handshake is counted against the same bucket as REST requests, using the `rate_limit` block in `agentflow.json`. Exceeding it rejects the handshake with close code `1013`.
+- **The global rate limit.** A handshake is counted against the same bucket as REST requests, using the `rate_limit` block in `10xgraph.json`. Exceeding it rejects the handshake with close code `1013`.
 - **`websocket.max_connections`.** A per-process cap on concurrent WebSocket connections across `/v1/graph/live` and `/v1/graph/ws`. Exceeding it also rejects with `1013`.
 
 ```json
@@ -320,7 +320,7 @@ import json
 import wave
 import websockets
 
-from agentflow.core.realtime.base import OUTPUT_SAMPLE_RATE
+from tenxgraph.core.realtime.base import OUTPUT_SAMPLE_RATE
 
 async def main():
     uri = "ws://localhost:8000/v1/graph/live?token=<jwt>"

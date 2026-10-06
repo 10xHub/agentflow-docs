@@ -234,7 +234,7 @@ List the tools exposed by every `ToolNode` in the graph, grouped by node.
 | `node_count` | Number of `ToolNode`s in the graph |
 | `tool_count` | Total tools across all tool nodes |
 | `nodes[].node_name` | Name of the tool node in the graph |
-| `nodes[].tools[].source` | `local` (a Python function on the node), `mcp` (from a connected MCP server), or `remote` (declared in `agentflow.json` and executed by a client) |
+| `nodes[].tools[].source` | `local` (a Python function on the node), `mcp` (from a connected MCP server), or `remote` (declared in `10xgraph.json` and executed by a client) |
 | `nodes[].tools[].parameters` | JSON Schema for the tool's parameters, in OpenAI function-calling shape |
 
 Tool collection is best-effort per node: an MCP server that fails to respond is logged and its node contributes no tools, rather than failing the whole request.

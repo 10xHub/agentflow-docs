@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 A Retrieval-Augmented Generation agent that retrieves relevant documents from a knowledge base before generating an answer.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -110,11 +110,11 @@ Vector similarity (`top_k=20`) retrieves by embedding distance, which does not a
 ```python
 import asyncio
 from dotenv import load_dotenv
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -157,12 +157,12 @@ Retrieve 20 candidates, rerank and pass the best 5 to the LLM:
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.prebuilt.agent.rag import CohereReranker
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.prebuilt.agent.rag import CohereReranker
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.state import Message
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -199,11 +199,11 @@ asyncio.run(main())
 ### With CrossEncoder (fully local, no API key)
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.prebuilt.agent.rag import CrossEncoderReranker
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.prebuilt.agent.rag import CrossEncoderReranker
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -226,8 +226,8 @@ app = rag.compile()
 Any class with an async `arerank` method satisfies the `BaseReranker` protocol:
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
 
 class MyReranker:
     async def arerank(self, query: str, documents: list[str], top_n: int) -> list[str]:
@@ -247,12 +247,12 @@ rag = RAGAgent(
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.core.state import Message
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -288,10 +288,10 @@ asyncio.run(main())
 ### Google Gemini
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -322,10 +322,10 @@ app = rag.compile()
 **`graph.py`**
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.graph import Agent
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -348,7 +348,7 @@ rag = RAGAgent(
 app = rag.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

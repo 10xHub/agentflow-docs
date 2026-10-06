@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 Utilities for creating agent-to-agent transfer tools used in multi-agent swarm patterns.
 
-**Import path:** `agentflow.prebuilt.tools.handoff`
+**Import path:** `tenxgraph.prebuilt.tools.handoff`
 
 Handoff tools are special tools that tell an LLM it can transfer control to another agent. When the LLM calls a handoff tool, the **graph routing layer** intercepts the call and navigates to the target node directly — the tool function body never actually executes. This keeps the conversation history clean (no spurious tool-result messages).
 
@@ -59,8 +59,8 @@ A callable with `__name__ = "transfer_to_<agent_name>"` and two metadata attribu
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools.handoff import create_handoff_tool
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools.handoff import create_handoff_tool
+from tenxgraph.core.graph import Agent, ToolNode
 
 transfer_to_researcher = create_handoff_tool(
     agent_name="researcher",
@@ -104,7 +104,7 @@ def is_handoff_tool(tool_name: str) -> tuple[bool, str | None]
 ### Examples
 
 ```python
-from agentflow.prebuilt.tools.handoff import is_handoff_tool
+from tenxgraph.prebuilt.tools.handoff import is_handoff_tool
 
 is_handoff_tool("transfer_to_researcher")  # (True, "researcher")
 is_handoff_tool("calculate")               # (False, None)
@@ -118,11 +118,11 @@ This function is used internally by `SwarmAgent`'s routing functions to detect h
 ## Manual multi-agent example
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.core.graph.state_graph import StateGraph
-from agentflow.core.state.agent_state import AgentState
-from agentflow.prebuilt.tools.handoff import create_handoff_tool, is_handoff_tool
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.graph.state_graph import StateGraph
+from tenxgraph.core.state.agent_state import AgentState
+from tenxgraph.prebuilt.tools.handoff import create_handoff_tool, is_handoff_tool
+from tenxgraph.utils.constants import END
 
 def make_route(allowed: list[str]):
     def _route(state: AgentState) -> str:

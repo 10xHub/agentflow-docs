@@ -87,8 +87,8 @@ Declare the injectable parameter with `Inject[Type]` as its default:
 
 ```python
 from injectq import Inject
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import TextBlock
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import TextBlock
 
 def query_database(
     state: AgentState,
@@ -112,8 +112,8 @@ Injection works the same way in tool functions. The `tool_call_id`, `state`, and
 
 ```python
 from injectq import Inject
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import ToolResultBlock
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import ToolResultBlock
 
 def search_products(
     query: str,
@@ -141,7 +141,7 @@ When you need a scoped or non-global container (e.g. in tests), pass it explicit
 
 ```python
 from injectq import InjectQ
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 
 # Create an isolated container for this graph
 container = InjectQ()
@@ -175,11 +175,11 @@ def my_node(state, config, **deps):
 
 ```python
 from injectq import Inject, InjectQ
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import TextBlock, ToolResultBlock
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import TextBlock, ToolResultBlock
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 class UserRepository:
     def get_user(self, user_id: str) -> dict:
@@ -213,7 +213,7 @@ def log_request(
     print(f"Request from: {user['name']} ({user['plan']} plan)")
     return {}   # no state change, just a side effect
 
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 tool_node = ToolNode([get_user_info])
 agent = Agent(

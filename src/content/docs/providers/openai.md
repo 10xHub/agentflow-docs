@@ -28,7 +28,7 @@ OPENAI_API_KEY=sk-...
 ## Basic usage
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     model="gpt-4o",
@@ -42,8 +42,8 @@ agent = Agent(
 ```python
 from dotenv import load_dotenv
 
-from agentflow.core.state import AgentState, Message
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
 load_dotenv()
 
@@ -93,7 +93,7 @@ OpenAI exposes two distinct APIs for text generation. 10xGraph supports both.
 ### Agent
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 # Default — Chat Completions
 agent = Agent(model="gpt-4o", system_prompt=[...])
@@ -105,7 +105,7 @@ agent = Agent(model="gpt-4o", api_style="responses", system_prompt=[...])
 ### SummaryContextManager
 
 ```python
-from agentflow.core.state import SummaryContextManager
+from tenxgraph.core.state import SummaryContextManager
 
 # Default is "responses" for the context manager
 manager = SummaryContextManager(model="gpt-4o-mini", token_budget=8000)
@@ -124,7 +124,7 @@ The evaluation judge reads `api_style` from `CriterionConfig.api_style` (default
 `"responses"`). Set it per-criterion when using a model that only supports Chat Completions:
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
+from tenxgraph.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
 
 config = EvalConfig(
     criteria=CriteriaConfig(

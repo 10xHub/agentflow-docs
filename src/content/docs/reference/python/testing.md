@@ -16,7 +16,7 @@ Use the testing utilities to write fast, deterministic unit and integration test
 ## Import paths
 
 ```python
-from agentflow.qa.testing import (
+from tenxgraph.qa.testing import (
     TestAgent,
     QuickTest,
     TestResult,
@@ -33,7 +33,7 @@ from agentflow.qa.testing import (
 A drop-in replacement for `Agent` that returns predefined responses in order.
 
 ```python
-from agentflow.qa.testing import TestAgent
+from tenxgraph.qa.testing import TestAgent
 
 agent = TestAgent(
     model="test-model",
@@ -82,9 +82,9 @@ agent = TestAgent(
 ### Using in a graph
 
 ```python
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.qa.testing import TestAgent
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.qa.testing import TestAgent
+from tenxgraph.utils import START, END
 
 test_agent = TestAgent(responses=["Hello!"])
 
@@ -104,7 +104,7 @@ result = await app.ainvoke({"messages": [Message.text_message("Hi")]})
 High-level helper that builds, compiles, and runs a graph in one call. Reduces test boilerplate from 20 lines to 3.
 
 ```python
-from agentflow.qa.testing import QuickTest
+from tenxgraph.qa.testing import QuickTest
 
 result = await QuickTest.single_turn(
     agent_response="Hello! How can I help?",
@@ -202,7 +202,7 @@ All assertion methods return `self` for chaining.
 Fake MCP client for testing nodes that use MCP tools.
 
 ```python
-from agentflow.qa.testing import MockMCPClient
+from tenxgraph.qa.testing import MockMCPClient
 
 mock_mcp = MockMCPClient()
 mock_mcp.add_tool(
@@ -223,7 +223,7 @@ graph.add_node("TOOL", tools)
 Tracks which tools were called and with what arguments. Useful for asserting tool behaviour in integration tests.
 
 ```python
-from agentflow.qa.testing import MockToolRegistry
+from tenxgraph.qa.testing import MockToolRegistry
 
 registry = MockToolRegistry()
 registry.register("get_weather", lambda location: f"Sunny in {location}")
@@ -246,7 +246,7 @@ assert args["location"] == "London"
 A lightweight in-memory `BaseStore` for tests that need memory functionality without a real vector database.
 
 ```python
-from agentflow.qa.testing import InMemoryStore
+from tenxgraph.qa.testing import InMemoryStore
 
 store = InMemoryStore()
 app = graph.compile(store=store)
@@ -260,10 +260,10 @@ Stores memories in a Python dict. Similarity search returns all stored memories 
 
 ```python
 import pytest
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.qa.testing import TestAgent, TestResult, QuickTest
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.qa.testing import TestAgent, TestResult, QuickTest
+from tenxgraph.utils import END
 
 @pytest.mark.asyncio
 async def test_single_response():
@@ -287,7 +287,7 @@ async def test_tool_call_path():
 @pytest.mark.asyncio
 async def test_custom_state_preserved():
     """Verify custom state fields survive a round-trip."""
-    from agentflow.utils import ResponseGranularity
+    from tenxgraph.utils import ResponseGranularity
     from pydantic import Field
 
     class CustomerState(AgentState):

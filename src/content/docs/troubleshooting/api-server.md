@@ -28,7 +28,7 @@ flowchart TD
 
 **Likely causes**
 
-- invalid `agentflow.json`
+- invalid `10xgraph.json`
 - graph import failure
 - missing required environment variables
 
@@ -245,7 +245,7 @@ See [Error Codes Reference](/docs/troubleshooting/error-codes) for full document
 
 **Fix**
 
-- set `auth` in `agentflow.json`
+- set `auth` in `10xgraph.json`
 - restart the server
 - verify with an unauthenticated curl request
 

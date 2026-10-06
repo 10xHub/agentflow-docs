@@ -28,9 +28,9 @@ export GOOGLE_API_KEY=...         # for Google
 ## Step 1: Import the essentials
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import START, END
 ```
 
 ---
@@ -190,8 +190,8 @@ result = app.invoke(
 ## Step 8: Stream responses
 
 ```python
-from agentflow.core.state import StreamEvent
-from agentflow.utils import ResponseGranularity
+from tenxgraph.core.state import StreamEvent
+from tenxgraph.utils import ResponseGranularity
 
 async def stream_example():
     async for chunk in app.astream(
@@ -253,9 +253,9 @@ app.override_node("MAIN", stub_agent)
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import START, END
 
 def get_weather(city: str) -> str:
     """Return current weather for a city."""

@@ -298,8 +298,8 @@ flowchart TB
 ```python
 # ❌ Without grounding - hallucination risk
 prompt = """
-Q: When was AgentFlow founded?
-A: AgentFlow was founded in
+Q: When was 10xGraph founded?
+A: 10xGraph was founded in
 """
 # Model might say 2023, 2024, or 2025 - it doesn't actually know
 
@@ -307,11 +307,11 @@ A: AgentFlow was founded in
 prompt = """
 Based on the following context, answer the question.
 
-Context: AgentFlow is a multi-agent orchestration framework developed by 10xScale. 
+Context: 10xGraph is a multi-agent orchestration framework developed by 10xScale. 
 The company was founded in 2024.
 
-Q: When was AgentFlow founded?
-A: According to the context, AgentFlow was founded in 2024.
+Q: When was 10xGraph founded?
+A: According to the context, 10xGraph was founded in 2024.
 """
 ```
 

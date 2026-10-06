@@ -38,10 +38,10 @@ Without a checkpointer, the "load state" step is skipped and history is lost bet
 Update your graph to compile with a checkpointer:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END
 
 checkpointer = InMemoryCheckpointer()
 
@@ -123,14 +123,14 @@ I don't know your name yet. Could you tell me?
 ## Key imports
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 ```
 
 For production:
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
-# Requires: pip install 10xscale-agentflow[pg_checkpoint]
+from tenxgraph.storage.checkpointer import PgCheckpointer
+# Requires: pip install 10xgraph[pg_checkpoint]
 ```
 
 ## What you learned

@@ -71,7 +71,7 @@ The playground is hosted externally. `agentflow play` does not run a separate lo
 
 **Fix**
 
-- open Connect (`/`), confirm the backend URL, pick the auth mode that matches the server's `agentflow.json`, and connect
+- open Connect (`/`), confirm the backend URL, pick the auth mode that matches the server's `10xgraph.json`, and connect
 - `agentflow play` pre-fills the URL, so this usually means the connection attempt failed rather than that it was never made — check the capability chips and the error shown on the Connect page
 
 ## Issue: the Live page will not start a session

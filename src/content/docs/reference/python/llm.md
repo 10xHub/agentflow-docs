@@ -1,7 +1,7 @@
 ---
 title: LLM Utilities
 seoTitle: "LLM utilities API reference (Python)"
-description: call_llm, create_llm_client, detect_provider, and the default LLM timeout controls exported from agentflow.core.llm.
+description: call_llm, create_llm_client, detect_provider, and the default LLM timeout controls exported from tenxgraph.core.llm.
 section: Reference
 group: Python library
 order: 1430
@@ -11,14 +11,14 @@ updated: "2026-07-21"
 
 ## When to use this
 
-`agentflow.core.llm` is the thin provider layer that `Agent` and the evaluation judges sit on. Use it directly when you need a single-turn LLM call outside a graph, when you want a raw provider SDK client, or when you need to change the default request timeout process-wide.
+`tenxgraph.core.llm` is the thin provider layer that `Agent` and the evaluation judges sit on. Use it directly when you need a single-turn LLM call outside a graph, when you want a raw provider SDK client, or when you need to change the default request timeout process-wide.
 
 For agent behaviour inside a graph, use [`Agent`](/docs/reference/python/agent) instead. This module has no state, no tools, and no retries.
 
 ## Import paths
 
 ```python
-from agentflow.core.llm import (
+from tenxgraph.core.llm import (
     DEFAULT_LLM_TIMEOUT_SECONDS,
     call_llm,
     create_llm_client,
@@ -168,7 +168,7 @@ def set_default_llm_timeout(seconds: float | None) -> None
 Overrides the default timeout process-wide. Pass `None` to clear the override and fall back to the environment variable or built-in default. Raises `ValueError` when `seconds` is not positive.
 
 ```python
-from agentflow.core.llm import get_default_llm_timeout, set_default_llm_timeout
+from tenxgraph.core.llm import get_default_llm_timeout, set_default_llm_timeout
 
 set_default_llm_timeout(120.0)
 get_default_llm_timeout()  # 120.0
@@ -186,8 +186,8 @@ This bounds the provider request only. Node and tool execution have their own de
 | Error | Cause | Fix |
 |---|---|---|
 | `ValueError: Unsupported provider: '...'` | A provider other than `"google"` or `"openai"` was passed to `create_llm_client`. | Use one of the two. Reach other models through an OpenAI-compatible `base_url`. |
-| `ImportError: google-genai SDK is required` | Google provider selected without the SDK. | `pip install "10xscale-agentflow[google-genai]"`. |
-| `ImportError` on the OpenAI client | OpenAI provider selected without the SDK. | `pip install "10xscale-agentflow[openai]"`. |
+| `ImportError: google-genai SDK is required` | Google provider selected without the SDK. | `pip install "10xgraph[google-genai]"`. |
+| `ImportError` on the OpenAI client | OpenAI provider selected without the SDK. | `pip install "10xgraph[openai]"`. |
 | `ValueError: LLM timeout must be a positive number of seconds.` | `set_default_llm_timeout` called with `0` or a negative value. | Pass a positive number, or `None` to clear the override. |
 | Wrong provider auto-detected | Model name matches no known prefix, so detection falls back to `"openai"`. | Pass `provider=` explicitly on `Agent`, or prefix the model, e.g. `"gemini/my-model"`. |
 

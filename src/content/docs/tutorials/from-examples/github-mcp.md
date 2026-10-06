@@ -9,7 +9,7 @@ label: GitHub MCP
 updated: "2026-07-21"
 ---
 
-**Source examples:** [`agentflow/examples/github-mcp/git_mcp.py`](https://github.com/10xHub/Agentflow/blob/main/examples/github-mcp/git_mcp.py) and [`mcp_file_download.py`](https://github.com/10xHub/Agentflow/blob/main/examples/github-mcp/mcp_file_download.py)
+**Source examples:** [`examples/github-mcp/git_mcp.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/github-mcp/git_mcp.py) and [`mcp_file_download.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/github-mcp/mcp_file_download.py)
 
 ## What you will build
 
@@ -194,7 +194,7 @@ This variant also turns on debug logging, which helps with tool discovery and re
 
 ```python
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("agentflow").setLevel(logging.DEBUG)
+logging.getLogger("tenxgraph").setLevel(logging.DEBUG)
 ```
 
 Check that the message history contains a tool call, a tool result tied to the file, and a final assistant message that references the README content. Remote tools may return structured data rather than plain text, and the file path must match what the remote tool expects. Treat this as a remote call, not a local filesystem read.

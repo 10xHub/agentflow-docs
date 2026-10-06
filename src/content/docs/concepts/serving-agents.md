@@ -1,7 +1,7 @@
 ---
 title: Serving Agents
-seoTitle: "Serving agents with agentflow.json"
-description: How agentflow.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
+seoTitle: "Serving agents with 10xgraph.json"
+description: How 10xgraph.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
 section: Concepts
 order: 160
 group: Serving and clients
@@ -12,9 +12,9 @@ This page covers how the API/CLI layer exposes your compiled graph over HTTP, ho
 
 ---
 
-## `agentflow.json` — the project config
+## `10xgraph.json` — the project config
 
-`agentflow.json` is the single file that wires everything together. The CLI and API server read it at startup.
+`10xgraph.json` is the single file that wires everything together. The CLI and API server read it at startup.
 
 Import paths are **dotted module paths** (`module.path:attribute`), resolved with `importlib` —
 not file paths.
@@ -45,7 +45,7 @@ not file paths.
 ```bash
 agentflow api                                    # starts with auto-reload (development default)
 agentflow api --host 0.0.0.0 --port 8000        # bind address
-agentflow api --config agentflow.json            # explicit config path
+agentflow api --config 10xgraph.json            # explicit config path
 agentflow play                                   # API + hosted playground in browser
 ```
 
@@ -107,7 +107,7 @@ flowchart LR
 
 **Built-in: `JwtAuth`**
 
-Point to the built-in class in `agentflow.json` using its importable path:
+Point to the built-in class in `10xgraph.json` using its importable path:
 
 ```json
 {
@@ -122,7 +122,7 @@ export JWT_SECRET_KEY="your-secret"
 export JWT_ALGORITHM="HS256"      # default; optional
 ```
 
-**Custom auth** — subclass `BaseAuth` and point `agentflow.json` to your class:
+**Custom auth** — subclass `BaseAuth` and point `10xgraph.json` to your class:
 
 `authenticate` is **synchronous** and takes `(request, response, credential)`; the bearer token
 arrives as `credential`. Declaring it `async def` returns an un-awaited coroutine and breaks auth.
@@ -230,11 +230,11 @@ class CustomRateLimitBackend(BaseRateLimitBackend):
 `BasePublisher` emits an `EventModel` on every execution event — node start/end, tool calls, state updates, errors. Wire one or more publishers at `StateGraph` initialization; they compose automatically.
 
 ```python
-from agentflow.runtime.publisher import RedisPublisher, KafkaPublisher, CompositePublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import RedisPublisher, KafkaPublisher, CompositePublisher
+from tenxgraph.core.graph import StateGraph
 
 publisher = CompositePublisher([
-    RedisPublisher(url="redis://localhost:6379", channel="agentflow.events"),
+    RedisPublisher(url="redis://localhost:6379", channel="tenxgraph.events"),
     KafkaPublisher(bootstrap_servers="kafka:9092", topic="agentflow"),
 ])
 
@@ -254,8 +254,8 @@ compiled = graph.compile()
 Custom publisher — subclass `BasePublisher`:
 
 ```python
-from agentflow.runtime.publisher.base_publisher import BasePublisher
-from agentflow.runtime.publisher.events import EventModel
+from tenxgraph.runtime.publisher.base_publisher import BasePublisher
+from tenxgraph.runtime.publisher.events import EventModel
 
 class DatadogPublisher(BasePublisher):
     async def publish(self, event: EventModel) -> None:
@@ -269,7 +269,7 @@ class DatadogPublisher(BasePublisher):
 
 ## Dependency injection
 
-`InjectQ` is the DI container shipped with `10xscale-agentflow`. Register service instances into it once, pass it to `StateGraph`, and node functions receive their dependencies automatically.
+`InjectQ` is the DI container shipped with `10xgraph`. Register service instances into it once, pass it to `StateGraph`, and node functions receive their dependencies automatically.
 
 ### Registering services
 
@@ -328,7 +328,7 @@ Always-injected parameters — no annotation needed:
 | `config` | Run config dict (`thread_id`, `user_id`, etc.) |
 | `tool_call_id` | ID of the tool call (inside `ToolNode` only) |
 
-### Wiring the container via `agentflow.json`
+### Wiring the container via `10xgraph.json`
 
 When using `agentflow api`, point `injectq` to the exported `InjectQ` instance in your graph module. The server loads that object and activates it as the global singleton.
 
@@ -422,10 +422,10 @@ flowchart TB
     FI[FastAPIInstrumentor\nHTTP spans — latency, status, route]
   end
   subgraph "Graph layer  (OtelPublisher)"
-    GS[agentflow.graph span]
-    NS[agentflow.node span]
-    LS[agentflow.llm span\ntoken counts, model, finish reason]
-    TS[agentflow.tool span\ntool name, type]
+    GS[tenxgraph.graph span]
+    NS[tenxgraph.node span]
+    LS[tenxgraph.llm span\ntoken counts, model, finish reason]
+    TS[tenxgraph.tool span\ntool name, type]
     GS --> NS --> LS
     NS --> TS
   end
@@ -455,9 +455,9 @@ No code changes are needed. The SDK does not need to be configured separately �
 When running the graph directly (without `agentflow api`), pass `OtelPublisher` to `StateGraph` at init time:
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.runtime.publisher import OtelPublisher
-from agentflow.runtime.publisher.otel_publisher import ObservabilityLevel
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.runtime.publisher import OtelPublisher
+from tenxgraph.runtime.publisher.otel_publisher import ObservabilityLevel
 
 graph = StateGraph(publisher=OtelPublisher(level=ObservabilityLevel.STANDARD))
 # ... add nodes and edges ...
@@ -479,9 +479,9 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry import trace
 
-from agentflow.core.graph import StateGraph
-from agentflow.runtime.publisher import OtelPublisher
-from agentflow.runtime.publisher.otel_publisher import ObservabilityLevel
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.runtime.publisher import OtelPublisher
+from tenxgraph.runtime.publisher.otel_publisher import ObservabilityLevel
 
 provider = TracerProvider()
 provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint="http://collector:4317")))
@@ -497,18 +497,18 @@ compiled = graph.compile()
 Every graph run produces a consistent span tree:
 
 ```
-agentflow.graph          ← one per ainvoke / astream call
-  agentflow.node         ← one per node execution (e.g. "MAIN", "TOOL")
-    agentflow.llm        ← one per LLM call (tokens, model, finish reason)
-    agentflow.tool       ← one per tool call (name, type: local | mcp)
+tenxgraph.graph          ← one per ainvoke / astream call
+  tenxgraph.node         ← one per node execution (e.g. "MAIN", "TOOL")
+    tenxgraph.llm        ← one per LLM call (tokens, model, finish reason)
+    tenxgraph.tool       ← one per tool call (name, type: local | mcp)
 ```
 
-The `agentflow.graph` span carries `thread_id` as `session.id` so tools like Langfuse automatically group multi-turn conversations.
+The `tenxgraph.graph` span carries `thread_id` as `session.id` so tools like Langfuse automatically group multi-turn conversations.
 
 **Install:**
 
 ```bash
-pip install "10xscale-agentflow[otel]"           # graph-level spans (OtelPublisher)
+pip install "10xgraph[otel]"           # graph-level spans (OtelPublisher)
 pip install "10xscale-agentflow-cli[otel]"       # API layer (FastAPIInstrumentor + OTLP exporter)
 ```
 

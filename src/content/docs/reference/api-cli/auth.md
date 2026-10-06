@@ -26,7 +26,7 @@ All endpoints are publicly accessible. Only use this locally or behind a secure 
 
 ## JWT authentication
 
-Set `auth` to `"jwt"` in `agentflow.json`:
+Set `auth` to `"jwt"` in `10xgraph.json`:
 
 ```json
 {
@@ -272,7 +272,7 @@ authorization check is not a database round-trip per request.
 it could become owned by the very next request. Caching that would let a later caller be treated
 as the creator of a thread someone else just made.
 
-The L2 tier is wired automatically from `redis` in `agentflow.json`, falling back to
+The L2 tier is wired automatically from `redis` in `10xgraph.json`, falling back to
 `REDIS_URL`. When neither is set, or when the `redis` package is not installed, the resolver runs
 L1-only and logs a warning at startup.
 
@@ -327,7 +327,7 @@ class MyAuthorizationBackend(AuthorizationBackend):
         return user.get("scopes")
 ```
 
-Point `agentflow.json` at it (no `method` wrapper — just the path):
+Point `10xgraph.json` at it (no `method` wrapper — just the path):
 
 ```json
 { "authorization": "graph.auth:MyAuthorizationBackend" }
@@ -391,7 +391,7 @@ backend = RoleBasedAuthorizationBackend(
 )
 ```
 
-Point `agentflow.json` at it with `"authorization": "module:backend"`. Subclass it when you need
+Point `10xgraph.json` at it with `"authorization": "module:backend"`. Subclass it when you need
 to derive roles from something other than a claim: override `scopes_for` and everything else,
 including owner-only thread isolation, still applies.
 

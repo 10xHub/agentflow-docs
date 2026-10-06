@@ -61,9 +61,9 @@ Long-term storage of facts, documents, or user preferences, retrieved by semanti
 ## Implementing episodic memory (thread persistence)
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
 
 def get_weather(city: str) -> str:
     """Get weather for a city."""
@@ -99,8 +99,8 @@ The second invocation has full context of the first turn because both use `threa
 ## Implementing semantic memory (long-term store)
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.prebuilt import make_agent_memory_tool, make_user_memory_tool
+from tenxgraph.core.state import AgentState
+from tenxgraph.prebuilt import make_agent_memory_tool, make_user_memory_tool
 
 # Tools for the agent to manage its own long-term memory
 agent = ReactAgent(
@@ -123,7 +123,7 @@ When running via `agentflow api`, memory is automatic once the graph is compiled
 app = graph.compile(checkpointer=my_checkpointer)
 ```
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "agent": "graph.agent:app"
 }

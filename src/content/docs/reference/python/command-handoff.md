@@ -16,8 +16,8 @@ Use `Command` when a node needs to decide the next destination at runtime and al
 ## Import paths
 
 ```python
-from agentflow.utils import Command
-from agentflow.prebuilt.tools import create_handoff_tool, is_handoff_tool
+from tenxgraph.utils import Command
+from tenxgraph.prebuilt.tools import create_handoff_tool, is_handoff_tool
 ```
 
 ---
@@ -27,7 +27,7 @@ from agentflow.prebuilt.tools import create_handoff_tool, is_handoff_tool
 A return value from a node function that combines a state update with an explicit routing decision.
 
 ```python
-from agentflow.utils import Command, END
+from tenxgraph.utils import Command, END
 
 def router_node(state, config: dict) -> Command:
     last = state.context[-1].text() if state.context else ""
@@ -69,7 +69,7 @@ Command(
 **Navigate and update state in one step:**
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 def classify_node(state, config) -> Command:
     user_state = state  # could be a custom subclass
@@ -103,8 +103,8 @@ return Command(
 Factory that creates an LLM-callable tool. When the LLM calls it, the graph detects the `transfer_to_<agent>` naming pattern and navigates directly to that node — without actually executing the function body.
 
 ```python
-from agentflow.prebuilt.tools import create_handoff_tool
-from agentflow.core import ToolNode
+from tenxgraph.prebuilt.tools import create_handoff_tool
+from tenxgraph.core import ToolNode
 
 transfer_to_researcher = create_handoff_tool(
     agent_name="RESEARCHER",
@@ -148,7 +148,7 @@ Agent produces a ToolCallBlock with name = "transfer_to_RESEARCHER"
 Utility to check whether a tool name follows the handoff convention.
 
 ```python
-from agentflow.prebuilt.tools import is_handoff_tool
+from tenxgraph.prebuilt.tools import is_handoff_tool
 
 is_handoff, target = is_handoff_tool("transfer_to_researcher")
 # is_handoff = True, target = "researcher"
@@ -164,10 +164,10 @@ Returns `(bool, str | None)`.
 ## Full multi-agent example
 
 ```python
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.prebuilt.tools import create_handoff_tool
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.prebuilt.tools import create_handoff_tool
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 # ── Tool nodes ───────────────────────────────────────────────────────────────
 coord_tools = ToolNode([

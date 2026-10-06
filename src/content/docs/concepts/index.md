@@ -38,7 +38,7 @@ flowchart TB
 | API / CLI | `10xgraph-api` | FastAPI server, `10xgraph` CLI, auth, authorization, rate limits, publishers |
 | TypeScript client | `10xgraph-client` | Typed HTTP wrapper for browser and Node.js |
 
-Python imports keep the old module name: `from agentflow...`.
+Python code imports from `tenxgraph`: `from tenxgraph...`. The old `agentflow` module name remains a deprecated alias until 2.0.
 
 ---
 
@@ -51,7 +51,7 @@ Four concepts form the foundation. Everything else builds on these.
 The unit of all communication. Every piece of information flowing through a graph is a `Message`.
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 Message.text_message("Hello")                           # role="user" (default)
 Message.text_message("Hello", role="user")              # explicit user message
@@ -72,7 +72,7 @@ The moving container passed from node to node. `AgentState` has three built-in f
 | `execution_meta` | `ExecMeta` | Internal runtime bookkeeping (current node, step count, interrupt status), managed by the framework, not by user code |
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 from pydantic import Field
 
 class MyState(AgentState):
@@ -85,7 +85,7 @@ Fields use **annotated reducers** to control how values merge across node execut
 
 ```python
 from typing import Annotated
-from agentflow.core.state import add_messages, Message
+from tenxgraph.core.state import add_messages, Message
 
 context: Annotated[list[Message], add_messages]   # appends new messages; deduplicates by id
 ```
@@ -141,7 +141,7 @@ flowchart LR
 ```
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 tool_node = ToolNode([lookup_order, refund_order])
 ```
@@ -153,7 +153,7 @@ tool_node = ToolNode([lookup_order, refund_order])
 `Agent` is a built-in node that wraps an LLM call. It handles provider selection, retries, structured output, reasoning, context trimming, and the tool loop.
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     model="gpt-4o",
@@ -168,7 +168,7 @@ agent = Agent(
 
 ## Define → Compile → Run
 
-`START` and `END` are special sentinel strings (`"__start__"` and `"__end__"`) that mark the entry and exit points of the graph. Import them from `agentflow.utils`.
+`START` and `END` are special sentinel strings (`"__start__"` and `"__end__"`) that mark the entry and exit points of the graph. Import them from `tenxgraph.utils`.
 
 ```mermaid
 flowchart LR
@@ -187,8 +187,8 @@ flowchart LR
 The snippet below is illustrative: `route_fn`, `lookup_order`, and `refund_order` are placeholders for your own routing logic and tool functions:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.utils import START, END
 
 # route_fn receives state and returns "tool" or "done"
 def route_fn(state: MyState) -> str:
@@ -210,7 +210,7 @@ compiled = graph.compile()
 Execution: pass `messages` as the initial message list:
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 input_state = {"messages": [Message.text_message("Where is order 1042?", role="user")]}
 config      = {"thread_id": "abc"}
@@ -235,7 +235,7 @@ Pass the same `thread_id` on the next call and the graph resumes where it left o
 For common patterns you don't need to wire the graph manually. 10xGraph ships six prebuilt agents (`ReactAgent`, `RAGAgent`, `PlanActReflectAgent`, `StructuredOutputAgent`, `SupervisorTeamAgent`, and `SwarmAgent`), each exposing `.compile()` and returning a ready `CompiledGraph`. Full details and examples are on [Agents and Tools](/docs/concepts/agents-and-tools).
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.agent import ReactAgent
 
 # compile() returns a CompiledGraph, same API as the manual graph above
 compiled = ReactAgent(

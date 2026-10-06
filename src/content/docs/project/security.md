@@ -15,14 +15,14 @@ updated: "2026-07-21"
 Report privately through either channel:
 
 - **GitHub Security Advisories** (preferred): open a private report at
-  [github.com/10xHub/10xGraph/security/advisories/new](https://github.com/10xHub/Agentflow/security/advisories/new)
+  [github.com/10xGraph/10xGraph/security/advisories/new](https://github.com/10xGraph/10xGraph/security/advisories/new)
 - **Email:** [contact@10xscale.ai](mailto:contact@10xscale.ai)
 
 Include as much of the following as you can:
 
 - A description of the issue and the impact you believe it has.
 - The affected version or versions and, if known, the affected import path
-  (for example `agentflow.core.llm.client_factory`).
+  (for example `tenxgraph.core.llm.client_factory`).
 - A minimal reproduction or proof of concept.
 - Any suggested remediation.
 
@@ -42,7 +42,7 @@ See the [changelog](/changelog) for what is current.
 
 ## Scope
 
-This policy covers the `10xscale-agentflow` core package. Issues in the API
+This policy covers the `10xgraph` core package. Issues in the API
 server (`10xscale-agentflow-cli`), the TypeScript client, or third-party
 dependencies should be reported against their own projects, though we are happy
 to route a report to the right place.

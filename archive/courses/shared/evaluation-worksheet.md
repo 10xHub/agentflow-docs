@@ -106,11 +106,11 @@ golden = GoldenExample(
 
 ### Test Structure Template
 
-The runner is `AgentEvaluator` from `agentflow.qa.evaluation`. Golden examples are `EvalCase` objects in an `EvalSet` (loadable from a JSON file with `EvalSet.from_file`), and which metrics run is decided by the `CriteriaConfig` you pass in — not by a `metric=` argument at call time.
+The runner is `AgentEvaluator` from `tenxgraph.qa.evaluation`. Golden examples are `EvalCase` objects in an `EvalSet` (loadable from a JSON file with `EvalSet.from_file`), and which metrics run is decided by the `CriteriaConfig` you pass in — not by a `metric=` argument at call time.
 
 ```python
 import pytest
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     CriteriaConfig,
     CriterionConfig,
@@ -173,7 +173,7 @@ class TestQASystem:
 For subjective quality checks, enable a judge criterion instead of writing the judge prompt yourself. `llm_judge` scores against the expected response; `rubric_based` scores against rubrics you write:
 
 ```python
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, Rubric
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, Rubric
 
 config = EvalConfig(
     criteria=CriteriaConfig(

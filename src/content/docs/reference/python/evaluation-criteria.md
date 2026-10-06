@@ -1,6 +1,6 @@
 ---
 title: Evaluation criteria
-description: Constructor signatures, defaults and scoring behaviour for every built-in evaluation criterion class in agentflow.qa.evaluation.criteria.
+description: Constructor signatures, defaults and scoring behaviour for every built-in evaluation criterion class in tenxgraph.qa.evaluation.criteria.
 section: Reference
 group: Python library
 order: 1560
@@ -26,7 +26,7 @@ composing criteria by hand, or calling one outside `AgentEvaluator`.
 ## Import paths
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     BaseCriterion,
     SyncCriterion,
     CompositeCriterion,
@@ -49,11 +49,11 @@ from agentflow.qa.evaluation import (
 )
 ```
 
-The classes also live under `agentflow.qa.evaluation.criteria`, together with
+The classes also live under `tenxgraph.qa.evaluation.criteria`, together with
 `CRITERIA_REGISTRY` (the name → class mapping `AgentEvaluator` uses):
 
 ```python
-from agentflow.qa.evaluation.criteria import CRITERIA_REGISTRY
+from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY
 ```
 
 ---
@@ -85,7 +85,7 @@ from agentflow.qa.evaluation.criteria import CRITERIA_REGISTRY
 Every criterion derives from `BaseCriterion`.
 
 ```python
-from agentflow.qa.evaluation import BaseCriterion, CriterionConfig
+from tenxgraph.qa.evaluation import BaseCriterion, CriterionConfig
 
 criterion = SomeCriterion(config=CriterionConfig(threshold=0.9))
 result = await criterion.evaluate(execution_result, eval_case)  # CriterionResult
@@ -126,7 +126,7 @@ Each criterion only reads the fields relevant to it, listed per class below.
 ### `ExactMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import ExactMatchCriterion
+from tenxgraph.qa.evaluation import ExactMatchCriterion
 ```
 
 `name = "exact_match"`. Compares `actual.actual_response.strip()` against the last
@@ -150,7 +150,7 @@ through `EvalConfig.criteria`. Instantiate it directly, or look it up under the
 ### `ContainsKeywordsCriterion`
 
 ```python
-from agentflow.qa.evaluation import ContainsKeywordsCriterion
+from tenxgraph.qa.evaluation import ContainsKeywordsCriterion
 ```
 
 `name = "contains_keywords"`. Case-insensitive substring search over the final
@@ -165,7 +165,7 @@ With no keywords from either source the criterion returns `1.0` and a
 `{"note": "No keywords specified"}` detail.
 
 ```python
-from agentflow.qa.evaluation import ContainsKeywordsCriterion, CriterionConfig
+from tenxgraph.qa.evaluation import ContainsKeywordsCriterion, CriterionConfig
 
 criterion = ContainsKeywordsCriterion(
     config=CriterionConfig.contains_keywords(
@@ -178,7 +178,7 @@ criterion = ContainsKeywordsCriterion(
 ### `RougeMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import RougeMatchCriterion
+from tenxgraph.qa.evaluation import RougeMatchCriterion
 ```
 
 `name = "rouge_match"`. ROUGE-1 F1 over lowercased, punctuation-stripped unigram
@@ -215,7 +215,7 @@ sample degrades to `score=0.5` with reasoning `"No LLM provider available"`.
 ### `ResponseMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import ResponseMatchCriterion
+from tenxgraph.qa.evaluation import ResponseMatchCriterion
 ```
 
 `name = "response_match_score"`. Subclass of `LLMJudgeCriterion` with the same
@@ -223,7 +223,7 @@ prompt — semantic equivalence between actual and expected response. This is th
 recommended default over `RougeMatchCriterion`.
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, ResponseMatchCriterion
+from tenxgraph.qa.evaluation import CriterionConfig, ResponseMatchCriterion
 
 criterion = ResponseMatchCriterion(
     config=CriterionConfig.response_match(threshold=0.8, num_samples=3),
@@ -235,7 +235,7 @@ print(result.score, result.details["reason"])
 ### `LLMJudgeCriterion`
 
 ```python
-from agentflow.qa.evaluation import LLMJudgeCriterion
+from tenxgraph.qa.evaluation import LLMJudgeCriterion
 ```
 
 `name = "final_response_match_v2"`. Asks the judge whether the actual response is
@@ -247,7 +247,7 @@ defines no expected final response, or when the agent produced no response.
 ### `RubricBasedCriterion`
 
 ```python
-from agentflow.qa.evaluation import RubricBasedCriterion, Rubric
+from tenxgraph.qa.evaluation import RubricBasedCriterion, Rubric
 ```
 
 `name = "rubric_based_final_response_quality_v1"`. Renders every
@@ -271,7 +271,7 @@ criterion = RubricBasedCriterion(
 ### `FactualAccuracyCriterion`
 
 ```python
-from agentflow.qa.evaluation import FactualAccuracyCriterion
+from tenxgraph.qa.evaluation import FactualAccuracyCriterion
 ```
 
 `name = "factual_accuracy_v1"`. Reference material is the last expected final
@@ -283,7 +283,7 @@ response, falling back to `expected.metadata["reference_facts"]`.
 ### `HallucinationCriterion`
 
 ```python
-from agentflow.qa.evaluation import HallucinationCriterion
+from tenxgraph.qa.evaluation import HallucinationCriterion
 ```
 
 `name = "hallucinations_v1"`. Builds the grounding context from every tool call
@@ -295,7 +295,7 @@ response is supported by it. `1.0` is fully grounded.
 ### `SafetyCriterion`
 
 ```python
-from agentflow.qa.evaluation import SafetyCriterion
+from tenxgraph.qa.evaluation import SafetyCriterion
 ```
 
 `name = "safety_v1"`. The judge returns one overall `score` plus per-category
@@ -315,7 +315,7 @@ values come from the `Invocation` entries of the case, concatenated across turns
 ### `TrajectoryMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import TrajectoryMatchCriterion
+from tenxgraph.qa.evaluation import TrajectoryMatchCriterion
 ```
 
 `name = "tool_trajectory_avg_score"`. Compares `actual.tool_calls` against every
@@ -329,7 +329,7 @@ from agentflow.qa.evaluation import TrajectoryMatchCriterion
 | `threshold` | `0.8` | Score is the fraction of expected tools matched. |
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, MatchType, TrajectoryMatchCriterion
+from tenxgraph.qa.evaluation import CriterionConfig, MatchType, TrajectoryMatchCriterion
 
 criterion = TrajectoryMatchCriterion(
     config=CriterionConfig.trajectory(
@@ -346,7 +346,7 @@ With no expected tools, `EXACT` scores `1.0` only if the agent called nothing;
 ### `NodeOrderMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import NodeOrderMatchCriterion
+from tenxgraph.qa.evaluation import NodeOrderMatchCriterion
 ```
 
 `name = "node_order_score"`. Same three match modes, applied to
@@ -362,7 +362,7 @@ criterion = NodeOrderMatchCriterion(
 ### `ToolNameMatchCriterion`
 
 ```python
-from agentflow.qa.evaluation import ToolNameMatchCriterion
+from tenxgraph.qa.evaluation import ToolNameMatchCriterion
 ```
 
 `name = "tool_name_match_score"`. Multiset comparison of tool **names** only, order
@@ -376,7 +376,7 @@ expected, the score is `1.0` if the agent called no tools and `0.5` if it did.
 ### `CompositeCriterion`
 
 ```python
-from agentflow.qa.evaluation import CompositeCriterion
+from tenxgraph.qa.evaluation import CompositeCriterion
 ```
 
 `name = "composite_criterion"`. Runs every sub-criterion and combines the scores.
@@ -388,7 +388,7 @@ from agentflow.qa.evaluation import CompositeCriterion
 | `config` | `CriterionConfig \| None` | `None` | Supplies the threshold applied to the combined score. |
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     CompositeCriterion,
     ContainsKeywordsCriterion,
     CriterionConfig,
@@ -410,7 +410,7 @@ criterion = CompositeCriterion(
 ### `WeightedCriterion`
 
 ```python
-from agentflow.qa.evaluation import WeightedCriterion
+from tenxgraph.qa.evaluation import WeightedCriterion
 ```
 
 `name = "weighted_criterion"`. Weighted average of the sub-scores;
@@ -444,7 +444,7 @@ Subclass `SyncCriterion` when your rule is pure computation. Implement
 straight into `AgentEvaluator`.
 
 ```python
-from agentflow.qa.evaluation import SyncCriterion
+from tenxgraph.qa.evaluation import SyncCriterion
 
 class MaxLengthCriterion(SyncCriterion):
     name = "max_length"
@@ -472,7 +472,7 @@ To use a custom criterion through `EvalConfig`, register it before building the
 evaluator:
 
 ```python
-from agentflow.qa.evaluation.criteria import CRITERIA_REGISTRY
+from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY
 
 CRITERIA_REGISTRY["max_length"] = MaxLengthCriterion
 ```
@@ -489,7 +489,7 @@ be attached to the evaluator by hand or mapped onto an existing field name.
 | `TypeError: Can't instantiate abstract class ... evaluate` | Subclassed `BaseCriterion` without an async `evaluate()`, or `SyncCriterion` without `evaluate_sync()`. | Implement the abstract method. |
 | `RuntimeWarning: coroutine 'evaluate' was never awaited` | `evaluate()` is async on every criterion, including the deterministic ones. | `await criterion.evaluate(...)`. |
 | Score is exactly `0.5` with reasoning `"No LLM provider available"` | The judge model could not be resolved to a configured provider. | Install the provider extra and set its API key; set `GOOGLE_GENAI_USE_VERTEXAI=true` for Vertex-only projects. |
-| `CriterionResult.error == "All LLM samples failed"` | Every judge call raised. | Check the `agentflow.evaluation` logger for the per-sample warnings. |
+| `CriterionResult.error == "All LLM samples failed"` | Every judge call raised. | Check the `tenxgraph.evaluation` logger for the per-sample warnings. |
 | `contains_keywords` always scores `1.0` | Neither `keywords=` nor `config.keywords` was set. | Pass `CriterionConfig.contains_keywords(keywords=[...])`. |
 | `ValueError: Unknown criterion field: 'exact_match'` | `CriteriaConfig` has no field for it. | Instantiate `ExactMatchCriterion` directly. |
 | `TrajectoryMatchCriterion` fails on correct-looking runs | `MatchType.EXACT` rejects extra tool calls. | Switch to `MatchType.IN_ORDER` or `ANY_ORDER`. |

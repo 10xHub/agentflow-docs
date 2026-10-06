@@ -16,8 +16,8 @@ You have a working graph. No extra packages required, validation is built into t
 ## Quick start: enable the default validators
 
 ```python
-from agentflow.utils import CallbackManager
-from agentflow.utils.validators import register_default_validators
+from tenxgraph.utils import CallbackManager
+from tenxgraph.utils.validators import register_default_validators
 
 callback_manager = CallbackManager()
 register_default_validators(callback_manager)   # adds PromptInjectionValidator + MessageContentValidator
@@ -43,7 +43,7 @@ Based on OWASP LLM01:2025, it flags:
 ## Use strict vs. lenient mode
 
 ```python
-from agentflow.utils.validators import PromptInjectionValidator
+from tenxgraph.utils.validators import PromptInjectionValidator
 
 # Strict (default): raises ValidationError on detection
 strict_validator = PromptInjectionValidator(strict_mode=True)
@@ -73,7 +73,7 @@ callback_manager.register_input_validator(validator)
 When a message is blocked, `ValidationError` is raised. Catch it in your API layer or in the stream loop and return a user-friendly response:
 
 ```python
-from agentflow.utils.validators import ValidationError
+from tenxgraph.utils.validators import ValidationError
 
 try:
     result = await app.ainvoke({"messages": [user_message]})
@@ -94,8 +94,8 @@ except ValidationError as e:
 For more control, for example, modifying messages instead of blocking them, use a `BeforeInvokeCallback`:
 
 ```python
-from agentflow.utils import CallbackManager, InvocationType
-from agentflow.utils.callbacks import BeforeInvokeCallback, CallbackContext
+from tenxgraph.utils import CallbackManager, InvocationType
+from tenxgraph.utils.callbacks import BeforeInvokeCallback, CallbackContext
 
 class SanitizeCallback(BeforeInvokeCallback):
     async def __call__(self, context: CallbackContext, input_data):
@@ -115,7 +115,7 @@ callback_manager.register_before_invoke(InvocationType.AI, SanitizeCallback())
 Inspect or modify the LLM's response before it is stored in state:
 
 ```python
-from agentflow.utils.callbacks import AfterInvokeCallback
+from tenxgraph.utils.callbacks import AfterInvokeCallback
 
 class LoggingCallback(AfterInvokeCallback):
     async def __call__(self, context: CallbackContext, input_data, output_data):

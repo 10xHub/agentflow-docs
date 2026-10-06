@@ -12,7 +12,7 @@ Remote tools expose a trusted schema from the server while executing the impleme
 
 ## Declare the schema on the server
 
-Add schemas to `agentflow.json`. They are validated and attached once when the server starts:
+Add schemas to `10xgraph.json`. They are validated and attached once when the server starts:
 
 ```json
 {
@@ -37,7 +37,7 @@ Add schemas to `agentflow.json`. They are validated and attached once when the s
 For code-first graphs, use the same validated model:
 
 ```python
-from agentflow.core.graph import RemoteToolConfig
+from tenxgraph.core.graph import RemoteToolConfig
 
 graph.attach_remote_tools([
     RemoteToolConfig(

@@ -57,8 +57,8 @@ Each cycle is a "thought → action → observation" triplet. The loop continues
 10xGraph ships a prebuilt `ReactAgent` that implements the full Reason-Act loop. You only supply the tools.
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
 
 def get_stock_price(ticker: str) -> str:
     """Get the current stock price for a ticker symbol."""
@@ -96,9 +96,9 @@ print(result["messages"][-1].text())
 For full control over routing logic, build the graph manually:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 tools = [get_stock_price, calculate]
 tool_node = ToolNode(tools)
@@ -129,9 +129,9 @@ The conditional edge `route` is the heart of the ReAct loop: if the LLM returned
 
 ## Serving a ReAct agent
 
-Point `agentflow.json` at your compiled app and start the server:
+Point `10xgraph.json` at your compiled app and start the server:
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "agent": "graph.agent:app",
   "env": ".env"

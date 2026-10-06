@@ -68,15 +68,15 @@ Control *when* memories flow into the LLM context:
 
 | Class | Module | Backend |
 |---|---|---|
-| `QdrantStore` | `agentflow.storage.store` | Qdrant vector database (local or cloud) |
-| `Mem0Store` | `agentflow.storage.store` | Mem0 managed memory service |
+| `QdrantStore` | `tenxgraph.storage.store` | Qdrant vector database (local or cloud) |
+| `Mem0Store` | `tenxgraph.storage.store` | Mem0 managed memory service |
 
 Both backends support semantic similarity search via embeddings.
 
 ### Creating a local Qdrant store
 
 ```python
-from agentflow.storage.store import QdrantStore, create_local_qdrant_store, OpenAIEmbedding
+from tenxgraph.storage.store import QdrantStore, create_local_qdrant_store, OpenAIEmbedding
 
 # Convenience factory (persistent on disk)
 store = create_local_qdrant_store(
@@ -100,8 +100,8 @@ store = QdrantStore(
 This is the recommended approach when you build an agent with the high-level `Agent` class.
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.storage.store import (
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.storage.store import (
     QdrantStore, MemoryConfig, OpenAIEmbedding,
     create_local_qdrant_store,
 )
@@ -139,7 +139,7 @@ You **must** pass a `ToolNode` to `Agent` when memory tools are enabled; the fra
 ### MemoryConfig fields
 
 ```python
-from agentflow.storage.store import MemoryConfig, UserMemoryConfig, AgentMemoryConfig
+from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig, AgentMemoryConfig
 
 MemoryConfig(
     store=store,                    # default store used if scope stores are not set
@@ -172,13 +172,13 @@ MemoryConfig(
 For lower-level graph control, use `MemoryIntegration` directly.
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.storage.store import (
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.storage.store import (
     MemoryIntegration,
     QdrantStore, OpenAIEmbedding,
     create_local_qdrant_store,
 )
-from agentflow.utils import END
+from tenxgraph.utils import END
 
 store = create_local_qdrant_store(
     collection="agent-memories",
@@ -233,7 +233,7 @@ memory.wire(
 `get_memory_system_prompt(mode)` returns the correct instructions for the LLM depending on the retrieval mode:
 
 ```python
-from agentflow.storage.store import get_memory_system_prompt
+from tenxgraph.storage.store import get_memory_system_prompt
 
 print(get_memory_system_prompt("no_retrieval"))
 # → "You do NOT have access to read or search long-term memories. ..."
@@ -285,7 +285,7 @@ In `preload` mode the `_preload_node` function:
 You can customise the query extractor:
 
 ```python
-from agentflow.storage.store import create_memory_preload_node
+from tenxgraph.storage.store import create_memory_preload_node
 
 def my_query_builder(state):
     return state.context[-1].text() if state.context else ""
@@ -303,7 +303,7 @@ graph.add_node("memory_preload", preload)
 
 ## REST API for the store
 
-When a store is configured in `agentflow.json`, the API exposes memory CRUD endpoints:
+When a store is configured in `10xgraph.json`, the API exposes memory CRUD endpoints:
 
 ```bash
 POST   /v1/store/memories        # store a memory
@@ -315,7 +315,7 @@ DELETE /v1/store/memories/{id}   # delete a memory
 
 See [REST API: Memory store](/docs/reference/rest-api/memory-store) for schemas.
 
-## Configuring via agentflow.json
+## Configuring via 10xgraph.json
 
 ```json
 {

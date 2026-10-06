@@ -29,19 +29,20 @@ Graph orchestration, tool-calling loops, MCP and streaming are in there too, but
 
 ## What stays the same
 
-- **The project and the people.** Same code base, same maintainers, same [license](https://github.com/10xHub/agentflow/blob/main/LICENSE): MIT, made by 10xScale.
-- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `graph.json`.
-- **Your Python imports.** `from agentflow import StateGraph` keeps working. Existing code needs no changes beyond the package names.
+- **The project and the people.** Same code base, same maintainers, same [license](https://github.com/10xGraph/10xGraph/blob/main/LICENSE): MIT, made by 10xScale.
+- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `10xgraph.json`.
+- **Your existing code keeps running.** `from agentflow import StateGraph` still works: `agentflow` stays importable as a deprecated alias until 2.0. New code should import from `tenxgraph`, as in `from tenxgraph import StateGraph`.
 
 ## What changes
 
 | Before | After |
 |---|---|
 | `pip install 10xscale-agentflow` | `pip install 10xgraph` |
+| `from agentflow import StateGraph` | `from tenxgraph import StateGraph` |
 | `pip install 10xscale-agentflow-cli` | `pip install 10xgraph-api` |
 | `npm install @10xscale/agentflow-client` | `npm install 10xgraph-client` |
 | CLI command `agentflow` | CLI command `10xgraph` |
-| Config file `agentflow.json` | Config file `graph.json` |
+| Config file `agentflow.json` | Config file `10xgraph.json` |
 | GitHub organization 10xHub | GitHub organization 10xGraph |
 
 Version `0.10.0` is the final release of `10xscale-agentflow` on PyPI. New releases and fixes go to the new package names.

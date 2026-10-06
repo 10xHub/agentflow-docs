@@ -1,18 +1,18 @@
 ---
 title: Project structure
 seoTitle: 10xGraph production project structure
-description: The files that 10xgraph init --template production generates, what each one does, and what every key in the generated agentflow.json controls.
+description: The files that 10xgraph init --template production generates, what each one does, and what every key in the generated 10xgraph.json controls.
 section: Get started
 order: 35
 updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: Which template should I start from?
-    a: Use quick-start to try an idea, since it writes only a graph, an env example and agentflow.json. Use production when the agent will be deployed, because it adds auth options, a prompt-injection validator, evals, tests and lint configuration.
+    a: Use quick-start to try an idea, since it writes only a graph, an env example and 10xgraph.json. Use production when the agent will be deployed, because it adds auth options, a prompt-injection validator, evals, tests and lint configuration.
   - q: Does init overwrite my existing files?
-    a: No. If a file already exists, init stops with an error unless you pass --force. An existing agentflow.json is also protected by that rule.
+    a: No. If a file already exists, init stops with an error unless you pass --force. An existing 10xgraph.json is also protected by that rule.
 ---
 
-`10xgraph init --template production` writes a complete project: a graph package with a tool, a state class and input validators, plus evals, tests, lint and pre-commit config, an env template and an `agentflow.json`. This page lists every generated file and explains each key in the config.
+`10xgraph init --template production` writes a complete project: a graph package with a tool, a state class and input validators, plus evals, tests, lint and pre-commit config, an env template and an `10xgraph.json`. This page lists every generated file and explains each key in the config.
 
 ## How do I generate it?
 
@@ -26,7 +26,7 @@ faq:
 
 <FileTree>
 
-- **agentflow.json** The config the server and CLI read
+- **10xgraph.json** The config the server and CLI read
 - .env.example Copy to .env and add your keys
 - pyproject.toml Dependencies, ruff settings, test extras
 - .pre-commit-config.yaml ruff, bandit and file hygiene hooks
@@ -65,7 +65,7 @@ app = react_agent.compile(
 )
 ```
 
-The `app` variable is what `"agent": "graph.agent:app"` in `agentflow.json` points at. The template uses `InMemoryCheckpointer`, so swap in a durable checkpointer before production (see [Memory: hot and cold](/docs/concepts/memory)).
+The `app` variable is what `"agent": "graph.agent:app"` in `10xgraph.json` points at. The template uses `InMemoryCheckpointer`, so swap in a durable checkpointer before production (see [Memory: hot and cold](/docs/concepts/memory)).
 
 ### graph/state.py and graph/tools/
 
@@ -91,11 +91,11 @@ Present with `--auth custom`. It subclasses `BaseAuth`, logs a warning at startu
 
 App settings, CORS, request limits, security headers, Snowflake ID settings, a Sentry DSN and `GOOGLE_API_KEY`. The `REDIS_URL` block appears only with `--rate-limit redis`, and the `JWT_SECRET_KEY` and `JWT_ALGORITHM` block only with `--auth jwt`. Origins and allowed hosts default to `*`, with a TODO to restrict them in production.
 
-## What is in the generated agentflow.json?
+## What is in the generated 10xgraph.json?
 
 For the command above, init writes:
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "agent": "graph.agent:app",
   "env": ".env",
@@ -146,5 +146,5 @@ container = InjectQ.get_instance()
 <CardGrid>
 
 <LinkCard title="Quickstart" href="/docs/get-started/first-agent" description="Build and serve a first agent from scratch." eyebrow="Get started" />
-<LinkCard title="Configuration reference" href="/docs/reference/api-cli/configuration" description="Every agentflow.json key." eyebrow="Reference" />
+<LinkCard title="Configuration reference" href="/docs/reference/api-cli/configuration" description="Every 10xgraph.json key." eyebrow="Reference" />
 </CardGrid>

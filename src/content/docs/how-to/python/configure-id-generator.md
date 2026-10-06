@@ -17,8 +17,8 @@ You have a working graph. No extra packages required.
 ## Quick start: switch to timestamp-based integers
 
 ```python
-from agentflow.core import StateGraph
-from agentflow.utils.id_generator import BigIntIDGenerator
+from tenxgraph.core import StateGraph
+from tenxgraph.utils.id_generator import BigIntIDGenerator
 
 graph = StateGraph(
     id_generator=BigIntIDGenerator(),
@@ -40,12 +40,12 @@ Every thread and run created by this graph will now have a 19-digit integer ID b
 | `HexIDGenerator` | `STRING` | `"1a2b3c4d5e6f7890abcdef1234567890"` | 32-char hex; no hyphens. |
 | `ShortIDGenerator` | `STRING` | `"Ab3XyZ9k"` | Human-readable 8-char codes; URL-safe. |
 
-All classes are importable from `agentflow.utils.id_generator` or the top-level `agentflow.utils`.
+All classes are importable from `tenxgraph.utils.id_generator` or the top-level `tenxgraph.utils`.
 
 ## Write a custom generator
 
 ```python
-from agentflow.utils.id_generator import BaseIDGenerator, IDType
+from tenxgraph.utils.id_generator import BaseIDGenerator, IDType
 import uuid
 
 class PrefixedUUIDGenerator(BaseIDGenerator):
@@ -69,7 +69,7 @@ graph = StateGraph(id_generator=PrefixedUUIDGenerator("run"))
 If your ID generation requires I/O (for example, fetching a sequence from a database), implement `AsyncIDGenerator`:
 
 ```python
-from agentflow.utils.id_generator import AsyncIDGenerator, IDType
+from tenxgraph.utils.id_generator import AsyncIDGenerator, IDType
 
 class DatabaseSequenceGenerator(AsyncIDGenerator):
     """Fetch the next integer sequence from PG."""

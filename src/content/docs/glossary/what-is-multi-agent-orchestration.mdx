@@ -76,8 +76,8 @@ User query → Coordinator
 ### Supervisor pattern
 
 ```python
-from agentflow.prebuilt import ReactAgent, SupervisorTeamAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.prebuilt import ReactAgent, SupervisorTeamAgent
+from tenxgraph.core.state import AgentState, Message
 
 def search_web(query: str) -> str:
     """Search the web."""
@@ -115,10 +115,10 @@ app = team.compile()
 For precise control, use 10xGraph's `Command` and handoff tools:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.prebuilt.tools.handoff import create_handoff_tool
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.prebuilt.tools.handoff import create_handoff_tool
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 handoff_to_billing = create_handoff_tool(agent_name="billing")
 handoff_to_support = create_handoff_tool(agent_name="support")

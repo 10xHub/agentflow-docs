@@ -36,7 +36,7 @@ Verify the installation:
 | [`10xgraph test`](/docs/how-to/api-cli/run-tests) | Run the project test suite via pytest |
 | [`10xgraph eval`](/docs/how-to/api-cli/run-evals) | Run agent evaluations and generate HTML + JSON reports |
 | `10xgraph audit` | Check the interpreter, packages, project config, and port |
-| `10xgraph config` | Edit, validate, and save `agentflow.json` in a browser UI |
+| `10xgraph config` | Edit, validate, and save `10xgraph.json` in a browser UI |
 | `10xgraph demo` | Preview the CLI animations with no side effects |
 | `10xgraph version` | Print CLI and core framework version |
 
@@ -80,7 +80,7 @@ Starts the local development server and opens the hosted playground once the API
 
 ### `10xgraph api`
 
-Starts a Uvicorn-backed FastAPI server that loads your compiled graph from `agentflow.json`. Auto-reload is enabled by default.
+Starts a Uvicorn-backed FastAPI server that loads your compiled graph from `10xgraph.json`. Auto-reload is enabled by default.
 
 ```bash
 10xgraph api
@@ -146,7 +146,7 @@ See [Install skills](/docs/how-to/api-cli/install-skills) for the full guide.
 
 ### `10xgraph test`
 
-Thin pytest wrapper. Reads optional defaults (`path`, `coverage`, `coverage_threshold`) from `agentflow.json`. Extra arguments after `--` are forwarded to pytest verbatim.
+Thin pytest wrapper. Reads optional defaults (`path`, `coverage`, `coverage_threshold`) from `10xgraph.json`. Extra arguments after `--` are forwarded to pytest verbatim.
 
 ```bash
 10xgraph test
@@ -182,7 +182,7 @@ See [Run evaluations](/docs/how-to/api-cli/run-evals) for the full guide.
 
 ### `10xgraph audit`
 
-Read-only check of everything that has to be true before `dev`, `eval`, or `build` can work here: the Python interpreter, the installed `10xgraph-api` and `10xgraph` packages, whether the installed core still exposes the evaluation API the CLI imports, whether `agentflow.json` is present and declares a valid `agent` key, and whether the default port is free.
+Read-only check of everything that has to be true before `dev`, `eval`, or `build` can work here: the Python interpreter, the installed `10xgraph-api` and `10xgraph` packages, whether the installed core still exposes the evaluation API the CLI imports, whether `10xgraph.json` is present and declares a valid `agent` key, and whether the default port is free.
 
 ```bash
 10xgraph audit                        # table of six checks, including remote_tools format
@@ -196,16 +196,16 @@ Nothing is written or changed. It exits `1` if any check fails and `0` otherwise
 
 ### `10xgraph config`
 
-Opens a local web editor for `agentflow.json`. Every supported key is listed in the page: optional sections such as authentication, authorization, rate limiting, and observability have an on/off switch, and their fields are filled in with inputs instead of hand-written JSON.
+Opens a local web editor for `10xgraph.json`. Every supported key is listed in the page: optional sections such as authentication, authorization, rate limiting, and observability have an on/off switch, and their fields are filled in with inputs instead of hand-written JSON.
 
 ```bash
-10xgraph config                      # edit ./agentflow.json (created on first save)
-10xgraph config -c path/to/agentflow.json
+10xgraph config                      # edit ./10xgraph.json (created on first save)
+10xgraph config -c path/to/10xgraph.json
 10xgraph config --port 8765 --no-open
 ```
 
 - **Validate** checks the current form with the same parsers the API server uses and lists errors and warnings per section. Nothing is written.
-- **Save** validates again and refuses to write while there are errors. The previous file is kept as `agentflow.json.bak`, keys the editor does not know about are preserved, and the save is rejected if the file changed on disk after the page loaded.
+- **Save** validates again and refuses to write while there are errors. The previous file is kept as `10xgraph.json.bak`, keys the editor does not know about are preserved, and the save is rejected if the file changed on disk after the page loaded.
 - Secrets such as `JWT_SECRET_KEY` or `LOGFIRE_TOKEN` stay in your `.env` file; the editor never asks for them.
 
 The editor only listens on `127.0.0.1` and each run uses a random session token in the printed link. Press Ctrl+C to stop it. The page loads Tailwind CSS from the jsDelivr CDN, so without internet access it still works but is unstyled.

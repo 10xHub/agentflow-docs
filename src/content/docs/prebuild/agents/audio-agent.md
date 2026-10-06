@@ -11,7 +11,7 @@ updated: "2026-09-29"
 
 A prebuilt realtime audio-to-audio agent backed by Gemini Live — mirrors `ReactAgent`'s construction surface while wrapping a `LiveAgent` as the graph root.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -54,7 +54,7 @@ Audio is never stored at rest. Finished speech turns are persisted as `Message` 
 ## Installation
 
 ```bash
-pip install "10xscale-agentflow[realtime]"
+pip install "10xgraph[realtime]"
 ```
 
 Set your credentials:
@@ -108,9 +108,9 @@ For Vertex AI, set `GOOGLE_GENAI_USE_VERTEXAI=1` with standard ADC credentials.
 
 ```python
 import asyncio
-from agentflow.core.realtime.base import RealtimeConfig
-from agentflow.core.realtime.queue import LiveInputQueue
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.core.realtime.base import RealtimeConfig
+from tenxgraph.core.realtime.queue import LiveInputQueue
+from tenxgraph.prebuilt.agent import AudioAgent
 
 MODEL = "gemini-live-2.5-flash-preview"
 
@@ -139,9 +139,9 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentflow.core.realtime.base import RealtimeConfig
-from agentflow.core.realtime.queue import LiveInputQueue
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.core.realtime.base import RealtimeConfig
+from tenxgraph.core.realtime.queue import LiveInputQueue
+from tenxgraph.prebuilt.agent import AudioAgent
 
 MODEL = "gemini-live-2.5-flash-preview"
 
@@ -184,10 +184,10 @@ A checkpointer stores both the transcript `Message` history and the session resu
 
 ```python
 import asyncio
-from agentflow.core.realtime.base import RealtimeConfig
-from agentflow.core.realtime.queue import LiveInputQueue
-from agentflow.prebuilt.agent import AudioAgent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.realtime.base import RealtimeConfig
+from tenxgraph.core.realtime.queue import LiveInputQueue
+from tenxgraph.prebuilt.agent import AudioAgent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 MODEL = "gemini-live-2.5-flash-preview"
 
@@ -232,8 +232,8 @@ async for event in app.arealtime(queue, {"thread_id": "barge-1"}):
 Voice activity detection (VAD) is enabled by default. To switch to push-to-talk (manual activity), disable VAD and signal boundaries explicitly:
 
 ```python
-from agentflow.core.realtime.base import RealtimeConfig, VADConfig
-from agentflow.core.realtime.queue import LiveInputQueue
+from tenxgraph.core.realtime.base import RealtimeConfig, VADConfig
+from tenxgraph.core.realtime.queue import LiveInputQueue
 
 config = RealtimeConfig(
     model="gemini-live-2.5-flash-preview",

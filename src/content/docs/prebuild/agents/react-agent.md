@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 The simplest and most common prebuilt agent pattern: a single LLM that loops through tool calls until it has a final answer.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -113,8 +113,8 @@ When the LLM emits multiple tool calls in a single response, `ToolNode` runs all
 ```python
 import asyncio
 from dotenv import load_dotenv
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -147,9 +147,9 @@ asyncio.run(main())
 ### With prebuilt tools
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import fetch_url, safe_calculator, google_web_search
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import fetch_url, safe_calculator, google_web_search
+from tenxgraph.core.state import Message
 
 agent = ReactAgent(
     model="gpt-4o-mini",
@@ -168,10 +168,10 @@ app = agent.compile()
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import fetch_url
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import fetch_url
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.core.state import Message
 
 agent = ReactAgent(
     model="gpt-4o-mini",
@@ -204,8 +204,8 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
 
 agent = ReactAgent(model="gpt-4o-mini", provider="openai")
 app = agent.compile()
@@ -223,8 +223,8 @@ asyncio.run(main())
 ### Google Gemini
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import google_web_search
 
 agent = ReactAgent(
     model="google/gemini-2.5-flash",
@@ -247,8 +247,8 @@ app = agent.compile()
 **`graph.py`**
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import fetch_url, safe_calculator, google_web_search
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import fetch_url, safe_calculator, google_web_search
 
 agent = ReactAgent(
     model="gpt-4o-mini",
@@ -263,7 +263,7 @@ agent = ReactAgent(
 app = agent.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

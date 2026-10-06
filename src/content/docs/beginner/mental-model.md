@@ -17,7 +17,7 @@ Before writing code, it helps to understand how 10xGraph thinks about agent appl
 A `Message` is the unit of communication. Every input and output in 10xGraph is a message. Messages have a `role` (`user`, `assistant`, or `tool`) and one or more content blocks (text, image, audio, file).
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 user_msg = Message.text_message("What is the capital of France?", role="user")
 assistant_msg = Message.text_message("Paris.", role="assistant")
@@ -28,7 +28,7 @@ assistant_msg = Message.text_message("Paris.", role="assistant")
 `AgentState` is the shared container that moves through the graph. It holds the conversation history in a field called `context`. Every node in the graph receives the current state and can return updates to it.
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 # Access the conversation history
 state.context          # list of Message objects
@@ -55,9 +55,9 @@ def my_node(state: AgentState) -> Message:
 A `StateGraph` connects nodes into a workflow. You define the entry point and the edges between nodes, then compile the graph into a runnable application.
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 graph = StateGraph(AgentState)
 graph.add_node("my_node", my_node)

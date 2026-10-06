@@ -26,7 +26,7 @@ The `context` field uses a special reducer: rather than replacing the list on ea
 
 ```python
 from pydantic import Field
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class CustomerSupportState(AgentState):
     user_id: str = ""
@@ -44,7 +44,7 @@ All standard Pydantic features work: validators, default factories, optional fie
 ## Step 2: Pass the state class (or instance) to StateGraph
 
 ```python
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 
 # Pass the class, StateGraph instantiates it
 graph = StateGraph(CustomerSupportState)
@@ -61,7 +61,7 @@ graph = StateGraph(state)
 Node functions receive the state as the first argument. Read fields directly; return a dict with only the changed fields.
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 def classify_sentiment(state: CustomerSupportState, config: dict, **deps) -> dict:
     last_user_msg = next(
@@ -89,7 +89,7 @@ Returning `{"messages": [...]}` appends to `context` via the reducer. Returning 
 Placeholders in `system_prompt` are replaced with state field values at runtime:
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     model="gpt-4o",
@@ -108,7 +108,7 @@ agent = Agent(
 ## Step 5: Pass initial state values at invocation
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 result = app.invoke(
     {
@@ -134,7 +134,7 @@ The built-in `add_messages` reducer appends new messages to the list and dedupli
 
 ```python
 from typing import Annotated
-from agentflow.core.state.reducers import add_messages, Message
+from tenxgraph.core.state.reducers import add_messages, Message
 
 class PipelineState(AgentState):
     # A separate log of intermediate messages, also deduplicated
@@ -156,9 +156,9 @@ class MyState(AgentState):
 
 ```python
 from pydantic import Field
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 # 1. Define custom state
 class AnalysisState(AgentState):

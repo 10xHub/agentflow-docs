@@ -16,7 +16,7 @@ Two layers need protection, and they use different tools:
 - **The server boundary.** Who may call which endpoint. The API server handles this with JWT or custom auth, role scopes checked per endpoint (`resource:action`, for graph, checkpointer, store, files and config), and owner-only threads. It also provides CORS limits, request-size limits and rate limits.
 - **The model boundary.** What text reaches the model. A user, or a document a tool fetched, can try to override instructions, reveal the system prompt or push the agent toward actions it should not take. Validators and callbacks address this layer.
 
-Authorization is not per tool out of the box. A tool receives the verified identity and scopes in `config["authz"]` and can check them itself with `agentflow.core.authz.has_scope`.
+Authorization is not per tool out of the box. A tool receives the verified identity and scopes in `config["authz"]` and can check them itself with `tenxgraph.core.authz.has_scope`.
 
 ## How validators run
 
@@ -27,9 +27,9 @@ Input validators see messages entering the graph, on both fresh and continued th
 ## Writing a validator
 
 ```python
-from agentflow.core.state import Message
-from agentflow.utils import BaseValidator, CallbackManager
-from agentflow.utils.validators import PromptInjectionValidator, ValidationError
+from tenxgraph.core.state import Message
+from tenxgraph.utils import BaseValidator, CallbackManager
+from tenxgraph.utils.validators import PromptInjectionValidator, ValidationError
 
 
 class NoCardNumbers(BaseValidator):

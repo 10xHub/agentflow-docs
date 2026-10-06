@@ -11,7 +11,7 @@ updated: "2026-09-29"
 
 This is the complete reference for every environment variable read by the 10xGraph server. Variables are read via `pydantic-settings` at startup. All are optional unless marked required.
 
-Environment variables take precedence over defaults. The `.env` file pointed to by `agentflow.json`'s `env` field is loaded before the graph module is imported, so variables are available during graph initialization.
+Environment variables take precedence over defaults. The `.env` file pointed to by `10xgraph.json`'s `env` field is loaded before the graph module is imported, so variables are available during graph initialization.
 
 ---
 
@@ -26,7 +26,7 @@ Environment variables take precedence over defaults. The `.env` file pointed to 
 | `IS_DEBUG` | `bool` | `true` | Enables FastAPI debug mode. Set to `false` in production. |
 | `SUMMARY` | `string` | `"Agentflow Backend"` | One-line summary shown in Swagger UI. |
 | `LOGGER_NAME` | `string` | `"agentflow-cli"` | Name of the root logger the server writes under. Read at module import time, so it must be a process environment variable; setting it in `.env` is too late to take effect. |
-| `GRAPH_PATH` | `string` | `"agentflow.json"` | Path to the config file the ASGI app loads at import. `10xgraph api --config` sets this for you. Set it explicitly when running the app under an external server such as Gunicorn. |
+| `GRAPH_PATH` | `string` | `"10xgraph.json"` | Path to the config file the ASGI app loads at import. `10xgraph api --config` sets this for you. Set it explicitly when running the app under an external server such as Gunicorn. |
 
 The settings model allows extra fields, so unrecognised variables in the environment are tolerated rather than rejected at startup.
 
@@ -130,16 +130,16 @@ These variables control the `SecurityHeadersMiddleware` that is applied to every
 
 `REDIS_URL` is optional everywhere; nothing requires it. Two things use it:
 
-- **The ownership authorization cache (L2).** The `ownership` and `rbac` backends read the `redis` key in `agentflow.json` first and fall back to this variable. With neither set, or with the `redis` package not installed, the cache runs in-process only and logs a warning at startup.
+- **The ownership authorization cache (L2).** The `ownership` and `rbac` backends read the `redis` key in `10xgraph.json` first and fall back to this variable. With neither set, or with the `redis` package not installed, the cache runs in-process only and logs a warning at startup.
 - **`PgCheckpointer`.** It can use Redis as a hot cache in front of Postgres. That is a performance choice, not a requirement.
 
-The rate limiter does **not** read `REDIS_URL`. Configure its connection under `rate_limit.redis.url` in `agentflow.json`.
+The rate limiter does **not** read `REDIS_URL`. Configure its connection under `rate_limit.redis.url` in `10xgraph.json`.
 
 ---
 
 ## Authentication (JWT)
 
-Required when `"auth": "jwt"` is set in `agentflow.json`.
+Required when `"auth": "jwt"` is set in `10xgraph.json`.
 
 | Variable | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -224,7 +224,7 @@ Used when `MEDIA_STORAGE_TYPE=cloud`.
 | `MEDIA_CLOUD_PROVIDER` | `string` | `"aws"` | Cloud provider: `"aws"` (S3) or `"gcp"` (GCS). |
 | `MEDIA_CLOUD_BUCKET` | `string` | `""` | Bucket name. Required when using cloud storage. |
 | `MEDIA_CLOUD_REGION` | `string` | `"us-east-1"` | AWS region or GCP region. |
-| `MEDIA_CLOUD_PREFIX` | `string` | `"agentflow-media"` | Object key prefix within the bucket. |
+| `MEDIA_CLOUD_PREFIX` | `string` | `"10xgraph-media"` | Object key prefix within the bucket. |
 | `MEDIA_CLOUD_ACCESS_KEY_ID` | `string \| null` | `null` | AWS access key ID. Omit to use instance role / environment credentials. |
 | `MEDIA_CLOUD_SECRET_ACCESS_KEY` | `string \| null` | `null` | AWS secret access key. |
 | `MEDIA_CLOUD_SESSION_TOKEN` | `string \| null` | `null` | AWS STS session token for temporary credentials. |

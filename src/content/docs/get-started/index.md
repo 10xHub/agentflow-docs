@@ -15,8 +15,8 @@ updated: "2026-10-06"
 A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for the standard tool-calling loop, or build your own `StateGraph`.
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 
 def lookup_order(order_id: str) -> dict:
@@ -39,7 +39,7 @@ app = ReactAgent(
 
 Point the server at it:
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "agent": "agent:app",
   "env": ".env"
@@ -90,7 +90,7 @@ Six prebuilt agents cover common patterns, and all of them compile to a graph yo
 
 When a prebuilt is too rigid (custom state, non-linear routing), build the graph yourself with `StateGraph`. See [StateGraph](/docs/concepts/state-graph).
 
-10xGraph was published as Agentflow until 2026. Python imports are unchanged: you still write `from agentflow...`.
+10xGraph was published as Agentflow until 2026. Python code now imports from `tenxgraph`, for example `from tenxgraph.core.graph import StateGraph`. The old `agentflow` import stays available as a deprecated alias until 2.0.
 
 ## Prerequisites
 

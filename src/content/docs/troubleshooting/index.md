@@ -16,7 +16,7 @@ Most 10xGraph problems fall into five groups: the install, the environment, the 
 |---|---|
 | `pip install` fails, the CLI command is not found, or imports fail after install | [Installation troubleshooting](/docs/troubleshooting/installation) |
 | A feature works until you use Postgres, Redis or another optional integration, then a package is missing | [Installation troubleshooting](/docs/troubleshooting/installation), section on optional features |
-| Provider API keys look unset, or `.env` seems ignored | [Installation troubleshooting](/docs/troubleshooting/installation), section on environment variables. Check the `env` field in `agentflow.json` and where you start the server |
+| Provider API keys look unset, or `.env` seems ignored | [Installation troubleshooting](/docs/troubleshooting/installation), section on environment variables. Check the `env` field in `10xgraph.json` and where you start the server |
 | The server does not start, refuses to boot over unprotected routes, rejects a CORS setting, or the port is in use | [API server troubleshooting](/docs/troubleshooting/api-server) |
 | A request returns `403 Missing required scope`, a WebSocket closes at once, or `/ping` works but graph routes fail | [API server troubleshooting](/docs/troubleshooting/api-server) |
 | Every client request fails, the browser fails but curl works, threads lose continuity, or streaming differs from invoke | [Client troubleshooting](/docs/troubleshooting/client) |
@@ -27,8 +27,8 @@ If a message contains a code such as `RECURSION_000` or `NODE_TIMEOUT_000`, go s
 
 ## Before you report an issue
 
-Reproduce the problem with the smallest agent and `agentflow.json` you can. Note your Python version (3.12 or newer is required), the installed versions of `10xgraph` and `10xgraph-api`, and the full error text or error code. Remove secrets from anything you paste.
+Reproduce the problem with the smallest agent and `10xgraph.json` you can. Note your Python version (3.12 or newer is required), the installed versions of `10xgraph` and `10xgraph-api`, and the full error text or error code. Remove secrets from anything you paste.
 
 ## How to report an issue
 
-Search the [GitHub issues](https://github.com/10xHub/agentflow/issues) first, since your problem may already have a fix or workaround. If not, open a new issue with the minimal reproduction, the versions above, what you expected and what happened. For security problems, follow the [security policy](/docs/project/security) instead of filing a public issue. Other ways to get help are on the [support page](/docs/project/support).
+Search the [GitHub issues](https://github.com/10xGraph/10xGraph/issues) first, since your problem may already have a fix or workaround. If not, open a new issue with the minimal reproduction, the versions above, what you expected and what happened. For security problems, follow the [security policy](/docs/project/security) instead of filing a public issue. Other ways to get help are on the [support page](/docs/project/support).

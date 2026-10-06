@@ -45,8 +45,8 @@ The `GraphService` awaits `ainvoke` for `POST /v1/graph/invoke` and iterates `as
 A publisher receives structured `EventModel` payloads (source, phase, content type, node name, thread ID, run ID, payload, timestamp, metadata) from graph execution. Pass one to `StateGraph(...)`, not to `compile()`:
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.runtime.publisher import ConsolePublisher
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.runtime.publisher import ConsolePublisher
 
 graph = StateGraph(publisher=ConsolePublisher(config={"format": "json"}))
 app = graph.compile()
@@ -75,7 +75,7 @@ See the [Publishers reference](/docs/reference/python/publishers) and the [grace
 
 ## LLM response converters
 
-Converters normalize provider-native responses into 10xGraph messages, tool calls and usage. `agentflow.runtime.adapters` exports `BaseConverter`, `ConverterType`, `GoogleGenAIConverter`, `OpenAIConverter` and `OpenAIResponsesConverter`. You rarely use them directly; see [Providers](/docs/providers).
+Converters normalize provider-native responses into 10xGraph messages, tool calls and usage. `tenxgraph.runtime.adapters` exports `BaseConverter`, `ConverterType`, `GoogleGenAIConverter`, `OpenAIConverter` and `OpenAIResponsesConverter`. You rarely use them directly; see [Providers](/docs/providers).
 
 ## Multi-worker deployment
 

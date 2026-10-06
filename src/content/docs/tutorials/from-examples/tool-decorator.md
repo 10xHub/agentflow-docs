@@ -9,7 +9,7 @@ label: Tool Decorator
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/tool-decorator/basic_decorator_usage.py`](https://github.com/10xHub/Agentflow/blob/main/examples/tool-decorator/basic_decorator_usage.py)
+**Source example:** [`examples/tool-decorator/basic_decorator_usage.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/tool-decorator/basic_decorator_usage.py)
 
 ## What you will build
 
@@ -18,7 +18,7 @@ A collection of decorated tools that demonstrate every feature of the `@tool` de
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
+- `10xgraph` installed (`pip install 10xgraph`)
 
 ## Why use `@tool`?
 
@@ -39,15 +39,15 @@ flowchart LR
 ## Imports
 
 ```python
-from agentflow.utils import (
+from tenxgraph.utils import (
     tool,
     get_tool_metadata,
     has_tool_decorator,
     END,
     START,
 )
-from agentflow.core.graph.tool_node import ToolNode
-from agentflow.core.state import AgentState
+from tenxgraph.core.graph.tool_node import ToolNode
+from tenxgraph.core.state import AgentState
 ```
 
 ## Example 1 — Basic tool with explicit name
@@ -179,7 +179,7 @@ flowchart TD
 ## Inspecting metadata at runtime
 
 ```python
-from agentflow.utils import has_tool_decorator, get_tool_metadata
+from tenxgraph.utils import has_tool_decorator, get_tool_metadata
 
 # Check if a function was decorated
 print(has_tool_decorator(add))          # True
@@ -197,9 +197,9 @@ print(meta["metadata"])      # {"rate_limit": 100, "timeout": 30}
 
 ```python
 import asyncio
-from agentflow.core.graph.tool_node import ToolNode
-from agentflow.core.state import AgentState
-from agentflow.utils import END, START, get_tool_metadata, has_tool_decorator, tool
+from tenxgraph.core.graph.tool_node import ToolNode
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END, START, get_tool_metadata, has_tool_decorator, tool
 
 @tool(name="add_numbers")
 def add(a: int, b: int) -> int:

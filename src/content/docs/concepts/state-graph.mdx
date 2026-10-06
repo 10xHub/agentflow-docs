@@ -29,17 +29,17 @@ A `StateGraph` describes an agent as a set of nodes (Python functions, agents or
 | `END` | Virtual node that finishes the run | `add_edge("last", END)` |
 | State | An `AgentState` (or subclass) shared by all nodes | `StateGraph(MyState())` |
 
-`START` and `END` live in `agentflow.utils.constants`. Nodes you register may return a `Message`, a list of messages, a plain string (stored as an assistant message), an `AgentState`, a dict or a `Command`.
+`START` and `END` live in `tenxgraph.utils.constants`. Nodes you register may return a `Message`, a list of messages, a plain string (stored as an assistant message), an `AgentState`, a dict or a `Command`.
 
 ## How do I build a graph?
 
 This graph routes a support ticket. It uses no model, so you can run it as is:
 
 ```python title="triage.py"
-from agentflow.core import StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core import StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 
 def intake(state: AgentState, config: dict) -> str:
@@ -87,7 +87,7 @@ Every run starts from an `AgentState`. Its main field is `context`, the list of 
 Add your own fields by subclassing, then pass an instance to the graph:
 
 ```python title="state.py"
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 
 class TicketState(AgentState):

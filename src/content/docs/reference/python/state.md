@@ -16,8 +16,8 @@ Read this page when you need to understand how data flows through graph nodes, h
 ## Import paths
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.core.state.reducers import add_messages, replace_messages, append_items, replace_value
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.state.reducers import add_messages, replace_messages, append_items, replace_value
 ```
 
 ---
@@ -27,7 +27,7 @@ from agentflow.core.state.reducers import add_messages, replace_messages, append
 The default state class for all 10xGraph graphs. Pydantic `BaseModel` subclass — all fields are validated and serialised automatically.
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 state = AgentState()
 ```
@@ -74,8 +74,8 @@ Add your own fields by inheriting from `AgentState`. All internal framework fiel
 ```python
 from typing import Annotated
 from pydantic import BaseModel, Field
-from agentflow.core.state import AgentState
-from agentflow.core.state.reducers import add_messages
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.state.reducers import add_messages
 
 class OrderState(AgentState):
     """State for an order-processing agent."""
@@ -88,7 +88,7 @@ class OrderState(AgentState):
 Use the custom state when building the graph:
 
 ```python
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 
 graph = StateGraph(OrderState())
 ```
@@ -109,8 +109,8 @@ Use `Annotated` and a reducer function to control how a field merges across node
 
 ```python
 from typing import Annotated
-from agentflow.core.state import AgentState
-from agentflow.core.state.reducers import append_items
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.state.reducers import append_items
 
 class AnalysisState(AgentState):
     # Append new items; deduplicate by .id
@@ -128,7 +128,7 @@ Reducers are functions that control how field values merge when a node returns a
 ### `add_messages`
 
 ```python
-from agentflow.core.state.reducers import add_messages
+from tenxgraph.core.state.reducers import add_messages
 ```
 
 The default reducer for `AgentState.context`. Merges two lists of `Message` objects:
@@ -140,7 +140,7 @@ The default reducer for `AgentState.context`. Merges two lists of `Message` obje
 ### `replace_messages`
 
 ```python
-from agentflow.core.state.reducers import replace_messages
+from tenxgraph.core.state.reducers import replace_messages
 ```
 
 Replaces the entire message list. Use when you want a node to overwrite all history.
@@ -153,7 +153,7 @@ class MyState(AgentState):
 ### `append_items`
 
 ```python
-from agentflow.core.state.reducers import append_items
+from tenxgraph.core.state.reducers import append_items
 ```
 
 Appends new items by `.id` deduplication. Use for any list of Pydantic models that have an `id` field.
@@ -161,7 +161,7 @@ Appends new items by `.id` deduplication. Use for any list of Pydantic models th
 ### `replace_value`
 
 ```python
-from agentflow.core.state.reducers import replace_value
+from tenxgraph.core.state.reducers import replace_value
 ```
 
 Always replaces with the new value. Equivalent to the default Pydantic field update behavior.
@@ -230,7 +230,7 @@ result = app.invoke(
 ### Read state after invoke (FULL granularity)
 
 ```python
-from agentflow.utils import ResponseGranularity
+from tenxgraph.utils import ResponseGranularity
 
 result = await app.ainvoke(
     {"messages": [Message.text_message("Hello")]},

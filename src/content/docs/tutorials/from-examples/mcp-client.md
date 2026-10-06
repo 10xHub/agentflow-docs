@@ -9,7 +9,7 @@ label: MCP Client
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react-mcp/client.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react-mcp/client.py)
+**Source example:** [`examples/react-mcp/client.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-mcp/client.py)
 
 ## What you will build
 
@@ -30,7 +30,7 @@ pip install fastmcp
 Start the server in another terminal:
 
 ```bash
-python agentflow/examples/react-mcp/server.py
+python examples/react-mcp/server.py
 ```
 
 ## Step 1 — Define the MCP server config
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 Run it:
 
 ```bash
-python agentflow/examples/react-mcp/client.py
+python examples/react-mcp/client.py
 ```
 
 Expected output:

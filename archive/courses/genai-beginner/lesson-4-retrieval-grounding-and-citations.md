@@ -202,9 +202,9 @@ class QAResponse(BaseModel):
 The store owns the embedding model, so indexing means handing it text plus metadata. It embeds and writes the vector for you.
 
 ```python
-from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.storage.store.store_schema import MemoryType
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store.store_schema import MemoryType
 
 vector_store = QdrantStore(
     embedding=OpenAIEmbedding(model="text-embedding-3-small"),
@@ -232,7 +232,7 @@ async def index_documents(documents: list[Document]):
 ```python
 import json
 
-from agentflow.core.llm import call_llm
+from tenxgraph.core.llm import call_llm
 
 async def rag_query(question: str, top_k: int = 5) -> QAResponse:
     # 1. Retrieve relevant chunks (the query is embedded for you)
@@ -270,16 +270,16 @@ async def rag_query(question: str, top_k: int = 5) -> QAResponse:
 ```python
 # Index some documents
 documents = [
-    Document(content="AgentFlow was founded in 2024...", source="about.md", chunk_id="1"),
-    Document(content="To install AgentFlow: pip install...", source="install.md", chunk_id="2"),
+    Document(content="10xGraph was founded in 2024...", source="about.md", chunk_id="1"),
+    Document(content="To install 10xGraph: pip install...", source="install.md", chunk_id="2"),
 ]
 
 await index_documents(documents)
 
 # Query
-result = await rag_query("When was AgentFlow founded?")
+result = await rag_query("When was 10xGraph founded?")
 print(result.answer)
-# "AgentFlow was founded in 2024. [Source: about.md]"
+# "10xGraph was founded in 2024. [Source: about.md]"
 ```
 
 ---

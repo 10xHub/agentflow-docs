@@ -43,7 +43,7 @@ Use `StreamEmitter` when:
 The first step is to declare `emit` as an optional parameter in your tool function:
 
 ```python
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 def my_tool(
     user_input: str,
@@ -58,7 +58,7 @@ def my_tool(
 
 ### Key Details
 
-- **Import:** `from agentflow.core.state.stream_emitter import StreamEmitter`
+- **Import:** `from tenxgraph.core.state.stream_emitter import StreamEmitter`
 - **Parameter name:** Must be exactly `"emit"` (this is what the framework injects)
 - **Type hint:** `StreamEmitter | None` tells type checkers it's optional
 - **Always check:** Always do `if emit:` before calling emit methods (it's `None` during non-streaming)
@@ -72,7 +72,7 @@ def my_tool(
 ```python
 import time
 import requests
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 def fetch_weather(location: str, emit: StreamEmitter | None = None) -> str:
     """Fetch weather data with progress updates."""
@@ -113,7 +113,7 @@ def fetch_weather(location: str, emit: StreamEmitter | None = None) -> str:
 
 ```python
 import requests
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 def call_external_service(
     endpoint: str,
@@ -172,7 +172,7 @@ def call_external_service(
 
 ```python
 import os
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 def process_csv_file(filepath: str, emit: StreamEmitter | None = None) -> dict:
     """Process a CSV file with progress milestones."""
@@ -247,7 +247,7 @@ def process_csv_file(filepath: str, emit: StreamEmitter | None = None) -> dict:
 
 ```python
 import requests
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 def get_user_data(user_id: str, emit: StreamEmitter | None = None) -> dict:
     """Get user data, falling back to cache on failure."""
@@ -302,7 +302,7 @@ Users understand why they're getting cached vs fresh data.
 **Scenario:** Process items in a batch and report progress in real-time.
 
 ```python
-from agentflow.core.state.stream_emitter import StreamEmitter
+from tenxgraph.core.state.stream_emitter import StreamEmitter
 import time
 
 def process_batch(items: list[str], emit: StreamEmitter | None = None) -> dict:
@@ -368,11 +368,11 @@ def process_batch(items: list[str], emit: StreamEmitter | None = None) -> dict:
 Here's a complete graph that uses `StreamEmitter`:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.core.state.stream_emitter import StreamEmitter
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+from tenxgraph.utils.constants import END
 import time
 
 # Define tool with StreamEmitter
@@ -481,4 +481,4 @@ for i, item in enumerate(items):
 - [StreamEmitter Reference](/docs/reference/python/stream-emitter), Complete API documentation
 - [Streaming Architecture](/docs/concepts/streaming), How streaming chunks and granularity work
 - [Dependency Injection](/docs/concepts/dependency-injection), How parameters like `emit` and `state` are injected
-- [Example: react_stream/stream_sync.py](https://github.com/10xHub/Agentflow/blob/main/examples/react_stream/stream_sync.py), Full working example in the repository
+- [Example: react_stream/stream_sync.py](https://github.com/10xGraph/10xGraph/blob/main/examples/react_stream/stream_sync.py), Full working example in the repository

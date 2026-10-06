@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 A safe arithmetic expression evaluator that lets an agent perform math without executing arbitrary code.
 
-**Import path:** `agentflow.prebuilt.tools`
+**Import path:** `tenxgraph.prebuilt.tools`
 
 ---
 
@@ -58,8 +58,8 @@ On error:
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import safe_calculator
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import safe_calculator
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -80,8 +80,8 @@ result = await app.ainvoke(
 ### Combining with other tools
 
 ```python
-from agentflow.prebuilt.tools import safe_calculator, google_web_search
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import safe_calculator, google_web_search
+from tenxgraph.prebuilt.agent import ReactAgent
 
 agent = ReactAgent(
     model="gemini-2.5-flash",

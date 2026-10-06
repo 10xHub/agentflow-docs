@@ -62,9 +62,9 @@ Pydantic models double as the schema for the model and the validator for the res
 ## The extraction agent
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 def submit_invoice(invoice: dict) -> str:
     """Submit the extracted invoice. Call this once with the full structured data."""

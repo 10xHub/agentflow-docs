@@ -1,7 +1,7 @@
 ---
 title: Run Tests
 seoTitle: "Run your agent test suite from the CLI"
-description: How to run your 10xGraph project's test suite using 10xgraph test. Covers coverage, thresholds, keyword filters, and agentflow.json configuration.
+description: How to run your 10xGraph project's test suite using 10xgraph test. Covers coverage, thresholds, keyword filters, and 10xgraph.json configuration.
 section: How-to guides
 group: CLI
 order: 940
@@ -9,7 +9,7 @@ label: Run Tests
 updated: "2026-07-21"
 ---
 
-The `10xgraph test` command is a thin wrapper around pytest. It runs from the project root, reads optional defaults from `agentflow.json`, and forwards any extra arguments to pytest directly.
+The `10xgraph test` command is a thin wrapper around pytest. It runs from the project root, reads optional defaults from `10xgraph.json`, and forwards any extra arguments to pytest directly.
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ pip install pytest-cov
 
 ## Quick start
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 10xgraph test
@@ -93,9 +93,9 @@ Use `--` to separate `10xgraph test` options from raw pytest arguments:
 
 Everything after `--` is appended verbatim to the pytest command.
 
-## Configure defaults in agentflow.json
+## Configure defaults in 10xgraph.json
 
-Add a `test` section to `agentflow.json` to set project-level defaults. All fields are optional. CLI flags always take precedence over config values.
+Add a `test` section to `10xgraph.json` to set project-level defaults. All fields are optional. CLI flags always take precedence over config values.
 
 ```json
 {
@@ -122,7 +122,7 @@ With this config, a bare `10xgraph test` is equivalent to:
 
 ### Enforce a coverage threshold in CI
 
-Set `coverage_threshold` in `agentflow.json` and run `10xgraph test` in CI. If coverage falls below the threshold, pytest exits with a non-zero code and the CI step fails.
+Set `coverage_threshold` in `10xgraph.json` and run `10xgraph test` in CI. If coverage falls below the threshold, pytest exits with a non-zero code and the CI step fails.
 
 ```yaml
 # .github/workflows/ci.yml (example)
@@ -186,8 +186,8 @@ No extra flags needed in the workflow, the threshold is already declared in the 
 - Install pytest-cov: `pip install pytest-cov`
 
 **Coverage is below threshold, run fails**
-- The exit code reflects the threshold failure. Increase test coverage or lower `coverage_threshold` in `agentflow.json`.
+- The exit code reflects the threshold failure. Increase test coverage or lower `coverage_threshold` in `10xgraph.json`.
 
 **Tests directory not found**
 - Pass the correct path explicitly: `10xgraph test src/tests`
-- Or update `"path"` in the `test` section of `agentflow.json`
+- Or update `"path"` in the `test` section of `10xgraph.json`

@@ -10,7 +10,7 @@ updated: "2026-07-21"
 
 A self-improving agent that plans before acting, then critically evaluates its own work before deciding whether to iterate or stop.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -138,9 +138,9 @@ Both are fully overridable via `plan_system_prompt` and `reflect_system_prompt`.
 ```python
 import asyncio
 from dotenv import load_dotenv
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -172,8 +172,8 @@ asyncio.run(main())
 ### With custom system prompts
 
 ```python
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
 
 agent = PlanActReflectAgent(
     model="gpt-4o",
@@ -201,8 +201,8 @@ Without tools, PLAN always routes to REFLECT directly. Useful for multi-step rea
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.core.state import Message
 
 agent = PlanActReflectAgent(
     model="gpt-4o-mini",
@@ -226,10 +226,10 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.core.state import Message
 
 agent = PlanActReflectAgent(
     model="gpt-4o-mini",
@@ -254,8 +254,8 @@ asyncio.run(main())
 ### Google Gemini
 
 ```python
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import google_web_search
 
 agent = PlanActReflectAgent(
     model="google/gemini-2.5-flash",
@@ -272,8 +272,8 @@ app = agent.compile()
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.core.state import Message
 
 agent = PlanActReflectAgent(
     model="gpt-4o-mini",
@@ -299,8 +299,8 @@ asyncio.run(main())
 **`graph.py`**
 
 ```python
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import fetch_url, google_web_search, safe_calculator
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search, safe_calculator
 
 agent = PlanActReflectAgent(
     model="gpt-4o-mini",
@@ -312,7 +312,7 @@ agent = PlanActReflectAgent(
 app = agent.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

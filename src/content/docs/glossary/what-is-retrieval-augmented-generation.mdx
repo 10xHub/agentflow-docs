@@ -60,8 +60,8 @@ The retrieval step turns a potentially infinite knowledge base into a focused, q
 10xGraph ships a prebuilt `RAGAgent` that handles retrieval, context injection, and generation:
 
 ```python
-from agentflow.prebuilt import RAGAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.prebuilt import RAGAgent
+from tenxgraph.core.state import AgentState, Message
 
 agent = RAGAgent(
     model="google/gemini-2.5-flash",
@@ -85,9 +85,9 @@ print(result["messages"][-1].text())
 For a custom RAG pipeline with full control over the retrieval and injection steps, build the graph manually:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 # Retrieval as a tool
 def search_docs(query: str) -> str:
@@ -141,9 +141,9 @@ Most production systems use RAG for facts and optionally fine-tune for tone or d
 
 | Store | Package extra | Use case |
 |-------|--------------|---------|
-| Qdrant | `agentflow[qdrant]` | Self-hosted or Qdrant Cloud |
-| Mem0 | `agentflow[mem0]` | User-level long-term memory with Mem0 |
-| PgVector | `agentflow[pg_checkpoint]` | Postgres-native vector search |
+| Qdrant | `10xgraph[qdrant]` | Self-hosted or Qdrant Cloud |
+| Mem0 | `10xgraph[mem0]` | User-level long-term memory with Mem0 |
+| PgVector | `10xgraph[pg_checkpoint]` | Postgres-native vector search |
 
 ## Next steps
 

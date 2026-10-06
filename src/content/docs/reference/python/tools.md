@@ -16,7 +16,7 @@ Use `ToolNode` when you want to expose Python functions (or MCP/Composio/LangCha
 ## Import path
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 ```
 
 ---
@@ -96,8 +96,8 @@ tools = ToolNode([lookup_order, refund_order])
 ## Using ToolNode in a graph (React pattern)
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.utils import START, END
 
 def lookup_order(order_id: str) -> dict:
     """Look up an order by ID."""
@@ -140,7 +140,7 @@ app = graph.compile()
 
 ```python
 from fastmcp import Client
-from agentflow.core.graph import StateGraph, ToolNode
+from tenxgraph.core.graph import StateGraph, ToolNode
 
 client = Client({
     "mcpServers": {
@@ -166,7 +166,7 @@ When `client` is provided, `ToolNode` fetches available tool schemas from the MC
 Use the `tools_tags` parameter on `Agent` to present only a subset of tools to the LLM:
 
 ```python
-from agentflow.utils import tool
+from tenxgraph.utils import tool
 
 @tool(tags=["safe", "orders"])
 def lookup_order(order_id: str) -> dict:

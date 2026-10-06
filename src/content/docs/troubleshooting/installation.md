@@ -76,7 +76,7 @@ If `which agentflow` points somewhere unexpected, activate the correct environme
 
 **Fix**
 
-- verify `python -c "import agentflow; print(agentflow.__file__)"`
+- verify `python -c "import tenxgraph; print(tenxgraph.__file__)"`
 - verify you are using current import paths in docs and code
 - install optional extras when needed
 
@@ -104,20 +104,20 @@ Install the required extras or packages for the feature you are actually using.
 
 **Likely causes**
 
-- `env` field missing from `agentflow.json`
+- `env` field missing from `10xgraph.json`
 - `.env` file in the wrong directory
 - variables exported in one shell but server started from another
 
 **Fix**
 
-- verify `agentflow.json` points to the correct `.env`
+- verify `10xgraph.json` points to the correct `.env`
 - verify the file exists relative to the project root
 - test with a direct Python import from the same shell session
 
 ## Related docs
 
 - [Installation](/docs/get-started/installation)
-- [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json)
+- [Configure 10xgraph.json](/docs/how-to/api-cli/configure-agentflow-json)
 - [Environment Variables](/docs/how-to/production/environment-variables)
 - [Error Codes Reference](/docs/troubleshooting/error-codes)
 

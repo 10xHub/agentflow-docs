@@ -41,8 +41,8 @@ export GOOGLE_API_KEY="your-key"
    Create `agent.py`. A tool is a plain Python function. The docstring and type hints become the schema the model sees.
 
    ```python title="agent.py"
-   from agentflow.prebuilt.agent import ReactAgent
-   from agentflow.storage.checkpointer import InMemoryCheckpointer
+   from tenxgraph.prebuilt.agent import ReactAgent
+   from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 
    def lookup_order(order_id: str) -> dict:
@@ -72,7 +72,7 @@ export GOOGLE_API_KEY="your-key"
    Add a runner next to the agent.
 
    ```python title="run.py"
-   from agentflow.core.state import Message
+   from tenxgraph.core.state import Message
 
    from agent import app
 
@@ -91,9 +91,9 @@ export GOOGLE_API_KEY="your-key"
 
 3. **Add the config file**
 
-   The server finds your graph through `agentflow.json`. The `agent` value is `module:variable`.
+   The server finds your graph through `10xgraph.json`. The `agent` value is `module:variable`.
 
-   ```json title="agentflow.json"
+   ```json title="10xgraph.json"
    {
      "agent": "agent:app",
      "env": ".env",

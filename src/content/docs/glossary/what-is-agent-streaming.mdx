@@ -157,7 +157,7 @@ The server writes one JSON object per line (NDJSON). Tool activity is not a sepa
 You can also stream directly from a compiled graph in Python without the API server:
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 async def stream_agent():
     async for chunk in app.astream(
@@ -168,7 +168,7 @@ async def stream_agent():
             print(chunk.message.text(), end="", flush=True)
 ```
 
-`astream` yields `StreamChunk` objects, not dicts. To push progress out of a tool while it runs, take a `StreamEmitter` parameter in the tool; see [StreamEmitter](/docs/reference/python/stream-emitter) for the injection rules and `from agentflow.core.state.stream_emitter import StreamEmitter` as the import path.
+`astream` yields `StreamChunk` objects, not dicts. To push progress out of a tool while it runs, take a `StreamEmitter` parameter in the tool; see [StreamEmitter](/docs/reference/python/stream-emitter) for the injection rules and `from tenxgraph.core.state.stream_emitter import StreamEmitter` as the import path.
 
 ## Next steps
 

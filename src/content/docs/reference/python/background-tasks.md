@@ -15,9 +15,9 @@ Use `BackgroundTaskManager` when a node needs to do slow I/O (send a webhook, up
 ## Import path
 
 ```python
-from agentflow.utils.background_task_manager import BackgroundTaskManager, TaskMetadata
+from tenxgraph.utils.background_task_manager import BackgroundTaskManager, TaskMetadata
 # also available from the top-level package:
-from agentflow.utils import BackgroundTaskManager
+from tenxgraph.utils import BackgroundTaskManager
 ```
 
 ---
@@ -27,7 +27,7 @@ from agentflow.utils import BackgroundTaskManager
 `BackgroundTaskManager` is registered in the dependency container automatically by `StateGraph`. Declare it as a parameter and the framework injects it:
 
 ```python
-from agentflow.utils.background_task_manager import BackgroundTaskManager
+from tenxgraph.utils.background_task_manager import BackgroundTaskManager
 
 async def my_node(
     state,

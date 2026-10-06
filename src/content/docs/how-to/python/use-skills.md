@@ -78,7 +78,7 @@ The command lists each skill as valid or invalid and explains every problem. For
 From Python:
 
 ```python
-from agentflow.core.skills import validate_skill
+from tenxgraph.core.skills import validate_skill
 
 for issue in validate_skill(".agents/skills/invoice-review"):
     print(issue)
@@ -91,10 +91,10 @@ for issue in validate_skill(".agents/skills/invoice-review"):
 Skills need a `ToolNode`, because the model loads them through tools:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.skills import SkillConfig
-from agentflow.core.state import AgentState
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.skills import SkillConfig
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils.constants import END
 
 tool_node = ToolNode([])
 
@@ -161,7 +161,7 @@ It is off by default so server paths aren't shown to the model.
 Calls to `activate_skill` and `read_skill_resource` fire `InvocationType.SKILL` callbacks, separately from ordinary tool calls:
 
 ```python
-from agentflow.utils import CallbackManager, InvocationType
+from tenxgraph.utils import CallbackManager, InvocationType
 
 def log_skill(context, input_data):
     print(context.function_name, input_data)
@@ -176,8 +176,8 @@ app = graph.compile(callback_manager=callbacks)
 The skills activated in a thread are also recorded in the state:
 
 ```python
-from agentflow.core.skills.activation import get_active_skills
-from agentflow.core.state import Message
+from tenxgraph.core.skills.activation import get_active_skills
+from tenxgraph.core.state import Message
 
 result = await app.ainvoke(
     {"messages": [Message.text_message("Can I approve invoice INV-203?")]},
@@ -196,7 +196,7 @@ Recording activations is also how 10xGraph keeps skills from being lost. If a co
 For multi-tenant apps where each session has a fixed persona, skip the catalog and load the skill named in a state field on every call:
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class TenantState(AgentState):
     active_skill: str = ""

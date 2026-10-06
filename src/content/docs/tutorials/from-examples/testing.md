@@ -9,7 +9,7 @@ label: Testing
 updated: "2026-07-21"
 ---
 
-**Source example:** `agentflow/examples/testing/quick_test_example.py`
+**Source example:** `examples/testing/quick_test_example.py`
 
 ## What you will build
 
@@ -199,7 +199,7 @@ A minimal pytest version looks like this:
 
 ```python
 import pytest
-from agentflow.qa.testing import QuickTest
+from tenxgraph.qa.testing import QuickTest
 
 @pytest.mark.asyncio
 async def test_greeting_response():
@@ -214,7 +214,7 @@ async def test_greeting_response():
 ## Run the example script
 
 ```bash
-python agentflow/examples/testing/quick_test_example.py
+python examples/testing/quick_test_example.py
 ```
 
 You should see four sections:

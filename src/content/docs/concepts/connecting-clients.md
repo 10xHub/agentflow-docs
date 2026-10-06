@@ -133,7 +133,7 @@ sequenceDiagram
   participant API as 10xGraph API
   participant G as Python Graph
 
-  API->>G: attach schemas from agentflow.json at startup
+  API->>G: attach schemas from 10xgraph.json at startup
   C->>C: register handler "read_clipboard"
   C->>API: client.invoke(message)
   API->>G: run graph (server knows schema, not handler)
@@ -151,7 +151,7 @@ import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-c
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-// Schema is declared under remote_tools in server agentflow.json.
+// Schema is declared under remote_tools in server 10xgraph.json.
 client.registerToolHandler('read_clipboard', async () => ({
   content: await navigator.clipboard.readText(),
 }));

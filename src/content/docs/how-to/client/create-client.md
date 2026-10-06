@@ -149,7 +149,7 @@ console.log('Checkpointer:', info.data.info.checkpointer_type);
 console.log('ID type:', info.data.info.id_type);
 ```
 
-A successful response confirms the server started, loaded `agentflow.json`, compiled the graph, and is ready to handle requests.
+A successful response confirms the server started, loaded `10xgraph.json`, compiled the graph, and is ready to handle requests.
 
 ---
 

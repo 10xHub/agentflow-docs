@@ -9,7 +9,7 @@ label: Multimodal
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/multimodal/multimodal_agent.py`](https://github.com/10xHub/Agentflow/blob/main/examples/multimodal/multimodal_agent.py)
+**Source example:** [`examples/multimodal/multimodal_agent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/multimodal/multimodal_agent.py)
 
 ## What you will build
 
@@ -29,7 +29,7 @@ The tutorial also shows three ways to provide media:
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - a multimodal-capable provider key such as `GOOGLE_API_KEY`
 
 ## Multimodal architecture
@@ -205,13 +205,13 @@ EXAMPLES = {
 Run a few:
 
 ```bash
-python agentflow/examples/multimodal/multimodal_agent.py url base64 file_id
+python examples/multimodal/multimodal_agent.py url base64 file_id
 ```
 
 Or let the script run the default examples:
 
 ```bash
-python agentflow/examples/multimodal/multimodal_agent.py
+python examples/multimodal/multimodal_agent.py
 ```
 
 ## When to use each media strategy

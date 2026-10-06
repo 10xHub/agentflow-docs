@@ -20,7 +20,7 @@ breaking: true
 - **Node and tool timeouts** (`node_timeout`, `tool_timeout`) that cancel the work, and stop requests now cancel a running node. Previously stop was only polled between nodes.
 - **Real schema migrations**, with a stepwise, idempotent runner guarded by `pg_advisory_xact_lock` so concurrent workers cannot race the DDL.
 - **Per-user isolation in the checkpointer** (`enforce_user_isolation`, default on) across state, messages and threads, plus global thread-ownership resolution. Owner-only isolation also covers the in-memory and SQLite checkpointers.
-- **`agentflow.core.authz`**, a module for authorization contracts and scopes, and user ID scoping in `BaseStore` and `QdrantStore` so stores honor authorization policies.
+- **`tenxgraph.core.authz`**, a module for authorization contracts and scopes, and user ID scoping in `BaseStore` and `QdrantStore` so stores honor authorization policies.
 - **File ownership.** Uploads record an owner, and reads by another user return 404.
 - **Backpressure on background tasks** (`max_pending_tasks`, default 1000). A slow or dead publisher sink previously grew an unbounded task set until memory ran out.
 - **OpenTelemetry metrics** via `metrics.setup_otel_metrics()`, with counters and histograms on node and tool execution and outcome dimensions.

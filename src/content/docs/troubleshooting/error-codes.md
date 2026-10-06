@@ -82,7 +82,7 @@ graph TD
 
 **Example**:
 ```python
-from agentflow.core.exceptions import GraphError
+from tenxgraph.core.exceptions import GraphError
 
 raise GraphError(
     message="Graph failed to initialize",
@@ -126,7 +126,7 @@ raise GraphError(
 
 **Example**:
 ```python
-from agentflow.core.exceptions import NodeError
+from tenxgraph.core.exceptions import NodeError
 
 raise NodeError(
     message="Node execution failed",
@@ -166,7 +166,7 @@ raise NodeError(
 | Base class | `NodeError` |
 
 ```python
-from agentflow.core.exceptions import NodeTimeoutError
+from tenxgraph.core.exceptions import NodeTimeoutError
 ```
 
 Without a deadline, a node that hangs on a half-open socket or an unresponsive MCP server blocks the graph forever: the loop never advances a step, so the recursion limit never trips and the between-nodes stop check is never reached. Timing the call out converts an indefinite hang into a normal node error the execution loop can persist, report, and recover from.
@@ -194,7 +194,7 @@ Without a deadline, a node that hangs on a half-open socket or an unresponsive M
 
 **Example**:
 ```python
-from agentflow.core.exceptions import GraphRecursionError
+from tenxgraph.core.exceptions import GraphRecursionError
 
 raise GraphRecursionError(
     message="Recursion limit exceeded in graph execution",
@@ -247,7 +247,7 @@ raise GraphRecursionError(
 
 **Example**:
 ```python
-from agentflow.core.exceptions import TransientStorageError
+from tenxgraph.core.exceptions import TransientStorageError
 
 raise TransientStorageError(
     message="Database connection timeout",
@@ -278,7 +278,7 @@ raise TransientStorageError(
 
 **Example**:
 ```python
-from agentflow.core.exceptions import SerializationError
+from tenxgraph.core.exceptions import SerializationError
 
 raise SerializationError(
     message="Failed to deserialize state",
@@ -326,7 +326,7 @@ raise SerializationError(
 
 **Example**:
 ```python
-from agentflow.core.exceptions import ResourceNotFoundError
+from tenxgraph.core.exceptions import ResourceNotFoundError
 
 raise ResourceNotFoundError(
     message="Thread not found",
@@ -363,7 +363,7 @@ raise ResourceNotFoundError(
 | Base class | `StorageError` |
 
 ```python
-from agentflow.core.exceptions import StaleStateError
+from tenxgraph.core.exceptions import StaleStateError
 ```
 
 The writer based its update on a state version that is no longer current: another execution committed a newer state for the same thread in the meantime. Committing anyway would silently discard that other execution's work, so the write is rejected instead.
@@ -393,7 +393,7 @@ The writer based its update on a state version that is no longer current: anothe
 | Base class | `Exception` |
 
 ```python
-from agentflow.core.exceptions import GraphStopRequested
+from tenxgraph.core.exceptions import GraphStopRequested
 ```
 
 This is control flow, not a failure. The execution loop catches it, marks the run stopped, persists that, and returns normally. It exists because a stop observed *during* a node cannot be handled by the between-nodes stop check: the node has to be cancelled first, and the loop needs to tell that cancellation apart from a genuine error.
@@ -432,15 +432,15 @@ This is control flow, not a failure. The execution loop catches it, marks the ru
 - Model doesn't support document input
 - External URL not allowed for provider
 
-**Import path**: `UnsupportedMediaInputError` is **not** re-exported from `agentflow.core.exceptions`. Import it from its own module:
+**Import path**: `UnsupportedMediaInputError` is **not** re-exported from `tenxgraph.core.exceptions`. Import it from its own module:
 
 ```python
-from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
+from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
 ```
 
 **Example**:
 ```python
-from agentflow.core.exceptions.media_exceptions import UnsupportedMediaInputError
+from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
 
 raise UnsupportedMediaInputError(
     provider="openai",
@@ -490,7 +490,7 @@ raise UnsupportedMediaInputError(
 
 **Example**:
 ```python
-from agentflow.utils.validators import ValidationError
+from tenxgraph.utils.validators import ValidationError
 
 raise ValidationError(
     message="Prompt injection detected",
@@ -587,7 +587,7 @@ except GraphError as e:
 ### Basic Error Handling
 
 ```python
-from agentflow.core.exceptions import (
+from tenxgraph.core.exceptions import (
     GraphError,
     GraphRecursionError,
     StorageError,

@@ -15,14 +15,14 @@ the built-in sliding-window rate limiter to protect your API from overuse or abu
 The rate limiter is middleware that runs before every request. It counts requests per
 client (or globally) inside a rolling time window and returns `429 Too Many Requests`
 when the limit is exceeded. The limit is never active until you add a `rate_limit` block
-to `agentflow.json`.
+to `10xgraph.json`.
 
 ## Method 1: In-memory backend (development / single process)
 
 The simplest setup stores counters in the process memory. It works with a single Uvicorn
 worker and requires no extra dependencies.
 
-**Update `agentflow.json`:**
+**Update `10xgraph.json`:**
 
 ```json
 {
@@ -65,7 +65,7 @@ across the whole deployment.
 pip install "10xgraph-api[redis]"
 ```
 
-### Update `agentflow.json`
+### Update `10xgraph.json`
 
 ```json
 {
@@ -95,7 +95,7 @@ RATE_LIMIT_REDIS_URL=redis://localhost:6379/0
 ```
 
 The `${RATE_LIMIT_REDIS_URL}` placeholder is expanded from the environment at startup -
-never commit Redis credentials into `agentflow.json`.
+never commit Redis credentials into `10xgraph.json`.
 
 <aside class="callout callout-tip" role="note"><p class="callout-title">Atomic enforcement</p>
 
@@ -196,7 +196,7 @@ Budget for this when sizing limits for a streaming client: a browser that reconn
 network blip spends a request each time.
 
 Concurrent socket count is capped separately by `websocket.max_connections`, which uses the same
-close code. See [agentflow.json configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
+close code. See [10xgraph.json configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
 
 ## Behind a reverse proxy
 
@@ -300,5 +300,5 @@ Every response also includes these headers so clients can track their quota:
 ## See also
 
 - [Rate Limiting reference](/docs/reference/api-cli/rate-limiting), full field reference, response headers, and backend comparison table
-- [agentflow.json configuration](/docs/reference/api-cli/configuration)
+- [10xgraph.json configuration](/docs/reference/api-cli/configuration)
 - [Environment variables](/docs/reference/api-cli/environment)

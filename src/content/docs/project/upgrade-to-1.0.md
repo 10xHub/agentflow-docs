@@ -15,7 +15,7 @@ several new defaults that change runtime behaviour without changing any API you
 call. Work through this page before upgrading a running deployment.
 
 ```bash
-pip install --upgrade 10xscale-agentflow 10xscale-agentflow-cli
+pip install --upgrade 10xgraph 10xscale-agentflow-cli
 npm install @10xscale/agentflow-client@latest
 ```
 
@@ -131,7 +131,7 @@ thread no longer silently lose one of the updates: the loser raises
 `StaleStateError`, surfaced as HTTP 409 at the API.
 
 ```python
-from agentflow.core.exceptions import StaleStateError
+from tenxgraph.core.exceptions import StaleStateError
 
 try:
     result = await app.ainvoke(payload, config=config)

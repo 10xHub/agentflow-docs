@@ -1,7 +1,7 @@
 ---
 title: Run Evaluations
 seoTitle: "Run agent evaluations from the CLI"
-description: Run agent evaluations with 10xgraph eval. Covers parallel runs, user simulation, EvalPresets, reports, thresholds, and agentflow.json configuration.
+description: Run agent evaluations with 10xgraph eval. Covers parallel runs, user simulation, EvalPresets, reports, thresholds, and 10xgraph.json configuration.
 section: How-to guides
 group: CLI
 order: 950
@@ -17,7 +17,7 @@ Your project must have been initialised with `10xgraph init`. Eval files live in
 
 ## Quick start
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 10xgraph eval
@@ -64,7 +64,7 @@ By default all cases run sequentially. Pass `--parallel` to run them concurrentl
 Results: 47/50 passed (94.0%)
 ```
 
-You can also enable parallel by default in `agentflow.json` (see [Configure defaults](#configure-defaults-in-agentflowjson)).
+You can also enable parallel by default in `10xgraph.json` (see [Configure defaults](#configure-defaults-in-agentflowjson)).
 
 ## Reports
 
@@ -105,9 +105,9 @@ The command exits with a non-zero code if the overall pass rate is below the thr
 10xgraph eval --output ci/reports
 ```
 
-## Configure defaults in agentflow.json
+## Configure defaults in 10xgraph.json
 
-Add an `evaluation` section to `agentflow.json` to set project-level defaults. CLI flags always take precedence.
+Add an `evaluation` section to `10xgraph.json` to set project-level defaults. CLI flags always take precedence.
 
 ```json
 {
@@ -130,7 +130,7 @@ Add an `evaluation` section to `agentflow.json` to set project-level defaults. C
 | `parallel` | Run all cases from all files in a flat parallel pool |
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
 
-Report filenames from `10xgraph eval` always carry a timestamp; `agentflow.json` has no
+Report filenames from `10xgraph eval` always carry a timestamp; `10xgraph.json` has no
 setting for it.
 
 ### Enforce threshold in CI
@@ -141,7 +141,7 @@ setting for it.
   run: 10xgraph eval --parallel
 ```
 
-Set `threshold` in `agentflow.json`. If the pass rate drops below it, the step fails without extra flags.
+Set `threshold` in `10xgraph.json`. If the pass rate drops below it, the step fails without extra flags.
 
 ---
 
@@ -164,11 +164,11 @@ An eval file is any `*_eval.py` or `eval_*.py` file. The CLI auto-detects which 
 
 ### `get_eval_set()`, minimum required
 
-The CLI loads the agent from `agentflow.json`, applies default criteria (60% threshold on all), runs the evaluation, and writes reports. You only define the cases.
+The CLI loads the agent from `10xgraph.json`, applies default criteria (60% threshold on all), runs the evaluation, and writes reports. You only define the cases.
 
 ```python
 # evals/weather_agents_eval.py
-from agentflow.qa.evaluation import EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
 
 def get_eval_set() -> EvalSet:
     return (
@@ -206,8 +206,8 @@ def get_eval_set() -> EvalSet:
 Add this function when you want to specify which criteria to run and what thresholds to use. The recommended approach is `EvalPresets`, one-line preset configs covering the most common patterns.
 
 ```python
-from agentflow.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 def get_eval_config() -> EvalConfig:
     return EvalPresets.tool_usage(threshold=0.6)
@@ -239,7 +239,7 @@ def get_eval_set() -> EvalSet:
 You can also combine presets:
 
 ```python
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 def get_eval_config():
     return EvalPresets.combine(
@@ -255,7 +255,7 @@ def get_eval_config():
 Same effect as `get_eval_config()` but as a module-level constant. Useful when the config is static.
 
 ```python
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 ```
@@ -264,13 +264,13 @@ EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 
 ### `confeval.py`, global eval config
 
-Place a file named exactly `confeval.py` in your project root (next to `agentflow.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence and `confeval.py` is ignored for that file.
+Place a file named exactly `confeval.py` in your project root (next to `10xgraph.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence and `confeval.py` is ignored for that file.
 
 The file must expose either a module-level `EVAL_CONFIG` variable or a callable `get_eval_config()` that returns an `EvalConfig`.
 
 ```python
-# confeval.py  (project root, next to agentflow.json)
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+# confeval.py  (project root, next to 10xgraph.json)
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 
 EVAL_CONFIG = EvalConfig(
     criteria=CriteriaConfig(
@@ -286,7 +286,7 @@ Or as a function:
 
 ```python
 # confeval.py
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 
 def get_eval_config() -> EvalConfig:
     return EvalConfig(
@@ -306,8 +306,8 @@ If `confeval.py` is absent and a file has no per-file config, the built-in defau
 Any module-level function with return type `-> EvalSet` is auto-discovered as an eval set. Useful when you want multiple named eval sets in one file.
 
 ```python
-from agentflow.qa.evaluation import EvalSet, EvalSetBuilder
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 def get_eval_config():
     return EvalPresets.tool_usage(threshold=0.6)
@@ -331,7 +331,7 @@ You only define the scenarios. The CLI handles running the simulator, scoring go
 
 ```python
 # evals/user_simulator_eval.py
-from agentflow.qa.evaluation import ConversationScenario, UserSimulatorConfig
+from tenxgraph.qa.evaluation import ConversationScenario, UserSimulatorConfig
 
 # Optional: override simulator model and settings for this file.
 # If omitted, the CLI uses UserSimulatorConfig defaults (gemini-2.5-flash).
@@ -407,7 +407,7 @@ When multiple sources configure the same setting, this priority applies (highest
 
 ```
 1. CLI flags          (--parallel, --max-concurrency, --threshold, --output)
-2. agentflow.json     "evaluation" section
+2. 10xgraph.json     "evaluation" section
 3. Per-file config    get_eval_config() / EVAL_CONFIG  (inside each eval file)
 4. confeval.py        get_eval_config() / EVAL_CONFIG  (project-root global fallback)
 5. Built-in defaults  (all criteria at 0.6 threshold)
@@ -481,9 +481,9 @@ Both files are discovered, cases and scenarios are collected into the same flat 
 - The file does not expose any recognised entry point. Add `get_eval_set()` or `get_scenarios()`.
 
 **Exit code 1 even when all cases pass**
-- Check if a `threshold` is set in `agentflow.json` or passed via `--threshold`. The exit code is 1 when the pass rate is below threshold or when any case fails.
+- Check if a `threshold` is set in `10xgraph.json` or passed via `--threshold`. The exit code is 1 when the pass rate is below threshold or when any case fails.
 
 **Simulator scenarios always fail**
-- Ensure the agent is reachable: either expose `app` in the eval file or set `"agent"` in `agentflow.json`.
+- Ensure the agent is reachable: either expose `app` in the eval file or set `"agent"` in `10xgraph.json`.
 - Check that `goals` are specific enough for the LLM judge to verify. Vague goals like "have a conversation" will not score well.
 - Increase `max_turns` if the agent needs more exchanges to satisfy all goals.

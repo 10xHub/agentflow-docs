@@ -9,7 +9,7 @@ label: Skills
 updated: "2026-09-29"
 ---
 
-**Source example:** `agentflow/examples/skills/graph.py`
+**Source example:** `examples/skills/graph.py`
 
 ## What you will build
 
@@ -61,7 +61,7 @@ The key idea is simple:
 The example stores skills next to the graph file:
 
 ```text
-agentflow/examples/skills/
+examples/skills/
 ├── graph.py
 ├── chat.py
 └── skills/
@@ -99,7 +99,7 @@ The frontmatter gives the runtime enough structure to:
 - add example requests as hints in the catalog (`metadata.triggers`, a 10xGraph extension)
 - order skills in the catalog (`metadata.priority`, highest first)
 
-The specification requires `metadata` values to be strings, so the triggers are a `;`-separated string and the priority is quoted. Check a skill with `10xgraph skills --validate agentflow/examples/skills/skills`.
+The specification requires `metadata` values to be strings, so the triggers are a `;`-separated string and the priority is quoted. Check a skill with `10xgraph skills --validate examples/skills/skills`.
 
 ## Step 2 - Point `SkillConfig` at the directory
 
@@ -107,7 +107,7 @@ The example builds the path like this:
 
 ```python
 from pathlib import Path
-from agentflow.core.skills import SkillConfig
+from tenxgraph.core.skills import SkillConfig
 
 SKILLS_DIR = str(Path(__file__).parent / "skills")
 ```
@@ -257,7 +257,7 @@ app = graph.compile()
 Run it:
 
 ```bash
-cd agentflow/examples/skills
+cd examples/skills
 python graph.py
 ```
 
@@ -330,7 +330,7 @@ flowchart LR
 
 ## Variant: a persistent terminal chat
 
-The repo also ships `agentflow/examples/skills/chat.py`, which wraps the same graph in a REPL. Three details matter.
+The repo also ships `examples/skills/chat.py`, which wraps the same graph in a REPL. Three details matter.
 
 Use one `thread_id` for the whole session, and reuse it on every call:
 

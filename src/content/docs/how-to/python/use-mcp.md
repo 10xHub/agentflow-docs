@@ -64,7 +64,7 @@ client = Client("https://my-mcp-server.example.com/mcp")
 ## Step 2: Pass the client to ToolNode
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 tool_node = ToolNode(
     tools=[],       # no local tools needed, or mix in local tools
@@ -81,9 +81,9 @@ tool_node = ToolNode(
 The graph structure is identical to a local-tool graph:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 tool_node = ToolNode(tools=[], client=client)
 
@@ -128,7 +128,7 @@ print(result["messages"][-1].content)
 You can register both local Python functions and an MCP client in the same `ToolNode`. The runtime routes each tool call to the right backend:
 
 ```python
-from agentflow.prebuilt.tools import safe_calculator
+from tenxgraph.prebuilt.tools import safe_calculator
 
 tool_node = ToolNode(
     tools=[safe_calculator],   # local tool
@@ -192,7 +192,7 @@ agent = Agent(
 `ReactAgent` accepts the MCP client directly:
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.agent import ReactAgent
 
 agent = ReactAgent(
     model="gpt-4o",
@@ -210,10 +210,10 @@ app = agent.compile()
 ```python
 import os
 from fastmcp import Client
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END
 
 # Configure the GitHub MCP server
 mcp_config = {

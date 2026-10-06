@@ -46,7 +46,7 @@ interface PingResponse {
 try {
   await client.ping();
 } catch {
-  throw new Error(`AgentFlow API not reachable at ${baseUrl}`);
+  throw new Error(`10xGraph API not reachable at ${baseUrl}`);
 }
 ```
 
@@ -144,7 +144,7 @@ interface GraphToolsResponse {
 |---|---|
 | `local` | A Python function registered on the tool node. |
 | `mcp` | Discovered from an MCP server attached to the node. |
-| `remote` | Declared in server `agentflow.json`, executed by a matching client handler. |
+| `remote` | Declared in server `10xgraph.json`, executed by a matching client handler. |
 
 A graph with no tool nodes returns `nodes: []` and `tool_count: 0`. That is a valid graph, not an error.
 

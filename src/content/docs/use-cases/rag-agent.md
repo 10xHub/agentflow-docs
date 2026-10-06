@@ -91,7 +91,7 @@ Notes:
 ## The agent
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
 
 tool_node = ToolNode([hybrid_search, fetch_doc])
 

@@ -16,7 +16,7 @@ Use skills to give an agent specialised instructions that it loads only when a t
 ## Import path
 
 ```python
-from agentflow.core.skills import (
+from tenxgraph.core.skills import (
     SkillConfig,
     SkillDiagnostic,
     SkillMeta,
@@ -58,8 +58,8 @@ Skills load in three steps, so an agent with many skills only pays for the ones 
 Configuration passed to the `Agent` constructor via the `skills=` parameter.
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.core.skills import SkillConfig
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.skills import SkillConfig
 
 agent = Agent(
     model="gpt-4o",
@@ -92,8 +92,8 @@ The `skill_dirs` property returns `skills_dir` as a list.
 `mode="session"` pins one skill per call. The framework reads `state.<preload_from>` at the start of every call and injects that skill as a system message. No catalog and no `activate_skill` tool are added, which suits multi-tenant agents where each session has a fixed persona or domain. `read_skill_resource` is still registered when the skill bundles files and the agent has a `ToolNode`.
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.core.skills import SkillConfig
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.skills import SkillConfig
 
 class FashionState(AgentState):
     SKILL_NAME: str = ""
@@ -150,7 +150,7 @@ Reads any file inside the skill directory as text: markdown, Python and shell sc
 Calls to `activate_skill` and `read_skill_resource` fire `InvocationType.SKILL` callbacks (not `TOOL`), with `context.function_name` set to the tool name:
 
 ```python
-from agentflow.utils import CallbackManager, InvocationType
+from tenxgraph.utils import CallbackManager, InvocationType
 
 callbacks = CallbackManager()
 callbacks.register_before_invoke(
@@ -160,7 +160,7 @@ callbacks.register_before_invoke(
 app = graph.compile(callback_manager=callbacks)
 ```
 
-Session-mode preloading is not a tool call, so it fires no callback. `agentflow.core.skills.activation.get_active_skills(state)` returns the skills activated in a thread.
+Session-mode preloading is not a tool call, so it fires no callback. `tenxgraph.core.skills.activation.get_active_skills(state)` returns the skills activated in a thread.
 
 ---
 
@@ -189,7 +189,7 @@ Parsed metadata for a single skill.
 The registry holds discovered skills. `Agent` creates one for you; use it directly to inspect skills or build your own tools.
 
 ```python
-from agentflow.core.skills import SkillsRegistry
+from tenxgraph.core.skills import SkillsRegistry
 
 registry = SkillsRegistry()
 registry.discover(["./.agents/skills", "./shared-skills"])
@@ -267,7 +267,7 @@ Refer to bundled files with paths relative to the skill directory, and keep `SKI
 - A value containing `: ` that makes the YAML invalid (for example `description: Use when: ...`) is quoted and loaded.
 - A skill is skipped only when its frontmatter cannot be parsed, it has no description, or its name contains whitespace or path separators.
 
-Diagnostics are logged as warnings on the `agentflow.skills.registry` logger and are available from `registry.diagnostics`.
+Diagnostics are logged as warnings on the `tenxgraph.skills.registry` logger and are available from `registry.diagnostics`.
 
 ---
 
@@ -280,7 +280,7 @@ agentflow skills --validate ./.agents/skills
 ```
 
 ```python
-from agentflow.core.skills import validate_skill
+from tenxgraph.core.skills import validate_skill
 
 for issue in validate_skill("./.agents/skills/sql-query-helper"):
     print(issue)   # e.g. "error: .../SKILL.md: Skill name 'SQL' must be lowercase"
@@ -293,10 +293,10 @@ for issue in validate_skill("./.agents/skills/sql-query-helper"):
 ## Example: coding assistant with multiple skills
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.skills import SkillConfig
-from agentflow.core.state import AgentState
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.skills import SkillConfig
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils.constants import END
 
 tool_node = ToolNode([])
 

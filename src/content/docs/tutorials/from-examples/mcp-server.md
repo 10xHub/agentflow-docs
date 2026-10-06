@@ -9,7 +9,7 @@ label: MCP Server
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react-mcp/server.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react-mcp/server.py)
+**Source example:** [`examples/react-mcp/server.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-mcp/server.py)
 
 ## What you will build
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 Run it:
 
 ```bash
-python agentflow/examples/react-mcp/server.py
+python examples/react-mcp/server.py
 ```
 
 By default, the companion client example expects the MCP endpoint at:

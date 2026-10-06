@@ -18,8 +18,8 @@ Three small runtime pieces sit under every graph: a context manager that trims t
 - `remove_tool_msgs=True` also drops assistant tool-call messages and tool results from the window.
 
 ```python
-from agentflow.core import StateGraph
-from agentflow.core.state import MessageContextManager
+from tenxgraph.core import StateGraph
+from tenxgraph.core.state import MessageContextManager
 
 graph = StateGraph(
     context_manager=MessageContextManager(max_messages=20, remove_tool_msgs=True),
@@ -45,8 +45,8 @@ When a caller does not supply `thread_id` or `run_id`, the compiled graph takes 
 Custom generators subclass `BaseIDGenerator` and implement `id_type` and `generate`.
 
 ```python
-from agentflow.core import StateGraph
-from agentflow.utils import UUIDGenerator
+from tenxgraph.core import StateGraph
+from tenxgraph.utils import UUIDGenerator
 
 graph = StateGraph(id_generator=UUIDGenerator())
 ```
@@ -56,8 +56,8 @@ graph = StateGraph(id_generator=UUIDGenerator())
 `BackgroundTaskManager` runs coroutines that must not block a response, such as a receipt email after `refund_order`. The graph binds one instance into the container, so a node can receive it with `Inject`.
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.utils import BackgroundTaskManager
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import BackgroundTaskManager
 from injectq import Inject
 
 async def send_refund_receipt(order_id: str) -> None:

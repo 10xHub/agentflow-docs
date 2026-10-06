@@ -22,7 +22,7 @@ Pass a `CallbackManager` to `graph.compile(callback_manager=...)`.
 ## Import paths
 
 ```python
-from agentflow.utils import (
+from tenxgraph.utils import (
     CallbackManager,
     InvocationType,
     BeforeInvokeCallback,
@@ -31,7 +31,7 @@ from agentflow.utils import (
     BaseValidator,
     CallbackContext,
 )
-from agentflow.utils.validators import (
+from tenxgraph.utils.validators import (
     PromptInjectionValidator,
     MessageContentValidator,
     ValidationError,
@@ -46,7 +46,7 @@ from agentflow.utils.validators import (
 Central registry and executor for all callbacks and validators.
 
 ```python
-from agentflow.utils import CallbackManager
+from tenxgraph.utils import CallbackManager
 
 cbm = CallbackManager()
 app = graph.compile(callback_manager=cbm)
@@ -99,8 +99,8 @@ Passed to every callback with metadata about the current invocation.
 Fires before the LLM/tool call. Can modify or block the input.
 
 ```python
-from agentflow.utils.callbacks import BeforeInvokeCallback, CallbackContext
-from agentflow.utils import InvocationType
+from tenxgraph.utils.callbacks import BeforeInvokeCallback, CallbackContext
+from tenxgraph.utils import InvocationType
 
 class UpperCaseInput(BeforeInvokeCallback):
     async def __call__(self, context: CallbackContext, input_data) -> ...:
@@ -123,7 +123,7 @@ To block execution, raise any exception from the callback.
 Fires after the LLM/tool returns. Can modify the response.
 
 ```python
-from agentflow.utils.callbacks import AfterInvokeCallback, CallbackContext
+from tenxgraph.utils.callbacks import AfterInvokeCallback, CallbackContext
 
 class AuditLogger(AfterInvokeCallback):
     async def __call__(self, context: CallbackContext, input_data, output_data):
@@ -140,7 +140,7 @@ cbm.register_after_invoke(InvocationType.AI, AuditLogger())
 Fires when any exception occurs during an invocation. Can return a recovery `Message` or `None` (re-raise).
 
 ```python
-from agentflow.utils.callbacks import OnErrorCallback, CallbackContext
+from tenxgraph.utils.callbacks import OnErrorCallback, CallbackContext
 
 class FallbackOnError(OnErrorCallback):
     async def __call__(self, context: CallbackContext, input_data, error: Exception):
@@ -157,8 +157,8 @@ cbm.register_on_error(InvocationType.AI, FallbackOnError())
 Validators focus specifically on message content validation. They are simpler than callbacks because they only need one method.
 
 ```python
-from agentflow.utils import BaseValidator
-from agentflow.utils.validators import ValidationError
+from tenxgraph.utils import BaseValidator
+from tenxgraph.utils.validators import ValidationError
 
 class AllowedTopicsValidator(BaseValidator):
     async def validate(self, messages) -> bool:
@@ -181,7 +181,7 @@ cbm.register_input_validator(AllowedTopicsValidator())
 Detects OWASP LLM01:2025 prompt injection attacks.
 
 ```python
-from agentflow.utils.validators import PromptInjectionValidator
+from tenxgraph.utils.validators import PromptInjectionValidator
 
 validator = PromptInjectionValidator(
     strict_mode=True,        # raises ValidationError (default)
@@ -208,7 +208,7 @@ cbm.register_input_validator(validator)
 Validates message structure integrity.
 
 ```python
-from agentflow.utils.validators import MessageContentValidator
+from tenxgraph.utils.validators import MessageContentValidator
 
 validator = MessageContentValidator(
     allowed_roles=["user", "assistant", "system"],
@@ -235,7 +235,7 @@ Raised by validators when validation fails.
 One-call setup that registers both `PromptInjectionValidator` (strict) and `MessageContentValidator`.
 
 ```python
-from agentflow.utils.validators import register_default_validators
+from tenxgraph.utils.validators import register_default_validators
 
 cbm = CallbackManager()
 register_default_validators(cbm)

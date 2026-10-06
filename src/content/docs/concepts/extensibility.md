@@ -48,22 +48,22 @@ flowchart TB
 
 | ABC | File | What you override |
 |---|---|---|
-| `BaseAgent` | `agentflow/agentflow/core/graph/base_agent.py` | `execute()` |
-| `BaseContextManager` | `agentflow/agentflow/core/state/base_context.py` | `trim_context()`, `atrim_context()` |
-| `BaseCheckpointer` | `agentflow/agentflow/storage/checkpointer/base_checkpointer.py` | State / message / thread / cache API |
-| `BaseStore` | `agentflow/agentflow/storage/store/base_store.py` | Vector store read / write |
-| `BaseEmbedding` | `agentflow/agentflow/storage/store/embedding/base_embedding.py` | `aembed()`, `aembed_batch()`, `dimension` |
-| `BaseMediaStore` | `agentflow/agentflow/storage/media/storage/base.py` | `store()`, `retrieve()`, `delete()`, `exists()` |
-| `BasePublisher` | `agentflow/agentflow/runtime/publisher/base_publisher.py` | `publish(EventModel)`, `close()` |
-| `BaseConverter` | `agentflow/agentflow/runtime/adapters/llm/base_converter.py` | `convert_response()`, `convert_streaming_response()` |
-| `BaseValidator` | `agentflow/agentflow/utils/callbacks.py` | `validate(messages)` |
-| `BaseIDGenerator` | `agentflow/agentflow/utils/id_generator.py` | `generate()` |
+| `BaseAgent` | `tenxgraph/core/graph/base_agent.py` | `execute()` |
+| `BaseContextManager` | `tenxgraph/core/state/base_context.py` | `trim_context()`, `atrim_context()` |
+| `BaseCheckpointer` | `tenxgraph/storage/checkpointer/base_checkpointer.py` | State / message / thread / cache API |
+| `BaseStore` | `tenxgraph/storage/store/base_store.py` | Vector store read / write |
+| `BaseEmbedding` | `tenxgraph/storage/store/embedding/base_embedding.py` | `aembed()`, `aembed_batch()`, `dimension` |
+| `BaseMediaStore` | `tenxgraph/storage/media/storage/base.py` | `store()`, `retrieve()`, `delete()`, `exists()` |
+| `BasePublisher` | `tenxgraph/runtime/publisher/base_publisher.py` | `publish(EventModel)`, `close()` |
+| `BaseConverter` | `tenxgraph/runtime/adapters/llm/base_converter.py` | `convert_response()`, `convert_streaming_response()` |
+| `BaseValidator` | `tenxgraph/utils/callbacks.py` | `validate(messages)` |
+| `BaseIDGenerator` | `tenxgraph/utils/id_generator.py` | `generate()` |
 | `BaseAuth` | `agentflow-api/agentflow_cli/src/app/core/auth/base_auth.py` | `authenticate(request, response, credential)` |
 | `AuthorizationBackend` | `agentflow-api/agentflow_cli/src/app/core/auth/authorization.py` | `authorize(user, resource, action, resource_id=None, **context)` |
 | `BaseRateLimitBackend` | `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py` | `check(key, limit, window)`, `close()` |
 | `ThreadNameGenerator` | `agentflow-api/agentflow_cli/src/app/utils/thread_name_generator.py` | `generate_name(messages)` |
-| `BaseCriterion` | `agentflow/agentflow/qa/evaluation/criteria/base.py` | `score(trajectory, response)` |
-| `BaseReporter` | `agentflow/agentflow/qa/evaluation/reporters/base.py` | `generate(report, output_dir)` |
+| `BaseCriterion` | `tenxgraph/qa/evaluation/criteria/base.py` | `score(trajectory, response)` |
+| `BaseReporter` | `tenxgraph/qa/evaluation/reporters/base.py` | `generate(report, output_dir)` |
 
 ---
 
@@ -74,12 +74,12 @@ Every extension follows three steps:
 ```mermaid
 flowchart LR
   SUB["1 — Subclass the ABC\nimplement abstract methods"] -->
-  CFG["2 — Configure\npass instance or agentflow.json path"] -->
+  CFG["2 — Configure\npass instance or 10xgraph.json path"] -->
   RUN["3 — Framework picks it up\nno other changes needed"]
 ```
 
 1. Subclass the ABC and implement its abstract methods.
-2. Pass the instance at compile time (`graph.compile(checkpointer=...)`) or set the path in `agentflow.json` for server-layer ABCs. A checkpointer always goes to `compile()`: the server does not apply the `checkpointer` key in `agentflow.json` yet.
+2. Pass the instance at compile time (`graph.compile(checkpointer=...)`) or set the path in `10xgraph.json` for server-layer ABCs. A checkpointer always goes to `compile()`: the server does not apply the `checkpointer` key in `10xgraph.json` yet.
 3. The framework picks it up — graph logic, routing, and API endpoints are unchanged.
 
 ---
@@ -93,7 +93,7 @@ All four storage ABCs follow the same pattern: subclass, implement the abstract 
 The minimum required methods are the six that control state and thread lifecycle. The message and cache methods have default no-op implementations in the base class — override them only if your backend can serve them efficiently.
 
 ```python
-from agentflow.storage.checkpointer.base_checkpointer import BaseCheckpointer
+from tenxgraph.storage.checkpointer.base_checkpointer import BaseCheckpointer
 
 class DynamoCheckpointer(BaseCheckpointer):
     # ── Required ──────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ compiled = graph.compile(checkpointer=DynamoCheckpointer())
 ### `BaseStore` — long-term vector memory
 
 ```python
-from agentflow.storage.store.base_store import BaseStore
+from tenxgraph.storage.store.base_store import BaseStore
 
 class PineconeStore(BaseStore):
     async def astore(self, user_id, content, metadata) -> str: ...
@@ -137,7 +137,7 @@ compiled = graph.compile(store=PineconeStore())
 ### `BaseEmbedding` — custom embedding model
 
 ```python
-from agentflow.storage.store.embedding.base_embedding import BaseEmbedding
+from tenxgraph.storage.store.embedding.base_embedding import BaseEmbedding
 
 class CohereEmbedding(BaseEmbedding):
     @property
@@ -154,7 +154,7 @@ class CohereEmbedding(BaseEmbedding):
 ### `BaseMediaStore` — file storage backend
 
 ```python
-from agentflow.storage.media.storage.base import BaseMediaStore
+from tenxgraph.storage.media.storage.base import BaseMediaStore
 
 class S3MediaStore(BaseMediaStore):
     async def store(self, data: bytes, mime_type: str, metadata: dict | None = None) -> str:
@@ -181,12 +181,12 @@ class S3MediaStore(BaseMediaStore):
 `Agent` extends `BaseAgent`. Subclass it to call any LLM provider, add pre/post-processing, or change how messages are constructed.
 
 ```python
-from agentflow.core.graph.base_agent import BaseAgent
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.graph.base_agent import BaseAgent
+from tenxgraph.core.state import AgentState, Message
 
 class AnthropicAgent(BaseAgent):
     async def execute(self, state: AgentState, config: dict) -> Message:
-        # Convert AgentFlow messages to the format Anthropic expects
+        # Convert 10xGraph messages to the format Anthropic expects
         messages = [
             {"role": m.role, "content": m.text}
             for m in state.context
@@ -204,7 +204,7 @@ class AnthropicAgent(BaseAgent):
 `BaseConverter` maps a raw provider response into 10xGraph's `Message` format. Implement one when integrating a provider that isn't OpenAI or Google.
 
 ```python
-from agentflow.runtime.adapters.llm.base_converter import BaseConverter
+from tenxgraph.runtime.adapters.llm.base_converter import BaseConverter
 
 class MyProviderConverter(BaseConverter):
     async def convert_response(self, raw_response) -> Message:
@@ -218,8 +218,8 @@ class MyProviderConverter(BaseConverter):
 ### `BaseContextManager` — custom context trimming
 
 ```python
-from agentflow.core.state.base_context import BaseContextManager
-from agentflow.core.state import AgentState
+from tenxgraph.core.state.base_context import BaseContextManager
+from tenxgraph.core.state import AgentState
 
 class PriorityContextManager(BaseContextManager):
     def trim_context(self, state: AgentState) -> AgentState:
@@ -248,7 +248,7 @@ Five built-in generators cover most needs. Swap them globally or per-graph.
 | `ShortIDGenerator` | Short alphanumeric | `xK9mP2` |
 
 ```python
-from agentflow.utils.id_generator import TimestampIDGenerator
+from tenxgraph.utils.id_generator import TimestampIDGenerator
 
 graph = StateGraph(id_generator=TimestampIDGenerator())
 compiled = graph.compile()
@@ -257,7 +257,7 @@ compiled = graph.compile()
 Custom generator:
 
 ```python
-from agentflow.utils.id_generator import BaseIDGenerator
+from tenxgraph.utils.id_generator import BaseIDGenerator
 
 class PrefixedIDGenerator(BaseIDGenerator):
     def generate(self) -> str:
@@ -268,7 +268,7 @@ class PrefixedIDGenerator(BaseIDGenerator):
 
 ## API / server extension
 
-All four server-layer ABCs are wired via `agentflow.json`, with no code changes to the server required.
+All four server-layer ABCs are wired via `10xgraph.json`, with no code changes to the server required.
 
 ### `BaseAuth`
 
@@ -321,7 +321,7 @@ class DatePrefixNameGenerator(ThreadNameGenerator):
         return f"{date.today()}: {messages[0][:30]}"
 ```
 
-Wire any of these in `agentflow.json`. Auth, authorization and thread naming each have a dedicated top-level key in `agentflow.json`. Custom rate-limit backends are bound in the InjectQ container instead (see below):
+Wire any of these in `10xgraph.json`. Auth, authorization and thread naming each have a dedicated top-level key in `10xgraph.json`. Custom rate-limit backends are bound in the InjectQ container instead (see below):
 
 ```json
 {
@@ -352,8 +352,8 @@ container.bind_instance(BaseRateLimitBackend, RedisClusterRateLimiter())
 ## Event stream extension
 
 ```python
-from agentflow.runtime.publisher.base_publisher import BasePublisher
-from agentflow.runtime.publisher.events import EventModel
+from tenxgraph.runtime.publisher.base_publisher import BasePublisher
+from tenxgraph.runtime.publisher.events import EventModel
 
 class WebhookPublisher(BasePublisher):
     def __init__(self, url: str):
@@ -372,7 +372,7 @@ class WebhookPublisher(BasePublisher):
 Compose multiple publishers:
 
 ```python
-from agentflow.runtime.publisher import CompositePublisher
+from tenxgraph.runtime.publisher import CompositePublisher
 
 graph = StateGraph(
     publisher=CompositePublisher([ConsolePublisher(), WebhookPublisher("https://...")])
@@ -387,7 +387,7 @@ compiled = graph.compile()
 ### `BaseValidator` — input screening
 
 ```python
-from agentflow.utils.callbacks import BaseValidator
+from tenxgraph.utils.callbacks import BaseValidator
 
 class LengthValidator(BaseValidator):
     def validate(self, messages: list[Message]) -> list[Message]:
@@ -403,7 +403,7 @@ cb.register_input_validator(LengthValidator())
 ### `BaseCriterion` — custom eval criterion
 
 ```python
-from agentflow.qa.evaluation.criteria.base import BaseCriterion
+from tenxgraph.qa.evaluation.criteria.base import BaseCriterion
 
 class KeywordCriterion(BaseCriterion):
     def __init__(self, keywords: list[str]):
@@ -417,7 +417,7 @@ class KeywordCriterion(BaseCriterion):
 ### `BaseReporter` — custom eval report
 
 ```python
-from agentflow.qa.evaluation.reporters.base import BaseReporter
+from tenxgraph.qa.evaluation.reporters.base import BaseReporter
 
 class SlackReporter(BaseReporter):
     async def generate(self, report, output_dir: str) -> None:

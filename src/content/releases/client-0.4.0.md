@@ -16,7 +16,7 @@ breaking: true
 ### Added
 
 - `normalizeToolParameters(parameters?)`, exported from `tools.ts`, applies the JSON Schema defaults (`type: 'object'`, `properties: {}`, `required: []`) to a partial tool schema.
-- A version-compatibility table in the README mapping client versions to `10xscale-agentflow-cli` and `10xscale-agentflow` versions.
+- A version-compatibility table in the README mapping client versions to `10xscale-agentflow-cli` and `10xgraph` versions.
 
 ### Changed
 

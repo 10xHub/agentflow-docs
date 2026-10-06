@@ -73,7 +73,7 @@ The refund never happens and the model is told it succeeded. Replaying a side ef
 
 The question to ask is what uniquely identifies one tool invocation. The answer is the assistant message that issued it, combined with the call ID inside that message. That message is persisted with the thread, so on replay it has the same `message_id` and the key is stable. A different turn produces a different assistant message, so two turns never collide even when the model reuses `call_1`.
 
-```python title="agentflow/core/graph/utils/invoke_node_handler.py"
+```python title="tenxgraph/core/graph/utils/invoke_node_handler.py"
 @staticmethod
 def _ledger_key(origin_message_id: str | None, tool_call_id: str) -> str | None:
     if not tool_call_id or not origin_message_id:
@@ -186,7 +186,7 @@ Most real tool nodes run several calls at once, and 10xGraph runs them in parall
 **Human-in-the-loop resumes do not repeat finished work.** A tool can call `interrupt()` to pause the graph for an approval. On resume the interrupted node runs again from the start. In a parallel tool node under `invoke`, calls that already finished are not run again: their results come from the ledger, and only the paused call continues. Code that runs before the `interrupt()` call inside the paused tool does run twice, so put side effects after the interrupt:
 
 ```python title="graph/tools.py"
-from agentflow.utils import interrupt
+from tenxgraph.utils import interrupt
 
 
 async def refund(order_id: str, amount: float) -> str:
@@ -256,7 +256,7 @@ A timed-out tool raises `NodeTimeoutError` (error code `NODE_TIMEOUT_002`), whic
 
 The same mechanism makes **stop requests actually stop work**. Stopping used to be checked only between nodes, so a run hung inside a node never saw the request. The node now runs as a cancellable task. While it waits, the runtime checks once per second whether a stop has been requested and cancels the task if so. A `stop()` call now ends a hung run instead of only appearing to.
 
-Each timeout, stop and error also increments a counter (`agentflow.node.timeouts`, `agentflow.tool.timeouts`, `agentflow.tool.errors` and related metrics), so you can alert on rates rather than reading logs.
+Each timeout, stop and error also increments a counter (`tenxgraph.node.timeouts`, `tenxgraph.tool.timeouts`, `tenxgraph.tool.errors` and related metrics), so you can alert on rates rather than reading logs.
 
 ## How much can a crash replay?
 
@@ -277,17 +277,17 @@ These are the limits we know about as of 0.10.0.
 
 ## Production checklist
 
-- [ ] Use `PgCheckpointer` (`pip install "10xgraph[pg_checkpoint]"`) and point the `checkpointer` key in `graph.json` at it, for example `"checkpointer": "graph.agent:checkpointer"`.
+- [ ] Use `PgCheckpointer` (`pip install "10xgraph[pg_checkpoint]"`) and point the `checkpointer` key in `10xgraph.json` at it, for example `"checkpointer": "graph.agent:checkpointer"`.
 - [ ] Use `invoke` / `ainvoke` for runs whose tools have side effects you cannot repeat.
 - [ ] Give every money-moving or message-sending tool an idempotency key derived from your domain.
 - [ ] Put side effects after `interrupt()` calls, never before them.
 - [ ] Set `tool_timeout` to what your slowest healthy tool needs plus some margin, not to the 300 second default.
-- [ ] Alert on the "COMPLETED but could not be recorded" log line and on `agentflow.tool.timeouts`.
+- [ ] Alert on the "COMPLETED but could not be recorded" log line and on `tenxgraph.tool.timeouts`.
 - [ ] Always pass an explicit `thread_id`. Without one the runtime generates a random ID, and the run can be neither resumed nor stopped.
 - [ ] Keep `durable_checkpoint_every_step` at its default of `true`.
 
 ```python title="graph/agent.py"
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@localhost/app",
@@ -302,4 +302,4 @@ app = graph.compile(checkpointer=checkpointer)
 - [Hot and cold agent memory](/blog/hot-and-cold-agent-memory) explains the storage underneath: versioned rows, the Redis cache and how they stay consistent.
 - [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) covers thread lifecycle and resume.
 - [Production runtime](/docs/concepts/production-runtime) covers timeouts, stop and metrics.
-- [Configuration](/docs/reference/api-cli/configuration) lists the keys in `graph.json`.
+- [Configuration](/docs/reference/api-cli/configuration) lists the keys in `10xgraph.json`.

@@ -28,7 +28,7 @@ The default implementation uses `secrets.choice` to select words, making the nam
 
 ## Configuring a custom generator
 
-In `agentflow.json`, set the `thread_name_generator` field to a module path in `module:attribute` format.
+In `10xgraph.json`, set the `thread_name_generator` field to a module path in `module:attribute` format.
 
 Example:
 

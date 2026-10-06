@@ -9,7 +9,7 @@ label: MCP ReAct Agent
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react-mcp/react-mcp.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react-mcp/react-mcp.py)
+**Source example:** [`examples/react-mcp/react-mcp.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-mcp/react-mcp.py)
 
 ## What you will build
 
@@ -18,7 +18,7 @@ A ReAct graph whose tools are not local Python functions, but remote MCP tools d
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - `fastmcp` installed
 - a running MCP server, such as the weather server from the earlier tutorial
 - a provider key such as `GEMINI_API_KEY`
@@ -70,7 +70,7 @@ Instead of passing local functions, the example passes an MCP client:
 
 ```python
 from fastmcp import Client
-from agentflow.core import ToolNode
+from tenxgraph.core import ToolNode
 
 client_http = Client(config)
 tool_node = ToolNode(tools=[], client=client_http)

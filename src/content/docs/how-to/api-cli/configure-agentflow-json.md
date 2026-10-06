@@ -1,14 +1,14 @@
 ---
-title: Configure agentflow.json
-description: Task guide for setting the common agentflow.json keys, wiring a checkpointer, store and auth, and keeping separate configs per environment.
+title: Configure 10xgraph.json
+description: Task guide for setting the common 10xgraph.json keys, wiring a checkpointer, store and auth, and keeping separate configs per environment.
 section: How-to guides
 group: CLI
 order: 890
-label: Configure agentflow.json
+label: Configure 10xgraph.json
 updated: "2026-10-06"
 ---
 
-`agentflow.json` tells the API server which graph to serve and how to secure it. This guide covers how to set the keys you reach for most often. For every key, type and default, see the [agentflow.json reference](/docs/reference/api-cli/configuration).
+`10xgraph.json` tells the API server which graph to serve and how to secure it. This guide covers how to set the keys you reach for most often. For every key, type and default, see the [10xgraph.json reference](/docs/reference/api-cli/configuration).
 
 ## Start with the agent key
 
@@ -31,11 +31,11 @@ python -c "from graph.react import app; print(type(app))"
 
 ## Persist conversations with a checkpointer
 
-Pass the checkpointer to `compile()` in your graph module. The server uses whatever the compiled graph carries. The `checkpointer` key in `agentflow.json` is recognised but not applied by the API server, so setting it has no effect.
+Pass the checkpointer to `compile()` in your graph module. The server uses whatever the compiled graph carries. The `checkpointer` key in `10xgraph.json` is recognised but not applied by the API server, so setting it has no effect.
 
 ```python
 # graph/dependencies.py
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 my_checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@localhost/agentflow",
@@ -58,8 +58,8 @@ The `store` key points at a `BaseStore` instance (not a class). Without it, the 
 
 ```python
 # graph/dependencies.py
-from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 my_store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 ```
@@ -71,7 +71,7 @@ my_store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 }
 ```
 
-Loading fails at startup with a clear error if the attribute is not a `BaseStore`. For tests, `agentflow.qa.testing.InMemoryStore` satisfies the same key.
+Loading fails at startup with a clear error if the attribute is not a `BaseStore`. For tests, `tenxgraph.qa.testing.InMemoryStore` satisfies the same key.
 
 ## Inject your own services
 
@@ -161,7 +161,7 @@ The optional `test` and `evaluation` blocks supply defaults for `10xgraph test` 
 10xgraph eval --parallel --max-concurrency 16
 ```
 
-Evaluation criteria do not come from `agentflow.json`. They come from `confeval.py` in your evals directory. See [Run evals](/docs/how-to/api-cli/run-evals).
+Evaluation criteria do not come from `10xgraph.json`. They come from `confeval.py` in your evals directory. See [Run evals](/docs/how-to/api-cli/run-evals).
 
 ## Keep one config per environment
 

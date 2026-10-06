@@ -9,14 +9,14 @@ breaking: false
 ### Added
 
 - **Realtime audio sessions over WebSocket** at `/v1/graph/live`, alongside the existing streaming socket at `/v1/graph/ws`. `GraphService` configures the realtime session.
-- **WebSocket connection limits.** A new `websocket` block in `agentflow.json` accepts `max_connections`, a per-process cap on concurrent WebSocket connections (`null` or `0` means unlimited).
+- **WebSocket connection limits.** A new `websocket` block in `10xgraph.json` accepts `max_connections`, a per-process cap on concurrent WebSocket connections (`null` or `0` means unlimited).
 - **WebSocket handshakes share the REST rate-limit bucket.** Client key derivation is now shared between the HTTP rate-limit middleware and the WebSocket connection guard.
 - **Global `confeval.py` discovery for `agentflow eval`.** The nearest global `confeval.py` is found and used for criteria, and reports show where each case's configuration came from.
 - Agent-skill reference docs for realtime audio agents.
 
 ### Changed
 
-- The minimum core dependency is now `10xscale-agentflow>=0.8.0`.
+- The minimum core dependency is now `10xgraph>=0.8.0`.
 - Logging configuration and log sanitization were updated.
 
 ### Fixed

@@ -54,7 +54,7 @@ The simplest way to run user simulations is via the `agentflow eval` CLI. You on
 
 ```python
 # evals/user_simulator_eval.py
-from agentflow.qa.evaluation import ConversationScenario, UserSimulatorConfig
+from tenxgraph.qa.evaluation import ConversationScenario, UserSimulatorConfig
 
 # Optional: override the simulator model for this file.
 # If omitted, the CLI uses UserSimulatorConfig defaults (gemini-2.5-flash).
@@ -121,7 +121,7 @@ The CLI detects `get_scenarios()` (or a `SCENARIOS` module-level constant), runs
 ## ConversationScenario
 
 ```python
-from agentflow.qa.evaluation import ConversationScenario
+from tenxgraph.qa.evaluation import ConversationScenario
 
 scenario = ConversationScenario(
     scenario_id="travel_planning",
@@ -162,7 +162,7 @@ scenario = ConversationScenario(
 ## UserSimulator
 
 ```python
-from agentflow.qa.evaluation import UserSimulator, UserSimulatorConfig
+from tenxgraph.qa.evaluation import UserSimulator, UserSimulatorConfig
 
 simulator = UserSimulator(
     model="gemini/gemini-2.5-flash",
@@ -200,7 +200,7 @@ There is no cross-provider fallback — one model name means one provider. If th
 ### Via UserSimulatorConfig
 
 ```python
-from agentflow.qa.evaluation import UserSimulatorConfig, UserSimulator
+from tenxgraph.qa.evaluation import UserSimulatorConfig, UserSimulator
 
 config = UserSimulatorConfig(
     model="gemini/gemini-2.5-flash",
@@ -266,7 +266,7 @@ print(result.criterion_details)   # {"simulation_goals": {"achieved_goals": [...
 The CLI attaches this criterion automatically when it detects `get_scenarios()`. For programmatic use:
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     SimulationGoalsCriterion,
     CriterionConfig,
     UserSimulator,
@@ -304,7 +304,7 @@ The criterion details include:
 Run multiple scenarios concurrently with `BatchSimulator`. Each scenario gets its own isolated thread ID so checkpointer state never bleeds between runs.
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     BatchSimulator,
     ConversationScenario,
     SimulationGoalsCriterion,
@@ -349,7 +349,7 @@ print(f"Average turns: {summary['average_turns']:.1f}")
 
 ```python
 import asyncio
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     BatchSimulator,
     ConversationScenario,
     CriterionConfig,

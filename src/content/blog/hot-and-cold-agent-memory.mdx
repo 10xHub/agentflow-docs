@@ -78,7 +78,7 @@ The write path, the read path and the version guards all follow from these two r
 
 After each completed step, the run loop saves the thread. The order is the important part:
 
-```python title="agentflow/core/graph/utils/utils.py (abridged)"
+```python title="tenxgraph/core/graph/utils/utils.py (abridged)"
 if checkpointer:
     # Durable store is the source of truth: state + messages, atomically, first.
     await checkpointer.aput_checkpoint(config, new_state, messages)
@@ -188,7 +188,7 @@ The only row that loses work is the one where the source of truth is down, which
 ## Tuning it
 
 ```python title="graph/agent.py"
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@localhost/app",
@@ -199,7 +199,7 @@ checkpointer = PgCheckpointer(
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-Point the `checkpointer` key in `graph.json` at this object, for example `"checkpointer": "graph.agent:checkpointer"`, and the API server builds and uses it.
+Point the `checkpointer` key in `10xgraph.json` at this object, for example `"checkpointer": "graph.agent:checkpointer"`, and the API server builds and uses it.
 
 **`cache_ttl`** should cover the typical gap between turns in an active conversation. For live chat, an hour or a few hours keeps working sets small. For agents users come back to over days, keep the 24-hour default or raise it. A short TTL never loses data. It only means more reads go to Postgres.
 

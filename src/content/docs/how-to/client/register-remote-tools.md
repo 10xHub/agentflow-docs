@@ -9,7 +9,7 @@ updated: "2026-09-29"
 
 Use remote tools when execution needs browser or client-owned capabilities. Keep database, secret-bearing API, and backend work in server-side tools.
 
-## 1. Declare schemas in `agentflow.json`
+## 1. Declare schemas in `10xgraph.json`
 
 ```json
 {

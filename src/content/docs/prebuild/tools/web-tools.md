@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 Prebuilt tools for fetching content from the public web and running Google-powered searches.
 
-**Import path:** `agentflow.prebuilt.tools`
+**Import path:** `tenxgraph.prebuilt.tools`
 
 ---
 
@@ -49,8 +49,8 @@ Fetches a public HTTP/HTTPS URL and returns the page content as plain text.
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import fetch_url
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import fetch_url
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -73,7 +73,7 @@ Searches the public web using **Gemini Google Search grounding** and returns the
 ### Requirements
 
 ```bash
-pip install "10xscale-agentflow[google-genai]"
+pip install "10xgraph[google-genai]"
 ```
 
 The `GOOGLE_API_KEY` (or Application Default Credentials) environment variable must be set.
@@ -102,8 +102,8 @@ The `GOOGLE_API_KEY` (or Application Default Credentials) environment variable m
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import google_web_search
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import google_web_search
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gemini-2.5-flash",
@@ -126,7 +126,7 @@ Searches a **Vertex AI Search datastore** with Gemini grounding. Suitable for en
 ### Requirements
 
 ```bash
-pip install "10xscale-agentflow[google-genai]"
+pip install "10xgraph[google-genai]"
 ```
 
 Vertex AI credentials and a provisioned datastore are required.
@@ -143,8 +143,8 @@ Vertex AI credentials and a provisioned datastore are required.
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import vertex_ai_search
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import vertex_ai_search
+from tenxgraph.core.graph import Agent, ToolNode
 
 DATASTORE = "projects/my-project/locations/global/collections/default_collection/dataStores/my-store"
 
@@ -163,9 +163,9 @@ agent = Agent(
 ## Using multiple web tools together
 
 ```python
-from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import ReactAgent
 
 agent = ReactAgent(
     model="gemini-2.5-flash",

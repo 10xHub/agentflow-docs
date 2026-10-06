@@ -38,7 +38,7 @@ flowchart TD
 
 **Likely causes**
 
-- graph import path is wrong in `agentflow.json`
+- graph import path is wrong in `10xgraph.json`
 - environment variables required by the graph are missing
 - production image does not include all dependencies
 
@@ -155,7 +155,7 @@ flowchart TD
 
 ## Secret redaction in logs
 
-Debug logging may surface API keys, bearer tokens, signed URLs, or other credentials that appear in LLM request parameters and error messages. The `agentflow.utils` module provides helpers to redact common credential formats before they reach your log handlers.
+Debug logging may surface API keys, bearer tokens, signed URLs, or other credentials that appear in LLM request parameters and error messages. The `tenxgraph.utils` module provides helpers to redact common credential formats before they reach your log handlers.
 
 ### Patterns redacted
 
@@ -173,10 +173,10 @@ Debug logging may surface API keys, bearer tokens, signed URLs, or other credent
 ### Quick setup
 
 ```python
-from agentflow.utils import install_secret_redaction
+from tenxgraph.utils import install_secret_redaction
 
 # Call once at application startup, after configuring your logging handlers.
-install_secret_redaction()                   # covers the "agentflow" logger and its handlers
+install_secret_redaction()                   # covers the "tenxgraph" logger and its handlers
 install_secret_redaction("root")             # or cover the root logger
 ```
 
@@ -186,17 +186,17 @@ For finer control, add `SecretRedactionFilter` directly to a handler. Handler-le
 
 ```python
 import logging
-from agentflow.utils import SecretRedactionFilter
+from tenxgraph.utils import SecretRedactionFilter
 
 handler = logging.StreamHandler()
 handler.addFilter(SecretRedactionFilter())
-logging.getLogger("agentflow").addHandler(handler)
+logging.getLogger("tenxgraph").addHandler(handler)
 ```
 
 ### Redacting arbitrary strings
 
 ```python
-from agentflow.utils import mask_secrets
+from tenxgraph.utils import mask_secrets
 
 safe_text = mask_secrets(some_string_that_may_contain_keys)
 ```
@@ -208,7 +208,7 @@ This is a defence-in-depth measure. Prefer not logging secrets in the first plac
 ## Quick production checklist
 
 1. confirm exact runtime command
-2. confirm active `agentflow.json`
+2. confirm active `10xgraph.json`
 3. confirm environment variables in the live process
 4. confirm auth and CORS behavior from a real client
 5. confirm persistence with restart testing

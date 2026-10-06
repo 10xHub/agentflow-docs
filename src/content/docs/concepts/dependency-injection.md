@@ -24,7 +24,7 @@ The following parameters are injected by 10xGraph whenever they appear in a func
 | `tool_call_id` | `str` | tools only | ID of the model's tool call request |
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 def get_weather(
     location: str,          # from the model's tool call arguments
@@ -48,7 +48,7 @@ For application-level services (database clients, custom checkpointers, callback
 
 ```python
 from injectq import Inject, InjectQ
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 checkpointer = InMemoryCheckpointer()
 
@@ -73,8 +73,8 @@ The same pattern works in async node functions:
 
 ```python
 from injectq import Inject, InjectQ
-from agentflow.utils.callbacks import CallbackManager
-from agentflow.storage.store.base_store import BaseStore
+from tenxgraph.utils.callbacks import CallbackManager
+from tenxgraph.storage.store.base_store import BaseStore
 
 async def main_agent(
     state: AgentState,
@@ -131,8 +131,8 @@ Tell the graph which container to use by passing `container=` to `StateGraph`:
 
 ```python
 from injectq import InjectQ
-from agentflow.core.graph import StateGraph
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 checkpointer = InMemoryCheckpointer()
 container = InjectQ.get_instance()
@@ -156,9 +156,9 @@ This is the pattern from `examples/react-injection/react_di.py`:
 
 ```python
 from injectq import Inject, InjectQ
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 class AnalyticsClient:
     def record(self, event: str): ...
@@ -212,9 +212,9 @@ result = app.invoke(
 
 ---
 
-## Configuring via `agentflow.json`
+## Configuring via `10xgraph.json`
 
-If your container is defined in a separate module, register it in `agentflow.json` so the CLI server picks it up automatically:
+If your container is defined in a separate module, register it in `10xgraph.json` so the CLI server picks it up automatically:
 
 ```json
 {
@@ -234,7 +234,7 @@ The server will import your container and use it for all dependency resolution.
 - [Architecture](/docs/concepts/architecture)
 - Injectable parameters are hidden from the model's tool schema.
 - The `@tool` decorator adds metadata without changing injection behavior.
-- For service injection in the API layer, configure `injectq` in `agentflow.json`.
+- For service injection in the API layer, configure `injectq` in `10xgraph.json`.
 
 ## Related concepts
 

@@ -16,7 +16,7 @@ Use a context manager when your agents run long multi-turn conversations and you
 ## Import path
 
 ```python
-from agentflow.core.state import BaseContextManager, MessageContextManager
+from tenxgraph.core.state import BaseContextManager, MessageContextManager
 ```
 
 ---
@@ -26,7 +26,7 @@ from agentflow.core.state import BaseContextManager, MessageContextManager
 The built-in implementation. Keeps the most recent N user messages plus all system messages.
 
 ```python
-from agentflow.core.state import MessageContextManager
+from tenxgraph.core.state import MessageContextManager
 
 ctx_mgr = MessageContextManager(
     max_messages=10,
@@ -61,7 +61,7 @@ Messages with `role == "system"` are **never** trimmed regardless of `max_messag
 Abstract base class. Subclass this to implement custom trimming strategies.
 
 ```python
-from agentflow.core.state import BaseContextManager, AgentState
+from tenxgraph.core.state import BaseContextManager, AgentState
 from typing import TypeVar
 
 S = TypeVar("S", bound=AgentState)
@@ -106,7 +106,7 @@ The context manager is registered in the dependency container automatically when
 
 ```python
 from injectq import Inject
-from agentflow.core.state import BaseContextManager
+from tenxgraph.core.state import BaseContextManager
 
 async def my_node(
     state,

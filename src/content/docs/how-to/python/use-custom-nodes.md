@@ -15,7 +15,7 @@ A graph node does not have to be an `Agent` or a `ToolNode`. Any plain Python fu
 ## Minimal node
 
 ```python
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 
 def greet(state: AgentState, config: dict) -> dict:
     user_id = config.get("user_id", "stranger")
@@ -27,8 +27,8 @@ def greet(state: AgentState, config: dict) -> dict:
 Register and wire it like any other node:
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.utils import END
 
 graph = StateGraph()
 graph.add_node("greet", greet)
@@ -80,7 +80,7 @@ A node function can return any of the following:
 | `Command` | Updates state **and** overrides the next node at runtime (see below). |
 
 ```python
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 
 # Return a string, wrapped automatically
 def node_str(state: AgentState, config: dict) -> str:
@@ -127,7 +127,7 @@ async def call_llm(state: AgentState, config: dict) -> str:
 **Option 2, build a `Message` yourself:** gives full control over content blocks, role, and metadata.
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 async def call_llm_message(state: AgentState, config: dict) -> Message:
     client = openai.AsyncOpenAI()
@@ -144,7 +144,7 @@ async def call_llm_message(state: AgentState, config: dict) -> Message:
 **Option 3, use `ModelResponseConverter`:** lets you hand the raw SDK response to 10xGraph's built-in converters so tool calls, content blocks, and metadata are normalized automatically.
 
 ```python
-from agentflow.runtime.adapters.llm.model_response_converter import ModelResponseConverter
+from tenxgraph.runtime.adapters.llm.model_response_converter import ModelResponseConverter
 
 async def call_llm_converter(state: AgentState, config: dict) -> ModelResponseConverter:
     client = openai.AsyncOpenAI()
@@ -166,10 +166,10 @@ For anything beyond `state` and `config`, checkpointer, store, publisher, contex
 
 ```python
 from injectq import Inject
-from agentflow.storage.checkpointer import BaseCheckpointer
-from agentflow.storage.store import BaseStore
-from agentflow.runtime.publisher import BasePublisher
-from agentflow.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import BaseCheckpointer
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.runtime.publisher import BasePublisher
+from tenxgraph.core.state import AgentState, Message
 
 async def persist_result(
     state: AgentState,
@@ -249,7 +249,7 @@ async def fetch_context(
 Return `Command` when a node must both update state and choose the next node at runtime:
 
 ```python
-from agentflow.utils import Command, END
+from tenxgraph.utils import Command, END
 
 def router(state: AgentState, config: dict) -> Command:
     last = state.context[-1].text() if state.context else ""
@@ -284,10 +284,10 @@ async def async_node(state: AgentState, config: dict) -> dict:
 ```python
 import asyncio
 from injectq import Inject, InjectQ
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.store import BaseStore
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.utils import END
 
 # --- Custom node: runs before the agent, enriches state ---
 async def load_user_profile(

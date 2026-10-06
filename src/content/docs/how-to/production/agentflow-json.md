@@ -1,10 +1,10 @@
 ---
-title: agentflow.json in production
-description: "The agentflow.json fields that matter in production: values to set for auth, persistence, and rate limiting, and defaults that are unsafe under real traffic."
+title: 10xgraph.json in production
+description: "The 10xgraph.json fields that matter in production: values to set for auth, persistence, and rate limiting, and defaults that are unsafe under real traffic."
 section: How-to guides
 group: Production
 order: 750
-label: agentflow.json in production
+label: 10xgraph.json in production
 updated: "2026-09-29"
 ---
 

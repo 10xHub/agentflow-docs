@@ -154,7 +154,7 @@ See [`reference/client/files`](/docs/reference/client/files) for full details.
 
 | Method | Returns | Description |
 |---|---|---|
-| `registerToolHandler(name, handler)` | `void` | Register the client-side implementation for a schema declared in server `agentflow.json`. |
+| `registerToolHandler(name, handler)` | `void` | Register the client-side implementation for a schema declared in server `10xgraph.json`. |
 | `registerTool(registration)` | `void` | Compatibility form; schema metadata remains local and is not sent to the server. |
 
 See [Register remote tools](/docs/how-to/client/register-remote-tools) for full details.

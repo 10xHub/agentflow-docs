@@ -240,8 +240,8 @@ class TicketClassification(BaseModel):
 Structured output is requested on the `Agent` node with `output_schema=`, a Pydantic model. The agent asks the provider for JSON matching that schema and validates the reply.
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.utils import START, END
 
 # Agent node with structured output
 classifier = Agent(
@@ -353,9 +353,9 @@ def parse_with_fallback(response: str, schema: type[BaseModel]) -> BaseModel:
 ```python
 from enum import Enum
 from pydantic import BaseModel, Field
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import Message
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import Message
+from tenxgraph.utils import START, END
 
 # 1. Define the schema
 class TicketPriority(str, Enum):
@@ -488,8 +488,8 @@ You do not count tokens or trim the message list by hand. Attach a context manag
 `MessageContextManager` keeps the most recent N user messages and discards the rest. `SummaryContextManager` instead summarizes what falls outside the window with an LLM call, and can be driven by a token budget:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import SummaryContextManager
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import SummaryContextManager
 
 ctx_mgr = SummaryContextManager(
     model="gpt-4o-mini",     # model used to write the summary

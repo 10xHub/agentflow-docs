@@ -92,7 +92,7 @@ If you choose **Memory Based** or **Redis Based**, the CLI prompts for:
 ### Quick Start
 
 ```
-agentflow.json
+10xgraph.json
 .env.example
 graph/
   __init__.py
@@ -102,7 +102,7 @@ graph/
 ### Production
 
 ```
-agentflow.json
+10xgraph.json
 .env.example
 .python-version
 pyproject.toml
@@ -130,11 +130,11 @@ auth/                  # only when Custom auth is selected
   agent_auth.py
 ```
 
-The `agentflow.json` is generated from your answers, not copied verbatim from the template.
+The `10xgraph.json` is generated from your answers, not copied verbatim from the template.
 
 ## What each file does
 
-### agentflow.json
+### 10xgraph.json
 
 The core server configuration. Minimal Quick Start example:
 
@@ -237,5 +237,5 @@ After `10xgraph init`:
 - Pass `--force` to overwrite: `10xgraph init --force`
 
 **Server fails to start after init**
-- Check that the `agent` field in `agentflow.json` matches the actual module path.
+- Check that the `agent` field in `10xgraph.json` matches the actual module path.
 - Verify your graph module can be imported: `python -c "from graph.agent import app; print(app)"`

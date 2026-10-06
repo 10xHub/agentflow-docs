@@ -16,7 +16,7 @@ An `EvalSet` is a named collection of test cases (`EvalCase`). You build one usi
 ### Single-turn case
 
 ```python
-from agentflow.qa.evaluation import EvalSetBuilder
+from tenxgraph.qa.evaluation import EvalSetBuilder
 
 eval_set = (
     EvalSetBuilder("customer-support")
@@ -36,7 +36,7 @@ eval_set = (
 Provide `expected_tools` as a list of tool names or `ToolCall` objects:
 
 ```python
-from agentflow.qa.evaluation import EvalSetBuilder, ToolCall
+from tenxgraph.qa.evaluation import EvalSetBuilder, ToolCall
 
 eval_set = (
     EvalSetBuilder("weather-agent")
@@ -104,7 +104,7 @@ The evaluator sends one user message per turn and accumulates tool calls, node v
 ### Quick builder from pairs
 
 ```python
-from agentflow.qa.evaluation import EvalSetBuilder
+from tenxgraph.qa.evaluation import EvalSetBuilder
 
 eval_set = EvalSetBuilder.quick(
     ("Hello", "Hi!"),
@@ -140,7 +140,7 @@ eval_set.to_file("evals/weather.json")
 ### Load from JSON
 
 ```python
-from agentflow.qa.evaluation import EvalSet
+from tenxgraph.qa.evaluation import EvalSet
 
 eval_set = EvalSet.from_file("evals/weather.json")
 ```
@@ -160,7 +160,7 @@ eval_set = builder.build()
 You can construct `EvalCase` objects without the builder:
 
 ```python
-from agentflow.qa.evaluation import EvalCase, ToolCall
+from tenxgraph.qa.evaluation import EvalCase, ToolCall
 
 case = EvalCase.single_turn(
     eval_id="london_weather",
@@ -191,7 +191,7 @@ case = EvalCase.multi_turn(
 ## ToolCall reference
 
 ```python
-from agentflow.qa.evaluation import ToolCall
+from tenxgraph.qa.evaluation import ToolCall
 
 # Name only (args not checked)
 ToolCall(name="get_weather")

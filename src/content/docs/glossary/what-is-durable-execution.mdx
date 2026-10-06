@@ -66,8 +66,8 @@ This is not a general workflow engine. It does not orchestrate work outside the 
 ## Example
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 
 def refund_order(order_id: str, amount: float) -> str:

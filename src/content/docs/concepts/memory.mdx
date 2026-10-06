@@ -36,7 +36,7 @@ pip install asyncpg "redis>=4.2"
 ```
 
 ```python title="graph/agent.py"
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@localhost:5432/agents",
@@ -65,7 +65,7 @@ Constructor arguments:
 
 `setup()` is synchronous, and `await checkpointer.asetup()` is the async form. I found no code path that calls it for you, so run it once before the first request. The tables are `threads`, `states`, `messages`, `tool_executions` and a schema version table.
 
-To let the API server construct it, put the object in a module and point `agentflow.json` at it with `"checkpointer": "graph.agent:checkpointer"`.
+To let the API server construct it, put the object in a module and point `10xgraph.json` at it with `"checkpointer": "graph.agent:checkpointer"`.
 
 ## What is written, and when?
 
@@ -112,7 +112,7 @@ Useful thread methods on the checkpointer include `alist_threads`, `aget_thread`
 The checkpointer remembers one thread. For facts that should carry across threads, such as a user's preferences, pass a store to `compile()`. The framework ships `QdrantStore` and `Mem0Store`, and an embedding class for QdrantStore.
 
 ```python title="graph/agent.py"
-from agentflow.storage.store import OpenAIEmbedding, QdrantStore
+from tenxgraph.storage.store import OpenAIEmbedding, QdrantStore
 
 store = QdrantStore(
     embedding=OpenAIEmbedding(),   # defaults to text-embedding-3-small

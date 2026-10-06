@@ -1,6 +1,6 @@
 ---
 title: How to use prebuilt tools
-description: "Use the prebuilt tools in agentflow.prebuilt.tools: fetch_url, file tools, safe_calculator, web search, memory tools, and create_handoff_tool."
+description: "Use the prebuilt tools in tenxgraph.prebuilt.tools: fetch_url, file tools, safe_calculator, web search, memory tools, and create_handoff_tool."
 section: How-to guides
 group: Python library
 order: 610
@@ -8,10 +8,10 @@ label: Prebuilt tools
 updated: "2026-05-23"
 ---
 
-10xGraph ships a set of production-ready tools in `agentflow.prebuilt.tools`. Drop them into any `ToolNode` or pass them directly to a prebuilt agent's `tools` list.
+10xGraph ships a set of production-ready tools in `tenxgraph.prebuilt.tools`. Drop them into any `ToolNode` or pass them directly to a prebuilt agent's `tools` list.
 
 ```python
-from agentflow.prebuilt.tools import (
+from tenxgraph.prebuilt.tools import (
     fetch_url,
     file_read,
     file_write,
@@ -33,8 +33,8 @@ from agentflow.prebuilt.tools import (
 Fetches the text content of any public HTTP/HTTPS URL. Blocks private/loopback IP addresses, enforces a configurable timeout, and truncates long responses.
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.tools import fetch_url
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import fetch_url
 
 tool_node = ToolNode([fetch_url])
 
@@ -74,7 +74,7 @@ The tool returns a JSON string:
 Evaluates arithmetic expressions without exposing `__builtins__`. Safe for production.
 
 ```python
-from agentflow.prebuilt.tools import safe_calculator
+from tenxgraph.prebuilt.tools import safe_calculator
 
 tool_node = ToolNode([safe_calculator])
 ```
@@ -94,7 +94,7 @@ Returns the result as a string, or an error message if evaluation fails.
 Local filesystem tools. All three enforce that the path is within the current working directory or an explicit allowed root.
 
 ```python
-from agentflow.prebuilt.tools import file_read, file_write, file_search
+from tenxgraph.prebuilt.tools import file_read, file_write, file_search
 
 tool_node = ToolNode([file_read, file_write, file_search])
 ```
@@ -139,7 +139,7 @@ export GOOGLE_CSE_ID=your-custom-search-engine-id
 ```
 
 ```python
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.prebuilt.tools import google_web_search
 
 tool_node = ToolNode([google_web_search])
 ```
@@ -160,7 +160,7 @@ Returns a JSON list of `{"title": ..., "url": ..., "snippet": ...}` objects.
 Calls Google Vertex AI Search. Requires Google Cloud credentials and a Vertex AI data store ID.
 
 ```python
-from agentflow.prebuilt.tools import vertex_ai_search
+from tenxgraph.prebuilt.tools import vertex_ai_search
 
 tool_node = ToolNode([vertex_ai_search])
 ```
@@ -183,8 +183,8 @@ Memory tools let the LLM search and write long-term user or agent memories. They
 A general-purpose memory search and write tool for use without `MemoryConfig`.
 
 ```python
-from agentflow.prebuilt.tools import memory_tool
-from agentflow.storage.store import create_local_qdrant_store, OpenAIEmbedding
+from tenxgraph.prebuilt.tools import memory_tool
+from tenxgraph.storage.store import create_local_qdrant_store, OpenAIEmbedding
 
 store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
 tool = memory_tool(store)
@@ -197,8 +197,8 @@ tool_node = ToolNode([tool])
 These are used internally by `MemoryConfig`; you can also call them directly if you need more control.
 
 ```python
-from agentflow.prebuilt.tools import make_user_memory_tool, make_agent_memory_tool
-from agentflow.storage.store import MemoryConfig, UserMemoryConfig
+from tenxgraph.prebuilt.tools import make_user_memory_tool, make_agent_memory_tool
+from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig
 
 config = MemoryConfig(store=store)
 user_tool = make_user_memory_tool(config)
@@ -216,7 +216,7 @@ The typical pattern is to let `Agent(..., memory=MemoryConfig(...))` inject thes
 Creates a handoff tool that transfers control from one agent to another in multi-agent graphs (swarm or supervisor patterns). See [how-to/python/handoff-between-agents](/docs/how-to/python/handoff-between-agents) for the full handoff guide.
 
 ```python
-from agentflow.prebuilt.tools import create_handoff_tool
+from tenxgraph.prebuilt.tools import create_handoff_tool
 
 handoff_to_billing = create_handoff_tool(
     agent_name="billing",
@@ -240,9 +240,9 @@ tool_node = ToolNode([handoff_to_billing])
 All prebuilt tools can be mixed with custom tools in a single `ToolNode`:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.prebuilt.tools import fetch_url, safe_calculator
-from agentflow.utils.decorators import tool
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.prebuilt.tools import fetch_url, safe_calculator
+from tenxgraph.utils.decorators import tool
 
 @tool(name="get_exchange_rate", tags=["finance"])
 async def get_exchange_rate(from_currency: str, to_currency: str) -> str:

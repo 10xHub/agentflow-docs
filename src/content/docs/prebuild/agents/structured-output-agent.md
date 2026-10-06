@@ -10,7 +10,7 @@ updated: "2026-07-21"
 
 An agent that guarantees its output matches a Pydantic schema — with automatic validation and self-repair on failure.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -144,8 +144,8 @@ Output only the JSON object — no extra text or code fences.
 import asyncio
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from agentflow.prebuilt.agent import StructuredOutputAgent
-from agentflow.core.state import Message
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -185,7 +185,7 @@ asyncio.run(main())
 
 ```python
 from typing import TypedDict
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 
 class WeatherReport(TypedDict):
     city: str
@@ -206,8 +206,8 @@ app = agent.compile()
 Tools run inside the GENERATE↔TOOL loop before validation is attempted. The final response must still match the schema:
 
 ```python
-from agentflow.prebuilt.agent import StructuredOutputAgent
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.tools import google_web_search
 from pydantic import BaseModel
 
 class ProductAnalysis(BaseModel):
@@ -238,7 +238,7 @@ app = agent.compile()
 Use this when the lightweight repair prompt is not enough — for example when the schema is complex or the model frequently produces structurally broken JSON:
 
 ```python
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 from pydantic import BaseModel
 
 class ProductAnalysis(BaseModel):
@@ -265,7 +265,7 @@ agent = StructuredOutputAgent(
 ### Google Gemini
 
 ```python
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 from pydantic import BaseModel
 
 class Summary(BaseModel):
@@ -291,9 +291,9 @@ app = agent.compile()
 
 ```python
 import asyncio
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 from pydantic import BaseModel
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 class MovieReview(BaseModel):
     title: str
@@ -325,7 +325,7 @@ asyncio.run(main())
 
 ```python
 from pydantic import BaseModel
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 
 class SummaryOutput(BaseModel):
     title: str
@@ -346,7 +346,7 @@ agent = StructuredOutputAgent(
 app = agent.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

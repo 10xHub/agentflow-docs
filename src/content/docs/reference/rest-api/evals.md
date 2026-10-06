@@ -15,7 +15,7 @@ Base path: `/v1/evals`
 
 <aside class="callout callout-danger" role="note"><p class="callout-title">These endpoints are public</p>
 
-`/v1/evals/runs` and `/v1/evals/runs/{run_id}` are on the server's public allowlist. They carry **no authentication and no authorization guard**, even when `auth` is configured in `agentflow.json`. Anyone who can reach the server can read every file in `eval_reports/`, including the prompts, model outputs, and criteria recorded in each run.
+`/v1/evals/runs` and `/v1/evals/runs/{run_id}` are on the server's public allowlist. They carry **no authentication and no authorization guard**, even when `auth` is configured in `10xgraph.json`. Anyone who can reach the server can read every file in `eval_reports/`, including the prompts, model outputs, and criteria recorded in each run.
 
 They exist as a local report viewer. Before exposing a server to a network you do not control, either keep `eval_reports/` out of the deployed image and working directory, or block `/v1/evals/*` at your ingress or reverse proxy. Treat anything you put in an eval case as publicly readable otherwise.
 

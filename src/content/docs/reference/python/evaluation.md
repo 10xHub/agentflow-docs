@@ -30,7 +30,7 @@ This page covers the data model and the runner. Two companion pages go deeper:
 ## Import paths
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     EvalConfig,
     CriteriaConfig,
@@ -54,7 +54,7 @@ from agentflow.qa.evaluation import (
 )
 ```
 
-Everything above is also re-exported from `agentflow.qa`.
+Everything above is also re-exported from `tenxgraph.qa`.
 
 ---
 
@@ -67,7 +67,7 @@ collector sees no events and every trajectory criterion scores zero.
 The short way:
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator, create_eval_app
+from tenxgraph.qa.evaluation import AgentEvaluator, create_eval_app
 
 app, collector = create_eval_app(build_my_graph())   # uncompiled StateGraph in
 evaluator = AgentEvaluator(app, collector)
@@ -76,7 +76,7 @@ evaluator = AgentEvaluator(app, collector)
 The explicit way, when you need to control compilation yourself:
 
 ```python
-from agentflow.qa.evaluation import TrajectoryCollector, make_trajectory_callback
+from tenxgraph.qa.evaluation import TrajectoryCollector, make_trajectory_callback
 
 collector = TrajectoryCollector(capture_all_events=True)
 _, callback_mgr = make_trajectory_callback(collector, config={"thread_id": "eval-1"})
@@ -110,7 +110,7 @@ objects inside `conversation`.
 ### `EvalCase.single_turn`
 
 ```python
-from agentflow.qa.evaluation import EvalCase, ToolCall
+from tenxgraph.qa.evaluation import EvalCase, ToolCall
 
 case = EvalCase.single_turn(
     eval_id="weather-paris-001",
@@ -181,7 +181,7 @@ builds one without touching `MessageContent` directly.
 Represents an expected or actual tool invocation.
 
 ```python
-from agentflow.qa.evaluation import ToolCall
+from tenxgraph.qa.evaluation import ToolCall
 
 tc = ToolCall(
     name="get_weather",
@@ -217,7 +217,7 @@ A recorded step in the execution trajectory.
 | `metadata` | `dict[str, Any]` | `{}` |
 
 ```python
-from agentflow.qa.evaluation import TrajectoryStep
+from tenxgraph.qa.evaluation import TrajectoryStep
 
 node_step = TrajectoryStep.node("RESEARCH_NODE")
 tool_step = TrajectoryStep.tool("search", args={"query": "AI trends"})
@@ -250,7 +250,7 @@ A collection of `EvalCase` objects.
 | `metadata` | `dict[str, Any]` | `{}` |
 
 ```python
-from agentflow.qa.evaluation import EvalSet
+from tenxgraph.qa.evaluation import EvalSet
 
 eval_set = EvalSet(eval_set_id="capitals", name="Capitals", eval_cases=[case1, case2])
 ```
@@ -289,7 +289,7 @@ Holds the criteria to apply during evaluation, plus run-level settings.
 unknown fields, so each criterion goes in its own named slot:
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     CriteriaConfig,
     CriterionConfig,
     EvalConfig,
@@ -367,7 +367,7 @@ classes themselves in [Evaluation criteria](/docs/reference/python/evaluation-cr
 ## `Rubric`
 
 ```python
-from agentflow.qa.evaluation import Rubric
+from tenxgraph.qa.evaluation import Rubric
 
 rubric = Rubric(
     rubric_id="accuracy",
@@ -390,7 +390,7 @@ Records node visits, tool calls and per-node LLM output during a graph run. It i
 `BasePublisher`, fed by `PublisherCallback`.
 
 ```python
-from agentflow.qa.evaluation import TrajectoryCollector, make_trajectory_callback
+from tenxgraph.qa.evaluation import TrajectoryCollector, make_trajectory_callback
 
 collector = TrajectoryCollector(capture_all_events=True)
 _, callback_mgr = make_trajectory_callback(collector)
@@ -439,7 +439,7 @@ are stamped onto every emitted event. Pass the returned callback manager to
 Main evaluation runner.
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator, EvalConfig
+from tenxgraph.qa.evaluation import AgentEvaluator, EvalConfig
 
 evaluator = AgentEvaluator(app, collector, config=EvalConfig.default())
 report = await evaluator.evaluate(eval_set)
@@ -567,7 +567,7 @@ yourself, use `ReporterManager` — see
 also usable directly:
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     ConsoleReporter,
     HTMLReporter,
     JSONReporter,
@@ -592,7 +592,7 @@ reporters additionally offer `save(report, path)` and a string form
 ## `DEFAULT_JUDGE_MODEL`
 
 ```python
-from agentflow.qa.evaluation.config.types import DEFAULT_JUDGE_MODEL
+from tenxgraph.qa.evaluation.config.types import DEFAULT_JUDGE_MODEL
 # "gemini-2.5-flash"
 ```
 
@@ -606,7 +606,7 @@ The default LLM for every judge-based criterion. Override per criterion with
 ```python
 import asyncio
 
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     CriteriaConfig,
     CriterionConfig,

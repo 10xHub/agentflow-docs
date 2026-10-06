@@ -9,7 +9,7 @@ label: ReAct Agent
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react/react_sync.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react/react_sync.py)
+**Source example:** [`examples/react/react_sync.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react/react_sync.py)
 
 ## What you will build
 
@@ -23,7 +23,7 @@ A ReAct (Reason + Act) agent that:
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 
 ## What is ReAct?
@@ -46,8 +46,8 @@ flowchart TD
 ## Step 1 — Custom state and checkpointer
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 class CustomAgentState(AgentState):
     jd_name: str = "CustomAgentState"
@@ -103,8 +103,8 @@ Injectable parameters are resolved at call time:
 ## Step 3 — Agent with reasoning config
 
 ```python
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.utils.constants import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.utils.constants import END
 
 tool_node = ToolNode([get_weather])
 
@@ -159,7 +159,7 @@ app = graph.compile(checkpointer=checkpointer)
 ## Step 5 — Run
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 inp = {"messages": [Message.text_message("Please call the get_weather function for New York City")]}
 config = {"thread_id": "12345", "recursion_limit": 10}
@@ -194,10 +194,10 @@ sequenceDiagram
 ```python
 from dotenv import load_dotenv
 
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.constants import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
 load_dotenv()
 

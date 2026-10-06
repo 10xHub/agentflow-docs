@@ -9,7 +9,7 @@ label: Memory
 updated: "2026-10-06"
 ---
 
-**Source examples:** [`agentflow/examples/memory/`](https://github.com/10xHub/Agentflow/tree/main/examples/memory) (`simple_personalized_agent.py` and `personalized_agent_qdrant.py`). Those two scripts call the Mem0 SDK directly from custom graph nodes. This tutorial uses 10xGraph's own memory path instead: `Agent(memory=MemoryConfig(...))` with a `BaseStore`.
+**Source examples:** [`examples/memory/`](https://github.com/10xGraph/10xGraph/tree/main/examples/memory) (`simple_personalized_agent.py` and `personalized_agent_qdrant.py`). Those two scripts call the Mem0 SDK directly from custom graph nodes. This tutorial uses 10xGraph's own memory path instead: `Agent(memory=MemoryConfig(...))` with a `BaseStore`.
 
 ## What you will build
 
@@ -53,7 +53,7 @@ flowchart LR
 `QdrantStore` needs an embedding service. The factories wrap `QdrantStore(...)`:
 
 ```python
-from agentflow.storage.store import GoogleEmbedding, create_local_qdrant_store
+from tenxgraph.storage.store import GoogleEmbedding, create_local_qdrant_store
 
 store = create_local_qdrant_store(
     path="./qdrant_data",
@@ -70,7 +70,7 @@ For a remote server or Qdrant Cloud use `create_remote_qdrant_store(host, port, 
 
 ```python
 import os
-from agentflow.storage.store import create_mem0_store
+from tenxgraph.storage.store import create_mem0_store
 
 store = create_mem0_store(
     config={
@@ -95,10 +95,10 @@ store = create_mem0_store(
 ## Step 2: Attach memory to the agent
 
 ```python
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.storage.store import MemoryConfig, UserMemoryConfig
-from agentflow.utils.constants import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig
+from tenxgraph.utils.constants import END
 
 
 def lookup_order(order_id: str) -> str:
@@ -154,7 +154,7 @@ The agent here is a single node. For tool calling, wire a `TOOL` node and a cond
 ```python
 import asyncio
 
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 
 async def main():

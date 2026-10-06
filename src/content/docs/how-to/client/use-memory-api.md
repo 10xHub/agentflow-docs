@@ -11,7 +11,7 @@ The memory API stores information that persists across threads and sessions, use
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
-All memory operations require the `store` field to be configured in `agentflow.json`. Without a store the endpoints return empty results.
+All memory operations require the `store` field to be configured in `10xgraph.json`. Without a store the endpoints return empty results.
 
 </aside>
 
@@ -293,7 +293,7 @@ console.log(result.messages);
 | Error | Cause | Fix |
 |---|---|---|
 | `AgentFlowError` status `404` on `getMemory` | Memory ID not found. | Verify the ID. Memories may have been deleted. |
-| `AgentFlowError` status `503` | Store not configured or unreachable. | Check `store` field in `agentflow.json` and the store backend status. |
+| `AgentFlowError` status `503` | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and the store backend status. |
 | Empty search results | Score threshold too high, wrong memory type, or store is empty. | Lower `score_threshold`, remove the type filter, or check that memories have been stored. |
 
 ---

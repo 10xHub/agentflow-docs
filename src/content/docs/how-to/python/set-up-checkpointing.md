@@ -23,9 +23,9 @@ Without a checkpointer, every `invoke()` call starts fresh with an empty state.
 `InMemoryCheckpointer` stores state in a Python dict. It is the default when no checkpointer is passed to `compile()`. Use it for local development, unit tests, and single-process servers.
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState, Message
 
 graph = StateGraph()
 # ... add nodes and edges ...
@@ -64,7 +64,7 @@ pip install "10xgraph[pg_checkpoint]"
 ### Minimal setup
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
@@ -146,7 +146,7 @@ checkpointer. The API server sets `user_id` from the authenticated user and fall
 back to `"anonymous"` when no `auth` is configured, in which case every caller
 shares one bucket and isolation is a no-op regardless of this setting.
 
-So: enable [`auth`](#) (e.g. `"auth": "jwt"` in `agentflow.json`) if you want
+So: enable [`auth`](#) (e.g. `"auth": "jwt"` in `10xgraph.json`) if you want
 per-user isolation to mean anything. `authorization` (the `AuthorizationBackend`)
 is a separate, coarser layer, it decides *whether* a caller may perform an action
 at all; `enforce_user_isolation` decides *whose rows* they can touch in storage.
@@ -171,7 +171,7 @@ manual recovery. To keep the table bounded, rows older than
 You control the trade-off:
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
@@ -196,7 +196,7 @@ For production deployments, call `setup()` before your first request to create t
 
 ```python
 import asyncio
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
@@ -224,9 +224,9 @@ app_api = FastAPI(lifespan=lifespan)
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.core.state import AgentState, Message
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
@@ -277,11 +277,11 @@ pip install "10xgraph[sqlite_checkpoint]"
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.storage.checkpointer import SqliteCheckpointer
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
+from tenxgraph.core.state import AgentState, Message
 
-# Defaults to ~/.agentflow/checkpointer.db when no path is given.
+# Defaults to ~/.10xgraph/checkpointer.db when no path is given.
 checkpointer = SqliteCheckpointer("agent_state.db")
 
 graph = StateGraph()
@@ -318,7 +318,7 @@ When you construct `PgCheckpointer` in Python, read the values from `os.environ`
 ```python
 import os
 
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn=os.environ["DATABASE_URL"],
@@ -333,7 +333,7 @@ DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/mydb
 REDIS_URL=redis://localhost:6379/0
 ```
 
-When using `10xgraph api` (the CLI server), build the checkpointer in code the same way and pass it to `compile()` in the module that `agentflow.json`'s `agent` points at. The server uses the checkpointer the compiled graph carries. `agentflow.json` has no object form for a checkpointer, and its `checkpointer` import-path key is not applied by the server yet.
+When using `10xgraph api` (the CLI server), build the checkpointer in code the same way and pass it to `compile()` in the module that `10xgraph.json`'s `agent` points at. The server uses the checkpointer the compiled graph carries. `10xgraph.json` has no object form for a checkpointer, and its `checkpointer` import-path key is not applied by the server yet.
 
 ```python
 # graph.py
@@ -384,7 +384,7 @@ result = app.invoke(
 State rows are versioned. When a run reads state, the checkpointer stamps the version into `config["_checkpoint_version"]`. The next write is a compare-and-swap under a per-thread row lock: if another execution advanced the thread in the meantime, the write is rejected instead of silently overwriting it.
 
 ```python
-from agentflow.core.exceptions import StaleStateError
+from tenxgraph.core.exceptions import StaleStateError
 
 try:
     result = await app.ainvoke(input_data, config=config)

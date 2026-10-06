@@ -8,7 +8,7 @@ export const SITE = {
     'Open-source Python multi-agent framework. Write the agent and 10xGraph generates its production server: auth, rate limits, replay-safe tools and Kubernetes.',
   // Current repo URLs. GitHub redirects these after the repos move to the 10xGraph org,
   // so they keep working; switch them once the transfer is done.
-  github: 'https://github.com/10xHub/agentflow',
+  github: 'https://github.com/10xGraph/10xGraph',
   docsRepo: 'https://github.com/10xHub/agentflow-docs',
   docsBranch: 'main',
   version: '0.9.2',
@@ -72,14 +72,14 @@ export const SECTION_INFO: Record<DocSection, { slug: string; title: string; blu
 
 // Project policies linked from the footer: the license file, plus the docs pages for contributing and security.
 export const POLICIES = [
-  { label: 'License (MIT)', href: 'https://github.com/10xHub/agentflow/blob/main/LICENSE' },
+  { label: 'License (MIT)', href: 'https://github.com/10xGraph/10xGraph/blob/main/LICENSE' },
   { label: 'Contributing', href: '/docs/project/contributing' },
   { label: 'Security policy', href: '/docs/project/security' },
 ] as const;
 
 // Packages that publish releases, with the names they are published under today.
 export const PACKAGES = {
-  core: { label: 'Core framework', registry: 'PyPI', name: '10xscale-agentflow', url: 'https://pypi.org/project/10xscale-agentflow/' },
+  core: { label: 'Core framework', registry: 'PyPI', name: '10xgraph', url: 'https://pypi.org/project/10xgraph/' },
   api: { label: 'API server and CLI', registry: 'PyPI', name: '10xscale-agentflow-cli', url: 'https://pypi.org/project/10xscale-agentflow-cli/' },
   client: { label: 'TypeScript client', registry: 'npm', name: '@10xscale/agentflow-client', url: 'https://www.npmjs.com/package/@10xscale/agentflow-client' },
 } as const;

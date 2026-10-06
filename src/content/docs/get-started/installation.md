@@ -13,7 +13,7 @@ faq:
   - q: Which extra do I need to run in production?
     a: Add pg_checkpoint, which brings in asyncpg and redis for PgCheckpointer. A durable checkpointer is also what enables replay-safe tools across a process restart.
   - q: Is the Python import name different from the package name?
-    a: No change yet. You install 10xgraph but keep importing from agentflow, for example from agentflow.prebuilt.agent import ReactAgent.
+    a: No change yet. You install 10xgraph but keep importing from tenxgraph, for example from tenxgraph.prebuilt.agent import ReactAgent.
 ---
 
 10xGraph needs Python 3.12 or newer. Install the framework and the API server with `pip install 10xgraph 10xgraph-api`, add an extra for your model provider, then check the install with `10xgraph version`. The TypeScript client is a separate npm package.
@@ -73,14 +73,14 @@ Note: 10xGraph is pre-1.0. Pin the versions you deploy and read the changelog be
 
 ```bash
 10xgraph version
-python -c "import agentflow; print(agentflow.__file__)"
+python -c "import tenxgraph; print(tenxgraph.__file__)"
 ```
 
 The first command prints the CLI version. The second confirms the library imports from your virtual environment. If the command is not found, activate the environment again and see the [installation troubleshooting](/docs/troubleshooting/installation) page.
 
 ## How do I set provider API keys?
 
-Providers read their keys from environment variables. Export them in your shell, or put them in a `.env` file that your `agentflow.json` points at with `"env": ".env"`. Never commit that file.
+Providers read their keys from environment variables. Export them in your shell, or put them in a `.env` file that your `10xgraph.json` points at with `"env": ".env"`. Never commit that file.
 
 | Provider | Variable |
 |---|---|
@@ -106,7 +106,7 @@ The client talks to a running `10xgraph api` server. See [Quickstart](/docs/get-
 10xgraph init --yes --template production --auth jwt --rate-limit redis
 ```
 
-The production template creates your graph, a prompt-injection validator, evals, tests and an `agentflow.json` config with JWT auth and owner-only threads turned on. Use `--auth custom` instead to also get an `auth/` module with a `BaseAuth` subclass to fill in. For a minimal start, skip this step and follow the [Quickstart](/docs/get-started/first-agent).
+The production template creates your graph, a prompt-injection validator, evals, tests and an `10xgraph.json` config with JWT auth and owner-only threads turned on. Use `--auth custom` instead to also get an `auth/` module with a `BaseAuth` subclass to fill in. For a minimal start, skip this step and follow the [Quickstart](/docs/get-started/first-agent).
 
 ## Serve it
 

@@ -21,7 +21,7 @@ All presets are factory class methods on `EvalPresets`. Every preset that calls 
 Uses ROUGE-1 token overlap only. No API calls, instant feedback. Good for a smoke test during active development.
 
 ```python
-from agentflow.qa.evaluation import EvalPresets
+from tenxgraph.qa.evaluation import EvalPresets
 
 config = EvalPresets.quick_check()
 ```
@@ -145,7 +145,7 @@ Note: `contains_keywords` is not included in `comprehensive` because keywords ar
 `EvalPresets.custom()` lets you enable exactly the criteria you need by passing threshold values. Any criterion whose threshold is `None` is excluded.
 
 ```python
-from agentflow.qa.evaluation import EvalPresets, MatchType
+from tenxgraph.qa.evaluation import EvalPresets, MatchType
 
 config = EvalPresets.custom(
     response_threshold=0.7,
@@ -180,7 +180,7 @@ config = EvalPresets.combine(
 `EvalConfig` also ships three class-method presets:
 
 ```python
-from agentflow.qa.evaluation import EvalConfig
+from tenxgraph.qa.evaluation import EvalConfig
 
 config = EvalConfig.default()   # EXACT trajectory + semantic response match
 config = EvalConfig.strict()    # EXACT trajectory with args + high-threshold judges
@@ -214,7 +214,7 @@ config = EvalConfig.from_file("eval_config.json")
 `EvalConfig.criteria` is a typed `CriteriaConfig` model with one named slot per criterion. It forbids unknown fields, so you cannot invent your own keys such as `"tone_check"` — each criterion goes in the slot that belongs to it.
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     CriteriaConfig,
     CriterionConfig,
     EvalConfig,
@@ -275,7 +275,7 @@ Available slots: `tool_name_match`, `trajectory`, `node_order`, `response_match`
 ### Add rubrics to an existing config
 
 ```python
-from agentflow.qa.evaluation import Rubric
+from tenxgraph.qa.evaluation import Rubric
 
 config = config.with_rubrics([
     Rubric(rubric_id="concise", content="Response must be under 50 words.", weight=1.0),

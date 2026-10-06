@@ -74,7 +74,7 @@ Start the development API server (Uvicorn).
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--config`, `-c` | `agentflow.json` | Config file |
+| `--config`, `-c` | `10xgraph.json` | Config file |
 | `--host`, `-H` | `127.0.0.1` | Bind address. Use `0.0.0.0` for all interfaces |
 | `--port`, `-p` | `8000` | Port |
 | `--reload / --no-reload` | on | Auto-reload on file changes |
@@ -99,7 +99,7 @@ Local development server. Like `play`, with the playground opening controlled by
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--config`, `-c` | `agentflow.json` | Config file |
+| `--config`, `-c` | `10xgraph.json` | Config file |
 | `--host`, `-H` | `127.0.0.1` | Bind address |
 | `--port`, `-p` | `8000` | Port |
 | `--reload / --no-reload` | on | Reload on file changes |
@@ -144,7 +144,7 @@ Run agent evaluations. Discovers `*_eval.py` and `eval_*.py` files in the target
 | `--max-concurrency`, `-c` | `4` | Concurrent cases when `--parallel` is set |
 | `--verbose`, `-v` / `--quiet`, `-q` | off | Output level |
 
-Reports are HTML and JSON unless `--no-report` is set. When an option is left at its default, the `evaluation` block of `agentflow.json` can supply `directory`, `output_dir`, `threshold`, `parallel` and `max_concurrency`.
+Reports are HTML and JSON unless `--no-report` is set. When an option is left at its default, the `evaluation` block of `10xgraph.json` can supply `directory`, `output_dir`, `threshold`, `parallel` and `max_concurrency`.
 
 ## test
 
@@ -162,7 +162,7 @@ Run the project tests with pytest.
 | `-k` | unset | Only run tests matching this expression |
 | `--verbose`, `-v` / `--quiet`, `-q` | off | Output level |
 
-Extra arguments are forwarded to pytest. The `test` block of `agentflow.json` can set `path`, `coverage` and `coverage_threshold`. An explicit `PATH` wins over the config.
+Extra arguments are forwarded to pytest. The `test` block of `10xgraph.json` can set `path`, `coverage` and `coverage_threshold`. An explicit `PATH` wins over the config.
 
 ## skills
 
@@ -186,7 +186,7 @@ Install locations: `.agents/skills/agentflow` (Codex), `.claude/skills/agentflow
 
 ## audit
 
-Read-only environment check: Python version, installed packages, core evaluation API, `agentflow.json` validity and whether the default port is free. Exits 1 if any check fails, so it works as a CI gate.
+Read-only environment check: Python version, installed packages, core evaluation API, `10xgraph.json` validity and whether the default port is free. Exits 1 if any check fails, so it works as a CI gate.
 
 ```bash
 10xgraph audit [--config FILE]
@@ -194,12 +194,12 @@ Read-only environment check: Python version, installed packages, core evaluation
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--config`, `-c` | `agentflow.json` | Config file to validate |
+| `--config`, `-c` | `10xgraph.json` | Config file to validate |
 | `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
 
 ## config
 
-Edit and validate `agentflow.json` in a browser UI. The file is created on first save.
+Edit and validate `10xgraph.json` in a browser UI. The file is created on first save.
 
 ```bash
 10xgraph config [--config FILE] [--port PORT] [--no-open]
@@ -207,7 +207,7 @@ Edit and validate `agentflow.json` in a browser UI. The file is created on first
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--config`, `-c` | `agentflow.json` | File to edit |
+| `--config`, `-c` | `10xgraph.json` | File to edit |
 | `--port`, `-p` | `0` (any free port) | Editor port |
 | `--open / --no-open` | on | Open the default browser |
 

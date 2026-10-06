@@ -25,7 +25,7 @@ updated: "2026-09-29"
 
 ## Start the playground
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 10xgraph play --host 127.0.0.1 --port 8000
@@ -63,7 +63,7 @@ The playground is a left nav rail plus a working area. There is no thread sideba
 
 Every other page needs an active connection, so the playground opens on the Connect page. `10xgraph play` passes your local API URL through, so the connection is usually pre-filled and you only have to confirm it.
 
-Pick an auth mode to match your server's `agentflow.json`:
+Pick an auth mode to match your server's `10xgraph.json`:
 
 | Mode | Use when |
 |---|---|
@@ -136,7 +136,7 @@ Chat defaults to `stream` mode, so partial responses build up in the UI as they 
 10xgraph play --config ./config/staging.json --port 8001
 ```
 
-Useful when you have multiple `agentflow.json` files for different setups.
+Useful when you have multiple `10xgraph.json` files for different setups.
 
 ## Playground connection troubleshooting
 
@@ -231,7 +231,7 @@ If you want others to test your agent:
    ```
 3. Others can open this URL and test your agent in their browsers
 
-The agent runs on your server, so make sure authentication is properly configured (`auth` field in `agentflow.json`).
+The agent runs on your server, so make sure authentication is properly configured (`auth` field in `10xgraph.json`).
 
 ## Difference: 10xgraph play vs 10xgraph api
 

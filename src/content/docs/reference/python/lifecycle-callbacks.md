@@ -24,11 +24,11 @@ Register a `GraphLifecycleHook` with `callback_manager.register_lifecycle_hook(h
 ## Import paths
 
 ```python
-from agentflow.utils.callbacks import (
+from tenxgraph.utils.callbacks import (
     GraphLifecycleHook,
     GraphLifecycleContext,
 )
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 ```
 
 ---
@@ -73,8 +73,8 @@ Abstract base class for graph-level lifecycle hooks. Override only the methods y
 Fires after state is loaded but before the first node executes. Use to inject observability, enrich initial state, or perform setup.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState
 import uuid
 
 class TraceStartHook(GraphLifecycleHook):
@@ -114,8 +114,8 @@ class TraceStartHook(GraphLifecycleHook):
 Fires after execution loop completes successfully, before final persistence. Use for cleanup, notifications, metrics, or finalization logic.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 import json
 
 class MetricsEndHook(GraphLifecycleHook):
@@ -177,8 +177,8 @@ Fires when an unhandled exception escapes the execution loop. Use to alert, log 
 **⚠️ Important:** This hook **cannot suppress** the error. The exception is always re-raised after the hook completes. To recover from errors at the node level, use the invocation-level `on_error` callback in [Callback Manager](/docs/reference/python/callback-manager).
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -248,8 +248,8 @@ class ErrorAlertHook(GraphLifecycleHook):
 Fires when graph execution pauses waiting for user input or manual approval. Use to notify frontends, start timeout timers, or update external task queues.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState
 
 class InterruptNotificationHook(GraphLifecycleHook):
     async def on_interrupt(
@@ -316,8 +316,8 @@ class InterruptNotificationHook(GraphLifecycleHook):
 Fires when a previously interrupted graph is resumed. Use to validate resume data, log the resume event, or update observability spans.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState
 from typing import Any
 
 class ResumeValidationHook(GraphLifecycleHook):
@@ -384,8 +384,8 @@ Fires immediately before state/messages are persisted to the checkpointer. Use t
 **Note:** `on_checkpoint` fires every time state is persisted, including during interrupts, stops, and errors — not just at graph end. This is intentional; it's the central hook for state persistence policy.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 from typing import Sequence
 
 class RedactionCheckpointHook(GraphLifecycleHook):
@@ -460,8 +460,8 @@ class RedactionCheckpointHook(GraphLifecycleHook):
 Fires after each node transition — after a node executes and state is merged. This is the most granular graph-level hook. Use to observe node-level patterns or apply per-node policies.
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState
 import copy
 
 class ObserveNodeTransitionHook(GraphLifecycleHook):
@@ -542,8 +542,8 @@ class TurnLogHook(GraphLifecycleHook):
 Combine `on_graph_start` and `on_graph_end` to bookend a trace span:
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 from opentelemetry import trace
 
 class OpenTelemetryHook(GraphLifecycleHook):
@@ -592,8 +592,8 @@ class OpenTelemetryHook(GraphLifecycleHook):
 Combine `on_interrupt`, `on_resume`, and `on_checkpoint`:
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState
 
 class ApprovalWorkflowHook(GraphLifecycleHook):
     async def on_interrupt(
@@ -638,8 +638,8 @@ class ApprovalWorkflowHook(GraphLifecycleHook):
 Collect execution metrics across multiple hooks:
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 import time
 
 class MetricsHook(GraphLifecycleHook):
@@ -693,8 +693,8 @@ class MetricsHook(GraphLifecycleHook):
 Register a lifecycle hook on a `CallbackManager` and pass the manager to `compile()`:
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.utils.callbacks import CallbackManager, GraphLifecycleHook
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.utils.callbacks import CallbackManager, GraphLifecycleHook
 
 class MyLifecycleHook(GraphLifecycleHook):
     async def on_graph_start(self, context, state):

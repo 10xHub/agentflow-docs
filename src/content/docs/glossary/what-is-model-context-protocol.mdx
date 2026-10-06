@@ -52,11 +52,11 @@ The agent connects to the MCP server, discovers available tools, and calls them.
 
 10xGraph supports MCP natively. You can mount any MCP server as a tool source:
 
-10xGraph speaks MCP through the [`fastmcp`](https://gofastmcp.com) client. Install the extra with `pip install "10xscale-agentflow[mcp]"`, build a `Client`, and hand it to the node that owns tools:
+10xGraph speaks MCP through the [`fastmcp`](https://gofastmcp.com) client. Install the extra with `pip install "10xgraph[mcp]"`, build a `Client`, and hand it to the node that owns tools:
 
 ```python
 from fastmcp import Client
-from agentflow.prebuilt import ReactAgent
+from tenxgraph.prebuilt import ReactAgent
 
 # Connect to an MCP server. A command string starts it over stdio;
 # a URL connects to a running HTTP server.
@@ -75,7 +75,7 @@ app = agent.compile()
 For a hand-built graph, the client goes on the `ToolNode` instead:
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 tool_node = ToolNode(tools=[], client=mcp_client)
 ```

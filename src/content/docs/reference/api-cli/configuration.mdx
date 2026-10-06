@@ -1,18 +1,18 @@
 ---
-title: agentflow.json reference
-description: Every agentflow.json key the server and CLI read, with types, defaults and examples, the rate_limit sub-keys, and the environment variables the API server uses.
+title: 10xgraph.json reference
+description: Every 10xgraph.json key the server and CLI read, with types, defaults and examples, the rate_limit sub-keys, and the environment variables the API server uses.
 section: Reference
 order: 1740
 updated: 2026-10-03T00:00:00.000Z
 faq:
-  - q: Which key is required in agentflow.json?
+  - q: Which key is required in 10xgraph.json?
     a: Only agent, a string in module:attribute form that points at your compiled graph. Every other key is optional.
   - q: Where does the CLI look for the config file?
-    a: It searches the working directory and its parents for the path you pass with --config (default agentflow.json). Without a path, test and eval also try .agentflow.json and agentflow.config.json.
+    a: It searches the working directory and its parents for the path you pass with --config (default 10xgraph.json). Without a path, test and eval also try .10xgraph.json and agentflow.config.json.
 group: CLI and configuration
 ---
 
-`agentflow.json` tells the 10xGraph API server which graph to serve and how to secure it. Only `agent` is required. The file is plain JSON, and the server also reads settings from environment variables, listed at the end of this page. Edit it by hand or with `10xgraph config`.
+`10xgraph.json` tells the 10xGraph API server which graph to serve and how to secure it. Only `agent` is required. The file is plain JSON, and the server also reads settings from environment variables, listed at the end of this page. Edit it by hand or with `10xgraph config`.
 
 ## Which keys does it accept?
 
@@ -158,7 +158,7 @@ Set these in the process environment or in the file named by `env`.
 | `HSTS_ENABLED`, `HSTS_MAX_AGE`, `HSTS_INCLUDE_SUBDOMAINS`, `HSTS_PRELOAD` | `true`, `31536000`, `true`, `false` | Strict-Transport-Security |
 | `FRAME_OPTIONS`, `CONTENT_TYPE_OPTIONS`, `XSS_PROTECTION`, `REFERRER_POLICY` | `DENY`, `nosniff`, `1; mode=block`, `strict-origin-when-cross-origin` | Other security headers |
 | `PERMISSIONS_POLICY`, `CSP_POLICY` | none | Header values. Built-in defaults apply when unset |
-| `GRAPH_PATH` | `agentflow.json` | Config file path used by the server. `10xgraph api` sets it for you |
+| `GRAPH_PATH` | `10xgraph.json` | Config file path used by the server. `10xgraph api` sets it for you |
 | `WEB_CONCURRENCY` | `2` in generated Dockerfile | Gunicorn worker count |
 | `AGENTFLOW_NO_FULLSCREEN` | unset | Set to `1` to disable the full-screen CLI |
 
@@ -172,13 +172,13 @@ Media upload settings:
 | `MEDIA_ALLOWED_CONTENT_TYPES` | empty (all) | Comma-separated allowlist, for example `image/*,application/pdf` |
 | `MEDIA_REQUIRE_OWNER` | `false` | Deny files with no recorded owner |
 | `DOCUMENT_HANDLING` | `extract_text` | `extract_text`, `pass_raw` or `skip` |
-| `MEDIA_CLOUD_PROVIDER`, `MEDIA_CLOUD_BUCKET`, `MEDIA_CLOUD_REGION`, `MEDIA_CLOUD_PREFIX` | `aws`, empty, `us-east-1`, `agentflow-media` | Used when storage is `cloud` |
+| `MEDIA_CLOUD_PROVIDER`, `MEDIA_CLOUD_BUCKET`, `MEDIA_CLOUD_REGION`, `MEDIA_CLOUD_PREFIX` | `aws`, empty, `us-east-1`, `10xgraph-media` | Used when storage is `cloud` |
 
 Snowflake ID generation reads `SNOWFLAKE_EPOCH` (`1723323246031`), `SNOWFLAKE_TOTAL_BITS` (`64`), `SNOWFLAKE_TIME_BITS` (`39`), `SNOWFLAKE_NODE_BITS` (`7`), `SNOWFLAKE_NODE_ID` (`0`), `SNOWFLAKE_WORKER_ID` (`0`) and `SNOWFLAKE_WORKER_BITS` (`5`). Give each instance a unique node and worker id in distributed deployments.
 
 ## What does a complete config look like?
 
-```json title="agentflow.json"
+```json title="10xgraph.json"
 {
   "agent": "graph.agent:app",
   "env": ".env",

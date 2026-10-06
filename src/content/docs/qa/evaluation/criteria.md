@@ -25,7 +25,7 @@ These criteria do not call any LLM. They are deterministic, free, and run in mil
 Checks that the tool names called by the agent cover the expected ones. Order and arguments are ignored; only presence and count matter.
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig
+from tenxgraph.qa.evaluation import CriterionConfig
 
 CriterionConfig.tool_name_match(threshold=1.0)
 ```
@@ -126,7 +126,7 @@ CriterionConfig.contains_keywords(
 This criterion is not included in any preset because keywords are domain-specific. Add it manually to `EvalConfig.criteria`:
 
 ```python
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 
 config = EvalConfig(
     criteria=CriteriaConfig(
@@ -251,7 +251,7 @@ CriterionConfig.safety(
 Define your own evaluation criteria as free-text rubrics. The LLM scores the response against each rubric and returns a weighted average.
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, Rubric
+from tenxgraph.qa.evaluation import CriterionConfig, Rubric
 
 CriterionConfig.rubric_based(
     rubrics=[
@@ -286,7 +286,7 @@ With no rubrics configured the criterion returns `1.0` and skips the judge call.
 All criteria are configured with `CriterionConfig`. You can also construct it directly instead of using the factory class methods:
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, MatchType
+from tenxgraph.qa.evaluation import CriterionConfig, MatchType
 
 config = CriterionConfig(
     threshold=0.8,
@@ -320,7 +320,7 @@ config = CriterionConfig(
 Wrap criteria in an `EvalConfig` to run them together. `EvalConfig.criteria` is a typed `CriteriaConfig` model with one named field per criterion — not a free-form dict. Unknown field names raise a validation error.
 
 ```python
-from agentflow.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, MatchType
+from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, MatchType
 
 config = EvalConfig(
     criteria=CriteriaConfig(

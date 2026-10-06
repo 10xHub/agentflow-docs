@@ -40,7 +40,7 @@ The first rows are where the two differ most. Orchestration basics are at the bo
 | Auth (JWT or custom) | JWT (`"auth": "jwt"`) or a custom `BaseAuth` subclass | SSO and role-based access control are listed as Enterprise features ([pricing](https://www.crewai.com/pricing)). Not documented for the open-source package |
 | Authorization | Role scopes (such as `graph:invoke`, `checkpointer:read`) or a custom `AuthorizationBackend` | Role-based access control is listed as an Enterprise feature ([pricing](https://www.crewai.com/pricing)) |
 | Thread ownership isolation | Built-in `"authorization": "ownership"` backend, with a two-tier cached owner check | Not documented |
-| Rate limiting | Memory or Redis sliding-window limits on the API, set in `agentflow.json` | `max_rpm` on an agent limits requests per minute to avoid LLM rate limits ([agents docs](https://docs.crewai.com/en/concepts/agents)). That is outbound, not an API rate limit |
+| Rate limiting | Memory or Redis sliding-window limits on the API, set in `10xgraph.json` | `max_rpm` on an agent limits requests per minute to avoid LLM rate limits ([agents docs](https://docs.crewai.com/en/concepts/agents)). That is outbound, not an API rate limit |
 | Replay-safe tool calls after a crash | Tool ledger in the checkpointer: a tool that already ran is not executed again on resume. Needs a checkpointer | Flows can persist state with `@persist`. The Flows docs do not address tool call replay ([Flows docs](https://docs.crewai.com/en/concepts/flows)) |
 | Versioned (compare-and-swap) state writes | Optimistic version check on durable writes in `PgCheckpointer` | Not documented |
 | Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | `max_execution_time` on an agent, optional with no default ([agents docs](https://docs.crewai.com/en/concepts/agents)) |
@@ -53,7 +53,7 @@ The first rows are where the two differ most. Orchestration basics are at the bo
 
 ## Why teams move from CrewAI to 10xGraph
 
-1. **The server layer is part of the install.** With CrewAI, serving a crew over HTTP with managed auth goes through AMP. With 10xGraph, `10xgraph api` generates the endpoints and the auth, ownership and rate-limit settings live in `agentflow.json`.
+1. **The server layer is part of the install.** With CrewAI, serving a crew over HTTP with managed auth goes through AMP. With 10xGraph, `10xgraph api` generates the endpoints and the auth, ownership and rate-limit settings live in `10xgraph.json`.
 2. **Control flow is explicit.** Nodes and edges show where a run goes next. In CrewAI's hierarchical process, a manager agent decides at runtime ([processes docs](https://docs.crewai.com/en/concepts/processes)), which suits prototypes and is harder to audit.
 3. **Side effects survive crashes.** If a worker dies after a tool returns, 10xGraph reads its tool ledger on resume and skips tools that already ran. See [replay-safe tools](/docs/concepts/replay-safe-tools).
 4. **State is typed and inspectable.** `AgentState` carries a list of typed `Message` objects you can log and migrate.
@@ -63,10 +63,10 @@ The first rows are where the two differ most. Orchestration basics are at the bo
 A triage agent classifies a support ticket, then a resolver drafts the reply. The order is fixed by edges:
 
 ```python title="graph/support.py"
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.core.state import AgentState
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END
 
 triage = Agent(
     model="google/gemini-2.5-flash",
@@ -101,8 +101,8 @@ To add tools such as `lookup_order(order_id: str)` and `refund_order(order_id: s
 CrewAI's hierarchical process uses a manager agent that plans, delegates and reviews ([processes docs](https://docs.crewai.com/en/concepts/processes)). In 10xGraph, delegation is a router node plus handoff tools:
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.tools import create_handoff_tool
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import create_handoff_tool
 
 router_tools = ToolNode([
     create_handoff_tool("billing", "Send the ticket to the billing specialist"),
@@ -128,7 +128,7 @@ pip install 10xgraph 10xgraph-api
 10xgraph build --docker-compose --k8s
 ```
 
-`agentflow.json` points at your compiled graph:
+`10xgraph.json` points at your compiled graph:
 
 ```json
 {"agent": "graph.support:app", "auth": "jwt", "authorization": "ownership"}

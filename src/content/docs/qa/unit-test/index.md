@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 Unit tests for 10xGraph agents verify that the **graph logic, routing, and tool selection** work correctly — without making any real LLM API calls. This keeps tests fast, deterministic, and free of external dependencies.
 
-The `agentflow.qa.testing` module provides three building blocks:
+The `tenxgraph.qa.testing` module provides three building blocks:
 
 | Class | Purpose |
 |---|---|
@@ -30,7 +30,7 @@ The `agentflow test` CLI wraps pytest so you can run these tests with a single c
 pip install pytest pytest-asyncio
 ```
 
-`agentflow.qa` is included with `10xscale-agentflow` — no extra install needed.
+`tenxgraph.qa` is included with `10xgraph` — no extra install needed.
 
 ---
 
@@ -41,9 +41,9 @@ pip install pytest pytest-asyncio
 ### Basic usage
 
 ```python
-from agentflow.qa.testing import TestAgent
-from agentflow.core.graph import StateGraph
-from agentflow.utils.constants import END
+from tenxgraph.qa.testing import TestAgent
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.utils.constants import END
 
 test_agent = TestAgent(
     model="test-model",
@@ -60,7 +60,7 @@ app = graph.compile()
 ### Override a node in an existing graph
 
 ```python
-from agentflow.qa.testing import TestAgent
+from tenxgraph.qa.testing import TestAgent
 
 test_agent = TestAgent(responses=["Mocked response"])
 graph.override_node("MAIN", test_agent)
@@ -123,7 +123,7 @@ All `QuickTest` methods are async — use `pytest-asyncio` or `asyncio.run()`.
 
 ```python
 import pytest
-from agentflow.qa.testing import QuickTest
+from tenxgraph.qa.testing import QuickTest
 
 @pytest.mark.asyncio
 async def test_greeting():
@@ -168,7 +168,7 @@ async def test_weather_tool():
 ```python
 @pytest.mark.asyncio
 async def test_custom_graph():
-    from agentflow.qa.testing import TestAgent
+    from tenxgraph.qa.testing import TestAgent
 
     agent = TestAgent(responses=["Done"])
     result = await QuickTest.custom(
@@ -186,8 +186,8 @@ async def test_custom_graph():
 Use `MockToolRegistry` when you want to verify tool calls with full control over the mock implementations.
 
 ```python
-from agentflow.qa.testing import MockToolRegistry
-from agentflow.core.graph import ToolNode
+from tenxgraph.qa.testing import MockToolRegistry
+from tenxgraph.core.graph import ToolNode
 
 tools = MockToolRegistry()
 
@@ -271,7 +271,7 @@ The `final_response`, `messages`, `tool_calls`, and `state` attributes are also 
 
 ## agentflow test CLI
 
-`agentflow test` is a thin pytest wrapper. It reads optional defaults from `agentflow.json` and forwards any extra arguments straight to pytest.
+`agentflow test` is a thin pytest wrapper. It reads optional defaults from `10xgraph.json` and forwards any extra arguments straight to pytest.
 
 ```bash
 # Run all tests (pytest auto-discovery)
@@ -293,7 +293,7 @@ agentflow test -k "weather"
 agentflow test -- -m "not integration" --tb=short
 ```
 
-### agentflow.json configuration
+### 10xgraph.json configuration
 
 ```json
 {
@@ -326,7 +326,7 @@ agentflow test tests --coverage -- --cov-fail-under=80
   run: agentflow test --coverage
 ```
 
-Set `coverage_threshold` in `agentflow.json` — no extra flags needed in the workflow.
+Set `coverage_threshold` in `10xgraph.json` — no extra flags needed in the workflow.
 
 ---
 
@@ -335,9 +335,9 @@ Set `coverage_threshold` in `agentflow.json` — no extra flags needed in the wo
 ```python
 # tests/unit/test_weather_agent.py
 import pytest
-from agentflow.qa.testing import MockToolRegistry, QuickTest, TestAgent
-from agentflow.core.graph import StateGraph, ToolNode
-from agentflow.utils.constants import END
+from tenxgraph.qa.testing import MockToolRegistry, QuickTest, TestAgent
+from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.utils.constants import END
 
 @pytest.mark.asyncio
 async def test_weather_query_routes_to_tool():
@@ -364,7 +364,7 @@ async def test_weather_query_routes_to_tool():
     graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
     graph.add_edge("TOOL", "MAIN")
 
-    from agentflow.core.state import Message
+    from tenxgraph.core.state import Message
     app = graph.compile()
     result = await app.ainvoke({"messages": [Message.text_message("Weather in London?")]})
 

@@ -149,9 +149,9 @@ You do not hand-build provider-specific content parts like `image_url`. A messag
 ```python
 import base64
 
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
+from tenxgraph.utils import START, END
 
 vision_agent = Agent(model="gpt-4o")   # vision-capable model
 
@@ -189,8 +189,8 @@ A tool is a plain function: annotate the parameters, describe them in the docstr
 ```python
 import PyPDF2
 
-from agentflow.core.llm import call_llm
-from agentflow.utils.decorators import tool
+from tenxgraph.core.llm import call_llm
+from tenxgraph.utils.decorators import tool
 
 def extract_text(file_path: str, max_pages: int = 10) -> str:
     """Extract text from a PDF."""

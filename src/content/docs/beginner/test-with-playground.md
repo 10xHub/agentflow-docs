@@ -28,7 +28,7 @@ Your graph runs locally. The hosted playground is just a UI that calls your loca
 
 ## Start the playground
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 agentflow play --host 127.0.0.1 --port 8000

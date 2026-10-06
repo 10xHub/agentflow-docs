@@ -8,7 +8,7 @@ label: Overview
 updated: "2026-10-06"
 ---
 
-10xGraph tutorials are guided walkthroughs of the example code in the repository's `agentflow/examples/` folder. They sit between the quickstart pages and the reference: each one explains a working script, covering agents, custom state, tools, streaming, MCP, memory, multimodal input, multi-agent handoff, skills, testing and evaluation. They are for developers who learn best by reading and running real code.
+10xGraph tutorials are guided walkthroughs of the example code in the repository's `examples/` folder. They sit between the quickstart pages and the reference: each one explains a working script, covering agents, custom state, tools, streaming, MCP, memory, multimodal input, multi-agent handoff, skills, testing and evaluation. They are for developers who learn best by reading and running real code.
 
 ## Start here
 
@@ -50,7 +50,7 @@ flowchart LR
 
 ## From examples
 
-These tutorials are based on code in `agentflow/examples/`:
+These tutorials are based on code in `examples/`:
 
 - [Agent Class Pattern](/docs/tutorials/from-examples/agent-class)
 - [Custom State](/docs/tutorials/from-examples/custom-state)

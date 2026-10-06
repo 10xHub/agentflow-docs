@@ -56,7 +56,7 @@ engineer-assistant/
 │   └── main.py            # FastAPI server
 ├── client/
 │   └── Chat.tsx           # React component
-├── agentflow.json         # AgentFlow config
+├── 10xgraph.json         # 10xGraph config
 ├── requirements.txt
 └── README.md
 ```
@@ -70,7 +70,7 @@ Subclass `AgentState` rather than `BaseModel` — the base class already carries
 ```python
 # graph/state.py
 from pydantic import Field
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class EngineerState(AgentState):
     user_id: str | None = None
@@ -84,11 +84,11 @@ class EngineerState(AgentState):
 
 ## Step 2: Implement Tools
 
-A tool is a plain Python function. `ToolNode` reads the annotations and docstring to build the JSON schema, so each argument is a normal parameter — not a wrapper model. `@tool` from `agentflow.utils.decorators` is optional and only overrides the defaults.
+A tool is a plain Python function. `ToolNode` reads the annotations and docstring to build the JSON schema, so each argument is a normal parameter — not a wrapper model. `@tool` from `tenxgraph.utils.decorators` is optional and only overrides the defaults.
 
 ```python
 # graph/tools.py
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool(name="calculator", description="Evaluate mathematical expressions safely")
 def calculator(expression: str) -> str:
@@ -123,11 +123,11 @@ Errors are returned as ordinary values; the string goes back to the model as the
 
 ```python
 # graph/agent.py
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.utils import START, END
 
 from .state import EngineerState
 from .tools import calculator
@@ -191,7 +191,7 @@ The runner is `AgentEvaluator`. It needs two paired objects: a compiled graph an
 ```python
 # tests/test_agent.py
 import pytest
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     EvalConfig,
     EvalSet,
@@ -336,7 +336,7 @@ pytest tests/
 python -m api.main
 
 # Run with playground
-agentflow play --config agentflow.json
+agentflow play --config 10xgraph.json
 ```
 
 ---

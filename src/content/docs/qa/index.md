@@ -8,7 +8,7 @@ label: Overview
 updated: "2026-10-06"
 ---
 
-Testing and QA in 10xGraph means two separate layers in one package, `agentflow.qa`. Unit tests check graph logic and tool routing with mocked models, so they run in milliseconds and cost nothing. Evaluations run the real agent against test cases or a simulated user and score the results. This section is for engineers who need to know an agent change did not break behavior, and who want that check to gate a CI pipeline.
+Testing and QA in 10xGraph means two separate layers in one package, `tenxgraph.qa`. Unit tests check graph logic and tool routing with mocked models, so they run in milliseconds and cost nothing. Evaluations run the real agent against test cases or a simulated user and score the results. This section is for engineers who need to know an agent change did not break behavior, and who want that check to gate a CI pipeline.
 
 ## Start here
 
@@ -38,7 +38,7 @@ The unit-testing layer lets you test the graph logic of your agent without makin
 - **`QuickTest`**, one-liner helpers for single-turn, multi-turn, and tool-call scenarios.
 - **`MockToolRegistry`**, registers mock tool functions and tracks all invocations.
 - **`TestResult`**, fluent assertion helpers on top of the raw graph output.
-- **`agentflow test`**, CLI wrapper around pytest that reads defaults from `agentflow.json`.
+- **`agentflow test`**, CLI wrapper around pytest that reads defaults from `10xgraph.json`.
 
 [Read the unit-testing guide](/docs/qa/unit-test)
 

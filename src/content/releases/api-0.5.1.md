@@ -9,7 +9,7 @@ breaking: false
 ### Added
 
 - **`agentflow dev`**, a goal-oriented local development command (config, host, port, `--reload/--no-reload`, `--open/--no-open`). `api` and `play` remain available.
-- **`agentflow audit`** runs six read-only checks: Python interpreter, installed `10xscale-agentflow-cli`, installed `10xscale-agentflow`, whether the installed core still exposes the evaluation API that `agentflow eval` imports, whether `agentflow.json` exists with a valid `agent` key, and whether the default port is free. It exits `1` on any failure and `0` otherwise (warnings do not fail the run), so it works as a CI gate.
+- **`agentflow audit`** runs six read-only checks: Python interpreter, installed `10xscale-agentflow-cli`, installed `10xgraph`, whether the installed core still exposes the evaluation API that `agentflow eval` imports, whether `10xgraph.json` exists with a valid `agent` key, and whether the default port is free. It exits `1` on any failure and `0` otherwise (warnings do not fail the run), so it works as a CI gate.
 - **`agentflow demo`** previews the animation, timeline and progress states without touching project state (`--style all|typing|network|init|build|eval`).
 - **`agentflow config list|get|set|unset|path|validate`** manages cross-platform user preferences stored as JSON in the per-user config directory. `output.format`, `output.color` and `output.progress` are read at startup as defaults, and explicit flags still win.
 - **Persistent full-screen surface** on interactive terminals, with a pinned header and footer status bar and the command output scrolling between them. Opt out with `--no-fullscreen` or `AGENTFLOW_NO_FULLSCREEN=1`.
@@ -27,7 +27,7 @@ breaking: false
 - CLI logging uses one invocation-wide handler, so quiet and verbose levels apply consistently without duplicate records.
 - Project configuration discovery walks parent directories from the current working directory.
 - `agentflow init` no longer prints one line per scaffolded file. Files stream through the active timeline row instead.
-- The `agentflow init` template configures JWT with the bare `"jwt"` string, which is the form `agentflow.json` accepts for the built-in method.
+- The `agentflow init` template configures JWT with the bare `"jwt"` string, which is the form `10xgraph.json` accepts for the built-in method.
 - The error for dynamic tool setup in production or multi-tenant mode now names which condition tripped (`MODE` or a configured auth backend) and points to `CompiledGraph.attach_remote_tools()` as the static alternative.
 
 ### Fixed

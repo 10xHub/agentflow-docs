@@ -33,7 +33,7 @@ The same shape applies to a charge, a sent email or a created ticket. The [blog 
 
 ## How does it work?
 
-The logic lives in `agentflow/core/graph/utils/invoke_node_handler.py`.
+The logic lives in `tenxgraph/core/graph/utils/invoke_node_handler.py`.
 
 1. **The node is persisted first.** The run loop records the current node before it runs and advances only after the node completes. A killed process therefore re-runs the interrupted node on resume.
 2. **Each call gets an identity.** The ledger key is the id of the assistant message that issued the call plus the `tool_call_id`. Models often reuse ids such as `call_1` on every turn, so the call id alone would make a later turn collide with an earlier one and skip a tool that never ran. The assistant message is persisted, so it carries the same id on replay and the key stays stable.
@@ -70,8 +70,8 @@ pip install "10xgraph[pg_checkpoint]"
 ```
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 
 def lookup_order(order_id: str) -> dict:
@@ -106,7 +106,7 @@ The API server uses the checkpointer carried by the compiled graph. See [Checkpo
 Two other protections cover neighboring failures.
 
 - **Versioned state writes.** `PgCheckpointer` keeps a per-thread version counter with a unique `(thread_id, version)` constraint and uses an optimistic compare-and-swap for durable writes, so two runs on the same thread cannot overwrite each other. The Redis cache write is guarded by the same version, so a stale run cannot move the cache backwards. This protects state, while the ledger protects side effects.
-- **Timeouts.** `node_timeout` (default 900 seconds) and `tool_timeout` (default 300 seconds) stop a hung call from holding a worker forever. Set them per run in the config, for example `config={"thread_id": "t1", "tool_timeout": 60}`. A value of `None` or `0` disables the timeout. Defaults are in `agentflow/utils/constants.py`.
+- **Timeouts.** `node_timeout` (default 900 seconds) and `tool_timeout` (default 300 seconds) stop a hung call from holding a worker forever. Set them per run in the config, for example `config={"thread_id": "t1", "tool_timeout": 60}`. A value of `None` or `0` disables the timeout. Defaults are in `tenxgraph/utils/constants.py`.
 
 ## Related pages
 

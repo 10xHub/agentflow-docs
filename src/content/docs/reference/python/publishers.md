@@ -16,20 +16,20 @@ Use a publisher when you need to observe graph execution in real time — for mo
 ## Import paths
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.runtime.publisher import BasePublisher, ConsolePublisher
-from agentflow.runtime.publisher.events import Event, EventType, ContentType, EventModel
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.runtime.publisher import BasePublisher, ConsolePublisher
+from tenxgraph.runtime.publisher.events import Event, EventType, ContentType, EventModel
 
 # Optional backends
-from agentflow.runtime.publisher import RedisPublisher    # pip install redis
-from agentflow.runtime.publisher import KafkaPublisher    # pip install aiokafka
-from agentflow.runtime.publisher import RabbitMQPublisher # pip install aio-pika
+from tenxgraph.runtime.publisher import RedisPublisher    # pip install redis
+from tenxgraph.runtime.publisher import KafkaPublisher    # pip install aiokafka
+from tenxgraph.runtime.publisher import RabbitMQPublisher # pip install aio-pika
 
 # Fan-out
-from agentflow.runtime.publisher import CompositePublisher
+from tenxgraph.runtime.publisher import CompositePublisher
 
 # Tracing backends
-from agentflow.runtime.publisher import (
+from tenxgraph.runtime.publisher import (
     LangsmithPublisher,
     LogfirePublisher,
     ObservabilityLevel,
@@ -48,7 +48,7 @@ from agentflow.runtime.publisher import (
 The unit of data published to a publisher. Every significant moment in graph execution emits one.
 
 ```python
-from agentflow.runtime.publisher.events import EventModel
+from tenxgraph.runtime.publisher.events import EventModel
 ```
 
 | Field | Type | Description |
@@ -74,7 +74,7 @@ There is no `event_id` field. Use `run_id`, `thread_id` and `timestamp` to corre
 ## `Event` — source enum
 
 ```python
-from agentflow.runtime.publisher.events import Event
+from tenxgraph.runtime.publisher.events import Event
 ```
 
 | Value | Description |
@@ -91,7 +91,7 @@ from agentflow.runtime.publisher.events import Event
 ## `EventType` — phase enum
 
 ```python
-from agentflow.runtime.publisher.events import EventType
+from tenxgraph.runtime.publisher.events import EventType
 ```
 
 | Value | When emitted |
@@ -109,7 +109,7 @@ from agentflow.runtime.publisher.events import EventType
 ## `ContentType` — payload type enum
 
 ```python
-from agentflow.runtime.publisher.events import ContentType
+from tenxgraph.runtime.publisher.events import ContentType
 ```
 
 | Value | When used |
@@ -136,7 +136,7 @@ from agentflow.runtime.publisher.events import ContentType
 Abstract class. All publishers implement this interface.
 
 ```python
-from agentflow.runtime.publisher import BasePublisher
+from tenxgraph.runtime.publisher import BasePublisher
 ```
 
 ### Abstract methods
@@ -164,10 +164,10 @@ async with ConsolePublisher() as publisher:
 
 A development and debugging publisher. It is opt-in and not wired up by default. For production, use a real transport such as `RedisPublisher`, `KafkaPublisher`, or `RabbitMQPublisher`.
 
-By default events are written to stdout via `print`. In server contexts where stdout output is undesirable, set `use_logger=True` to route events through the `agentflow.publisher` logger at `INFO` level instead.
+By default events are written to stdout via `print`. In server contexts where stdout output is undesirable, set `use_logger=True` to route events through the `tenxgraph.publisher` logger at `INFO` level instead.
 
 ```python
-from agentflow.runtime.publisher import ConsolePublisher
+from tenxgraph.runtime.publisher import ConsolePublisher
 
 # Default — writes to stdout
 publisher = ConsolePublisher()
@@ -185,7 +185,7 @@ app = graph.compile()
 | `format` | `"json"` | Output format. |
 | `include_timestamp` | `True` | Include timestamp in output. |
 | `indent` | `2` | JSON indentation. |
-| `use_logger` | `False` | When `True`, emit via the `agentflow.publisher` logger at `INFO` level instead of `print`. |
+| `use_logger` | `False` | When `True`, emit via the `tenxgraph.publisher` logger at `INFO` level instead of `print`. |
 
 ---
 
@@ -203,13 +203,13 @@ pip install 10xgraph[redis]
 </aside>
 
 ```python
-from agentflow.runtime.publisher import RedisPublisher
+from tenxgraph.runtime.publisher import RedisPublisher
 
 publisher = RedisPublisher(config={
     "url": "redis://localhost:6379/0",
     "mode": "pubsub",       # or "stream"
-    "channel": "agentflow.events",
-    "stream": "agentflow.events",
+    "channel": "tenxgraph.events",
+    "stream": "tenxgraph.events",
     "maxlen": 10000,        # max stream length (stream mode only)
     "max_connections": 10,
     "socket_timeout": 5.0,
@@ -225,8 +225,8 @@ app = graph.compile()
 |---|---|---|
 | `url` | `redis://localhost:6379/0` | Redis connection URL. |
 | `mode` | `pubsub` | `"pubsub"` for Pub/Sub or `"stream"` for Redis Streams. |
-| `channel` | `agentflow.events` | Pub/Sub channel name. |
-| `stream` | `agentflow.events` | Stream name for `"stream"` mode. |
+| `channel` | `tenxgraph.events` | Pub/Sub channel name. |
+| `stream` | `tenxgraph.events` | Stream name for `"stream"` mode. |
 | `maxlen` | `None` | Maximum stream entries (stream mode). Set for bounded streams. |
 | `max_connections` | `10` | Connection pool size. |
 | `socket_timeout` | `5.0` | Socket timeout in seconds. |
@@ -249,7 +249,7 @@ pip install aiokafka
 </aside>
 
 ```python
-from agentflow.runtime.publisher import KafkaPublisher
+from tenxgraph.runtime.publisher import KafkaPublisher
 
 publisher = KafkaPublisher(config={
     "bootstrap_servers": "localhost:9092",
@@ -277,7 +277,7 @@ pip install aio-pika
 </aside>
 
 ```python
-from agentflow.runtime.publisher import RabbitMQPublisher
+from tenxgraph.runtime.publisher import RabbitMQPublisher
 
 publisher = RabbitMQPublisher(config={
     "url": "amqp://guest:guest@localhost:5672/",
@@ -297,7 +297,7 @@ app = graph.compile()
 Broadcasts every event to a list of publishers concurrently. A failure in one publisher is logged and does not stop the others.
 
 ```python
-from agentflow.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
+from tenxgraph.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
 
 publisher = CompositePublisher([ConsolePublisher(), RedisPublisher({"url": "redis://localhost:6379"})])
 # Pass the publisher to the graph constructor, not compile()
@@ -326,7 +326,7 @@ Controls how much data ends up on the spans.
 ### `OtelPublisher`
 
 ```python
-from agentflow.runtime.publisher import ObservabilityLevel, OtelPublisher, setup_tracing
+from tenxgraph.runtime.publisher import ObservabilityLevel, OtelPublisher, setup_tracing
 
 # Explicit
 graph._publisher = OtelPublisher(tracer=my_tracer, level=ObservabilityLevel.STANDARD)
@@ -349,7 +349,7 @@ app = graph.compile()
 An `OtelPublisher` that calls `logfire.configure()` during construction, so the Logfire-managed `TracerProvider` is global before any span is created.
 
 ```python
-from agentflow.runtime.publisher import setup_logfire
+from tenxgraph.runtime.publisher import setup_logfire
 
 setup_logfire(graph, service_name="my-agent", send_to_logfire=True)
 app = graph.compile()
@@ -372,7 +372,7 @@ Requires `pip install "10xgraph[logfire]"`.
 An `OtelPublisher` that builds an OTLP HTTP span processor pointed at LangSmith and attaches it to a supplied or freshly created `TracerProvider`.
 
 ```python
-from agentflow.runtime.publisher import setup_langsmith
+from tenxgraph.runtime.publisher import setup_langsmith
 
 setup_langsmith(graph, project="my-project")
 app = graph.compile()
@@ -390,10 +390,10 @@ Requires `pip install "10xgraph[langsmith]"`.
 
 ### `setup_observability`
 
-One entry point driven by the `observability` block of `agentflow.json`. Enables Logfire and/or LangSmith and makes them share a single `TracerProvider` when both are active.
+One entry point driven by the `observability` block of `10xgraph.json`. Enables Logfire and/or LangSmith and makes them share a single `TracerProvider` when both are active.
 
 ```python
-from agentflow.runtime.publisher import setup_observability
+from tenxgraph.runtime.publisher import setup_observability
 
 setup_observability(graph, {
     "level": "standard",
@@ -411,8 +411,8 @@ See [Send traces to Logfire or LangSmith](/docs/how-to/python/send-traces-to-log
 ## Writing a custom publisher
 
 ```python
-from agentflow.runtime.publisher import BasePublisher
-from agentflow.runtime.publisher.events import EventModel
+from tenxgraph.runtime.publisher import BasePublisher
+from tenxgraph.runtime.publisher.events import EventModel
 import httpx
 
 class WebhookPublisher(BasePublisher):

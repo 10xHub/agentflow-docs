@@ -11,10 +11,10 @@ updated: "2026-07-21"
 
 **Source examples:**
 
-- `agentflow/examples/evaluation/samples.py`
-- `agentflow/examples/evaluation/test3/test_weather_simulator.py`
-- `agentflow/examples/evaluation/test4/test_single_turn.py`
-- `agentflow/examples/evaluation/test5/test_multi_turn.py`
+- `examples/evaluation/samples.py`
+- `examples/evaluation/test3/test_weather_simulator.py`
+- `examples/evaluation/test4/test_single_turn.py`
+- `examples/evaluation/test5/test_multi_turn.py`
 
 ## What you will build
 

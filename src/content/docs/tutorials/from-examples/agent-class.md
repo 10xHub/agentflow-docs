@@ -8,7 +8,7 @@ label: Agent Class Pattern
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/agent-class/graph.py`](https://github.com/10xHub/Agentflow/blob/main/examples/agent-class/graph.py)
+**Source example:** [`examples/agent-class/graph.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/agent-class/graph.py)
 
 ## What you will build
 
@@ -17,7 +17,7 @@ A conversational agent that can look up weather information for any city. The ag
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
+- `10xgraph` installed (`pip install 10xgraph`)
 - A Google Gemini API key (`pip install google-generativeai` and set `GEMINI_API_KEY` in your environment)
 - A `.env` file in your project root with `GEMINI_API_KEY=<your_key>`
 
@@ -75,7 +75,7 @@ def get_weather(location: str) -> str:
 Wrap it in a `ToolNode`:
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 tool_node = ToolNode([get_weather])
 ```
@@ -83,7 +83,7 @@ tool_node = ToolNode([get_weather])
 ## Step 2 — Create the StateGraph and add nodes
 
 ```python
-from agentflow.core.graph import Agent, StateGraph
+from tenxgraph.core.graph import Agent, StateGraph
 
 graph = StateGraph()
 
@@ -108,8 +108,8 @@ graph.add_node("TOOL", tool_node)
 The routing function inspects the last message in `state.context` and decides where to go next.
 
 ```python
-from agentflow.core.state.agent_state import AgentState
-from agentflow.utils.constants import END
+from tenxgraph.core.state.agent_state import AgentState
+from tenxgraph.utils.constants import END
 
 def should_use_tools(state: AgentState) -> str:
     """Route to TOOL if the agent produced tool calls, otherwise END."""
@@ -150,7 +150,7 @@ app = graph.compile()
 ## Step 5 — Run the agent
 
 ```python
-from agentflow.core.state.message import Message
+from tenxgraph.core.state.message import Message
 
 inp = {"messages": [Message.text_message("How is weather in London?")]}
 config = {"thread_id": "12345", "recursion_limit": 10}
@@ -176,10 +176,10 @@ Expected output (abbreviated):
 import os
 from dotenv import load_dotenv
 
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state.agent_state import AgentState
-from agentflow.core.state.message import Message
-from agentflow.utils.constants import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state.agent_state import AgentState
+from tenxgraph.core.state.message import Message
+from tenxgraph.utils.constants import END
 
 load_dotenv()
 

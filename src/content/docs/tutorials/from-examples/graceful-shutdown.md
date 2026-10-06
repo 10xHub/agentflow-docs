@@ -9,7 +9,7 @@ label: Graceful Shutdown
 updated: "2026-07-21"
 ---
 
-**Source example:** `agentflow/examples/graceful_shutdown/graceful_shutdown_example.py`
+**Source example:** `examples/graceful_shutdown/graceful_shutdown_example.py`
 
 ## What you will build
 
@@ -195,7 +195,7 @@ flowchart LR
 ## Run the example
 
 ```bash
-python agentflow/examples/graceful_shutdown/graceful_shutdown_example.py
+python examples/graceful_shutdown/graceful_shutdown_example.py
 ```
 
 Then press `Ctrl+C` while it is running.

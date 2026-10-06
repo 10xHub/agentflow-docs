@@ -27,9 +27,9 @@ The core package declares these install extras for providers: `openai`, `google-
 
 | `provider` | Backend | SDK | Extra |
 |---|---|---|---|
-| [`"openai"`](/docs/providers/openai) | OpenAI API, or any OpenAI-compatible endpoint | `openai` | `pip install "10xscale-agentflow[openai]"` |
-| [`"google"`](/docs/providers/google) | Gemini API (Google AI Studio) or Vertex AI | `google-genai` | `pip install "10xscale-agentflow[google-genai]"` |
-| [`"anthropic"`](/docs/providers/anthropic) | Claude Messages API, Vertex AI, or Amazon Bedrock | `anthropic` | `pip install "10xscale-agentflow[anthropic]"` |
+| [`"openai"`](/docs/providers/openai) | OpenAI API, or any OpenAI-compatible endpoint | `openai` | `pip install "10xgraph[openai]"` |
+| [`"google"`](/docs/providers/google) | Gemini API (Google AI Studio) or Vertex AI | `google-genai` | `pip install "10xgraph[google-genai]"` |
+| [`"anthropic"`](/docs/providers/anthropic) | Claude Messages API, Vertex AI, or Amazon Bedrock | `anthropic` | `pip install "10xgraph[anthropic]"` |
 
 Any other value raises `ValueError: Unsupported provider`.
 

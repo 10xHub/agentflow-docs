@@ -39,7 +39,7 @@ Install the extra:
 pip install "10xscale-agentflow-cli[ag-ui]"
 ```
 
-Enable it in `agentflow.json`:
+Enable it in `10xgraph.json`:
 
 ```json
 {
@@ -172,7 +172,7 @@ the tool node. Server tools called in the same step still run and are kept.
 
 A browser tool never replaces a server tool: if the `ToolNode` already has a tool with that name,
 the browser's is ignored (and logged). Tools declared under
-[`remote_tools`](/docs/reference/api-cli/configuration#remote_tools) in `agentflow.json` keep
+[`remote_tools`](/docs/reference/api-cli/configuration#remote_tools) in `10xgraph.json` keep
 working as before.
 
 ## Approvals with interrupt()
@@ -182,7 +182,7 @@ something. The run ends with an AG-UI `interrupt` outcome, and CopilotKit's `use
 renders the question:
 
 ```python
-from agentflow.utils import interrupt
+from tenxgraph.utils import interrupt
 
 async def refund(amount: int) -> str:
     """Refund an order, after a human approves it."""

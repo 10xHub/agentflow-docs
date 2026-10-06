@@ -41,9 +41,9 @@ This is a **hybrid workflow + agent** shape: a deterministic router up front, ag
 ## The router
 
 ```python
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 router = Agent(
     model="google/gemini-2.5-flash",  # small + fast
@@ -59,7 +59,7 @@ For higher reliability, you can replace the LLM router with a deterministic Pyth
 ## The refund specialist
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 def get_order(order_id: str) -> str:
     """Look up an order by ID. Returns status, items, and total."""

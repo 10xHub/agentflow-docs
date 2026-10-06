@@ -1,27 +1,27 @@
 ---
 title: API reference
 seoTitle: "10xGraph API reference: Python, REST, CLI, TS"
-description: "Reference for 10xGraph: the Python library, the REST and WebSocket API, the CLI and agentflow.json configuration, and the typed TypeScript client."
+description: "Reference for 10xGraph: the Python library, the REST and WebSocket API, the CLI and 10xgraph.json configuration, and the typed TypeScript client."
 section: Reference
 order: 1400
 label: Overview
 updated: "2026-10-06"
 ---
 
-The 10xGraph reference documents four surfaces of one system: the Python library, the REST and WebSocket API that the server generates from your graph, the CLI with its `agentflow.json` configuration, and the TypeScript client. It is for developers who already know what they want to call and need exact signatures, options and error conditions. Pick the surface you are calling from.
+The 10xGraph reference documents four surfaces of one system: the Python library, the REST and WebSocket API that the server generates from your graph, the CLI with its `10xgraph.json` configuration, and the TypeScript client. It is for developers who already know what they want to call and need exact signatures, options and error conditions. Pick the surface you are calling from.
 
 ## Start here
 
 Python developers should open [Graph](/docs/reference/python/graph) and [Agent](/docs/reference/python/agent) first: they define `StateGraph`, `CompiledGraph`, `invoke`, `stream` and how a model is wired into a node. [Checkpointers](/docs/reference/python/checkpointers) matters for production, because durable threads and replay-safe tool calls depend on one.
 
-If you run the server, the [CLI commands](/docs/reference/api-cli/commands) and [configuration](/docs/reference/api-cli/configuration) pages cover every `agentflow.json` key, with [auth](/docs/reference/api-cli/auth) and [rate limiting](/docs/reference/api-cli/rate-limiting) for the production settings. Frontend developers should start with [AgentFlowClient](/docs/reference/client/agentflow-client) and [Stream](/docs/reference/client/stream). The REST contract starts at [conventions](/docs/reference/rest-api/conventions) and the [graph endpoints](/docs/reference/rest-api/graph).
+If you run the server, the [CLI commands](/docs/reference/api-cli/commands) and [configuration](/docs/reference/api-cli/configuration) pages cover every `10xgraph.json` key, with [auth](/docs/reference/api-cli/auth) and [rate limiting](/docs/reference/api-cli/rate-limiting) for the production settings. Frontend developers should start with [AgentFlowClient](/docs/reference/client/agentflow-client) and [Stream](/docs/reference/client/stream). The REST contract starts at [conventions](/docs/reference/rest-api/conventions) and the [graph endpoints](/docs/reference/rest-api/graph).
 
 If you do not yet know which call you need, the [how-to guides](/docs/how-to) are organized by task.
 
 ## Python library
 
 The graph engine, agents, tools, state, storage, and the evaluation harness.
-Everything importable from `agentflow.*`.
+Everything importable from `tenxgraph.*`.
 
 | Start with | For |
 | --- | --- |
@@ -67,7 +67,7 @@ if you do not want it public.
 | Page | Covers |
 | --- | --- |
 | [Commands](/docs/reference/api-cli/commands) | `init`, `api`, `play`, `build`, `eval`, `test`, `skills`, `version` |
-| [Configuration](/docs/reference/api-cli/configuration) | Every `agentflow.json` key |
+| [Configuration](/docs/reference/api-cli/configuration) | Every `10xgraph.json` key |
 | [Environment](/docs/reference/api-cli/environment) | Every environment variable |
 | [Auth](/docs/reference/api-cli/auth) | JWT and custom `BaseAuth` |
 | [Rate limiting](/docs/reference/api-cli/rate-limiting) | Backends and limits |

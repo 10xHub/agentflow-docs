@@ -9,7 +9,7 @@ label: Custom State
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/custom-state/custom_state.py`](https://github.com/10xHub/Agentflow/blob/main/examples/custom-state/custom_state.py)
+**Source example:** [`examples/custom-state/custom_state.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/custom-state/custom_state.py)
 
 ## What you will build
 
@@ -18,7 +18,7 @@ An HR assistant agent that carries extra fields — candidate CV text, job descr
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed (`pip install 10xscale-agentflow`)
+- `10xgraph` installed (`pip install 10xgraph`)
 - A Google Gemini API key set as `GEMINI_API_KEY` in your environment
 
 ## Why custom state?
@@ -44,7 +44,7 @@ classDiagram
 
 ```python
 from typing import Any
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class MyState(AgentState):
     """Custom state with additional fields for resume matching."""
@@ -61,7 +61,7 @@ All fields must have defaults. Pydantic enforces this. You can add any JSON-seri
 The checkpointer preserves state across turns. Pass the state type as a generic parameter so the checkpointer knows how to (de)serialise it.
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 checkpointer = InMemoryCheckpointer[MyState]()
 ```
@@ -71,7 +71,7 @@ checkpointer = InMemoryCheckpointer[MyState]()
 Pass an instance of `MyState` when constructing `StateGraph`. This tells the graph which state type to use.
 
 ```python
-from agentflow.core import Agent, StateGraph
+from tenxgraph.core import Agent, StateGraph
 
 def create_app(initial_state: MyState | None = None):
     state = initial_state or MyState()
@@ -100,7 +100,7 @@ def create_app(initial_state: MyState | None = None):
 ### Basic invocation
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 app = create_app()
 res = app.invoke(
@@ -131,7 +131,7 @@ res = app.invoke(
 You can update **only specific fields** by passing a `state` dict in the input. Fields you omit remain unchanged.
 
 ```python
-from agentflow.utils import ResponseGranularity
+from tenxgraph.utils import ResponseGranularity
 
 res = app.invoke(
     {
@@ -171,10 +171,10 @@ flowchart LR
 from typing import Any
 from dotenv import load_dotenv
 
-from agentflow.core import Agent, StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import ResponseGranularity
+from tenxgraph.core import Agent, StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import ResponseGranularity
 
 load_dotenv()
 

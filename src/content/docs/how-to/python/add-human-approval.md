@@ -20,7 +20,7 @@ The graph needs a checkpointer, because the pause is saved in the thread's state
 ## Step 1: Ask inside a tool
 
 ```python
-from agentflow.utils import interrupt
+from tenxgraph.utils import interrupt
 
 async def refund(amount: int) -> str:
     """Refund an order, after a human approves it."""
@@ -52,8 +52,8 @@ async def refund(amount: int) -> str:
 ## Step 2: Run until the pause
 
 ```python
-from agentflow.utils import pending_interrupt
-from agentflow.utils.constants import ResponseGranularity
+from tenxgraph.utils import pending_interrupt
+from tenxgraph.utils.constants import ResponseGranularity
 
 config = {"thread_id": "order-42"}
 result = await app.ainvoke(

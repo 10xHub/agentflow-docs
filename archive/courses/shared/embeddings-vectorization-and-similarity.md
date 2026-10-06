@@ -125,7 +125,7 @@ flowchart TB
 ```python
 import math
 
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 # Initialize embedding model
 embedding_model = OpenAIEmbedding(model="text-embedding-3-small")
@@ -318,9 +318,9 @@ flowchart TB
 10xGraph's stores take an embedding object and do the vectorization for you: you hand `astore()` plain text, not a vector, and `asearch()` a plain query string.
 
 ```python
-from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbedding
-from agentflow.storage.store.store_schema import MemoryType
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store.store_schema import MemoryType
 
 # Initialize
 vector_store = QdrantStore(

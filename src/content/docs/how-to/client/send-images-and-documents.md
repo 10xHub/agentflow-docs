@@ -14,7 +14,7 @@ Vision and document input work the same way on `invoke()`, `stream()`, and `wsSt
 2. Build a message whose content carries a media block referencing that `file_id`.
 3. Send the message like any other message.
 
-The server rewrites each `file_id` reference into an internal `agentflow://media/{file_id}` URL when the request arrives, then resolves it to real bytes or a provider URL at LLM-call time. You never have to inline base64 or expose a public URL.
+The server rewrites each `file_id` reference into an internal `graph://media/{file_id}` URL when the request arrives, then resolves it to real bytes or a provider URL at LLM-call time. You never have to inline base64 or expose a public URL.
 
 ## Prerequisites
 

@@ -16,15 +16,15 @@ Read this page to understand the message format used by graph nodes, the API, an
 ## Import paths
 
 ```python
-from agentflow.core.state import Message
-from agentflow.core.state.message_block import (
+from tenxgraph.core.state import Message
+from tenxgraph.core.state.message_block import (
     TextBlock, ImageBlock, AudioBlock, VideoBlock,
     DocumentBlock, DataBlock,
     ToolCallBlock, RemoteToolCallBlock, ToolResultBlock,
     ReasoningBlock, AnnotationBlock, ErrorBlock,
     MediaRef, AnnotationRef, ContentBlock,
 )
-from agentflow.core.state.message import TokenUsages
+from tenxgraph.core.state.message import TokenUsages
 ```
 
 ---
@@ -64,7 +64,7 @@ Create a plain text user message. The simplest way to construct input for `invok
 #### Direct construction
 
 ```python
-from agentflow.core.state.message_block import TextBlock
+from tenxgraph.core.state.message_block import TextBlock
 
 msg = Message(
     role="user",
@@ -290,7 +290,7 @@ MediaRef(kind="data", data_base64="iVBORw0KGgo...", mime_type="image/png")
 | Field | Type | Description |
 |---|---|---|
 | `kind` | `"url" \| "file_id" \| "data"` | Reference type discriminator. |
-| `url` | `str \| None` | HTTP(S) URL or `agentflow://media/{key}` for offloaded media. |
+| `url` | `str \| None` | HTTP(S) URL or `graph://media/{key}` for offloaded media. |
 | `file_id` | `str \| None` | Provider-managed file ID (OpenAI Files API, Gemini File API). |
 | `data_base64` | `str \| None` | Base64-encoded content. Use only for small payloads (< 50 KB). |
 | `mime_type` | `str \| None` | MIME type, e.g. `"image/jpeg"`, `"application/pdf"`. |
@@ -348,7 +348,7 @@ usages = TokenUsages(
 ## Inspecting a response
 
 ```python
-from agentflow.core.state.message_block import TextBlock, ToolCallBlock
+from tenxgraph.core.state.message_block import TextBlock, ToolCallBlock
 
 result = await app.ainvoke({"messages": [Message.text_message("Hello")]})
 

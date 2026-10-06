@@ -38,7 +38,7 @@ Prebuilt agents are complete, compiled graphs. One constructor call gives you a 
 | `SwarmAgent` | Peer-to-peer handoff between agents |
 
 ```python
-from agentflow.prebuilt.agent.react import ReactAgent
+from tenxgraph.prebuilt.agent.react import ReactAgent
 
 app = ReactAgent(
     model="gpt-4o",
@@ -71,9 +71,9 @@ result = app.invoke(
 `Agent` is a node, not a full graph. You place it inside a `StateGraph` alongside other nodes and wire the edges yourself. This is the most common pattern for production agents.
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 tool_node = ToolNode([get_weather, search_web])
 
@@ -123,8 +123,8 @@ A plain Python function, sync or async, registered as a graph node. The framewor
 
 ```python
 from injectq import Inject
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.store import BaseStore
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.store import BaseStore
 
 async def load_profile(
     state: AgentState,
@@ -176,12 +176,12 @@ Do you need a standard pattern (react loop, RAG, supervisor, swarm)?
 Prebuilts, `Agent`, and custom function nodes are fully composable. A realistic production graph often looks like this:
 
 ```python
-from agentflow.prebuilt.agent.react import ReactAgent
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.prebuilt.agent.react import ReactAgent
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 from injectq import Inject
-from agentflow.storage.store import BaseStore
+from tenxgraph.storage.store import BaseStore
 
 # Custom node: enriches state before the agent runs
 async def load_profile(state: AgentState, config: dict, store: BaseStore = Inject[BaseStore]) -> dict:

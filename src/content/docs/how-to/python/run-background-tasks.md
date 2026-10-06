@@ -19,10 +19,10 @@ Declare `task_manager: BackgroundTaskManager` as a parameter in your node functi
 
 ```python
 import asyncio
-from agentflow.core import StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
-from agentflow.utils.background_task_manager import BackgroundTaskManager
+from tenxgraph.core import StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
+from tenxgraph.utils.background_task_manager import BackgroundTaskManager
 from injectq import Inject
 
 async def send_notification(user_id: str, text: str) -> None:

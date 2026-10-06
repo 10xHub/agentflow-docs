@@ -75,9 +75,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
 
-from agentflow.core.state import Message
-from agentflow.utils import ResponseGranularity
-from agentflow.core.state.stream_chunks import StreamEvent
+from tenxgraph.core.state import Message
+from tenxgraph.utils import ResponseGranularity
+from tenxgraph.core.state.stream_chunks import StreamEvent
 
 from my_app.graph import app as agent_app  # your compiled graph
 from my_app.auth import current_user

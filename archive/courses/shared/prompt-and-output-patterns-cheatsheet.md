@@ -281,7 +281,7 @@ Question: {user_query}
 
 ```json
 {
-  "answer": "AgentFlow was founded in 2024 as a multi-agent orchestration framework. [Source: about.md]",
+  "answer": "10xGraph was founded in 2024 as a multi-agent orchestration framework. [Source: about.md]",
   "sources": ["about.md"]
 }
 ```

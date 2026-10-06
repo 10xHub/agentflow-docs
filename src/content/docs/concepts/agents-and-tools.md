@@ -20,7 +20,7 @@ updated: "2026-09-29"
 ### Constructor
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     # --- Required ---
@@ -96,7 +96,7 @@ Unused skills cost only their one-line description. See [How to give an agent sk
 ### Retry and fallback
 
 ```python
-from agentflow.core.graph.agent_internal.constants import RetryConfig
+from tenxgraph.core.graph.agent_internal.constants import RetryConfig
 
 agent = Agent(
     model="gemini-2.5-flash",
@@ -146,7 +146,7 @@ Default is `{"effort": "medium"}`, so thinking is **on by default** for Google m
 ### Basic usage
 
 ```python
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 def lookup_order(order_id: str) -> str:
     """Look up the status of a customer order."""
@@ -190,10 +190,10 @@ Tool functions can declare special parameters that `ToolNode` injects automatica
 | `store` | `BaseStore` | The configured memory store |
 | `task_manager` | `BackgroundTaskManager` | Fire-and-forget task manager |
 
-The full set is `INJECTABLE_PARAMS` in `agentflow/core/graph/tool_node/constants.py`. Services can also be injected with `Inject[...]` defaults; see [Dependency injection](/docs/concepts/dependency-injection).
+The full set is `INJECTABLE_PARAMS` in `tenxgraph/core/graph/tool_node/constants.py`. Services can also be injected with `Inject[...]` defaults; see [Dependency injection](/docs/concepts/dependency-injection).
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 def lookup_order(
     order_id: str,                        # from model tool call
@@ -211,7 +211,7 @@ def lookup_order(
 Use `ToolResult` when a tool needs to update state fields **and** return a message to the model:
 
 ```python
-from agentflow.core.state.tool_result import ToolResult
+from tenxgraph.core.state.tool_result import ToolResult
 
 class MyState(AgentState):
     selected_city: str = ""
@@ -234,7 +234,7 @@ pip install "10xgraph[mcp]"
 
 ```python
 from fastmcp import FastMCP
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
 mcp_client = ...  # your MCP client
 
@@ -252,7 +252,7 @@ tool_node = ToolNode(
 Use `@tool` to attach metadata to any function. Metadata does not change injection behavior. It enriches the schema the model receives:
 
 ```python
-from agentflow.utils import tool
+from tenxgraph.utils import tool
 
 @tool(
     name="web_search",
@@ -285,8 +285,8 @@ def multiply(x: int, y: int) -> int:
 The standard routing pattern for tool-using agents is a loop between `Agent` and `ToolNode`. The routing function inspects the last message to decide where to go next:
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 def route(state: AgentState) -> str:
     if not state.context:
@@ -302,8 +302,8 @@ def route(state: AgentState) -> str:
 ```
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.utils import END
 
 tool_node = ToolNode([lookup_order, refund_order])
 agent = Agent(model="gemini-2.5-flash", provider="google", tool_node=tool_node)

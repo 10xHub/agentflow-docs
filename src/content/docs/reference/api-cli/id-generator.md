@@ -13,7 +13,7 @@ updated: "2026-07-21"
 
 ## Base ID generator interface
 
-The core interface is `BaseIDGenerator` in `agentflow/agentflow/utils/id_generator.py`. It defines:
+The core interface is `BaseIDGenerator` in `tenxgraph/utils/id_generator.py`. It defines:
 
 - `id_type` — the ID type returned by the generator (`STRING`, `INTEGER`, or `BIGINT`).
 - `generate()` — method that returns a new unique ID.
@@ -58,7 +58,7 @@ If you do not pass explicit constructor values, `SnowFlakeIdGenerator` reads the
 - `SNOWFLAKE_WORKER_BITS` — default `5`
 
 It reads `os.environ` directly, so these are process environment variables. A `.env` file loaded
-through `agentflow.json` is loaded before the graph module is imported, which covers the normal
+through `10xgraph.json` is loaded before the graph module is imported, which covers the normal
 case where the generator is constructed inside your graph module.
 
 ### The constructor is all-or-nothing

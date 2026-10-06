@@ -29,13 +29,13 @@ This creates:
 
 ```
 my-agent-api/
-  agentflow.json      # configuration file
+  10xgraph.json      # configuration file
   graph/
     __init__.py
     react.py          # default graph module
 ```
 
-The default `agentflow.json` points to `graph.react:app`:
+The default `10xgraph.json` points to `graph.react:app`:
 
 ```json
 {
@@ -50,10 +50,10 @@ This means: find the variable `app` in the `graph/react.py` module and use it as
 Replace `graph/react.py` with the agent you built in the previous pages:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END
 
 def get_weather(location: str) -> str:
     """Get the current weather for a specific location."""
@@ -78,7 +78,7 @@ graph.add_node("MAIN", agent)
 graph.add_node("TOOL", tool_node)
 
 def route(state: AgentState) -> str:
-    from agentflow.utils import END
+    from tenxgraph.utils import END
     if not state.context:
         return END
     last = state.context[-1]
@@ -97,7 +97,7 @@ app = graph.compile(checkpointer=checkpointer)
 
 ## Start the API server
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 agentflow api --host 127.0.0.1 --port 8000
@@ -139,14 +139,14 @@ Expected response (trimmed):
 ```mermaid
 flowchart LR
   Curl[curl POST] --> API[FastAPI server]
-  API --> Config[agentflow.json]
+  API --> Config[10xgraph.json]
   Config --> Module[graph/react.py]
   Module --> App[compiled app]
   App --> Graph[nodes + checkpointer]
   Graph --> Response[JSON messages]
 ```
 
-The CLI started a FastAPI server. The server loaded your graph module based on `agentflow.json`, compiled it once at startup, and now handles each HTTP request by invoking the graph.
+The CLI started a FastAPI server. The server loaded your graph module based on `10xgraph.json`, compiled it once at startup, and now handles each HTTP request by invoking the graph.
 
 ## Available endpoints
 
@@ -159,9 +159,9 @@ The CLI started a FastAPI server. The server loaded your graph module based on `
 
 ## What you learned
 
-- `agentflow init` scaffolds a project with `agentflow.json` and a graph module.
+- `agentflow init` scaffolds a project with `10xgraph.json` and a graph module.
 - `agentflow api` starts a FastAPI server that loads your compiled graph.
-- The `agent` field in `agentflow.json` uses `module.path:variable` notation.
+- The `agent` field in `10xgraph.json` uses `module.path:variable` notation.
 - The API exposes `/v1/graph/invoke` and `/v1/graph/stream`.
 
 ## Next step

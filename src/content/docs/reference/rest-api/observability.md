@@ -175,7 +175,7 @@ Events are returned **newest first**, so a UI can render the list without revers
 
 Traces come from an in-process telemetry store that records chunks as runs execute. It is bound **only outside production**: when `MODE=production` the store is not created and this endpoint returns an empty payload (`run_count: 0`, `run: null`) rather than an error.
 
-The store is in-memory and not durable. It is a development and playground aid, not a production observability system. For production tracing, configure OpenTelemetry (`OTEL_ENABLED`) or the `observability` block in `agentflow.json`.
+The store is in-memory and not durable. It is a development and playground aid, not a production observability system. For production tracing, configure OpenTelemetry (`OTEL_ENABLED`) or the `observability` block in `10xgraph.json`.
 
 Both `POST /v1/graph/invoke` and `POST /v1/graph/stream` record runs. Invoke has no chunk stream, so its trace is reconstructed from the final messages, which is enough for usage and cost but produces a coarser span tree than a streamed run.
 
@@ -184,4 +184,4 @@ Both `POST /v1/graph/invoke` and `POST /v1/graph/stream` record runs. Invoke has
 ## See also
 
 - [REST API: Graph](/docs/reference/rest-api/graph)
-- [agentflow.json configuration](/docs/reference/api-cli/configuration)
+- [10xgraph.json configuration](/docs/reference/api-cli/configuration)

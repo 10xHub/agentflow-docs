@@ -13,9 +13,9 @@ project before you find out the hard way.
 
 Dated planning and prioritisation happen in the open on GitHub:
 
-- [Issues](https://github.com/10xHub/Agentflow/issues) for tracked work
-- [Discussions](https://github.com/10xHub/Agentflow/discussions) for proposals
-- [Releases](https://github.com/10xHub/Agentflow/releases) for what actually shipped
+- [Issues](https://github.com/10xGraph/10xGraph/issues) for tracked work
+- [Discussions](https://github.com/10xGraph/10xGraph/discussions) for proposals
+- [Releases](https://github.com/10xGraph/10xGraph/releases) for what actually shipped
 
 Nothing on this page is a delivery commitment. If a gap blocks you, say so in an
 issue: real demand reorders the list.
@@ -48,7 +48,7 @@ button in the chat composer is inert.
 ### Server-owned schemas for client tools
 
 `registerToolHandler()` stores a handler locally. Tools the browser can execute
-must be declared under `remote_tools` in server `agentflow.json`.
+must be declared under `remote_tools` in server `10xgraph.json`.
 
 See [register remote tools](/docs/how-to/client/register-remote-tools).
 

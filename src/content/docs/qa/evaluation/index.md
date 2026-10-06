@@ -26,7 +26,7 @@ EvalSet / Scenarios  →  AgentEvaluator / UserSimulator  →  Criteria  →  Ev
 ### 1. Define test cases
 
 ```python
-from agentflow.qa.evaluation import EvalSetBuilder
+from tenxgraph.qa.evaluation import EvalSetBuilder
 
 eval_set = (
     EvalSetBuilder("weather-agent")
@@ -65,9 +65,9 @@ agentflow eval --parallel --max-concurrency 8
 ### 3. Or run programmatically
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator
-from agentflow.qa.evaluation.config.presets import EvalPresets
-from agentflow.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
+from tenxgraph.qa.evaluation import AgentEvaluator
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
 
 collector = TrajectoryCollector(capture_all_events=True)
 config = EvalPresets.tool_usage(threshold=0.6)
@@ -81,7 +81,7 @@ print(f"Pass rate: {report.summary.pass_rate:.0%}")
 ### 4. One-liner with QuickEval
 
 ```python
-from agentflow.qa.evaluation import QuickEval
+from tenxgraph.qa.evaluation import QuickEval
 
 report = await QuickEval.check(
     graph=app,
@@ -140,7 +140,7 @@ Running `AgentEvaluator` directly without a config uses a different set — `Eva
 `EvalConfig` selects which criteria to run and sets thresholds. `EvalPresets` provides ready-made configs — one line instead of writing criteria from scratch.
 
 ```python
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 config = EvalPresets.tool_usage(threshold=0.6)       # tool names + tool sequence, no LLM
 config = EvalPresets.response_quality(threshold=0.7) # LLM judge on response accuracy
@@ -184,7 +184,7 @@ The `agentflow eval` CLI discovers files matching `*_eval.py` or `eval_*.py` ins
 
 ```python
 # evals/weather_eval.py
-from agentflow.qa.evaluation import EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
 
 def get_eval_set() -> EvalSet:
     return (
@@ -199,15 +199,15 @@ def get_eval_set() -> EvalSet:
     )
 ```
 
-The CLI loads the agent from `agentflow.json`, applies the default no-LLM criteria shown above, runs the eval, and writes reports.
+The CLI loads the agent from `10xgraph.json`, applies the default no-LLM criteria shown above, runs the eval, and writes reports.
 
 ---
 
 ### `get_eval_config()` — per-file criteria with EvalPresets
 
 ```python
-from agentflow.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 def get_eval_config() -> EvalConfig:
     return EvalPresets.tool_usage(threshold=0.6)
@@ -219,7 +219,7 @@ def get_eval_set() -> EvalSet:
 Use `EVAL_CONFIG` instead of a function when the config is static:
 
 ```python
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 ```
@@ -231,8 +231,8 @@ EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 Any function annotated with `-> EvalSet` is auto-discovered. Useful when you want several named eval sets in one file.
 
 ```python
-from agentflow.qa.evaluation import EvalSet, EvalSetBuilder
-from agentflow.qa.evaluation.config.presets import EvalPresets
+from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
 def get_eval_config():
     return EvalPresets.tool_usage(threshold=0.6)
@@ -254,7 +254,7 @@ Use this when you want an LLM to drive dynamic multi-turn conversations instead 
 
 ```python
 # evals/user_simulator_eval.py
-from agentflow.qa.evaluation import ConversationScenario, UserSimulatorConfig
+from tenxgraph.qa.evaluation import ConversationScenario, UserSimulatorConfig
 
 SIMULATOR_CONFIG = UserSimulatorConfig(
     model="gemini/gemini-2.5-flash",
@@ -344,7 +344,7 @@ agentflow eval --output ci/reports
 agentflow eval --no-report
 ```
 
-### agentflow.json configuration
+### 10xgraph.json configuration
 
 ```json
 {
@@ -367,12 +367,12 @@ agentflow eval --no-report
 | `parallel` | Run all cases from all files in a flat parallel pool |
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
 
-Report filenames from `agentflow eval` always carry a timestamp; `agentflow.json` has no
+Report filenames from `agentflow eval` always carry a timestamp; `10xgraph.json` has no
 setting for it.
 
-**Config priority (highest first):** CLI flags → `agentflow.json` → per-file `get_eval_config()` → built-in defaults
+**Config priority (highest first):** CLI flags → `10xgraph.json` → per-file `get_eval_config()` → built-in defaults
 
-CLI flags always take precedence over `agentflow.json` values.
+CLI flags always take precedence over `10xgraph.json` values.
 
 ### CI integration
 
@@ -384,7 +384,7 @@ CLI flags always take precedence over `agentflow.json` values.
     GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # needed for LLM-judge criteria
 ```
 
-Set `threshold` in `agentflow.json`. If the pass rate drops below it, the step fails.
+Set `threshold` in `10xgraph.json`. If the pass rate drops below it, the step fails.
 
 See also: [How to run evaluations](/docs/how-to/api-cli/run-evals)
 

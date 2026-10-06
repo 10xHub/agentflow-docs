@@ -42,8 +42,8 @@ A thread is created on the first call and persists until you explicitly delete i
 Pass the checkpointer to `graph.compile()`:
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState, Message
 
 checkpointer = InMemoryCheckpointer()
 app = graph.compile(checkpointer=checkpointer)
@@ -74,7 +74,7 @@ res = app.invoke(
 `InMemoryCheckpointer` stores everything in Python dicts guarded by `asyncio.Lock` objects. It is **async-first** — all operations are non-blocking coroutines. Sync wrappers (`put_state`, `get_state`, …) run the coroutines via `run_coroutine()`.
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 checkpointer = InMemoryCheckpointer()
 ```
@@ -103,7 +103,7 @@ checkpointer = InMemoryCheckpointer()
 ### Constructor signature
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     # --- PostgreSQL connection (pick one) ---
@@ -148,7 +148,7 @@ app = graph.compile(checkpointer=checkpointer)
 ### Installing the extra
 
 ```bash
-pip install "10xscale-agentflow[pg_checkpoint]"
+pip install "10xgraph[pg_checkpoint]"
 ```
 
 This installs `asyncpg` and `redis[asyncio]`.
@@ -160,9 +160,9 @@ This installs `asyncpg` and `redis[asyncio]`.
 `SqliteCheckpointer` collapses the two-layer model into a **single local SQLite file**. Durable state, the realtime state cache, messages, threads, and the generic cache all live in one `.db` file — there is no Redis and no Postgres. I/O is fully async via `aiosqlite`; a single persistent connection runs in WAL mode with writes serialized behind an `asyncio.Lock`.
 
 ```python
-from agentflow.storage.checkpointer import SqliteCheckpointer
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
-# Defaults to ~/.agentflow/checkpointer.db; ":memory:" gives an ephemeral DB.
+# Defaults to ~/.10xgraph/checkpointer.db; ":memory:" gives an ephemeral DB.
 checkpointer = SqliteCheckpointer("agent_state.db")
 app = graph.compile(checkpointer=checkpointer)
 ```
@@ -174,7 +174,7 @@ Like `PgCheckpointer`, it reads the state cache table first and falls back to du
 Install the extra:
 
 ```bash
-pip install "10xscale-agentflow[sqlite_checkpoint]"
+pip install "10xgraph[sqlite_checkpoint]"
 ```
 
 Call `await checkpointer.arelease()` (or `checkpointer.release()`) at shutdown to close the connection.
@@ -246,8 +246,8 @@ keys = await checkpointer.alist_cache_keys("llm-cache", prefix="prompt-")
 You can interact with a checkpointer directly — useful for admin scripts, migrations, or custom REST endpoints:
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState, Message
 
 cp = InMemoryCheckpointer()
 config = {"thread_id": "t1", "user_id": "u1"}
@@ -306,8 +306,8 @@ app = state_graph.compile(checkpointer=my_checkpointer)
 }
 ```
 
-`agentflow.json` also recognises a `checkpointer` key, but the server does not apply it yet, so
-setting it has no effect. See [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json).
+`10xgraph.json` also recognises a `checkpointer` key, but the server does not apply it yet, so
+setting it has no effect. See [Configure 10xgraph.json](/docs/how-to/api-cli/configure-agentflow-json).
 
 ---
 

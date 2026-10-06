@@ -16,9 +16,9 @@ You have a graph with at least two agent nodes. The agents share a `StateGraph` 
 ## Quick start
 
 ```python
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.prebuilt.tools import create_handoff_tool
-from agentflow.utils import END
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.prebuilt.tools import create_handoff_tool
+from tenxgraph.utils import END
 
 # ── Tools ────────────────────────────────────────────────────────────────────
 coordinator_tools = ToolNode([
@@ -88,8 +88,8 @@ When the coordinator LLM calls `transfer_to_researcher`, the graph navigates dir
 If you prefer to control routing in a regular node function without the `transfer_to_` naming convention, return a `Command`:
 
 ```python
-from agentflow.utils import Command, END
-from agentflow.core.state import AgentState
+from tenxgraph.utils import Command, END
+from tenxgraph.core.state import AgentState
 
 def router_node(state: AgentState, config: dict) -> Command:
     last_msg = state.context[-1].text() if state.context else ""

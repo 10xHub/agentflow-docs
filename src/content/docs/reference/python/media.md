@@ -16,7 +16,7 @@ Use the media layer when your agent processes images, audio, video, or documents
 ## Import path
 
 ```python
-from agentflow.storage.media import MediaOffloadPolicy, ensure_media_offloaded
+from tenxgraph.storage.media import MediaOffloadPolicy, ensure_media_offloaded
 ```
 
 ---
@@ -26,7 +26,7 @@ from agentflow.storage.media import MediaOffloadPolicy, ensure_media_offloaded
 An enum that controls when inline base64 data is offloaded to a `BaseMediaStore`.
 
 ```python
-from agentflow.storage.media import MediaOffloadPolicy
+from tenxgraph.storage.media import MediaOffloadPolicy
 ```
 
 | Value | Description |
@@ -52,7 +52,7 @@ Inspects all `ImageBlock`, `AudioBlock`, `VideoBlock`, and `DocumentBlock` entri
 
 1. Decodes the base64 to bytes.
 2. Uploads the bytes to `store`.
-3. Replaces `block.media` with a new `MediaRef(kind="url", url="agentflow://media/{key}")`.
+3. Replaces `block.media` with a new `MediaRef(kind="url", url="graph://media/{key}")`.
 
 The message is mutated **in place** and also returned. Blocks without inline data (URL or file_id references) are left unchanged.
 
@@ -72,7 +72,7 @@ The message is mutated **in place** and also returned. Blocks without inline dat
 Abstract interface for media storage backends. Concrete stores implement `store()`, `retrieve()`, `delete()`, `exists()`, `get_metadata()`, `get_direct_url()`, and `to_media_ref()`.
 
 ```python
-from agentflow.storage.media import BaseMediaStore
+from tenxgraph.storage.media import BaseMediaStore
 ```
 
 ### Implementations
@@ -83,14 +83,14 @@ from agentflow.storage.media import BaseMediaStore
 | `LocalFileMediaStore` | Local filesystem | Single-server setups. `LocalFileMediaStore(base_dir="./agentflow_media")`. |
 | `CloudMediaStore` | S3 / GCS / Azure via `cloud-storage-manager` | Requires the `cloud-storage` extra. Supports signed URLs. |
 
-All three are re-exported from `agentflow.storage.media` (and from `agentflow.storage.media.storage`).
+All three are re-exported from `tenxgraph.storage.media` (and from `tenxgraph.storage.media.storage`).
 
 ---
 
 ## Wiring media storage into the graph
 
 ```python
-from agentflow.storage.media import LocalFileMediaStore
+from tenxgraph.storage.media import LocalFileMediaStore
 
 media_store = LocalFileMediaStore(base_dir="./media_uploads")
 
@@ -103,9 +103,9 @@ app = graph.compile(
 When a `media_store` is configured:
 
 1. The framework calls `ensure_media_offloaded()` on incoming messages before they enter the graph.
-2. Any blob that exceeds `max_inline_bytes` (default 50 KB) is uploaded and replaced with an `agentflow://media/{key}` reference URI.
+2. Any blob that exceeds `max_inline_bytes` (default 50 KB) is uploaded and replaced with an `graph://media/{key}` reference URI.
 3. The checkpointer stores only the lightweight URI, not the binary blob.
-4. When the API serves the message back to a client, it resolves `agentflow://media/{key}` to a signed access URL.
+4. When the API serves the message back to a client, it resolves `graph://media/{key}` to a signed access URL.
 
 ---
 
@@ -114,7 +114,7 @@ When a `media_store` is configured:
 When sending a multimodal message to the graph, use `MediaRef` to reference the media:
 
 ```python
-from agentflow.core.state import ImageBlock, MediaRef, Message, TextBlock
+from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
 
 # From a URL
 msg = Message(
@@ -150,7 +150,7 @@ msg = Message(
 Per-agent configuration for how media is validated and delivered to the provider:
 
 ```python
-from agentflow.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
+from tenxgraph.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
 
 agent = Agent(
     model="gpt-4o",
@@ -177,10 +177,10 @@ Offload behaviour is not configured here. It is driven by `MediaOffloadPolicy` a
 
 ## `MediaRefResolver`
 
-Resolves a `MediaRef` into the concrete content part a provider expects: it fetches `agentflow://media/{key}` references out of the media store, and can hand out signed direct URLs instead of re-uploading bytes on every turn.
+Resolves a `MediaRef` into the concrete content part a provider expects: it fetches `graph://media/{key}` references out of the media store, and can hand out signed direct URLs instead of re-uploading bytes on every turn.
 
 ```python
-from agentflow.storage.media import MediaRefResolver
+from tenxgraph.storage.media import MediaRefResolver
 
 resolver = MediaRefResolver(media_store=media_store)
 
@@ -194,7 +194,7 @@ resolver = resolver.with_cache(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `media_store` | `BaseMediaStore \| None` | `None` | Store used to resolve internal `agentflow://media/{key}` references. Internal references raise when omitted. |
+| `media_store` | `BaseMediaStore \| None` | `None` | Store used to resolve internal `graph://media/{key}` references. Internal references raise when omitted. |
 | `cache_backend` | `Any \| None` | `None` | Optional cache for generated signed URLs. |
 | `direct_url_expiration_seconds` | `int` | `3600` | Lifetime of a generated signed URL. |
 | `direct_url_refresh_buffer_seconds` | `int` | `60` | Regenerate a cached URL this many seconds before it expires. |
@@ -206,7 +206,7 @@ resolver = resolver.with_cache(
 For documents already uploaded through the OpenAI Files API, two helpers build the request fragments OpenAI expects:
 
 ```python
-from agentflow.storage.media import (
+from tenxgraph.storage.media import (
     create_openai_file_attachment,
     create_openai_file_search_tool,
 )
@@ -232,6 +232,6 @@ attachment = create_openai_file_attachment("file-abc123", tools=["file_search"])
 
 | Error | Cause | Fix |
 |---|---|---|
-| `agentflow://media/...` reference not resolved | Client receives an internal URI instead of an accessible URL. | Ensure the API server is configured with a `media_store` that supports signed URL generation. |
+| `graph://media/...` reference not resolved | Client receives an internal URI instead of an accessible URL. | Ensure the API server is configured with a `media_store` that supports signed URL generation. |
 | No offloading happening | `media_store` not passed to `graph.compile()`. | Add `media_store=your_store` to the `compile()` call. |
 | Blob stays inline despite `ALWAYS` policy | `ensure_media_offloaded` is not called on the message. | Confirm the graph is compiled with a `media_store`. The framework calls offload automatically on ingestion. |

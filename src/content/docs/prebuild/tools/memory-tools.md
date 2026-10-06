@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 Prebuilt tools that give an agent access to long-term memory — the ability to store, search, update, and delete facts across conversations.
 
-**Import path:** `agentflow.prebuilt.tools`
+**Import path:** `tenxgraph.prebuilt.tools`
 
 There are three tools, each for a different memory integration path:
 
@@ -62,9 +62,9 @@ The general-purpose LLM-callable memory tool. Use this when wiring memory manual
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools.memory import memory_tool
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.storage import QdrantStore  # or any BaseStore subclass
+from tenxgraph.prebuilt.tools.memory import memory_tool
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.storage import QdrantStore  # or any BaseStore subclass
 
 store = QdrantStore(...)
 
@@ -109,8 +109,8 @@ Created via `make_user_memory_tool(memory_config)`. Used automatically by `Agent
 ### Usage via `MemoryConfig`
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.storage.store.memory_config import MemoryConfig, UserMemoryConfig
+from tenxgraph.core.graph import Agent
+from tenxgraph.storage.store.memory_config import MemoryConfig, UserMemoryConfig
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -141,7 +141,7 @@ Created via `make_agent_memory_tool(memory_config)`. Read-only — the LLM can s
 ### Usage via `MemoryConfig`
 
 ```python
-from agentflow.storage.store.memory_config import MemoryConfig, AgentMemoryConfig
+from tenxgraph.storage.store.memory_config import MemoryConfig, AgentMemoryConfig
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -161,10 +161,10 @@ app = agent.compile(store=store)
 ## Example: manual wiring with `memory_tool`
 
 ```python
-from agentflow.prebuilt.tools.memory import memory_tool
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.prebuilt.tools.memory import memory_tool
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 store = create_local_qdrant_store(
     path="./memory_db",

@@ -1,14 +1,14 @@
 ---
 title: Rate Limiting
 seoTitle: "rate_limit configuration reference"
-description: "Complete reference for the rate_limit block in agentflow.json: the backends, limits, and every option for throttling requests to the 10xGraph API server."
+description: "Complete reference for the rate_limit block in 10xgraph.json: the backends, limits, and every option for throttling requests to the 10xGraph API server."
 section: Reference
 group: CLI and configuration
 order: 1760
 updated: "2026-09-29"
 ---
 
-The `rate_limit` block in `agentflow.json` activates 10xGraph's built-in sliding-window
+The `rate_limit` block in `10xgraph.json` activates 10xGraph's built-in sliding-window
 rate limiter. The limiter is disabled by default — remove the block or set it to `null`
 to turn it off.
 
@@ -187,10 +187,10 @@ class MyRateLimitBackend(BaseRateLimitBackend):
         return None
 ```
 
-Set `"backend": "custom"` in `agentflow.json` and bind the instance through InjectQ.
+Set `"backend": "custom"` in `10xgraph.json` and bind the instance through InjectQ.
 
 ## See also
 
 - [Configure Rate Limiting](/docs/how-to/api-cli/configure-rate-limiting) — step-by-step setup guide
-- [agentflow.json configuration](/docs/reference/api-cli/configuration)
+- [10xgraph.json configuration](/docs/reference/api-cli/configuration)
 - [Environment variables](/docs/reference/api-cli/environment)

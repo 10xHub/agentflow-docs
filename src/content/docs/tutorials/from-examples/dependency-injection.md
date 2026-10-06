@@ -9,7 +9,7 @@ label: Dependency Injection
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react-injection/react_di.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react-injection/react_di.py)
+**Source example:** [`examples/react-injection/react_di.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-injection/react_di.py)
 
 ## What you will build
 
@@ -24,7 +24,7 @@ A ReAct-style graph that uses dependency injection to provide shared services to
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - `injectq` installed
 - A provider key such as `GEMINI_API_KEY`
 
@@ -82,9 +82,9 @@ That makes the container available across graph execution.
 The weather tool uses normal runtime parameters and injected services side by side:
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.core.state import AgentState, Message
-from agentflow.core.state.message_block import ToolResultBlock
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_block import ToolResultBlock
 
 def get_weather(
     location: str,
@@ -113,8 +113,8 @@ The key idea is that `location`, `tool_call_id`, `state`, and `config` come from
 The main node can also receive injected services:
 
 ```python
-from agentflow.storage.store.base_store import BaseStore
-from agentflow.utils.callbacks import CallbackManager
+from tenxgraph.storage.store.base_store import BaseStore
+from tenxgraph.utils.callbacks import CallbackManager
 
 async def main_agent(
     state: AgentState,

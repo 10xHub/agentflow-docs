@@ -8,7 +8,7 @@ label: Overview
 updated: "2026-10-06"
 ---
 
-Prebuilt agents are ready-made `StateGraph` patterns in `agentflow.prebuilt.agent`. Prebuilt tools are plain functions in `agentflow.prebuilt.tools` that you pass to an agent. Both are ordinary 10xGraph code, so they compile, checkpoint and serve through the API server like a graph you wrote yourself. Use them to skip the boilerplate for common shapes, and move to a custom `StateGraph` when your routing stops fitting.
+Prebuilt agents are ready-made `StateGraph` patterns in `tenxgraph.prebuilt.agent`. Prebuilt tools are plain functions in `tenxgraph.prebuilt.tools` that you pass to an agent. Both are ordinary 10xGraph code, so they compile, checkpoint and serve through the API server like a graph you wrote yourself. Use them to skip the boilerplate for common shapes, and move to a custom `StateGraph` when your routing stops fitting.
 
 ## Prebuilt agents
 
@@ -35,8 +35,8 @@ Prebuilt agents are ready-made `StateGraph` patterns in `agentflow.prebuilt.agen
 Pass your own functions next to the prebuilt ones. A support agent can combine `safe_calculator` with `lookup_order(order_id: str)` and `refund_order(order_id: str, amount: float)`:
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import safe_calculator
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import safe_calculator
 
 agent = ReactAgent(
     model="gpt-4o-mini",

@@ -19,7 +19,7 @@ A Python agent backend + a Next.js frontend is the most common production stack 
    └── Route Handler / Server Action (Node runtime)
               │
               ▼ HTTP / SSE
-[ AgentFlow API ] ← deployed separately
+[ 10xGraph API ] ← deployed separately
               │
               ▼
 [ Postgres + Redis (PgCheckpointer) ]

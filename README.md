@@ -118,7 +118,7 @@ Available in every `.mdx` file without an import. Put opening and closing tags o
 
 ````md
 ```python title="graph/agent.py" {3}
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 graph = StateGraph()
 graph.add_node("agent", agent)       # [!code highlight]
 graph.add_node("tools", tool_node)   # [!code ++]

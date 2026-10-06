@@ -112,7 +112,7 @@ The reference files cover:
 | Architecture | Package layout across `agentflow`, `agentflow-api`, `agentflow-client`, docs, and playground |
 | Agents and graphs | `Agent`, `ToolNode`, `StateGraph`, prebuilt agents, state, messages, tools, and handoffs |
 | Runtime behavior | Checkpointing, dependency injection, memory, media, streaming, publishers, and protocols |
-| API and CLI | `agentflow init`, `api`, `play`, `build`, `skills`, `agentflow.json`, auth, settings, middleware, routes, and errors |
+| API and CLI | `agentflow init`, `api`, `play`, `build`, `skills`, `10xgraph.json`, auth, settings, middleware, routes, and errors |
 | TypeScript client | Auth, invoke, stream, messages, threads, memory, files, and client-side tool execution |
 | Quality and safety | Testing, evaluation, provider adapters, validators, and prompt-injection safeguards |
 

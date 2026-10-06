@@ -16,11 +16,11 @@ A checkpointer persists graph state between requests so conversations survive se
 ## Import paths
 
 ```python
-from agentflow.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
 # Optional — requires asyncpg
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 # Optional — requires aiosqlite
-from agentflow.storage.checkpointer import SqliteCheckpointer
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
 ```
 
 ---
@@ -63,7 +63,7 @@ checkpointer.get_state(config)
 ### Wiring into a graph
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 app = graph.compile(checkpointer=InMemoryCheckpointer())
 ```
@@ -75,7 +75,7 @@ app = graph.compile(checkpointer=InMemoryCheckpointer())
 In-process dictionary-based storage. Zero dependencies.
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 checkpointer = InMemoryCheckpointer()
 app = graph.compile(checkpointer=checkpointer)
@@ -121,7 +121,7 @@ pip install redis
 </aside>
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
@@ -176,9 +176,9 @@ pip install 10xgraph[sqlite_checkpoint]
 </aside>
 
 ```python
-from agentflow.storage.checkpointer import SqliteCheckpointer
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
-# Defaults to ~/.agentflow/checkpointer.db; pass a path to override.
+# Defaults to ~/.10xgraph/checkpointer.db; pass a path to override.
 checkpointer = SqliteCheckpointer("agent_state.db")
 
 await checkpointer.asetup()   # creates tables (also runs lazily on first use)
@@ -189,7 +189,7 @@ app = graph.compile(checkpointer=checkpointer)
 
 | Parameter | Type | Description |
 |---|---|---|
-| `db_path` | `str \| Path \| None` | Path to the SQLite database file. Defaults to `~/.agentflow/checkpointer.db`. Parent directories are created on setup. Pass `":memory:"` for an ephemeral in-process database (useful for tests). |
+| `db_path` | `str \| Path \| None` | Path to the SQLite database file. Defaults to `~/.10xgraph/checkpointer.db`. Parent directories are created on setup. Pass `":memory:"` for an ephemeral in-process database (useful for tests). |
 
 **When to use:**
 - **Client-side / embedded agents.** A desktop app that ships a Python sidecar (Tauri, Electron, PyInstaller) or a local CLI agent — the checkpointer runs entirely on the user's machine, right next to the app.
@@ -211,9 +211,9 @@ app = graph.compile(checkpointer=checkpointer)
 
 ```python
 from typing import Any
-from agentflow.storage.checkpointer import BaseCheckpointer
-from agentflow.core.state import AgentState, Message
-from agentflow.utils.thread_info import ThreadInfo
+from tenxgraph.storage.checkpointer import BaseCheckpointer
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils.thread_info import ThreadInfo
 
 class DynamoDBCheckpointer(BaseCheckpointer):
 

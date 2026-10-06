@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 ## Prebuilt agents
 
-Prebuilt agents live in `agentflow.prebuilt.agent`.
+Prebuilt agents live in `tenxgraph.prebuilt.agent`.
 
 | Agent | Use case |
 |---|---|
@@ -31,16 +31,16 @@ Reranker base classes ship alongside the RAG agent:
 | `CohereReranker` | Rerank with the Cohere Rerank API. |
 | `CrossEncoderReranker` | Rerank with a local cross-encoder model. |
 
-Everything above except `AudioAgent` is also re-exported from `agentflow.prebuilt`. `AudioAgent` must be imported from `agentflow.prebuilt.agent`:
+Everything above except `AudioAgent` is also re-exported from `tenxgraph.prebuilt`. `AudioAgent` must be imported from `tenxgraph.prebuilt.agent`:
 
 ```python
-from agentflow.prebuilt.agent import AudioAgent
-from agentflow.prebuilt import ReactAgent, SupervisorTeamAgent, SwarmAgent
+from tenxgraph.prebuilt.agent import AudioAgent
+from tenxgraph.prebuilt import ReactAgent, SupervisorTeamAgent, SwarmAgent
 ```
 
 ## Prebuilt tools
 
-Common tools are exported from `agentflow.prebuilt.tools`.
+Common tools are exported from `tenxgraph.prebuilt.tools`.
 
 | Tool | Use case |
 |---|---|
@@ -56,8 +56,8 @@ Common tools are exported from `agentflow.prebuilt.tools`.
 Handoff tools let the model transfer execution to another graph node by calling a tool with the `transfer_to_<agent>` convention.
 
 ```python
-from agentflow.prebuilt.tools import create_handoff_tool
-from agentflow.core import ToolNode
+from tenxgraph.prebuilt.tools import create_handoff_tool
+from tenxgraph.core import ToolNode
 
 tools = ToolNode([
     create_handoff_tool(

@@ -40,7 +40,7 @@ The first rows are where the two differ most. Orchestration and retrieval basics
 | Auth (JWT or custom) | JWT (`"auth": "jwt"`) or a custom `BaseAuth` subclass | Local development runs unprotected. Cloud deployments use a LlamaCloud API token ([workflow server docs](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/)) |
 | Authorization | Role scopes (such as `graph:invoke`, `checkpointer:read`) or a custom `AuthorizationBackend` | Not documented |
 | Thread ownership isolation | Built-in `"authorization": "ownership"` backend, with a two-tier cached owner check | Not documented |
-| Rate limiting | Memory or Redis sliding-window limits on the API, set in `agentflow.json` | Not documented |
+| Rate limiting | Memory or Redis sliding-window limits on the API, set in `10xgraph.json` | Not documented |
 | Replay-safe tool calls after a crash | Tool ledger in the checkpointer: a tool that already ran is not executed again on resume. Needs a checkpointer | Not documented. The docs mention durable workflows without detail ([workflow server docs](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/)) |
 | Versioned (compare-and-swap) state writes | Optimistic version check on durable writes in `PgCheckpointer` | Not documented |
 | Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | Not documented |
@@ -79,8 +79,8 @@ def search_policies(query: str) -> str:
 Then give it to a 10xGraph agent next to the tools that act on orders:
 
 ```python title="graph/agent.py"
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 from graph.tools import search_policies
 
@@ -113,8 +113,8 @@ Your indexing pipeline does not change. For the LlamaIndex agent version, see Ll
 ## Persistence and threads
 
 ```python
-from agentflow.core.state import Message
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.core.state import Message
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@localhost:5432/agents",

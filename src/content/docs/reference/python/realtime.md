@@ -14,16 +14,16 @@ The realtime subsystem provides live, audio-to-audio sessions backed by Gemini L
 ## Install extra
 
 ```bash
-pip install "10xscale-agentflow[realtime]"
+pip install "10xgraph[realtime]"
 ```
 
-Provider SDK imports are lazy. Importing `agentflow.core.realtime` does not load `google-genai` until a session opens.
+Provider SDK imports are lazy. Importing `tenxgraph.core.realtime` does not load `google-genai` until a session opens.
 
 ## Import paths
 
 ```python
 # Public API surface
-from agentflow.core.realtime import (
+from tenxgraph.core.realtime import (
     # Input queue
     LiveInputQueue, LiveInput, LiveInputKind,
     # Config types
@@ -38,10 +38,10 @@ from agentflow.core.realtime import (
 )
 
 # Prebuilt agent
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.prebuilt.agent import AudioAgent
 
 # Audio format constants
-from agentflow.core.realtime.base import INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
+from tenxgraph.core.realtime.base import INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
 ```
 
 `INPUT_SAMPLE_RATE = 16000` (Hz); `OUTPUT_SAMPLE_RATE = 24000` (Hz).
@@ -53,7 +53,7 @@ from agentflow.core.realtime.base import INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
 Prebuilt realtime agent builder. Mirrors `ReactAgent`'s construction surface and wraps a `LiveAgent` as the graph root. Compile it once and drive sessions with `CompiledGraph.arealtime()`.
 
 ```python
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.prebuilt.agent import AudioAgent
 ```
 
 ### Constructor
@@ -206,7 +206,7 @@ class LiveInput:
 Per-session configuration for a realtime session.
 
 ```python
-from agentflow.core.realtime import RealtimeConfig
+from tenxgraph.core.realtime import RealtimeConfig
 ```
 
 ```python
@@ -250,7 +250,7 @@ RealtimeConfig(
 Voice-activity detection settings. Disable for push-to-talk (manual activity) workflows.
 
 ```python
-from agentflow.core.realtime import VADConfig
+from tenxgraph.core.realtime import VADConfig
 
 VADConfig(
     enabled: bool = True,
@@ -276,7 +276,7 @@ VADConfig(
 Reconnect and backoff policy for dropped sessions.
 
 ```python
-from agentflow.core.realtime import ReconnectConfig
+from tenxgraph.core.realtime import ReconnectConfig
 
 ReconnectConfig(
     base_delay: float = 0.5,
@@ -304,7 +304,7 @@ ReconnectConfig(
 Discriminated union keyed on `type`. All events are Pydantic models.
 
 ```python
-from agentflow.core.realtime import RealtimeEvent
+from tenxgraph.core.realtime import RealtimeEvent
 ```
 
 ### AudioDeltaEvent
@@ -419,7 +419,7 @@ A normalized provider error. Non-fatal errors are transient; the session continu
 Provider-neutral protocol that all provider clients implement. Not used directly in application code; use `AudioAgent` instead.
 
 ```python
-from agentflow.core.realtime import RealtimeClient
+from tenxgraph.core.realtime import RealtimeClient
 ```
 
 | Method | Signature | Description |
@@ -437,10 +437,10 @@ from agentflow.core.realtime import RealtimeClient
 
 ### GeminiLiveClient
 
-The Gemini Live provider client. Import path: `agentflow.core.realtime.GeminiLiveClient`. Used by `LiveAgent` internally; inject a custom factory via `AudioAgent(realtime_client_factory=...)` for testing.
+The Gemini Live provider client. Import path: `tenxgraph.core.realtime.GeminiLiveClient`. Used by `LiveAgent` internally; inject a custom factory via `AudioAgent(realtime_client_factory=...)` for testing.
 
 ```python
-from agentflow.core.realtime import GeminiLiveClient, normalize_message
+from tenxgraph.core.realtime import GeminiLiveClient, normalize_message
 ```
 
 `normalize_message` converts Gemini wire messages to `RealtimeEvent` objects.
@@ -452,8 +452,8 @@ from agentflow.core.realtime import GeminiLiveClient, normalize_message
 Realtime sessions fire lifecycle hooks via `GraphLifecycleHook`. Register via `CallbackManager.register_lifecycle_hook` and pass `callback_manager` to `compile()`.
 
 ```python
-from agentflow.utils.callbacks import CallbackManager, GraphLifecycleHook
-from agentflow.core.state import AgentState
+from tenxgraph.utils.callbacks import CallbackManager, GraphLifecycleHook
+from tenxgraph.core.state import AgentState
 
 class SessionAuditHook(GraphLifecycleHook):
     async def on_graph_start(self, ctx, state: AgentState) -> AgentState:
@@ -545,7 +545,7 @@ Image/video input is SDK-only. The WebSocket bridge does not forward image frame
 
 | Error | Cause | Fix |
 |---|---|---|
-| `ImportError: google.generativeai` | Session opened without the `realtime` extra installed. | `pip install "10xscale-agentflow[realtime]"`. |
+| `ImportError: google.generativeai` | Session opened without the `realtime` extra installed. | `pip install "10xgraph[realtime]"`. |
 | `ValueError: LiveAgent v1 supports only Gemini Live (google provider)` | Model string resolved to a non-Google provider. | Use a `gemini-*` model string or prefix with `gemini/`. |
 | `RuntimeError: This graph contains a LiveAgent; use .arealtime()` | Called `invoke`/`stream` on a realtime graph. | Switch to `arealtime()`. |
 | `RuntimeError: arealtime() requires a graph rooted at a LiveAgent` | Called `arealtime()` on a non-realtime graph. | Use `AudioAgent` or add a `LiveAgent` node. |

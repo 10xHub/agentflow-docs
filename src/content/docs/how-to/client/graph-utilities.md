@@ -144,7 +144,7 @@ interface GraphToolsResponse {
 |---|---|
 | `local` | A Python function registered on the tool node in your graph. |
 | `mcp` | Discovered at runtime from an MCP server attached to the node. |
-| `remote` | Declared in server `agentflow.json` and executed by a matching client handler. |
+| `remote` | Declared in server `10xgraph.json` and executed by a matching client handler. |
 
 ### Use case: confirm configured remote tools loaded
 
@@ -160,7 +160,7 @@ const remote = data.nodes
   .map(t => t.name);
 
 if (!remote.includes('get_location')) {
-  throw new Error('get_location is missing from agentflow.json');
+  throw new Error('get_location is missing from 10xgraph.json');
 }
 ```
 

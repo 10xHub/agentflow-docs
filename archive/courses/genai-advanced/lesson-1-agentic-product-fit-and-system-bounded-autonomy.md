@@ -176,9 +176,9 @@ flowchart TB
 ### Architecture: Manager + Specialists
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
 
 # A supervisor routes each turn to one specialist, then regains control.
 manager = SupervisorTeamAgent(

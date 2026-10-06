@@ -16,9 +16,9 @@ You have a working graph with at least one `Agent` node.
 ## Quick start
 
 ```python
-from agentflow.core import Agent, StateGraph
-from agentflow.core.state import MessageContextManager
-from agentflow.utils import END
+from tenxgraph.core import Agent, StateGraph
+from tenxgraph.core.state import MessageContextManager
+from tenxgraph.utils import END
 
 context_manager = MessageContextManager(max_messages=10)
 
@@ -64,7 +64,7 @@ System messages (role `"system"`) are **always kept**, regardless of `max_messag
 `MessageContextManager` covers most cases. If you need different logic, for example, token-based trimming or summarisation, subclass `BaseContextManager`:
 
 ```python
-from agentflow.core.state import BaseContextManager, AgentState
+from tenxgraph.core.state import BaseContextManager, AgentState
 
 class TokenContextManager(BaseContextManager):
     """Keep messages within a token budget."""
@@ -101,7 +101,7 @@ Enable debug logging to see trim events:
 
 ```python
 import logging
-logging.getLogger("agentflow.state").setLevel(logging.DEBUG)
+logging.getLogger("tenxgraph.state").setLevel(logging.DEBUG)
 ```
 
 You'll see lines like:

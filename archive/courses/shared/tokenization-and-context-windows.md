@@ -213,8 +213,8 @@ if usage:
 **Budget enforcement.** Rather than counting the history yourself and trimming it, attach `SummaryContextManager` with a `token_budget` and set `trim_context=True` on the agent. When the estimated history exceeds the budget, the oldest messages are summarized by an LLM into `state.context_summary`, and the most recent `keep_recent` are kept verbatim:
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import SummaryContextManager
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import SummaryContextManager
 
 ctx_mgr = SummaryContextManager(
     model="gpt-4o-mini",   # model that writes the summary
@@ -232,7 +232,7 @@ builder.add_node("chat", agent)
 **Estimating before the call.** If you need a pre-flight estimate — to price a request or reject an oversized upload — call the provider's tokenizer directly. These libraries are external to 10xGraph and are not installed with it:
 
 ```python
-import tiktoken   # pip install tiktoken — not an AgentFlow dependency
+import tiktoken   # pip install tiktoken — not an 10xGraph dependency
 
 enc = tiktoken.encoding_for_model("gpt-4o")
 

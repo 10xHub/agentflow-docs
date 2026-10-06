@@ -100,7 +100,7 @@ JUnit XML output lets CI systems (GitHub Actions, Jenkins, GitLab CI) display ev
 Enable it via `ReporterConfig`:
 
 ```python
-from agentflow.qa.evaluation import ReporterConfig, ReporterManager
+from tenxgraph.qa.evaluation import ReporterConfig, ReporterManager
 
 manager = ReporterManager(
     ReporterConfig(
@@ -135,7 +135,7 @@ GitHub Actions example using the JUnit XML output:
 When running programmatically, `AgentEvaluator.evaluate()` returns an `EvalReport`:
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator, EvalPresets
+from tenxgraph.qa.evaluation import AgentEvaluator, EvalPresets
 
 evaluator = AgentEvaluator(app, collector, config=EvalPresets.tool_usage())
 report = await evaluator.evaluate(eval_set)
@@ -185,7 +185,7 @@ for result in report.results:
 ### Print to console
 
 ```python
-from agentflow.qa.evaluation import print_report
+from tenxgraph.qa.evaluation import print_report
 
 print_report(report, verbose=False, use_color=True)
 ```
@@ -199,7 +199,7 @@ print_report(report, verbose=False, use_color=True)
 `ReporterConfig` controls all automatic reporting. Pass it to `ReporterManager` when generating reports manually.
 
 ```python
-from agentflow.qa.evaluation import ReporterConfig
+from tenxgraph.qa.evaluation import ReporterConfig
 
 config = ReporterConfig(
     enabled=True,
@@ -239,7 +239,7 @@ config = ReporterConfig(
 ## Running reporters manually
 
 ```python
-from agentflow.qa.evaluation import ReporterManager, ReporterConfig
+from tenxgraph.qa.evaluation import ReporterManager, ReporterConfig
 
 manager = ReporterManager(
     ReporterConfig(
@@ -271,7 +271,7 @@ When `agentflow eval` runs more than one eval file, results from all files are m
 If you run multiple files manually, merge them the same way:
 
 ```python
-from agentflow.qa.evaluation import EvalReport
+from tenxgraph.qa.evaluation import EvalReport
 
 merged = EvalReport.create(
     eval_set_id="combined",

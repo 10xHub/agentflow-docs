@@ -17,7 +17,7 @@ Callbacks and `Command` are two advanced control surfaces:
 Pass a `CallbackManager` when compiling the graph:
 
 ```python
-from agentflow.utils import CallbackManager, InvocationType
+from tenxgraph.utils import CallbackManager, InvocationType
 
 callback_manager = CallbackManager()
 app = graph.compile(callback_manager=callback_manager)
@@ -39,8 +39,8 @@ Invocation types include `AI`, `TOOL`, `MCP`, `INPUT_VALIDATION`, and `SKILL`.
 Validators are useful for input policy, prompt-injection protection, and business rules.
 
 ```python
-from agentflow.utils import CallbackManager
-from agentflow.utils.validators import PromptInjectionValidator
+from tenxgraph.utils import CallbackManager
+from tenxgraph.utils.validators import PromptInjectionValidator
 
 callback_manager = CallbackManager()
 callback_manager.register_input_validator(PromptInjectionValidator(strict_mode=True))
@@ -53,7 +53,7 @@ app = graph.compile(callback_manager=callback_manager)
 Use `Command` when a node needs to update state and choose the next node at runtime.
 
 ```python
-from agentflow.utils import Command, END
+from tenxgraph.utils import Command, END
 
 def router_node(state, config):
     last = state.context[-1].text() if state.context else ""
@@ -73,8 +73,8 @@ While `CallbackManager` observes invocation-level events (before/after each LLM,
 Register a `GraphLifecycleHook` to react to structural events:
 
 ```python
-from agentflow.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from agentflow.core.state import AgentState, Message
+from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
+from tenxgraph.core.state import AgentState, Message
 
 class MyLifecycleHook(GraphLifecycleHook):
     async def on_graph_start(self, context: GraphLifecycleContext, state: AgentState) -> AgentState | None:

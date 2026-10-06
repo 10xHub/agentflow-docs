@@ -11,13 +11,13 @@ updated: "2026-07-21"
 
 ## When to use this
 
-Use `StateGraph` and `CompiledGraph` when you are building or running a workflow. Every agentflow application starts with a graph.
+Use `StateGraph` and `CompiledGraph` when you are building or running a workflow. Every 10xGraph application starts with a graph.
 
 ## Import paths
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.utils import START, END
 ```
 
 ---
@@ -38,8 +38,8 @@ The builder class. Construct a workflow by adding nodes and edges, then call `co
 ### Constructor
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.core.state import AgentState
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import AgentState
 
 graph = StateGraph()                          # default AgentState
 graph = StateGraph(MyCustomState())           # custom state instance
@@ -216,7 +216,7 @@ Asynchronous execution. Auto-detects whether to start fresh or resume from an in
 
 | Value | Import | What is returned |
 |---|---|---|
-| `LOW` | `from agentflow.utils import ResponseGranularity` | `messages` only |
+| `LOW` | `from tenxgraph.utils import ResponseGranularity` | `messages` only |
 | `PARTIAL` | — | `messages`, `context`, `summary` |
 | `FULL` | — | `messages`, `context`, `summary`, full `state` object |
 
@@ -360,8 +360,8 @@ When a deadline expires the node task is cancelled and a `NodeTimeoutError` is r
 Node functions receive the current state and config as their first two positional arguments. Additional keyword arguments are resolved from the dependency injection container:
 
 ```python
-from agentflow.core.state import AgentState
-from agentflow.storage.store import BaseStore
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.store import BaseStore
 
 def my_node(state: AgentState, config: dict, store: BaseStore) -> list:
     # Return a list of Message objects to append to state.context

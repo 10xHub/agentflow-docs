@@ -16,15 +16,15 @@ Use a memory store when you need the agent to remember facts, preferences, or pa
 ## Import paths
 
 ```python
-from agentflow.storage.store import BaseStore
-from agentflow.storage.store.store_schema import (
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.storage.store.store_schema import (
     MemoryType, RetrievalStrategy, DistanceMetric,
     MemorySearchResult, MemoryRecord,
 )
 
 # Optional backends
-from agentflow.storage.store import QdrantStore    # requires qdrant-client
-from agentflow.storage.store import Mem0Store      # requires mem0ai
+from tenxgraph.storage.store import QdrantStore    # requires qdrant-client
+from tenxgraph.storage.store import Mem0Store      # requires mem0ai
 ```
 
 ---
@@ -134,8 +134,8 @@ pip install qdrant-client
 </aside>
 
 ```python
-from agentflow.storage.store import QdrantStore
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 # Local Qdrant (persisted to disk)
 store = QdrantStore(
@@ -189,7 +189,7 @@ pip install mem0ai
 </aside>
 
 ```python
-from agentflow.storage.store import Mem0Store
+from tenxgraph.storage.store import Mem0Store
 
 store = Mem0Store(config={
     "llm": {"provider": "openai", "config": {"model": "gpt-4o-mini"}},
@@ -210,7 +210,7 @@ app = graph.compile(store=store)
 Configure the `Agent` to automatically retrieve relevant memories before each LLM call:
 
 ```python
-from agentflow.storage.store import MemoryConfig, QdrantStore, ReadMode
+from tenxgraph.storage.store import MemoryConfig, QdrantStore, ReadMode
 
 store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 
@@ -236,8 +236,8 @@ app = graph.compile(store=store)
 Access the store directly inside a node via dependency injection:
 
 ```python
-from agentflow.storage.store import BaseStore
-from agentflow.storage.store.store_schema import MemoryType, RetrievalStrategy
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.storage.store.store_schema import MemoryType, RetrievalStrategy
 
 async def remember_node(state: AgentState, config: dict, store: BaseStore) -> list:
     # Retrieve relevant memories

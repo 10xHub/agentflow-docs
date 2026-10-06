@@ -135,7 +135,7 @@ Each path can be a single skill directory or a folder whose subdirectories are s
 - **Errors** break the specification: missing or invalid `name` / `description`, a name that does not match its folder, unknown frontmatter fields, non-string `metadata` values, invalid YAML.
 - **Warnings** are recommendations: a `SKILL.md` body over 500 lines, or a `references/...`, `scripts/...` or `assets/...` path that does not exist.
 
-The command exits with status `1` when any skill has an error, so it can run in CI. It needs a `10xgraph` release that includes `agentflow.core.skills.validate_skill`.
+The command exits with status `1` when any skill has an error, so it can run in CI. It needs a `10xgraph` release that includes `tenxgraph.core.skills.validate_skill`.
 
 ## Troubleshooting
 

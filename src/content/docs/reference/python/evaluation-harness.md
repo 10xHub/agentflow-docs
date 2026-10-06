@@ -21,7 +21,7 @@ assertions, and the data objects a criterion receives.
 ## Import paths
 
 ```python
-from agentflow.qa.evaluation import (
+from tenxgraph.qa.evaluation import (
     EvaluationRunner,
     ReporterManager,
     ReporterOutput,
@@ -45,7 +45,7 @@ from agentflow.qa.evaluation import (
 )
 ```
 
-Every one of these is also re-exported from `agentflow.qa`.
+Every one of these is also re-exported from `tenxgraph.qa`.
 
 ---
 
@@ -70,7 +70,7 @@ up evaluation.
 ```python
 import pytest
 
-from agentflow.qa.evaluation import create_eval_app
+from tenxgraph.qa.evaluation import create_eval_app
 
 @pytest.fixture(scope="session")
 def trajectory_app():
@@ -90,7 +90,7 @@ Builds an `EvalSet` from `(user_query, expected_response, name)` tuples. Each ca
 gets the id `case_{index}`; a `None` name becomes `"Case {index}"`.
 
 ```python
-from agentflow.qa.evaluation import create_simple_eval_set
+from tenxgraph.qa.evaluation import create_simple_eval_set
 
 eval_set = create_simple_eval_set(
     "basic_tests",
@@ -117,7 +117,7 @@ Constructs an `AgentEvaluator` and runs one eval set file. `config` defaults to
 `EvalConfig.default()`. `eval_set_path` is a path to an eval set JSON file.
 
 ```python
-from agentflow.qa.evaluation import create_eval_app, run_eval
+from tenxgraph.qa.evaluation import create_eval_app, run_eval
 
 async def test_agent():
     app, collector = create_eval_app(build_my_graph())
@@ -150,7 +150,7 @@ Returning `None` from the function skips the test; returning anything that is no
 2-tuple fails it.
 
 ```python
-from agentflow.qa.evaluation import create_eval_app, eval_test
+from tenxgraph.qa.evaluation import create_eval_app, eval_test
 
 @eval_test("tests/fixtures/weather_agent.evalset.json", threshold=0.9)
 async def test_weather_agent():
@@ -171,7 +171,7 @@ Loads the eval set **at decoration time** and returns
 collection.
 
 ```python
-from agentflow.qa.evaluation import AgentEvaluator, parametrize_eval_cases
+from tenxgraph.qa.evaluation import AgentEvaluator, parametrize_eval_cases
 
 @parametrize_eval_cases("tests/fixtures/weather_agent.evalset.json")
 async def test_single_case(eval_case, trajectory_app):
@@ -206,7 +206,7 @@ absent from the report. `criterion` is the criterion's `name` attribute, for exa
 `"tool_trajectory_avg_score"` or `"hallucinations_v1"`.
 
 ```python
-from agentflow.qa.evaluation import assert_criterion_passed, assert_eval_passed
+from tenxgraph.qa.evaluation import assert_criterion_passed, assert_eval_passed
 
 assert_eval_passed(report, min_pass_rate=0.9)
 assert_criterion_passed(report, "tool_trajectory_avg_score", min_score=0.95)
@@ -239,7 +239,7 @@ Container for pytest fixtures, intended for `conftest.py`.
 # conftest.py
 import pytest
 
-from agentflow.qa.evaluation import EvalFixtures
+from tenxgraph.qa.evaluation import EvalFixtures
 
 @pytest.fixture
 def make_evaluator():
@@ -290,7 +290,7 @@ have been compiled with its own collector's callback manager. After all runs,
 `config.reporter.enabled` is `False`; reporter failures are logged, never raised.
 
 ```python
-from agentflow.qa.evaluation import EvaluationRunner, create_eval_app
+from tenxgraph.qa.evaluation import EvaluationRunner, create_eval_app
 
 app_a, collector_a = create_eval_app(build_graph_a())
 app_b, collector_b = create_eval_app(build_graph_b())
@@ -314,7 +314,7 @@ Reports sharing an `eval_set_id` overwrite each other in `results`.
 ### `ReporterManager`
 
 ```python
-from agentflow.qa.evaluation import ReporterManager, ReporterConfig
+from tenxgraph.qa.evaluation import ReporterManager, ReporterConfig
 
 manager = ReporterManager(ReporterConfig())
 output = manager.run_all(report)
@@ -451,7 +451,7 @@ Simplified message used for the user turn and the expected response of an
 | `get_text()` | Flattens `content` to a string, joining text blocks with spaces. |
 
 ```python
-from agentflow.qa.evaluation import MessageContent, SessionInput
+from tenxgraph.qa.evaluation import MessageContent, SessionInput
 
 turn = MessageContent.user("What is the weather in Paris?")
 session = SessionInput(user_id="alice", state={"locale": "fr"})
@@ -478,8 +478,8 @@ Stores every raw `EventModel` fired during a run, including events
 | `len(collector)` | `int` | Event count. |
 
 ```python
-from agentflow.qa.evaluation import EventCollector
-from agentflow.runtime.publisher.events import Event
+from tenxgraph.qa.evaluation import EventCollector
+from tenxgraph.runtime.publisher.events import Event
 
 collector = EventCollector()
 # register collector.on_event as a callback, run the graph, then:
@@ -504,8 +504,8 @@ Registered for `InvocationType.AI` it emits `Event.NODE_EXECUTION`; for
 Other invocation types produce no event.
 
 ```python
-from agentflow.qa.evaluation import PublisherCallback, TrajectoryCollector
-from agentflow.utils.callbacks import CallbackManager, InvocationType
+from tenxgraph.qa.evaluation import PublisherCallback, TrajectoryCollector
+from tenxgraph.utils.callbacks import CallbackManager, InvocationType
 
 collector = TrajectoryCollector()
 callback = PublisherCallback(collector, config={"thread_id": "run-1"})
@@ -528,4 +528,4 @@ manager.register_after_invoke(InvocationType.TOOL, callback)
 | Empty `ExecutionResult.tool_calls` and `node_visits` | The graph was compiled without the collector's callback manager. | Build the pair with `create_eval_app`, or pass `make_trajectory_callback(collector)[1]` to `compile()`. |
 | `AttributeError` on `create_eval_app` | An already-compiled graph was passed. | Pass the uncompiled `StateGraph`. |
 | No report files written | `config.reporter.enabled` is `False`, or only the console reporter is on. | Enable `json_report` / `html` / `junit_xml` on `ReporterConfig`. |
-| `ReporterOutput.has_errors` is `True` | One reporter raised; the others still ran. | Inspect `ReporterOutput.errors` and the `agentflow.evaluation.reporters` logger. |
+| `ReporterOutput.has_errors` is `True` | One reporter raised; the others still ran. | Inspect `ReporterOutput.errors` and the `tenxgraph.evaluation.reporters` logger. |

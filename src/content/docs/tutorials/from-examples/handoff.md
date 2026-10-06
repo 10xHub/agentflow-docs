@@ -9,7 +9,7 @@ label: Handoff
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/handoff/handoff_multi_agent.py`](https://github.com/10xHub/Agentflow/blob/main/examples/handoff/handoff_multi_agent.py)
+**Source example:** [`examples/handoff/handoff_multi_agent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/handoff/handoff_multi_agent.py)
 
 ## What you will build
 
@@ -24,7 +24,7 @@ Instead of routing only from fixed external rules, agents can transfer control t
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - a provider key such as `GEMINI_API_KEY`
 
 ## Why handoff is different from basic multiagent routing
@@ -58,7 +58,7 @@ These work like normal 10xGraph tools.
 The key addition is `create_handoff_tool(...)`:
 
 ```python
-from agentflow.prebuilt.tools import create_handoff_tool
+from tenxgraph.prebuilt.tools import create_handoff_tool
 
 coordinator_tools = ToolNode(
     [
@@ -187,7 +187,7 @@ Expected high-level flow:
 Run:
 
 ```bash
-python agentflow/examples/handoff/handoff_multi_agent.py
+python examples/handoff/handoff_multi_agent.py
 ```
 
 You should see:

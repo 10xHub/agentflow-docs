@@ -133,7 +133,7 @@ sequenceDiagram
 ```python
 from pydantic import BaseModel
 from typing import Optional
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 class ChatState(BaseModel):
     messages: list[Message]
@@ -145,8 +145,8 @@ class ChatState(BaseModel):
 ### Step 2: Create Checkpointed Graph
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 # Create checkpointer
 checkpointer = InMemoryCheckpointer()
@@ -207,7 +207,7 @@ result2 = app.invoke(
 from fastapi import FastAPI
 from sse_starlette.sse import EventSourceResponse
 
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 app = FastAPI()
 
@@ -246,8 +246,8 @@ async def stream_response(thread_id: str, message: str):
 ### 10xGraph Streaming
 
 ```python
-# Using AgentFlow's built-in streaming
-from agentflow.core.state import StreamEvent
+# Using 10xGraph's built-in streaming
+from tenxgraph.core.state import StreamEvent
 
 for chunk in app.stream({"messages": [Message(role="user", content="Hello!")]}):
     # Branch on chunk.event, then read the matching holder.
@@ -286,7 +286,7 @@ class ShortTermMemory:
 ### Long-term Memory (Persistent Store)
 
 ```python
-from agentflow.storage.store import QdrantStore
+from tenxgraph.storage.store import QdrantStore
 
 class LongTermMemory:
     """Persistent memory using vector store"""

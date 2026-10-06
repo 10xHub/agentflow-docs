@@ -9,7 +9,7 @@ updated: "2026-09-29"
 ---
 
 The memory store endpoints are available only when a `store` is configured in
-`agentflow.json`. They provide cross-thread, semantic-search-enabled memory.
+`10xgraph.json`. They provide cross-thread, semantic-search-enabled memory.
 
 Base path: `/v1/store`
 

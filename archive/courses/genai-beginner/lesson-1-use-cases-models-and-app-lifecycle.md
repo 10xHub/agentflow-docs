@@ -268,16 +268,16 @@ Here's how the building blocks come together in 10xGraph:
 ### Step 1: Set Up Your Environment
 
 ```python
-# Install AgentFlow
-pip install 10xscale-agentflow
+# Install 10xGraph
+pip install 10xgraph
 
 # Import the core components
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import START, END
 ```
 
-`AgentState` lives in `agentflow.core.state`; the graph classes live in `agentflow.core.graph`.
+`AgentState` lives in `tenxgraph.core.state`; the graph classes live in `tenxgraph.core.graph`.
 
 ### Step 2: Define Your Model
 
@@ -296,7 +296,7 @@ agent = Agent(
 `Agent` is itself a node: add it to the graph and wire the edges. It handles the LLM call, so you do not write the request by hand.
 
 ```python
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 
 # Create a state graph — defaults to AgentState
 builder = StateGraph()
@@ -314,7 +314,7 @@ app = builder.compile()
 ```python
 # Invoke the agent — input is a dict with a "messages" list
 result = app.invoke(
-    {"messages": [Message.text_message("Hello! What is AgentFlow?")]},
+    {"messages": [Message.text_message("Hello! What is 10xGraph?")]},
     config={"thread_id": "session-1"},
 )
 
@@ -327,7 +327,7 @@ print(result["messages"][-1].text())
 ### Step 5: Add Streaming (Better UX)
 
 ```python
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 # Stream responses for better perceived latency
 for chunk in app.stream({"messages": [Message.text_message("Hello!")]}):
@@ -340,9 +340,9 @@ print()  # newline at the end
 ### Complete Code
 
 ```python
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import Message
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import Message
+from tenxgraph.utils import START, END
 
 # Initialize the agent node
 agent = Agent(

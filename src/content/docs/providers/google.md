@@ -18,7 +18,7 @@ You pick the backend with one flag: `use_vertex_ai=True` on the `Agent`, or `GOO
 
 ## Setup
 
-1. Install the Google GenAI SDK (not bundled with `10xscale-agentflow`):
+1. Install the Google GenAI SDK (not bundled with `10xgraph`):
 
     ```bash
     pip install google-genai
@@ -37,7 +37,7 @@ You pick the backend with one flag: `use_vertex_ai=True` on the `Agent`, or `GOO
 ## Basic usage
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 agent = Agent(
     model="gemini-2.5-flash",
@@ -51,8 +51,8 @@ agent = Agent(
 ```python
 from dotenv import load_dotenv
 
-from agentflow.core.state import AgentState, Message
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
 load_dotenv()
 
@@ -104,7 +104,7 @@ Cache hit counts are read from `usage_metadata.cached_content_token_count` and l
 `DEBUG` level by 10xGraph after every non-streaming response.
 
 ```python
-from agentflow.core.graph import Agent
+from tenxgraph.core.graph import Agent
 
 # Implicit caching fires automatically — nothing to configure
 agent = Agent(
@@ -214,8 +214,8 @@ agent = Agent(
 `**llm_kwargs`. When set, the same exclusion logic applies.
 
 ```python
-from agentflow.core.state import SummaryContextManager
-from agentflow.core.llm.caller import call_llm
+from tenxgraph.core.state import SummaryContextManager
+from tenxgraph.core.llm.caller import call_llm
 
 text, inp, out, cache = await call_llm(
     "gemini-2.5-flash",
@@ -239,7 +239,7 @@ The evaluation judge calls `call_llm` via `LLMCallerMixin`. Implicit caching on 
 Explicit cache support is not yet wired through `CriterionConfig`.
 
 ```python
-from agentflow.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
+from tenxgraph.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
 
 config = EvalConfig(
     criteria=CriteriaConfig(

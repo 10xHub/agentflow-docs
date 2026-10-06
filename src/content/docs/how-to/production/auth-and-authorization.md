@@ -52,7 +52,7 @@ Use JWT when:
 - clients can attach bearer tokens
 - you want a standard stateless pattern
 
-Example `agentflow.json`:
+Example `10xgraph.json`:
 
 ```json
 {
@@ -84,7 +84,7 @@ Use custom auth when:
 - you need API-key-style access
 - you want custom user context attached to requests
 
-Example `agentflow.json`:
+Example `10xgraph.json`:
 
 ```json
 {
@@ -242,7 +242,7 @@ requests pass through with a warning.
 
 Three things to get right when running ownership in production:
 
-1. **Give the L2 cache a Redis.** Set `redis` in `agentflow.json`, or `REDIS_URL` in the
+1. **Give the L2 cache a Redis.** Set `redis` in `10xgraph.json`, or `REDIS_URL` in the
    environment. Without one, every worker keeps its own L1 cache and each pays its own first
    database lookup per thread. If the `redis` package is not installed the server logs a warning
    at startup and runs L1-only; watch for that line after a dependency change.
@@ -388,7 +388,7 @@ set.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| requests succeed without credentials | auth not enabled | set `auth` in `agentflow.json` and restart; the server logs a warning at startup when auth is disabled |
+| requests succeed without credentials | auth not enabled | set `auth` in `10xgraph.json` and restart; the server logs a warning at startup when auth is disabled |
 | `403 Forbidden` for valid users | authorization backend too restrictive, or an empty resolved scope list | inspect backend rules and the returned user context; check `default_scopes` |
 | `403 Missing required scope: ...` | the identity's scopes do not cover this endpoint | add the `"<resource>:<action>"` pair to the role, or to `default_scopes` |
 | user cannot read a thread they created | a different `user_id` between the two requests, or the thread was created before auth was enabled | check the `user_id` claim is stable across token refreshes |

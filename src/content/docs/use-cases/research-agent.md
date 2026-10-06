@@ -82,7 +82,7 @@ Notes:
 ## The agent
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
 
 tool_node = ToolNode([web_search, fetch_url, search_internal_docs])
 

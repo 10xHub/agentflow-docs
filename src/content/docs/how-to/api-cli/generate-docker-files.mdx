@@ -9,8 +9,8 @@ faq:
     a: An agent run can take minutes, and Gunicorn's default 30 second graceful timeout would kill runs mid-flight on every rolling deploy. The generated files use a 600 second graceful timeout, a 660 second worker timeout, and a 660 second Kubernetes grace period.
   - q: Can I change the image name in k8s.yaml?
     a: Yes. The manifest uses the placeholder image agentflow-cli:latest. Build and push your own image, then edit the image field before applying.
-  - q: Does build read my agentflow.json?
-    a: No. It looks for a requirements file or pyproject.toml, and the container reads agentflow.json at runtime, so your code and config must be copied into the image.
+  - q: Does build read my 10xgraph.json?
+    a: No. It looks for a requirements file or pyproject.toml, and the container reads 10xgraph.json at runtime, so your code and config must be copied into the image.
 group: CLI
 ---
 
@@ -20,7 +20,7 @@ group: CLI
 
 1. **Generate the deployment files**
 
-   Run it in the project root, next to `agentflow.json`.
+   Run it in the project root, next to `10xgraph.json`.
 
    ```bash
    10xgraph build --docker-compose --k8s
@@ -63,7 +63,7 @@ Without `--force`, `build` stops if the Dockerfile exists. It skips an existing 
 <FileTree>
 
 - your-project/
-  - agentflow.json
+  - 10xgraph.json
   - **Dockerfile** python:3.13-slim, non-root user, healthcheck on /ping
   - .dockerignore excludes .env, caches, venvs, .git, eval_reports
   - docker-compose.yml with `--docker-compose`

@@ -44,9 +44,9 @@ def get_weather(location: str) -> str:
 Create `agent_with_tool.py`:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 def get_weather(location: str) -> str:
     """Get the current weather for a specific location."""
@@ -113,7 +113,7 @@ The weather in London is sunny and 22°C.
 Tool functions can receive extra information automatically. Add `tool_call_id` or `state` as optional parameters and 10xGraph injects them without exposing them in the tool schema:
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 def get_weather(
     location: str,

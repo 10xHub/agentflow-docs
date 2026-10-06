@@ -9,7 +9,7 @@ label: Multiagent
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/multiagent/multiagent.py`](https://github.com/10xHub/Agentflow/blob/main/examples/multiagent/multiagent.py)
+**Source example:** [`examples/multiagent/multiagent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/multiagent/multiagent.py)
 
 ## What you will build
 
@@ -24,7 +24,7 @@ This example is intentionally simple and deterministic. It is a good introductio
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 
 ## Graph layout
 
@@ -135,7 +135,7 @@ Results:
 Run:
 
 ```bash
-python agentflow/examples/multiagent/multiagent.py
+python examples/multiagent/multiagent.py
 ```
 
 You should see three runs printed:

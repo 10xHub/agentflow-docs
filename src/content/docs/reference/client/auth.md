@@ -273,9 +273,9 @@ If a reverse proxy in front of your API strips `Sec-WebSocket-Protocol`, the han
 
 ## Matching client auth to server auth configuration
 
-Use the following table to choose the right client-side auth type based on the `auth` field in `agentflow.json`:
+Use the following table to choose the right client-side auth type based on the `auth` field in `10xgraph.json`:
 
-| Server `agentflow.json` auth | Recommended client auth |
+| Server `10xgraph.json` auth | Recommended client auth |
 |---|---|
 | `null` (no auth) | Omit `auth` entirely |
 | `"jwt"` | `{ type: 'bearer', token: jwtToken }` |

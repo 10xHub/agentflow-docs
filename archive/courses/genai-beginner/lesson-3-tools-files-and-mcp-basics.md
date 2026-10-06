@@ -294,9 +294,9 @@ flowchart LR
 ```python
 from fastmcp import Client
 
-from agentflow.core.graph import ToolNode
+from tenxgraph.core.graph import ToolNode
 
-# Connect to an MCP server. AgentFlow uses the fastmcp client directly.
+# Connect to an MCP server. 10xGraph uses the fastmcp client directly.
 mcp_client = Client("http://mcp-server:8080/mcp")
 
 # Hand the client to a ToolNode; it discovers the server's tools for you.
@@ -307,7 +307,7 @@ tools = await tool_node.all_tools()
 print(tools)
 
 # Or hand the same client to a prebuilt ReactAgent
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.agent import ReactAgent
 
 agent = ReactAgent(model="gpt-4o", tools=[], client=mcp_client)
 app = agent.compile()
@@ -324,7 +324,7 @@ app = agent.compile()
 ```python
 from typing import Literal
 
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool(
     name="calculator",
@@ -365,7 +365,7 @@ Bounds that a Pydantic field would have enforced (`ge`, `le`) become explicit ch
 ```python
 from pathlib import Path
 
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool(
     name="file_read",
@@ -410,15 +410,15 @@ def file_read(path: str, max_lines: int = 100) -> str:
         return f"Error: {e}"
 ```
 
-10xGraph also ships a hardened `file_read` in `agentflow.prebuilt.tools` if you would rather not write your own.
+10xGraph also ships a hardened `file_read` in `tenxgraph.prebuilt.tools` if you would rather not write your own.
 
 ### Step 3: Register Tools with Agent
 
 `ReactAgent` builds the graph; `compile()` turns it into the runnable app. The model is a plain string.
 
 ```python
-from agentflow.core.state import Message
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
 # Create agent with tools
 agent = ReactAgent(
@@ -448,7 +448,7 @@ for chunk in app.stream(
 ```python
 import re
 
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 @tool(
     name="web_search",
@@ -500,7 +500,7 @@ Build two safe tools:
 ```python
 from typing import Literal
 
-from agentflow.utils.decorators import tool
+from tenxgraph.utils.decorators import tool
 
 # Tool 1: get_current_time
 @tool(name="get_current_time", description="...")

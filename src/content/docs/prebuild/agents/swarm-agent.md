@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 A peer-to-peer multi-agent pattern where agents hand off control to each other directly — no central coordinator.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -139,11 +139,11 @@ Each member is a fully configured `Agent` instance. Members can use different mo
 ```python
 import asyncio
 from dotenv import load_dotenv
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SwarmAgent
-from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.prebuilt.tools import fetch_url, google_web_search
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SwarmAgent
+from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -224,11 +224,11 @@ When every member can hand off to every other, omit `can_handoff_to` (defaults t
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SwarmAgent
-from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.prebuilt.tools import google_web_search, safe_calculator
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SwarmAgent
+from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
+from tenxgraph.prebuilt.tools import google_web_search, safe_calculator
+from tenxgraph.core.state import Message
 
 researcher = Agent(
     model="gpt-4o-mini",
@@ -274,12 +274,12 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SwarmAgent
-from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.prebuilt.tools import google_web_search
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SwarmAgent
+from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.prebuilt.tools import google_web_search
+from tenxgraph.core.state import Message
 
 triage = Agent(model="gpt-4o-mini", provider="openai",
                system_prompt=[{"role": "system", "content": "Route requests."}])
@@ -314,10 +314,10 @@ asyncio.run(main())
 Each member can use a different provider independently:
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SwarmAgent
-from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SwarmAgent
+from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
+from tenxgraph.prebuilt.tools import google_web_search
 
 researcher = Agent(
     model="google/gemini-2.5-flash",
@@ -353,10 +353,10 @@ app = swarm.compile()
 **`graph.py`**
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SwarmAgent
-from agentflow.prebuilt.agent.swarm import SwarmMemberConfig
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SwarmAgent
+from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
+from tenxgraph.prebuilt.tools import google_web_search
 
 triage = Agent(
     model="gpt-4o-mini",
@@ -390,7 +390,7 @@ swarm = SwarmAgent(
 app = swarm.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

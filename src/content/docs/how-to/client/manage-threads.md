@@ -244,7 +244,7 @@ await showThreadHistory('thread-abc123');
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id` and check `agentflow.json`. |
+| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id` and check `10xgraph.json`. |
 | `AgentFlowError` status `422` | Invalid `thread_id` (empty string or zero), `message_id` (empty), `offset` (< 0), or `limit` (≤ 0). | Check the values you pass to each method. |
 | Empty `threads` list | Checkpointer not configured or no threads created yet. | Compile the graph with a checkpointer (`compile(checkpointer=...)`). |
 

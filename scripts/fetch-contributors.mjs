@@ -26,7 +26,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'src/data/contributors.json');
 
 const REPOS = [
-  '10xHub/agentflow',
+  '10xGraph/10xGraph',
   '10xHub/agentflow-cli',
   '10xHub/agentflow-client',
   '10xHub/agentflow-docs',

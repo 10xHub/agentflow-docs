@@ -60,9 +60,9 @@ Three components:
 ## Building a state graph with 10xGraph
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 
 # Define tools
 def search(query: str) -> str:
@@ -106,13 +106,13 @@ The `add_edge("TOOLS", "AGENT")` line creates the ReAct cycle. After every tool 
 State is a typed Python class that carries all data through the graph:
 
 ```python
-from agentflow.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState, Message
 
 # AgentState is the built-in state class
 # It includes: messages (user/assistant history) + context (LLM messages)
 # You can extend it with custom fields:
 
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 from pydantic import Field
 
 class MyState(AgentState):

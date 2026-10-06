@@ -54,7 +54,7 @@ state.error("msg")           # mark execution as errored
 Extend `AgentState` to add application fields:
 
 ```python
-from agentflow.core.state import AgentState
+from tenxgraph.core.state import AgentState
 
 class MyState(AgentState):
     user_id: str = ""
@@ -65,7 +65,7 @@ class MyState(AgentState):
 Pass the subclass to `StateGraph`:
 
 ```python
-from agentflow.core.graph import StateGraph
+from tenxgraph.core.graph import StateGraph
 
 graph = StateGraph(MyState)   # or StateGraph(MyState())
 ```
@@ -106,7 +106,7 @@ class Message(BaseModel):
 ### Creating messages
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 # Plain text user message
 msg = Message.text_message("Hello!")
@@ -154,12 +154,12 @@ class TokenUsages(BaseModel):
 
 ## Content block types
 
-All block types are importable from the top-level `agentflow` package and from `agentflow.core.state`.
+All block types are importable from `tenxgraph.core.state`.
 
 ### TextBlock
 
 ```python
-from agentflow.core.state import TextBlock, AnnotationRef
+from tenxgraph.core.state import TextBlock, AnnotationRef
 
 block = TextBlock(
     text="Here is the answer.",
@@ -172,7 +172,7 @@ block = TextBlock(
 ### ImageBlock
 
 ```python
-from agentflow.core.state import ImageBlock, MediaRef
+from tenxgraph.core.state import ImageBlock, MediaRef
 
 block = ImageBlock(
     media=MediaRef(kind="url", url="https://example.com/photo.png", mime_type="image/png"),
@@ -184,7 +184,7 @@ block = ImageBlock(
 ### AudioBlock
 
 ```python
-from agentflow.core.state import AudioBlock
+from tenxgraph.core.state import AudioBlock
 
 block = AudioBlock(
     media=MediaRef(kind="data", data_base64="<b64>", mime_type="audio/wav"),
@@ -197,7 +197,7 @@ block = AudioBlock(
 ### VideoBlock
 
 ```python
-from agentflow.core.state import VideoBlock
+from tenxgraph.core.state import VideoBlock
 
 block = VideoBlock(
     media=MediaRef(kind="data", data_base64="<b64>", mime_type="video/mp4"),
@@ -208,7 +208,7 @@ block = VideoBlock(
 ### DocumentBlock
 
 ```python
-from agentflow.core.state import DocumentBlock
+from tenxgraph.core.state import DocumentBlock
 
 block = DocumentBlock(
     media=MediaRef(kind="file_id", file_id="doc-key", mime_type="application/pdf"),
@@ -223,7 +223,7 @@ block = DocumentBlock(
 Generic binary block for anything not covered by the above:
 
 ```python
-from agentflow.core.state import DataBlock
+from tenxgraph.core.state import DataBlock
 
 block = DataBlock(
     mime_type="application/octet-stream",
@@ -237,7 +237,7 @@ block = DataBlock(
 Present in assistant messages when the model requests a tool:
 
 ```python
-from agentflow.core.state import ToolCallBlock
+from tenxgraph.core.state import ToolCallBlock
 
 block = ToolCallBlock(
     id="call_abc123",
@@ -254,7 +254,7 @@ The same information is also in `message.tools_calls` as a raw dict list (provid
 Present in `"tool"` role messages returned by `ToolNode`:
 
 ```python
-from agentflow.core.state import ToolResultBlock
+from tenxgraph.core.state import ToolResultBlock
 
 block = ToolResultBlock(
     call_id="call_abc123",   # matches ToolCallBlock.id
@@ -268,7 +268,7 @@ block = ToolResultBlock(
 Chain-of-thought traces (supported by o1, o3, Gemini Thinking):
 
 ```python
-from agentflow.core.state.message_block import ReasoningBlock
+from tenxgraph.core.state.message_block import ReasoningBlock
 
 block = ReasoningBlock(text="Let me think step by step...")
 ```
@@ -278,7 +278,7 @@ block = ReasoningBlock(text="Let me think step by step...")
 Signals an error that occurred during tool execution or processing:
 
 ```python
-from agentflow.core.state import ErrorBlock
+from tenxgraph.core.state import ErrorBlock
 
 block = ErrorBlock(error="Tool timed out after 30 s.", tool_call_id="call_abc123")
 ```
@@ -288,7 +288,7 @@ block = ErrorBlock(error="Tool timed out after 30 s.", tool_call_id="call_abc123
 Structured citations and references returned by search-enabled models:
 
 ```python
-from agentflow.core.state.message_block import AnnotationBlock
+from tenxgraph.core.state.message_block import AnnotationBlock
 
 block = AnnotationBlock(
     annotation=AnnotationRef(url="https://example.com", title="Source article")
@@ -302,7 +302,7 @@ block = AnnotationBlock(
 When a tool needs to both send a message back to the model **and** mutate state fields simultaneously, return `ToolResult` instead of a plain string:
 
 ```python
-from agentflow.core.state.tool_result import ToolResult
+from tenxgraph.core.state.tool_result import ToolResult
 
 class MyState(AgentState):
     selected_city: str = ""

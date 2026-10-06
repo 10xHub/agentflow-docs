@@ -10,7 +10,7 @@ updated: "2026-07-21"
 
 A centralized multi-agent pattern where a dedicated supervisor LLM decides which specialist worker to invoke next.
 
-**Import path:** `agentflow.prebuilt.agent`
+**Import path:** `tenxgraph.prebuilt.agent`
 
 ---
 
@@ -156,11 +156,11 @@ Each worker that has tools gets `WORKER → WORKER_TOOL → WORKER` wired automa
 ```python
 import asyncio
 from dotenv import load_dotenv
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.prebuilt.tools import google_web_search
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.prebuilt.tools import google_web_search
+from tenxgraph.core.state import Message
 
 load_dotenv()
 
@@ -218,8 +218,8 @@ asyncio.run(main())
 ### With a custom supervisor prompt
 
 ```python
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
 
 agent = SupervisorTeamAgent(
     supervisor_model="gpt-4o",
@@ -244,12 +244,12 @@ agent = SupervisorTeamAgent(
 
 ```python
 import asyncio
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.prebuilt.tools import google_web_search, safe_calculator
-from agentflow.core.state import Message
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.prebuilt.tools import google_web_search, safe_calculator
+from tenxgraph.core.state import Message
 
 agent = SupervisorTeamAgent(
     supervisor_model="gpt-4o-mini",
@@ -289,10 +289,10 @@ asyncio.run(main())
 `**supervisor_kwargs` goes to the supervisor only — each worker `Agent` is configured independently:
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.prebuilt.tools import google_web_search
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.prebuilt.tools import google_web_search
 
 agent = SupervisorTeamAgent(
     supervisor_model="google/gemini-2.5-flash",
@@ -318,10 +318,10 @@ agent = SupervisorTeamAgent(
 **`graph.py`**
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.prebuilt.agent import SupervisorTeamAgent
-from agentflow.prebuilt.agent.supervisor_team import WorkerConfig
-from agentflow.prebuilt.tools import google_web_search, safe_calculator
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent
+from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.prebuilt.tools import google_web_search, safe_calculator
 
 agent = SupervisorTeamAgent(
     supervisor_model="gpt-4o-mini",
@@ -344,7 +344,7 @@ agent = SupervisorTeamAgent(
 app = agent.compile()
 ```
 
-**`agentflow.json`**
+**`10xgraph.json`**
 
 ```json
 {

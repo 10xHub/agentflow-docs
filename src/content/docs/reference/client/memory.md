@@ -13,7 +13,7 @@ The memory API lets you store and retrieve long-term memories across threads. Me
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
-The memory endpoints require the `store` field to be configured in `agentflow.json`. Without a store, endpoints return empty results.
+The memory endpoints require the `store` field to be configured in `10xgraph.json`. Without a store, endpoints return empty results.
 
 </aside>
 
@@ -378,7 +378,7 @@ async function invokeWithMemory(userInput: string) {
 | Error | Cause | Fix |
 |---|---|---|
 | `AgentFlowError` status `404` | Memory not found (wrong ID or deleted). | Check the ID is correct. |
-| `AgentFlowError` status `503` | Store not configured or unavailable. | Check `store` field in `agentflow.json` and the store backend status. |
+| `AgentFlowError` status `503` | Store not configured or unavailable. | Check `store` field in `10xgraph.json` and the store backend status. |
 
 ---
 

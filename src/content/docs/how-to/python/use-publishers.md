@@ -29,11 +29,11 @@ All publishers extend `BasePublisher`. Pass a publisher to `StateGraph(publisher
 
 ## ConsolePublisher
 
-Prints every event to stdout. Good for debugging locally. This publisher is opt-in and writes to stdout by default. In a server context where stdout output is not desirable, pass `{"use_logger": True}` to route events through the `agentflow.publisher` logger at `INFO` level instead:
+Prints every event to stdout. Good for debugging locally. This publisher is opt-in and writes to stdout by default. In a server context where stdout output is not desirable, pass `{"use_logger": True}` to route events through the `tenxgraph.publisher` logger at `INFO` level instead:
 
 ```python
-from agentflow.runtime.publisher import ConsolePublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import ConsolePublisher
+from tenxgraph.core.graph import StateGraph
 
 # Default, writes to stdout
 publisher = ConsolePublisher()
@@ -56,13 +56,13 @@ Publishes events as JSON to a Redis channel or stream. Requires `pip install 10x
 ### Pub/Sub mode (default)
 
 ```python
-from agentflow.runtime.publisher import RedisPublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import RedisPublisher
+from tenxgraph.core.graph import StateGraph
 
 publisher = RedisPublisher({
     "url": "redis://localhost:6379/0",
     "mode": "pubsub",
-    "channel": "agentflow.events",
+    "channel": "tenxgraph.events",
     "max_connections": 10,
 })
 
@@ -78,7 +78,7 @@ import asyncio
 async def listen():
     r = aioredis.from_url("redis://localhost:6379/0")
     pubsub = r.pubsub()
-    await pubsub.subscribe("agentflow.events")
+    await pubsub.subscribe("tenxgraph.events")
     async for msg in pubsub.listen():
         if msg["type"] == "message":
             print(msg["data"])
@@ -92,7 +92,7 @@ asyncio.run(listen())
 publisher = RedisPublisher({
     "url": "redis://localhost:6379/0",
     "mode": "stream",
-    "stream": "agentflow.events",
+    "stream": "tenxgraph.events",
     "maxlen": 10000,             # trim stream to last 10 000 entries
 })
 ```
@@ -103,8 +103,8 @@ publisher = RedisPublisher({
 |---|---|---|
 | `url` | `"redis://localhost:6379/0"` | Redis connection URL. |
 | `mode` | `"pubsub"` | `"pubsub"` or `"stream"`. |
-| `channel` | `"agentflow.events"` | Pub/Sub channel name. |
-| `stream` | `"agentflow.events"` | Redis Stream name. |
+| `channel` | `"tenxgraph.events"` | Pub/Sub channel name. |
+| `stream` | `"tenxgraph.events"` | Redis Stream name. |
 | `maxlen` | `None` | Max length cap for streams. |
 | `max_connections` | `10` | Connection pool size. |
 | `socket_timeout` | `5.0` | Socket timeout in seconds. |
@@ -119,12 +119,12 @@ publisher = RedisPublisher({
 Publishes events to a Kafka topic. Requires `pip install 10xgraph[kafka]`.
 
 ```python
-from agentflow.runtime.publisher import KafkaPublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import KafkaPublisher
+from tenxgraph.core.graph import StateGraph
 
 publisher = KafkaPublisher({
     "bootstrap_servers": "localhost:9092",
-    "topic": "agentflow.events",
+    "topic": "tenxgraph.events",
     "client_id": "my-agent-service",
     "compression_type": "gzip",
 })
@@ -137,7 +137,7 @@ graph = StateGraph(publisher=publisher)
 | Key | Default | Notes |
 |---|---|---|
 | `bootstrap_servers` | `"localhost:9092"` | Comma-separated broker list. |
-| `topic` | `"agentflow.events"` | Kafka topic to publish to. |
+| `topic` | `"tenxgraph.events"` | Kafka topic to publish to. |
 | `client_id` | `None` | Producer client ID. |
 | `max_batch_size` | `16384` | Max batch size in bytes. |
 | `linger_ms` | `0` | Time to wait for batching in ms. |
@@ -151,12 +151,12 @@ graph = StateGraph(publisher=publisher)
 Publishes events to a RabbitMQ exchange. Requires `pip install 10xgraph[rabbitmq]`.
 
 ```python
-from agentflow.runtime.publisher import RabbitMQPublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import RabbitMQPublisher
+from tenxgraph.core.graph import StateGraph
 
 publisher = RabbitMQPublisher({
     "url": "amqp://guest:guest@localhost/",
-    "exchange": "agentflow.events",
+    "exchange": "tenxgraph.events",
     "routing_key": "agent.executions",
     "exchange_type": "topic",
     "durable": True,
@@ -170,8 +170,8 @@ graph = StateGraph(publisher=publisher)
 | Key | Default | Notes |
 |---|---|---|
 | `url` | `"amqp://guest:guest@localhost/"` | AMQP connection URL. |
-| `exchange` | `"agentflow.events"` | Exchange name. |
-| `routing_key` | `"agentflow.events"` | Message routing key. |
+| `exchange` | `"tenxgraph.events"` | Exchange name. |
+| `routing_key` | `"tenxgraph.events"` | Message routing key. |
 | `exchange_type` | `"topic"` | `"topic"`, `"direct"`, `"fanout"`, `"headers"`. |
 | `declare` | `True` | Declare the exchange if it doesn't exist. |
 | `durable` | `True` | Exchange survives broker restarts. |
@@ -185,8 +185,8 @@ graph = StateGraph(publisher=publisher)
 Fan-out to multiple publishers simultaneously.
 
 ```python
-from agentflow.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
-from agentflow.core.graph import StateGraph
+from tenxgraph.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
+from tenxgraph.core.graph import StateGraph
 
 publisher = CompositePublisher([
     ConsolePublisher(),
@@ -216,8 +216,8 @@ Emits execution events as OpenTelemetry spans (graph → node → LLM → tool) 
 `setup_tracing(graph, level=...)` attaches an `OtelPublisher` to the graph and must be called **before** `graph.compile()`. With no explicit tracer it uses the global `TracerProvider`, so configure your exporter (Jaeger, Tempo, Honeycomb, …) first.
 
 ```python
-from agentflow.core.graph import StateGraph
-from agentflow.runtime.publisher import setup_tracing, ObservabilityLevel
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.runtime.publisher import setup_tracing, ObservabilityLevel
 
 graph = StateGraph()
 # ... add nodes, edges, set entry point
@@ -245,7 +245,7 @@ Every event published carries an `EventModel` with these fields:
 | `metadata` | `dict` | `run_id`, `thread_id`, `user_id`, `timestamp`. |
 
 ```python
-from agentflow.runtime.publisher import Event, EventType, ContentType
+from tenxgraph.runtime.publisher import Event, EventType, ContentType
 ```
 
 ---
@@ -254,11 +254,11 @@ from agentflow.runtime.publisher import Event, EventType, ContentType
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.runtime.publisher import RedisPublisher
-from agentflow.utils import END
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.runtime.publisher import RedisPublisher
+from tenxgraph.utils import END
 
 publisher = RedisPublisher({
     "url": "redis://localhost:6379/0",

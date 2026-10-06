@@ -2,13 +2,13 @@
 package: core
 version: "0.9.1"
 date: 2026-07-27
-summary: Small fix release. The synchronous tool listing on ToolNode now includes remote tools, and AudioAgent is exported from agentflow.prebuilt.
+summary: Small fix release. The synchronous tool listing on ToolNode now includes remote tools, and AudioAgent is exported from tenxgraph.prebuilt.
 breaking: false
 ---
 
 ### Added
 
-- `AudioAgent` is now exported from `agentflow.prebuilt`.
+- `AudioAgent` is now exported from `tenxgraph.prebuilt`.
 
 ### Fixed
 

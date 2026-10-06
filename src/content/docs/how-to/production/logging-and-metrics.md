@@ -26,13 +26,13 @@ The library never configures logging by itself, so nothing changes until you opt
 
 ```python
 import logging
-from agentflow.utils.logging import setup_structured_logging
+from tenxgraph.utils.logging import setup_structured_logging
 
 setup_structured_logging(
     level=logging.INFO,
     json_format=True,
     redact_secrets=True,
-    logger_name="agentflow",
+    logger_name="tenxgraph",
 )
 ```
 
@@ -41,7 +41,7 @@ setup_structured_logging(
 | `level` | `int` | `logging.INFO` | Level applied to both the logger and the installed handler. |
 | `json_format` | `bool` | `True` | Emit one JSON object per line. When `False`, a plain-text format carrying the same correlation fields is used instead. |
 | `redact_secrets` | `bool` | `True` | Attach the secret redaction filter to the handler. |
-| `logger_name` | `str` | `"agentflow"` | Logger to configure. |
+| `logger_name` | `str` | `"tenxgraph"` | Logger to configure. |
 
 It returns the installed `logging.Handler` so you can attach your own filters or swap the stream.
 
@@ -51,7 +51,7 @@ It returns the installed `logging.Handler` so you can attach your own filters or
 {
   "timestamp": "2026-07-21 10:14:02,881",
   "level": "INFO",
-  "logger": "agentflow.agent",
+  "logger": "tenxgraph.agent",
   "message": "Node 'MAIN' completed",
   "run_id": "run_01H...",
   "thread_id": "thread-42",
@@ -77,7 +77,7 @@ Exceptions logged with `exc_info=True` land under an `exception` key.
 The execution loop binds these fields for you at the start of a run and again when entering a node. Bind them yourself when logging from outside a graph run:
 
 ```python
-from agentflow.utils.logging import bind_log_context_from_config, get_log_context, set_log_context
+from tenxgraph.utils.logging import bind_log_context_from_config, get_log_context, set_log_context
 
 bind_log_context_from_config(config)          # reads run_id, thread_id, user_id
 set_log_context(node="my_background_worker")  # or set fields individually
@@ -94,10 +94,10 @@ Because the fields live in context variables, they are per-async-context and do 
 Attach it to a **handler**, not a logger. Python applies logger-level filters only to records emitted directly on that logger, so a logger-level filter misses every child logger:
 
 ```python
-from agentflow.utils.logging import SecretRedactionFilter, install_secret_redaction, mask_secrets
+from tenxgraph.utils.logging import SecretRedactionFilter, install_secret_redaction, mask_secrets
 
 handler.addFilter(SecretRedactionFilter())   # preferred: covers all child loggers
-install_secret_redaction("agentflow")        # convenience wrapper, returns the filter
+install_secret_redaction("tenxgraph")        # convenience wrapper, returns the filter
 mask_secrets(some_string)                    # redact an arbitrary string
 ```
 
@@ -109,10 +109,10 @@ This is a heuristic safety net. It will not catch every possible secret and can 
 
 ## Metrics
 
-`agentflow.utils.metrics` is a zero-dependency, thread-safe in-process registry. It is always recording; the framework already instruments node executions, tool calls, background tasks, and checkpointer writes.
+`tenxgraph.utils.metrics` is a zero-dependency, thread-safe in-process registry. It is always recording; the framework already instruments node executions, tool calls, background tasks, and checkpointer writes.
 
 ```python
-from agentflow.utils.metrics import counter, timer, snapshot
+from tenxgraph.utils.metrics import counter, timer, snapshot
 
 counter("orders.processed").inc()
 counter("orders.processed").inc(3, attributes={"channel": "web"})
@@ -136,12 +136,12 @@ with timer("db_write_latency_ms"):
 ### Reading metrics without an exporter
 
 ```python
-from agentflow.utils.metrics import snapshot
+from tenxgraph.utils.metrics import snapshot
 
 snapshot()
 # {
-#   "counters": {"agentflow.node.executions": 128, "agentflow.tool.errors": 2},
-#   "timers": {"agentflow.node.duration": {"count": 128, "avg_ms": 412.7, "max_ms": 2891.0}},
+#   "counters": {"tenxgraph.node.executions": 128, "tenxgraph.tool.errors": 2},
+#   "timers": {"tenxgraph.node.duration": {"count": 128, "avg_ms": 412.7, "max_ms": 2891.0}},
 # }
 ```
 
@@ -154,14 +154,14 @@ pip install "10xgraph[otel]"
 ```
 
 ```python
-from agentflow.utils.metrics import setup_otel_metrics
+from tenxgraph.utils.metrics import setup_otel_metrics
 
 setup_otel_metrics()  # once, at startup
 ```
 
 Call it once at startup, after your application has configured a `MeterProvider` with its exporter. From then on every existing `counter(...)` and `timer(...)` call site exports automatically, with no change at the call site: counters become OTEL counters, timers become histograms with unit `ms`, and `attributes` become dimensions.
 
-Pass an explicit `meter` to use a specific one; otherwise a meter named `agentflow` is taken from the global `MeterProvider`.
+Pass an explicit `meter` to use a specific one; otherwise a meter named `10xgraph` is taken from the global `MeterProvider`.
 
 `setup_otel_metrics()` returns `False` and logs at info level when OpenTelemetry is not installed. The in-process registry keeps working, so this is safe to call unconditionally.
 
@@ -169,15 +169,15 @@ Pass an explicit `meter` to use a specific one; otherwise a meter named `agentfl
 
 | Metric | Type | Attributes |
 |---|---|---|
-| `agentflow.node.executions` | counter | `node` |
-| `agentflow.node.errors` | counter | `node` |
-| `agentflow.node.timeouts` | counter | `node` |
-| `agentflow.node.stopped` | counter | `node` |
-| `agentflow.node.duration` | timer | `node`, `outcome` |
-| `agentflow.tool.calls` | counter | `node`, `tool` |
-| `agentflow.tool.errors` | counter | `node`, `tool` |
-| `agentflow.tool.timeouts` | counter | `node`, `tool` |
-| `agentflow.tool.duration` | timer | `node`, `tool`, `outcome` |
+| `tenxgraph.node.executions` | counter | `node` |
+| `tenxgraph.node.errors` | counter | `node` |
+| `tenxgraph.node.timeouts` | counter | `node` |
+| `tenxgraph.node.stopped` | counter | `node` |
+| `tenxgraph.node.duration` | timer | `node`, `outcome` |
+| `tenxgraph.tool.calls` | counter | `node`, `tool` |
+| `tenxgraph.tool.errors` | counter | `node`, `tool` |
+| `tenxgraph.tool.timeouts` | counter | `node`, `tool` |
+| `tenxgraph.tool.duration` | timer | `node`, `tool`, `outcome` |
 | `background_task_manager.tasks_created` | counter | - |
 | `background_task_manager.tasks_completed` | counter | - |
 | `background_task_manager.tasks_failed` | counter | - |
@@ -200,8 +200,8 @@ Telemetry failures are swallowed and logged at debug level. A broken exporter ne
 ```python
 import logging
 
-from agentflow.utils.logging import setup_structured_logging
-from agentflow.utils.metrics import setup_otel_metrics
+from tenxgraph.utils.logging import setup_structured_logging
+from tenxgraph.utils.metrics import setup_otel_metrics
 
 def configure_observability() -> None:
     setup_structured_logging(level=logging.INFO, json_format=True, redact_secrets=True)

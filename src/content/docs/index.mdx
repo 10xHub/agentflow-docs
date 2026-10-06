@@ -22,7 +22,7 @@ faq:
 
 A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for the common tool-calling loop, or build your own `StateGraph` when you need routing, parallel branches or human approval steps. Tools are ordinary Python functions, such as `lookup_order(order_id: str)` or `refund_order(order_id: str, amount: float)`. Models come from OpenAI, Google Gemini or Anthropic, and you can change the model without touching the graph.
 
-When you are ready to serve it, you point `agentflow.json` at your compiled graph. You do not write routes, auth middleware or deployment files by hand.
+When you are ready to serve it, you point `10xgraph.json` at your compiled graph. You do not write routes, auth middleware or deployment files by hand.
 
 ## What 10xGraph generates
 
@@ -34,7 +34,7 @@ When you are ready to serve it, you point `agentflow.json` at your compiled grap
 | Deployment | Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service |
 
 <Callout type="tip" title="Formerly Agentflow">
-10xGraph was published as Agentflow until 2026. The Python import path is unchanged, so `from agentflow import StateGraph` keeps working.
+10xGraph was published as Agentflow until 2026. The Python package is now imported as `tenxgraph`, as in `from tenxgraph import StateGraph`. The old `agentflow` import stays available as a deprecated alias until 2.0.
 </Callout>
 
 ## Where to go next
@@ -44,7 +44,7 @@ When you are ready to serve it, you point `agentflow.json` at your compiled grap
 <LinkCard eyebrow="Get started" title="Project structure" href="/docs/get-started/project-structure" description="Every file the production template generates and what it does." />
 <LinkCard eyebrow="Concept" title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How a resumed run skips tools that already finished." />
 <LinkCard eyebrow="Concept" title="Memory: hot and cold" href="/docs/concepts/memory" description="Redis for the hot path, PostgreSQL for durable history." />
-<LinkCard eyebrow="How-to" title="Add JWT authentication" href="/docs/how-to/api-cli/add-auth" description="Turn on auth and owner-only threads in agentflow.json." />
+<LinkCard eyebrow="How-to" title="Add JWT authentication" href="/docs/how-to/api-cli/add-auth" description="Turn on auth and owner-only threads in 10xgraph.json." />
 <LinkCard eyebrow="Reference" title="CLI reference" href="/docs/reference/api-cli/commands" description="Every command and flag of the 10xgraph CLI." />
 </CardGrid>
 

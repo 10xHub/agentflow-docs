@@ -58,10 +58,10 @@ volumes:
 ## Wire the checkpointer
 
 ```python
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import PgCheckpointer
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import PgCheckpointer
+from tenxgraph.utils import END
 
 checkpointer = PgCheckpointer(
     db_url="postgresql+asyncpg://agentflow:agentflow@localhost:5432/agentflow",

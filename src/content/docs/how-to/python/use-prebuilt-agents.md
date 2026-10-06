@@ -11,7 +11,7 @@ updated: "2026-05-23"
 10xGraph ships six prebuilt agent classes that wrap a fully wired `StateGraph` behind a single `compile()` call. Each class exposes the same surface as a raw `StateGraph`: you get a `CompiledGraph` you can `invoke()` or `astream()`.
 
 ```python
-from agentflow.prebuilt.agent import (
+from tenxgraph.prebuilt.agent import (
     ReactAgent,
     PlanActReflectAgent,
     StructuredOutputAgent,
@@ -28,8 +28,8 @@ from agentflow.prebuilt.agent import (
 The most common pattern: an LLM agent that can call tools in a loop until it has enough information to answer.
 
 ```python
-from agentflow.prebuilt.agent import ReactAgent
-from agentflow.prebuilt.tools import fetch_url, safe_calculator
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import fetch_url, safe_calculator
 
 agent = ReactAgent(
     model="gpt-4o",
@@ -102,8 +102,8 @@ app = agent.compile()
 Breaks complex tasks into a Plan → Act → Reflect loop. The planner creates a step-by-step plan; the actor executes each step using tools; the reflector evaluates success and decides whether to replan.
 
 ```python
-from agentflow.prebuilt.agent import PlanActReflectAgent
-from agentflow.prebuilt.tools import fetch_url, google_web_search
+from tenxgraph.prebuilt.agent import PlanActReflectAgent
+from tenxgraph.prebuilt.tools import fetch_url, google_web_search
 
 agent = PlanActReflectAgent(
     model="gpt-4o",
@@ -128,7 +128,7 @@ Guarantees the response is a JSON object matching a Pydantic schema. Useful for 
 
 ```python
 from pydantic import BaseModel
-from agentflow.prebuilt.agent import StructuredOutputAgent
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
 
 class ProductReview(BaseModel):
     sentiment: str       # "positive" | "negative" | "neutral"
@@ -157,9 +157,9 @@ print(result["messages"][-1].content)  # JSON string conforming to ProductReview
 A supervisor LLM routes tasks to specialist worker agents. Each worker is a pre-built agent (usually an `Agent`) that you configure yourself, so every worker can have its own model, tools and prompt.
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
-from agentflow.core.state import Message
-from agentflow.prebuilt.agent import SupervisorTeamAgent, WorkerConfig
+from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import SupervisorTeamAgent, WorkerConfig
 
 
 def lookup_order(order_id: str) -> str:
@@ -233,7 +233,7 @@ WorkerConfig(
 Agents hand off directly to each other. There is no central supervisor: each member decides who handles the task next. Handoff tools are injected automatically, so do not add them to a member's `ToolNode`.
 
 ```python
-from agentflow.prebuilt.agent import SwarmAgent, SwarmMemberConfig
+from tenxgraph.prebuilt.agent import SwarmAgent, SwarmMemberConfig
 
 triage = Agent(model="gpt-4o-mini", provider="openai",
                system_prompt=[{"role": "system", "content": "Route the request to a specialist."}])
@@ -289,11 +289,11 @@ See [SwarmAgent](/docs/prebuild/agents/swarm-agent) for details.
 A retrieval-augmented generation agent. It retrieves documents from a store before the LLM call, optionally reranks them, and passes them to the wrapped agent as context.
 
 ```python
-from agentflow.core.graph import Agent
-from agentflow.core.state import Message
-from agentflow.prebuilt.agent import RAGAgent
-from agentflow.storage import create_local_qdrant_store
-from agentflow.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.core.graph import Agent
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
 store = create_local_qdrant_store(
     path="./knowledge_base",
@@ -339,7 +339,7 @@ RAGAgent(
 Add a reranker (`CohereReranker`, `CrossEncoderReranker`, or your own `BaseReranker`) to rerank retrieved chunks:
 
 ```python
-from agentflow.prebuilt.agent import CohereReranker
+from tenxgraph.prebuilt.agent import CohereReranker
 
 rag = RAGAgent(
     store=store,

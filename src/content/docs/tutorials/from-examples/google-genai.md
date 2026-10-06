@@ -8,7 +8,7 @@ label: Google GenAI Adapter
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/google_genai_example.py`](https://github.com/10xHub/Agentflow/blob/main/examples/google_genai_example.py)
+**Source example:** [`examples/google_genai_example.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/google_genai_example.py)
 
 ## What you will build
 
@@ -21,7 +21,7 @@ Three standalone examples that demonstrate how to use the `GoogleGenAIConverter`
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - `google-genai` SDK installed:
 
   ```bash
@@ -32,7 +32,7 @@ Three standalone examples that demonstrate how to use the `GoogleGenAIConverter`
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Optional dependency</p>
 
-`google-genai` is **not** bundled with `10xscale-agentflow`. You must install it separately. The examples catch `ImportError` and print a clear install message if the package is missing.
+`google-genai` is **not** bundled with `10xgraph`. You must install it separately. The examples catch `ImportError` and print a clear install message if the package is missing.
 
 </aside>
 
@@ -53,7 +53,7 @@ flowchart LR
     style C fill:#50C878,color:#fff
 ```
 
-The `GoogleGenAIConverter` lives in `agentflow.runtime.adapters.llm`. It is the bridge between the raw SDK objects (which are provider-specific) and the provider-neutral `Message` format that the rest of 10xGraph operates on.
+The `GoogleGenAIConverter` lives in `tenxgraph.runtime.adapters.llm`. It is the bridge between the raw SDK objects (which are provider-specific) and the provider-neutral `Message` format that the rest of 10xGraph operates on.
 
 ## Example 1 — Standard response
 
@@ -61,7 +61,7 @@ The `GoogleGenAIConverter` lives in `agentflow.runtime.adapters.llm`. It is the 
 import asyncio
 import os
 
-from agentflow.runtime.adapters.llm import GoogleGenAIConverter
+from tenxgraph.runtime.adapters.llm import GoogleGenAIConverter
 from google import genai
 from google.genai import types
 

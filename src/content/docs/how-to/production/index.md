@@ -32,7 +32,7 @@ Sending images and documents to an agent: [Multimodal and vision](/docs/how-to/p
 
 All server behavior is controlled by two inputs:
 
-1. **`agentflow.json`**, which graph to load, which auth backend, which checkpointer, rate limiting, etc. Production guidance: [agentflow.json in production](/docs/how-to/production/agentflow-json). Complete field reference: [configuration reference](/docs/reference/api-cli/configuration)
+1. **`10xgraph.json`**, which graph to load, which auth backend, which checkpointer, rate limiting, etc. Production guidance: [10xgraph.json in production](/docs/how-to/production/agentflow-json). Complete field reference: [configuration reference](/docs/reference/api-cli/configuration)
 2. **Environment variables**, secrets and runtime tunables (`JWT_SECRET_KEY`, `ORIGINS`, `MODE`, `LOG_LEVEL`, etc.). Complete reference: [Environment variables](/docs/how-to/production/environment-variables)
 
 ## Authentication and authorization
@@ -48,7 +48,7 @@ Guide: [Auth and Authorization](/docs/how-to/production/auth-and-authorization)
 
 ## Rate limiting
 
-Configured under the `rate_limit` key in `agentflow.json`. Three backends: `memory` (dev), `redis` (production), `custom`.
+Configured under the `rate_limit` key in `10xgraph.json`. Three backends: `memory` (dev), `redis` (production), `custom`.
 
 Guide: [Rate limiting](/docs/how-to/production/agentflow-json)
 

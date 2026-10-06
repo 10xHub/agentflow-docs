@@ -37,7 +37,7 @@ Errors (4xx / 5xx) return FastAPI's standard detail format:
 
 ## Authentication
 
-When auth is configured in `agentflow.json`, all endpoints except `/ping` require a Bearer token:
+When auth is configured in `10xgraph.json`, all endpoints except `/ping` require a Bearer token:
 
 ```
 Authorization: Bearer <token>

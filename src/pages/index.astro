@@ -33,7 +33,7 @@ const jsonLd = [
     "license": "https://opensource.org/licenses/MIT",
     "url": "https://10xgraph.com/",
     "image": "https://10xgraph.com/logo-512.png",
-    "codeRepository": "https://github.com/10xHub/agentflow",
+    "codeRepository": "https://github.com/10xGraph/10xGraph",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -117,7 +117,7 @@ const jsonLd = [
         "name": "Was 10xGraph previously called Agentflow?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python import path stays the same, so existing code that imports from agentflow keeps working after you switch to the new package names."
+          "text": "Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python package is now imported as tenxgraph. The old agentflow import path remains as a deprecated alias until 2.0, so existing code keeps working while you switch to the new package names."
         }
       }
     ]
@@ -139,11 +139,11 @@ const jsonLd = [
           <a class="btn btn-primary" href="/docs/get-started/installation">Build your first agent <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
           <button class="pill" type="button" data-copy="pip install 10xgraph 10xgraph-api"><span class="prompt" aria-hidden="true">$</span><code>pip install 10xgraph 10xgraph-api</code><span class="cp" aria-live="polite">Copy</span></button>
         </div>
-        <a class="link star" href="https://github.com/10xHub/agentflow">Star on GitHub</a>
+        <a class="link star" href="https://github.com/10xGraph/10xGraph">Star on GitHub</a>
       </div>
 
       <div class="stage" id="stage" role="region" aria-label="Animation: agent code unfolds into a running production system">
-        <p class="sr-only">An editor types a short agent.py and a graph.json with JWT auth, ownership authorization and a Redis rate limit. The editor tilts into an isometric base, and the generated server rises on top of it in layers: input validators for prompt injection and jailbreaks, rate limits, authorization with RBAC and owner-only threads, authentication with JWT or a custom backend, and the API server on port 8000. Redis, PostgreSQL and Kubernetes pods slide in beside it. Requests from a TypeScript client travel down through the layers and a request log lists each one: an expired token gets 401 EXPIRED_TOKEN, another user's thread gets 403, a burst gets 429 with a retry-after, and an "ignore all previous instructions" message gets 422 prompt injection blocked. When a pod fails mid-refund, a new pod rises and the resumed run skips the refund because it is already in the ledger.</p>
+        <p class="sr-only">An editor types a short agent.py and a 10xgraph.json with JWT auth, ownership authorization and a Redis rate limit. The editor tilts into an isometric base, and the generated server rises on top of it in layers: input validators for prompt injection and jailbreaks, rate limits, authorization with RBAC and owner-only threads, authentication with JWT or a custom backend, and the API server on port 8000. Redis, PostgreSQL and Kubernetes pods slide in beside it. Requests from a TypeScript client travel down through the layers and a request log lists each one: an expired token gets 401 EXPIRED_TOKEN, another user's thread gets 403, a burst gets 429 with a retry-after, and an "ignore all previous instructions" message gets 422 prompt injection blocked. When a pod fails mid-refund, a new pod rises and the resumed run skips the refund because it is already in the ledger.</p>
         <div class="iso">
           <div class="iso-head" aria-hidden="true">
             <span class="iso-live"><i></i><b id="phase">writing agent.py</b></span>
@@ -159,7 +159,7 @@ const jsonLd = [
               </svg>
             </div>
             <div class="iso-ed" id="iso-ed">
-              <div class="iso-ed-tabs"><span id="iso-tab1" class="on">agent.py</span><span id="iso-tab2">graph.json</span></div>
+              <div class="iso-ed-tabs"><span id="iso-tab1" class="on">agent.py</span><span id="iso-tab2">10xgraph.json</span></div>
               <pre id="iso-pre"></pre>
             </div>
           </div>
@@ -217,14 +217,14 @@ const jsonLd = [
         <h2 id="p1h">The production server ships with the framework</h2>
         <p class="lede" style="margin-bottom:24px">Most agent frameworks stop at the graph. Serving it, securing it and deploying it becomes your project or a paid platform. 10xGraph generates that layer from your project config, under the same MIT license.</p>
         <ul class="points">
-          <li><b>One install, one config file</b><code>pip install 10xgraph 10xgraph-api</code>, then <code>agentflow.json</code> drives the server.</li>
+          <li><b>One install, one config file</b><code>pip install 10xgraph 10xgraph-api</code>, then <code>10xgraph.json</code> drives the server.</li>
           <li><b>Secure defaults</b>The production template turns on JWT auth, owner-only threads and a prompt-injection validator.</li>
           <li><b>Built for many users</b>Owner checks are cached in process and in Redis, so authorization does not cost a database round trip per request.</li>
         </ul>
       </div>
       <div>
         <div class="cfg">
-          <div class="cfg-head"><span>agentflow.json key</span><span>what you get</span></div>
+          <div class="cfg-head"><span>10xgraph.json key</span><span>what you get</span></div>
           <div class="cfg-row"><code>"auth": "jwt"</code><div><b>JWT authentication</b> on every endpoint, or plug in your own auth class.</div></div>
           <div class="cfg-row"><code>"authorization": "ownership"</code><div><b>Owner-only threads.</b> A thread is readable only by the user who created it.</div></div>
           <div class="cfg-row"><code>"rate_limit": &#123; "backend": "redis" &#125;</code><div><b>Rate limiting</b> shared across workers, or in memory for one process.</div></div>
@@ -377,7 +377,7 @@ const jsonLd = [
       <li><a href="/docs/get-started">Get started <span>install, first agent, project layout</span></a></li>
       <li><a href="/docs/concepts">Concepts <span>graphs, state, memory</span></a></li>
       <li><a href="/docs/how-to">How-to guides <span>production tasks</span></a></li>
-      <li><a href="/docs/reference">Reference <span>CLI, agentflow.json</span></a></li>
+      <li><a href="/docs/reference">Reference <span>CLI, 10xgraph.json</span></a></li>
       <li><a href="/changelog">Changelog <span>releases and fixes</span></a></li>
     </ul>
   </div>
@@ -396,7 +396,7 @@ const jsonLd = [
 <details><summary><span>Is 10xGraph free and open source?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Yes. 10xGraph is released under the MIT license, including the API server and the CLI. You can use it in commercial products, self-host it on your own infrastructure and modify it. There is no hosted platform you have to buy and no account to create before you start building.</p></details>
 <details><summary><span>Is 10xGraph production-ready?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>10xScale runs its own AI products on 10xGraph in production. It includes replay-safe tool calls, versioned state writes, node and tool timeouts, JWT auth, owner-only threads, rate limiting and Kubernetes manifests. The core is at version 0.9.2, before 1.0, so pin your versions and read the changelog when you upgrade.</p></details>
 <details><summary><span>How do I install 10xGraph?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Run pip install 10xgraph 10xgraph-api on Python 3.12 or newer. Then run 10xgraph init --yes --template production to scaffold a project with auth, validators, tests and config, 10xgraph api to serve it on port 8000, and 10xgraph build --docker-compose --k8s to generate deployment files. The TypeScript client installs with npm install 10xgraph-client.</p></details>
-<details><summary><span>Was 10xGraph previously called Agentflow?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python import path stays the same, so existing code that imports from agentflow keeps working after you switch to the new package names.</p></details>
+<details><summary><span>Was 10xGraph previously called Agentflow?</span><svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></summary><p>Yes. 10xGraph was published as Agentflow, under the PyPI name 10xscale-agentflow, until 2026. The project was renamed because many unrelated tools share the Agentflow name. The Python package is now imported as tenxgraph. The old agentflow import path remains as a deprecated alias until 2.0, so existing code keeps working while you switch to the new package names.</p></details>
     </div>
   </div>
 </section>
@@ -547,7 +547,7 @@ const jsonLd = [
     function setCmd(s, t) { cmdText = s; cmdT = t; }
     var si = 0, next = Infinity, pks = [], crashAt = 24000, cs = -1, hold = 0;
     var steps = [
-      [2700, function () { $("iso-tab1").className = ""; $("iso-tab2").className = "on"; phase.textContent = "writing graph.json"; }],
+      [2700, function () { $("iso-tab1").className = ""; $("iso-tab2").className = "on"; phase.textContent = "writing 10xgraph.json"; }],
       [4500, function () { $("iso-ed").classList.add("fly"); phase.textContent = "your agent becomes the base"; }],
       [4900, function () { show([plat, core]); show(coreLab); }],
       [5600, function (t) { phase.textContent = "generating the production server"; setCmd("10xgraph init --template production", t); }],

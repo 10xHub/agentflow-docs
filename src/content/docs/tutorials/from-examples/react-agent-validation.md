@@ -7,7 +7,7 @@ order: 1200
 updated: "2026-07-21"
 ---
 
-**Source example:** [`agentflow/examples/react/react_sync_validation.py`](https://github.com/10xHub/Agentflow/blob/main/examples/react/react_sync_validation.py)
+**Source example:** [`examples/react/react_sync_validation.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react/react_sync_validation.py)
 
 ## What you will build
 
@@ -20,7 +20,7 @@ An extended ReAct agent that validates every incoming user message before it rea
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xscale-agentflow` installed
+- `10xgraph` installed
 - Google Gemini API key set as `GEMINI_API_KEY`
 
 ## Validation pipeline
@@ -47,8 +47,8 @@ flowchart LR
 ## Step 1 — Import validators and callbacks
 
 ```python
-from agentflow.utils.callbacks import BaseValidator, CallbackManager
-from agentflow.utils.validators import (
+from tenxgraph.utils.callbacks import BaseValidator, CallbackManager
+from tenxgraph.utils.validators import (
     MessageContentValidator,
     PromptInjectionValidator,
     ValidationError,
@@ -61,7 +61,7 @@ Extend `BaseValidator` and implement `async validate(messages)`. Call `self._han
 
 ```python
 from typing import Any
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 class BusinessPolicyValidator(BaseValidator):
     """Enforces company-specific message policies."""
@@ -146,7 +146,7 @@ That is the only change compared to the basic ReAct agent. The graph wiring and 
 ### Valid message
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 res = app.invoke(
     {"messages": [Message.text_message("What is the weather in New York?")]},
@@ -214,12 +214,12 @@ sequenceDiagram
 from typing import Any
 from dotenv import load_dotenv
 
-from agentflow.core import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils.callbacks import BaseValidator, CallbackManager
-from agentflow.utils.constants import END
-from agentflow.utils.validators import (
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.callbacks import BaseValidator, CallbackManager
+from tenxgraph.utils.constants import END
+from tenxgraph.utils.validators import (
     MessageContentValidator,
     PromptInjectionValidator,
     ValidationError,

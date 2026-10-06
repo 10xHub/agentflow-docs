@@ -138,6 +138,6 @@ These courses teach you to:
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Draft</p>
 
-This curriculum is actively being developed. Share feedback in the [10xGraph GitHub repository](https://github.com/10xHub/Agentflow).
+This curriculum is actively being developed. Share feedback in the [10xGraph GitHub repository](https://github.com/10xGraph/10xGraph).
 
 </aside>

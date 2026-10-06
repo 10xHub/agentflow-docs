@@ -17,7 +17,7 @@ This does **not** apply to `WS /v1/graph/live`. That socket carries audio frames
 1. `POST /v1/files/upload` stores the binary and returns a `file_id`.
 2. You send a message whose content includes an `ImageBlock` (or `AudioBlock`, or `DocumentBlock`) carrying that `file_id`.
 3. The server rewrites the block before execution:
-   - **Images and audio** become a URL reference, `agentflow://media/{file_id}`, which the media reference resolver expands at model-call time.
+   - **Images and audio** become a URL reference, `graph://media/{file_id}`, which the media reference resolver expands at model-call time.
    - **Documents** are replaced with a plain text block containing the extracted text, when an extraction is cached for that file.
 4. The graph runs against the rewritten messages.
 
@@ -77,9 +77,9 @@ Send an image block whose media carries the `file_id`:
 }
 ```
 
-Post that to `/v1/graph/invoke` or `/v1/graph/stream`, or send it as the `messages` array of a `fresh` frame on `WS /v1/graph/ws`. In every case the block reaches the graph as `agentflow://media/b3f1c9d2e4a5`.
+Post that to `/v1/graph/invoke` or `/v1/graph/stream`, or send it as the `messages` array of a `fresh` frame on `WS /v1/graph/ws`. In every case the block reaches the graph as `graph://media/b3f1c9d2e4a5`.
 
-Blocks that already carry an `agentflow://media/` URL are left alone, so re-sending a previously rewritten message is safe.
+Blocks that already carry an `graph://media/` URL are left alone, so re-sending a previously rewritten message is safe.
 
 ## Documents
 
@@ -166,7 +166,7 @@ Used only when `MEDIA_STORAGE_TYPE=cloud`.
 | `MEDIA_CLOUD_PROVIDER` | `aws` | `aws` or `gcp` |
 | `MEDIA_CLOUD_BUCKET` | `""` | Bucket name |
 | `MEDIA_CLOUD_REGION` | `us-east-1` | Bucket region |
-| `MEDIA_CLOUD_PREFIX` | `agentflow-media` | Key prefix inside the bucket |
+| `MEDIA_CLOUD_PREFIX` | `10xgraph-media` | Key prefix inside the bucket |
 | `MEDIA_CLOUD_ACCESS_KEY_ID` | `null` | AWS access key |
 | `MEDIA_CLOUD_SECRET_ACCESS_KEY` | `null` | AWS secret key |
 | `MEDIA_CLOUD_SESSION_TOKEN` | `null` | AWS session token |

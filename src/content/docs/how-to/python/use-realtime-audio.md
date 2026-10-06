@@ -33,7 +33,7 @@ This guide covers:
 pip install "10xgraph[realtime]"
 ```
 
-The `realtime` extra pulls in `google-genai`. Provider SDK imports are lazy: importing `agentflow.core.realtime` never loads the SDK unless you open a session.
+The `realtime` extra pulls in `google-genai`. Provider SDK imports are lazy: importing `tenxgraph.core.realtime` never loads the SDK unless you open a session.
 
 Set your credentials:
 
@@ -66,9 +66,9 @@ Raw audio is never stored. Finished transcripts are persisted as `Message` objec
 import asyncio
 import wave
 
-from agentflow.core.realtime.base import OUTPUT_SAMPLE_RATE, RealtimeConfig
-from agentflow.core.realtime.queue import LiveInputQueue
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.core.realtime.base import OUTPUT_SAMPLE_RATE, RealtimeConfig
+from tenxgraph.core.realtime.queue import LiveInputQueue
+from tenxgraph.prebuilt.agent import AudioAgent
 
 MODEL = "gemini-live-2.5-flash-preview"
 
@@ -129,8 +129,8 @@ asyncio.run(main())
 `AudioAgent` is a React-style builder that wraps a `LiveAgent` as the graph root. It mirrors `ReactAgent`'s construction surface.
 
 ```python
-from agentflow.core.realtime.base import RealtimeConfig, VADConfig
-from agentflow.prebuilt.agent import AudioAgent
+from tenxgraph.core.realtime.base import RealtimeConfig, VADConfig
+from tenxgraph.prebuilt.agent import AudioAgent
 
 def get_weather(location: str) -> str:
     """Get the current weather for a city."""
@@ -208,7 +208,7 @@ await app.aclose()
 `LiveInputQueue` decouples audio capture from the network pump. All `send_*` methods are synchronous and non-blocking (`put_nowait`), so they are safe to call from audio callbacks on any thread.
 
 ```python
-from agentflow.core.realtime.queue import LiveInputQueue
+from tenxgraph.core.realtime.queue import LiveInputQueue
 
 queue = LiveInputQueue()
 
@@ -241,7 +241,7 @@ Once closed, further sends are dropped silently. Image frames are not persisted 
 Tools are advertised to the model at connect time through the same `ToolNode` mechanism as `ReactAgent`. The model calls them during a turn; 10xGraph dispatches the call and returns the result before the model continues speaking.
 
 ```python
-from agentflow.utils import tool
+from tenxgraph.utils import tool
 
 @tool
 def lookup_order(order_id: str) -> str:
@@ -305,7 +305,7 @@ Image frames are not stored or persisted. On reconnect, only text transcripts ar
 Pass a checkpointer to `compile()` to persist transcripts and resumption handles across connections.
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer, PgCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer, PgCheckpointer
 
 # Development
 app = AudioAgent(MODEL, ...).compile(
@@ -336,7 +336,7 @@ Reconnection is automatic and transparent. Two cases:
 Configure via `RealtimeConfig.reconnect`:
 
 ```python
-from agentflow.core.realtime.base import RealtimeConfig, ReconnectConfig
+from tenxgraph.core.realtime.base import RealtimeConfig, ReconnectConfig
 
 config = RealtimeConfig(
     model=MODEL,
@@ -366,9 +366,9 @@ When the configured graph is rooted at a `LiveAgent` (i.e. built with `AudioAgen
 ```python
 # graph.py
 import os
-from agentflow.core.realtime.base import RealtimeConfig
-from agentflow.prebuilt.agent import AudioAgent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.core.realtime.base import RealtimeConfig
+from tenxgraph.prebuilt.agent import AudioAgent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 MODEL = os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-preview")
 checkpointer = InMemoryCheckpointer()
@@ -394,7 +394,7 @@ First frame from the client must be a JSON object. Present fields override the a
 {"model": "gemini-live-2.5-flash-preview", "thread_id": "abc", "voice": "Puck"}
 ```
 
-Two fields are limited by the server. `model` is honoured only when it is listed in `websocket.realtime_models` in `agentflow.json`, and `tools_tags` can only narrow the agent's own tag filter. The live agent also refuses a tool call for any tool it did not advertise to the model in this session.
+Two fields are limited by the server. `model` is honoured only when it is listed in `websocket.realtime_models` in `10xgraph.json`, and `tools_tags` can only narrow the agent's own tag filter. The live agent also refuses a tool call for any tool it did not advertise to the model in this session.
 
 **Upstream (client -> server)**
 

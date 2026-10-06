@@ -11,7 +11,7 @@ updated: "2026-07-21"
 
 Prebuilt tools for reading, writing, and searching files within a configured workspace root.
 
-**Import path:** `agentflow.prebuilt.tools`
+**Import path:** `tenxgraph.prebuilt.tools`
 
 All three tools are workspace-scoped: every path is resolved relative to a configured root directory and paths that escape the root are rejected. The root is read from `config["file_tool_root"]` or `config["workspace_root"]`; if neither is set, the current directory (`.`) is used.
 
@@ -53,8 +53,8 @@ Reads a UTF-8 text file and returns its content.
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import file_read
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import file_read
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -108,8 +108,8 @@ Writes UTF-8 text to a file under the workspace root.
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import file_read, file_write
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import file_read, file_write
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -162,8 +162,8 @@ Searches text files under the workspace root by filename and content.
 ### Usage
 
 ```python
-from agentflow.prebuilt.tools import file_read, file_search
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.prebuilt.tools import file_read, file_search
+from tenxgraph.core.graph import Agent, ToolNode
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -181,8 +181,8 @@ agent = Agent(
 ## Using all three file tools together
 
 ```python
-from agentflow.prebuilt.tools import file_read, file_write, file_search
-from agentflow.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import file_read, file_write, file_search
+from tenxgraph.prebuilt.agent import ReactAgent
 
 agent = ReactAgent(
     model="gpt-4o-mini",

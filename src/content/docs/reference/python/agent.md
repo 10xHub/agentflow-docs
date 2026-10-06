@@ -16,7 +16,7 @@ Use `Agent` when you want a graph node to call an LLM. `Agent` handles provider 
 ## Import path
 
 ```python
-from agentflow.core.graph import Agent, ToolNode
+from tenxgraph.core.graph import Agent, ToolNode
 ```
 
 ---
@@ -84,8 +84,8 @@ The Anthropic provider reads `anthropic_backend` from the agent kwargs: omit it 
 ## Using Agent in a graph
 
 ```python
-from agentflow.core.graph import StateGraph, Agent, ToolNode
-from agentflow.utils import START, END
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.utils import START, END
 
 # 1. Define tools
 def lookup_order(order_id: str) -> dict:
@@ -133,7 +133,7 @@ When `tool_node` is given, `Agent` adds the standard "call tools if requested, e
 ## Retry configuration
 
 ```python
-from agentflow.core.graph.agent_internal.constants import RetryConfig
+from tenxgraph.core.graph.agent_internal.constants import RetryConfig
 
 agent = Agent(
     model="gpt-4o",
@@ -222,7 +222,7 @@ If the primary model returns an error the agent tries each fallback in order.
 Wire long-term memory retrieval into the agent:
 
 ```python
-from agentflow.storage.store import MemoryConfig, ReadMode
+from tenxgraph.storage.store import MemoryConfig, ReadMode
 
 memory_config = MemoryConfig(
     store=my_qdrant_store,
@@ -249,7 +249,7 @@ Before each LLM call the agent retrieves up to `limit` relevant memories and pre
 ## Multimodal config
 
 ```python
-from agentflow.storage.media.config import MultimodalConfig
+from tenxgraph.storage.media.config import MultimodalConfig
 
 agent = Agent(
     model="gpt-4o",

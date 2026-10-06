@@ -42,7 +42,7 @@ Use **invoke** when you need the full result before proceeding. Use **stream** /
 Every streaming event is a `StreamChunk` Pydantic model:
 
 ```python
-from agentflow.core.state.stream_chunks import StreamChunk, StreamEvent
+from tenxgraph.core.state.stream_chunks import StreamChunk, StreamEvent
 
 class StreamChunk(BaseModel):
     event: StreamEvent          # "message" | "state" | "error" | "updates"
@@ -71,7 +71,7 @@ class StreamChunk(BaseModel):
 Both `stream()` and `astream()` accept a `response_granularity` parameter to control what is included in each `StreamChunk`:
 
 ```python
-from agentflow.utils import ResponseGranularity
+from tenxgraph.utils import ResponseGranularity
 ```
 
 | Value | Description |
@@ -88,9 +88,9 @@ from agentflow.utils import ResponseGranularity
 
 ```python
 import asyncio
-from agentflow.core.state import Message
-from agentflow.utils import ResponseGranularity
-from agentflow.core.state.stream_chunks import StreamEvent
+from tenxgraph.core.state import Message
+from tenxgraph.utils import ResponseGranularity
+from tenxgraph.core.state.stream_chunks import StreamEvent
 
 for chunk in app.stream(
     {"messages": [Message.text_message("Tell me a short story.")]},
@@ -111,9 +111,9 @@ print()  # trailing newline
 
 ```python
 import asyncio
-from agentflow.core.state import Message
-from agentflow.utils import ResponseGranularity
-from agentflow.core.state.stream_chunks import StreamEvent
+from tenxgraph.core.state import Message
+from tenxgraph.utils import ResponseGranularity
+from tenxgraph.core.state.stream_chunks import StreamEvent
 
 async def main():
     inp = {"messages": [Message.text_message("Call get_weather for Tokyo.")]}

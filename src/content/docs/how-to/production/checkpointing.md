@@ -39,12 +39,12 @@ sequenceDiagram
 For local work:
 
 ```python
-from agentflow.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 my_checkpointer = InMemoryCheckpointer()
 ```
 
-Pass it to `compile()` in the module that `agentflow.json`'s `agent` points at:
+Pass it to `compile()` in the module that `10xgraph.json`'s `agent` points at:
 
 ```python
 # graph/react.py
@@ -54,7 +54,7 @@ app = state_graph.compile(checkpointer=my_checkpointer)
 ```
 
 The API server uses the checkpointer the compiled graph carries. The `checkpointer` key in
-`agentflow.json` is recognised but not applied yet, so do not rely on it.
+`10xgraph.json` is recognised but not applied yet, so do not rely on it.
 
 This is perfect when you want:
 
@@ -71,7 +71,7 @@ For durable, shared state use `PgCheckpointer`.
 Example shape:
 
 ```python
-from agentflow.storage.checkpointer import PgCheckpointer
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
 my_checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:password@db/agentflow",
@@ -164,7 +164,7 @@ If checkpointing is working, these endpoints should return persisted data instea
 ## Related docs
 
 - [Checkpointing and Threads](/docs/concepts/checkpointing-and-threads)
-- [Configure agentflow.json](/docs/how-to/api-cli/configure-agentflow-json)
+- [Configure 10xgraph.json](/docs/how-to/api-cli/configure-agentflow-json)
 - [Deployment](/docs/how-to/production/deployment)
 
 ## What you learned

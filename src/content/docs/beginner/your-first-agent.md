@@ -12,7 +12,7 @@ This page builds a working agent backed by a real language model. You will write
 
 ## What you need
 
-- 10xGraph installed: `pip install 10xscale-agentflow`
+- 10xGraph installed: `pip install 10xgraph`
 - A language model API key (this example uses Google Gemini)
 
 Set your API key:
@@ -26,9 +26,9 @@ export GOOGLE_API_KEY=your-api-key
 Create `first_agent.py`:
 
 ```python
-from agentflow.core.graph import Agent, StateGraph, ToolNode
-from agentflow.core.state import AgentState
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 # Create the agent node backed by a language model
 agent = Agent(
@@ -55,7 +55,7 @@ app = graph.compile()
 Add the invocation code at the bottom of `first_agent.py`:
 
 ```python
-from agentflow.core.state import Message
+from tenxgraph.core.state import Message
 
 result = app.invoke(
     {"messages": [Message.text_message("What is the capital of France?")]},
@@ -105,9 +105,9 @@ The `thread_id` in `config` groups this conversation. Every call with the same `
 ## Key imports
 
 ```python
-from agentflow.core.graph import Agent, StateGraph
-from agentflow.core.state import AgentState, Message
-from agentflow.utils import END
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
 ```
 
 ## What you learned

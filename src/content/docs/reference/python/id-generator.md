@@ -16,7 +16,7 @@ Use an `id_generator` when your database or external systems require a specific 
 ## Import path
 
 ```python
-from agentflow.utils.id_generator import (
+from tenxgraph.utils.id_generator import (
     BaseIDGenerator,
     AsyncIDGenerator,
     DefaultIDGenerator,
@@ -29,7 +29,7 @@ from agentflow.utils.id_generator import (
     IDType,
 )
 # also available from top-level:
-from agentflow.utils import BaseIDGenerator, UUIDGenerator, BigIntIDGenerator  # etc.
+from tenxgraph.utils import BaseIDGenerator, UUIDGenerator, BigIntIDGenerator  # etc.
 ```
 
 ---
@@ -51,7 +51,7 @@ Enum returned by `BaseIDGenerator.id_type`.
 ### `DefaultIDGenerator`
 
 ```python
-from agentflow.utils.id_generator import DefaultIDGenerator
+from tenxgraph.utils.id_generator import DefaultIDGenerator
 
 graph = StateGraph(id_generator=DefaultIDGenerator())
 ```
@@ -160,7 +160,7 @@ graph = StateGraph(id_generator=ShortIDGenerator())
 Abstract base class for synchronous custom generators.
 
 ```python
-from agentflow.utils.id_generator import BaseIDGenerator, IDType
+from tenxgraph.utils.id_generator import BaseIDGenerator, IDType
 
 class PrefixedGenerator(BaseIDGenerator):
     def __init__(self, prefix: str = "req"):
@@ -191,7 +191,7 @@ graph = StateGraph(id_generator=PrefixedGenerator("sess"))
 Use when ID generation requires async I/O (e.g., a database sequence).
 
 ```python
-from agentflow.utils.id_generator import AsyncIDGenerator, IDType
+from tenxgraph.utils.id_generator import AsyncIDGenerator, IDType
 
 class DBSequenceGenerator(AsyncIDGenerator):
     def __init__(self, pool):

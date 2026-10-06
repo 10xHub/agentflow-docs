@@ -16,8 +16,8 @@ updated: "2026-07-21"
 
 ```python
 import asyncio
-from agentflow.core.state import Message, StreamEvent
-from agentflow.utils import ResponseGranularity
+from tenxgraph.core.state import Message, StreamEvent
+from tenxgraph.utils import ResponseGranularity
 
 async def stream_example(app, question: str):
     async for chunk in app.astream(
@@ -39,7 +39,7 @@ asyncio.run(stream_example(app, "What is quantum entanglement?"))
 Every chunk yielded by `astream()` is a `StreamChunk`:
 
 ```python
-from agentflow.core.state import StreamChunk, StreamEvent
+from tenxgraph.core.state import StreamChunk, StreamEvent
 
 class StreamEvent(enum.StrEnum):
     STATE = "state"
@@ -86,7 +86,7 @@ For a basic streaming chat UI you usually only need `chunk.message` for the emit
 `Message.delta` is a boolean flag. When `delta` is `True` the chunk carries a partial, in-progress message; when it is `False` the message is complete. Either way the text lives in `message.text()`.
 
 ```python
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 buffer = ""
 
@@ -119,8 +119,8 @@ async for chunk in app.astream({"messages": [Message.text_message("Explain gravi
 | `ResponseGranularity.FULL` | Text tokens + complete state dict including `execution_meta`. |
 
 ```python
-from agentflow.core.state import StreamEvent
-from agentflow.utils import ResponseGranularity
+from tenxgraph.core.state import StreamEvent
+from tenxgraph.utils import ResponseGranularity
 
 async for chunk in app.astream(
     {"messages": [Message.text_message("Summarise our conversation.")]},
@@ -141,7 +141,7 @@ async for chunk in app.astream(
 When the agent calls a tool, the stream emits an `UPDATES` chunk when the tool is invoked and a `MESSAGE` chunk carrying the tool result. There is no `chunk.node_name`: the producing node is reported under the `"node"` key, in `chunk.metadata` for state and model chunks and in `chunk.data` for tool chunks.
 
 ```python
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 async for chunk in app.astream({"messages": [Message.text_message("What is 123 * 456?")]},
                                 config={"thread_id": "t3"}):
@@ -168,7 +168,7 @@ If you need the complete final messages but still want to use streaming for lowe
 There is no `chunk.messages`. Collect the completed messages yourself, skipping deltas and de-duplicating on `message_id`:
 
 ```python
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 async def stream_to_messages(app, input_messages: list[Message]) -> list[Message]:
     final_messages: list[Message] = []
@@ -201,7 +201,7 @@ Call `app.astop()` from another task or coroutine to cancel the running executio
 ```python
 import asyncio
 
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 thread_id = "long-run-1"
 stopped = False
@@ -237,7 +237,7 @@ The sync wrapper `app.stop(config)` is available for non-async contexts.
 `interrupt_before` and `interrupt_after` pause the graph at named nodes and resume on the next `ainvoke()` or `astream()` call with the same `thread_id`.
 
 ```python
-from agentflow.core.state import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 app = graph.compile(
     checkpointer=checkpointer,
@@ -269,10 +269,10 @@ async for chunk in app.astream(
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import AgentState, Message, StreamEvent
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.utils import END, ResponseGranularity
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import AgentState, Message, StreamEvent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END, ResponseGranularity
 
 agent = Agent(
     model="gpt-4o",

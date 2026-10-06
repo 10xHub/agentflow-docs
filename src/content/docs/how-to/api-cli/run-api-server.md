@@ -1,7 +1,7 @@
 ---
 title: Run the API Server
 seoTitle: "Run the 10xGraph API server"
-description: "Start the 10xGraph API server with 10xgraph api for local development and for production, including the host, port, and agentflow.json settings."
+description: "Start the 10xGraph API server with 10xgraph api for local development and for production, including the host, port, and 10xgraph.json settings."
 section: How-to guides
 group: CLI
 order: 870
@@ -13,11 +13,11 @@ The `10xgraph api` command starts a FastAPI-based REST server that loads your co
 
 ## Prerequisites
 
-You must have `agentflow.json` and a valid graph module in your project:
+You must have `10xgraph.json` and a valid graph module in your project:
 
 ```bash
 # Verify the config file exists and is valid
-cat agentflow.json
+cat 10xgraph.json
 
 # Verify your graph module can be imported
 python -c "from graph.react import app; print(app)"
@@ -27,7 +27,7 @@ Both commands should succeed without errors.
 
 ## Quick start (development)
 
-From the folder that contains `agentflow.json`:
+From the folder that contains `10xgraph.json`:
 
 ```bash
 10xgraph api --host 127.0.0.1 --port 8000
@@ -89,7 +89,7 @@ lsof -ti :8000 | xargs kill -9
 
 ## Environment variables
 
-Your graph may need environment variables (API keys, database URLs, etc.). Load them from a `.env` file via `agentflow.json`:
+Your graph may need environment variables (API keys, database URLs, etc.). Load them from a `.env` file via `10xgraph.json`:
 
 ```json
 {
@@ -242,7 +242,7 @@ The server will:
 ## Common issues
 
 **Graph import fails: "ModuleNotFoundError"**
-- Verify the import path in `agentflow.json` is correct.
+- Verify the import path in `10xgraph.json` is correct.
 - Verify the module is installed or on the Python path.
 - Try importing manually: `python -c "from graph.react import app"`
 
@@ -252,7 +252,7 @@ The server will:
 
 **"GOOGLE_API_KEY" environment variable not set**
 - Set it before starting the server: `export GOOGLE_API_KEY=...`
-- Or add it to your `.env` file and ensure `agentflow.json` references it: `"env": ".env"`
+- Or add it to your `.env` file and ensure `10xgraph.json` references it: `"env": ".env"`
 
 **Requests are very slow**
 - Check server logs with `--verbose`

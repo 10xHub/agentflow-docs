@@ -27,7 +27,7 @@ You also need an embedding service. Both OpenAI and Google embeddings are built 
 ### Local Qdrant (file-backed)
 
 ```python
-from agentflow.storage.store import (
+from tenxgraph.storage.store import (
     QdrantStore,
     OpenAIEmbedding,
     create_local_qdrant_store,
@@ -43,7 +43,7 @@ store = create_local_qdrant_store(
 ### Remote Qdrant server
 
 ```python
-from agentflow.storage.store import create_remote_qdrant_store, OpenAIEmbedding
+from tenxgraph.storage.store import create_remote_qdrant_store, OpenAIEmbedding
 
 store = create_remote_qdrant_store(
     host="localhost",
@@ -56,7 +56,7 @@ store = create_remote_qdrant_store(
 ### Qdrant Cloud
 
 ```python
-from agentflow.storage.store import create_cloud_qdrant_store, GoogleEmbedding
+from tenxgraph.storage.store import create_cloud_qdrant_store, GoogleEmbedding
 
 store = create_cloud_qdrant_store(
     url="https://xyz.qdrant.io",
@@ -79,7 +79,7 @@ All three factories call `QdrantStore(...)` internally. Use them for clarity.
 ### Direct QdrantStore construction
 
 ```python
-from agentflow.storage.store import QdrantStore, OpenAIEmbedding, DistanceMetric
+from tenxgraph.storage.store import QdrantStore, OpenAIEmbedding, DistanceMetric
 
 store = QdrantStore(
     embedding=OpenAIEmbedding(),
@@ -102,7 +102,7 @@ pip install "10xgraph[mem0]"
 ```
 
 ```python
-from agentflow.storage.store import Mem0Store, create_mem0_store, create_mem0_store_with_qdrant
+from tenxgraph.storage.store import Mem0Store, create_mem0_store, create_mem0_store_with_qdrant
 
 # Mem0 with its native config mapping (embedder, llm, vector_store keys)
 store = create_mem0_store(
@@ -143,7 +143,7 @@ app = graph.compile(
 | `GoogleEmbedding` | Google `text-embedding-004` | `GOOGLE_API_KEY` |
 
 ```python
-from agentflow.storage.store import OpenAIEmbedding, GoogleEmbedding
+from tenxgraph.storage.store import OpenAIEmbedding, GoogleEmbedding
 
 openai_embed = OpenAIEmbedding()
 google_embed = GoogleEmbedding()
@@ -158,8 +158,8 @@ google_embed = GoogleEmbedding()
 ### Minimal MemoryConfig
 
 ```python
-from agentflow.storage.store import MemoryConfig
-from agentflow.storage.store import create_local_qdrant_store, OpenAIEmbedding
+from tenxgraph.storage.store import MemoryConfig
+from tenxgraph.storage.store import create_local_qdrant_store, OpenAIEmbedding
 
 store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
 
@@ -172,7 +172,7 @@ agent = Agent(
 ### Full MemoryConfig reference
 
 ```python
-from agentflow.storage.store import MemoryConfig, UserMemoryConfig, AgentMemoryConfig, ReadMode
+from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig, AgentMemoryConfig, ReadMode
 
 memory = MemoryConfig(
     store=store,                             # required: BaseStore instance
@@ -213,10 +213,10 @@ agent = Agent(model="gpt-4o", memory=memory)
 
 ## MemoryType and DistanceMetric
 
-These enums are importable from `agentflow.storage.store`:
+These enums are importable from `tenxgraph.storage.store`:
 
 ```python
-from agentflow.storage.store import MemoryType, DistanceMetric
+from tenxgraph.storage.store import MemoryType, DistanceMetric
 
 # MemoryType values
 MemoryType.EPISODIC       # conversation events, session notes
@@ -240,16 +240,16 @@ DistanceMetric.MANHATTAN  # L1 distance
 
 ```python
 import asyncio
-from agentflow.core.graph import StateGraph, Agent
-from agentflow.core.state import AgentState, Message
-from agentflow.storage.checkpointer import InMemoryCheckpointer
-from agentflow.storage.store import (
+from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.store import (
     MemoryConfig,
     UserMemoryConfig,
     create_local_qdrant_store,
     OpenAIEmbedding,
 )
-from agentflow.utils import END
+from tenxgraph.utils import END
 
 # Set up store
 store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())

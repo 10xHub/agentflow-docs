@@ -9,13 +9,13 @@ label: Environment Variables
 updated: "2026-09-29"
 ---
 
-The API server reads configuration from environment variables. Set them in a `.env` file referenced by `agentflow.json` or as process environment variables.
+The API server reads configuration from environment variables. Set them in a `.env` file referenced by `10xgraph.json` or as process environment variables.
 
 ## Setting variables
 
 ### Via .env file
 
-In `agentflow.json`:
+In `10xgraph.json`:
 
 ```json
 {
@@ -51,7 +51,7 @@ MODE=production agentflow api --no-reload
 | `IS_DEBUG` | `true` | Enable debug mode. Set `false` in production; leaving it on logs a startup warning. |
 | `SUMMARY` | `Agentflow Backend` | One-line service summary shown in the OpenAPI schema |
 | `LOGGER_NAME` | `agentflow-cli` | Name of the root logger the server writes under. Read at import time, so it must be a process environment variable; setting it in `.env` is too late. |
-| `GRAPH_PATH` | `agentflow.json` | Path to the config file the ASGI app loads. `agentflow api --config` sets this for you; set it directly when running the app under an external server such as Gunicorn or Uvicorn. |
+| `GRAPH_PATH` | `10xgraph.json` | Path to the config file the ASGI app loads. `agentflow api --config` sets this for you; set it directly when running the app under an external server such as Gunicorn or Uvicorn. |
 
 The settings model allows extra variables, so unknown names in the environment are tolerated
 rather than rejected.
@@ -120,7 +120,7 @@ before it does.
 | `JWT_ISSUER` | Required `iss` claim. Unset means not checked. | Optional |
 | `JWT_AUDIENCE` | Required `aud` claim. Unset means not checked. | Optional |
 
-Both must be set when `agentflow.json` has `"auth": "jwt"`; the config load raises a `ValueError`
+Both must be set when `10xgraph.json` has `"auth": "jwt"`; the config load raises a `ValueError`
 otherwise and the server does not start. JWT support also needs the extra:
 `pip install "10xscale-agentflow-cli[jwt]"`.
 
@@ -135,7 +135,7 @@ otherwise and the server does not start. JWT support also needs the extra:
 `REDIS_URL` is **optional everywhere**. Two things use it:
 
 - **The ownership authorization cache (L2).** The `ownership` and `rbac` backends resolve their
-  Redis URL from the `redis` key in `agentflow.json` first, falling back to `REDIS_URL`. With
+  Redis URL from the `redis` key in `10xgraph.json` first, falling back to `REDIS_URL`. With
   neither set, or with the `redis` package not installed, the cache runs in-process only (L1) and
   the server logs a warning at startup. Nothing breaks; each worker just pays its own first lookup
   per thread.
@@ -143,7 +143,7 @@ otherwise and the server does not start. JWT support also needs the extra:
   performance choice, not a requirement: `PgCheckpointer` runs without it.
 
 The rate limiter does **not** read `REDIS_URL`. Configure its connection under
-`rate_limit.redis.url` in `agentflow.json`.
+`rate_limit.redis.url` in `10xgraph.json`.
 
 ---
 
@@ -191,7 +191,7 @@ See [ID Generator](/docs/reference/api-cli/id-generator) for the constructor con
 OpenTelemetry needs the extra: `pip install "10xscale-agentflow-cli[otel]"`, which also brings the
 FastAPI instrumentation and the OTLP exporter.
 
-Logfire and LangSmith are configured through the `observability` block in `agentflow.json`; their
+Logfire and LangSmith are configured through the `observability` block in `10xgraph.json`; their
 secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 
 ---
@@ -208,7 +208,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 | `MEDIA_CLOUD_PROVIDER` | `aws` | `aws` or `gcp`. Cloud storage only. |
 | `MEDIA_CLOUD_BUCKET` | `""` | Bucket name |
 | `MEDIA_CLOUD_REGION` | `us-east-1` | Bucket region |
-| `MEDIA_CLOUD_PREFIX` | `agentflow-media` | Key prefix inside the bucket |
+| `MEDIA_CLOUD_PREFIX` | `10xgraph-media` | Key prefix inside the bucket |
 | `MEDIA_CLOUD_ACCESS_KEY_ID` | `null` | AWS access key |
 | `MEDIA_CLOUD_SECRET_ACCESS_KEY` | `null` | AWS secret key |
 | `MEDIA_CLOUD_SESSION_TOKEN` | `null` | AWS session token |

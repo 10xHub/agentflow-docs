@@ -25,7 +25,7 @@ Search covers every page on this site. Press <kbd>Ctrl</kbd> + <kbd>K</kbd>.
 
 ## Ask a question
 
-- **GitHub Discussions** on [10xHub/10xGraph](https://github.com/10xHub/Agentflow/discussions)
+- **GitHub Discussions** on [10xGraph/10xGraph](https://github.com/10xGraph/10xGraph/discussions)
   for usage questions, design questions, and "is this the right approach"
   conversations.
 - **GitHub Issues** on the repository for the package that misbehaves:
@@ -43,7 +43,7 @@ instead of three.
 # Versions of everything involved
 agentflow version
 python --version
-pip show 10xscale-agentflow 10xscale-agentflow-cli | grep -E "Name|Version"
+pip show 10xgraph 10xscale-agentflow-cli | grep -E "Name|Version"
 node --version && npm list @10xscale/agentflow-client
 ```
 
@@ -53,7 +53,7 @@ Then include:
    HTTP response body, not a paraphrase.
 2. **A minimal graph that reproduces it.** Strip the tools and prompts down to
    the smallest thing that still fails. Most bugs shrink to 20 lines.
-3. **Your configuration.** The relevant part of `agentflow.json`, which
+3. **Your configuration.** The relevant part of `10xgraph.json`, which
    checkpointer and store you use, and whether you run with `MODE=production`.
    Redact secrets.
 4. **Whether it reproduces without persistence.** Swapping `PgCheckpointer` for
@@ -65,7 +65,7 @@ failing run. They carry `run_id`, `thread_id`, and `node`, so a single run can b
 extracted from a busy log:
 
 ```python
-from agentflow.utils.logging import setup_structured_logging
+from tenxgraph.utils.logging import setup_structured_logging
 
 setup_structured_logging()
 ```
