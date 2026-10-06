@@ -16,7 +16,9 @@ import { join, relative } from 'node:path';
 const SITE_URL = 'https://10xgraph.com';
 
 /** Every file under dir, recursively. */
+// @ts-ignore
 function walk(dir) {
+  // @ts-ignore
   return readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
     d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)],
   );
@@ -40,17 +42,15 @@ function contentLastmod() {
 const lastmod = contentLastmod();
 
 // Post-build steps for static hosting:
-// - _redirects (Netlify / Cloudflare Pages format) so old URLs get real 301s; the meta-refresh
-//   pages Astro writes stay as the fallback for hosts that ignore the file.
 // - Drop noindex pages (e.g. thin blog topic pages) from the sitemap, so the two never disagree.
 // - Markdown tables often leave the first header cell empty (| | a | b |); screen readers then
 //   announce nothing for that column, so it gets a visually hidden label.
 const postBuild = {
   name: 'post-build-seo',
   hooks: {
+    // @ts-ignore
     'astro:build:done': ({ dir }) => {
       const out = dir.pathname;
-      writeFileSync(join(out, '_redirects'), Object.entries(redirects).map(([from, to]) => `${from} ${to} 301`).join('\n') + '\n');
       const pages = walk(out).filter((f) => f.endsWith('.html') && !f.includes('/pagefind/'));
       for (const f of pages) {
         const html = readFileSync(f, 'utf8');
@@ -69,54 +69,6 @@ const postBuild = {
   },
 };
 
-// Old URLs from the Docusaurus site (and its retired blog) that moved. Docs pages kept their
-// URLs in the migration, so only these need a redirect.
-const redirects = {
-  // Pages merged into others during the 2026-10 docs cleanup.
-  '/docs/concepts/qa': '/docs/qa',
-  '/docs/concepts/agents-tools-control': '/docs/concepts/agents-and-tools',
-  '/docs/concepts/testing-and-evaluation': '/docs/qa',
-  '/docs/concepts/providers-and-adapters': '/docs/providers',
-  '/docs/concepts/publishers-and-runtime-protocols': '/docs/concepts/production-runtime',
-  '/docs/troubleshooting/error-patterns': '/docs/troubleshooting/error-codes',
-  '/docs/tutorials/from-examples/stream-sync': '/docs/tutorials/from-examples/react-streaming',
-  '/docs/tutorials/from-examples/mcp-file-download': '/docs/tutorials/from-examples/github-mcp',
-  '/docs/tutorials/from-examples/skills-chat': '/docs/tutorials/from-examples/skills',
-  '/docs/tutorials/from-examples/qdrant-memory': '/docs/tutorials/from-examples/memory',
-  '/docs/reference/client/tools': '/docs/how-to/client/register-remote-tools',
-  '/docs/project/maintainers': '/maintainers',
-  '/docs/get-started/connect-client': '/docs/get-started/first-agent',
-  '/docs/concept2': '/docs/concepts',
-  '/docs/concept2/agents-tools-control': '/docs/concepts/agents-and-tools',
-  '/docs/concept2/memory': '/docs/concepts/memory',
-  '/docs/concept2/serving-agents': '/docs/concepts/serving-agents',
-  '/docs/concept2/connecting-clients': '/docs/concepts/connecting-clients',
-  '/docs/concept2/extensibility': '/docs/concepts/extensibility',
-  '/docs/concept2/qa': '/docs/qa',
-  '/docs/getting-started': '/docs/get-started',
-  '/docs/getting-started/installation': '/docs/get-started/installation',
-  '/docs/getting-started/hello-world': '/docs/get-started/first-agent',
-  '/docs/getting-started/core-concepts': '/docs/concepts',
-  '/docs/getting-started/what-is-agentflow': '/docs/concepts',
-  '/docs/reference/library': '/docs/reference',
-  '/docs/reference/client': '/docs/reference/client/agentflow-client',
-  '/docs/reference/cli': '/docs/reference/api-cli/commands',
-  '/docs/Tutorial': '/docs/tutorials',
-  '/docs/faq': '/docs/troubleshooting/installation',
-  '/docs/how-to/production/api-reference': '/docs/reference/rest-api/conventions',
-  '/blog/langgraph-alternatives-5-frameworks': '/docs/compare',
-  '/blog/langgraph-to-agentflow-migration': '/docs/compare/agentflow-vs-langgraph',
-  '/blog/multi-agent-orchestration-python-7-patterns': '/docs/glossary/what-is-multi-agent-orchestration',
-  '/blog/react-agent-tools-real-apis': '/docs/glossary/what-is-a-react-agent',
-  '/blog/ai-agents-vs-workflows': '/docs/glossary/what-is-an-ai-agent',
-  '/blog/ai-agent-memory-checkpointing-python': '/docs/concepts/memory',
-  '/blog/streaming-agent-responses-fastapi-sse': '/docs/concepts/streaming',
-  '/blog/production-ai-agents-observability-retries': '/docs/concepts/production-runtime',
-  '/blog/deploy-ai-agent-docker-aws': '/docs/how-to/production/deployment',
-  '/blog/how-to-build-an-ai-agent-in-python': '/docs/get-started/first-agent',
-  '/docs/project/changelog': '/changelog',
-  };
-
 // Static output only. Canonical URLs have no trailing slash; pages build to /path.html,
 // which static hosts (Cloudflare Pages, Netlify, Vercel, GitHub Pages) serve at /path.
 export default defineConfig({
@@ -124,8 +76,6 @@ export default defineConfig({
   output: 'static',
   trailingSlash: 'never',
   build: { format: 'file' },
-  redirects,
-
   integrations: [
     mdx(),
     // Utility pages are noindex, so keep them out of the sitemap too.

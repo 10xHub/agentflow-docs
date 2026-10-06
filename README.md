@@ -133,4 +133,4 @@ graph.add_node("tools", tool_node)   # [!code ++]
 
 - Set the final domain in `astro.config.mjs` (`site`) and `src/lib/site.ts`.
 - Add an Open Graph image and a favicon (waiting on the logo).
-- The Docusaurus content is migrated (Oct 2026) with the same URLs; old Docusaurus redirects live in `astro.config.mjs`. Delete `docusaurus/` once you have checked the migrated pages.
+- The Docusaurus content is migrated (Oct 2026) with the same URLs. Delete `docusaurus/` once you have checked the migrated pages.
