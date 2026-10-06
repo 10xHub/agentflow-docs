@@ -7,7 +7,7 @@ npm-debug.log*
 
 # Legacy Docusaurus site (docusaurus/), kept until the migration is done
 .docusaurus
-build
+docusaurus/build/
 
 # MkDocs build output
 site/

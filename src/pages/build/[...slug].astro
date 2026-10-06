@@ -1,0 +1,21 @@
+---
+import { render } from 'astro:content';
+import { mdxComponents } from '../../components/mdx';
+import BuildLayout from '../../layouts/BuildLayout.astro';
+import { getBuilds, type Build } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const builds = await getBuilds();
+  return builds.map((entry) => ({ params: { slug: entry.id }, props: { entry, builds } }));
+}
+
+interface Props {
+  entry: Build;
+  builds: Build[];
+}
+const { entry, builds } = Astro.props;
+const { Content, headings } = await render(entry);
+---
+<BuildLayout entry={entry} headings={headings} builds={builds}>
+  <Content components={mdxComponents} />
+</BuildLayout>

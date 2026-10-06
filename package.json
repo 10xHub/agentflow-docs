@@ -9,11 +9,11 @@
     "dev:fast": "astro dev",
     "build": "astro build && pagefind --site dist",
     "search:index": "astro build && pagefind --site dist --output-path public/pagefind",
-    "preview": "npm run build && wrangler dev",
+    "preview": "npm run build && wrangler pages dev dist",
     "check": "astro check",
     "contributors": "node scripts/fetch-contributors.mjs",
     "generate-types": "wrangler types",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler pages deploy dist --branch main"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.2",

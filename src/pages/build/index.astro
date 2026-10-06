@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE } from '../../lib/site';
+import { absolute, buildHref, getBuilds } from '../../lib/content';
+import '../../styles/build.css';
+
+const builds = await getBuilds();
+const description = 'Step-by-step 10xGraph guides that end with something running: a production ReAct agent with auth, memory, tests and Docker, and more.';
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `Build with ${SITE.name}`,
+    description,
+    url: absolute('/build'),
+    hasPart: builds.map((b) => ({ '@type': 'TechArticle', headline: b.data.title, url: absolute(buildHref(b.id)) })),
+  },
+];
+---
+<BaseLayout title="Build with 10xGraph: end-to-end agent guides" exactTitle description={description} jsonLd={jsonLd}>
+  <div class="build-index">
+    <header class="build-index-head">
+      <p class="build-kicker">Build</p>
+      <h1>Pick a result. Build it end to end.</h1>
+      <p>Each guide starts in an empty folder and ends with something running. Every card tells you how long it takes and exactly what you will have. For how things work underneath, the <a href="/docs">docs</a> go deeper.</p>
+    </header>
+
+    <section aria-label="About build guides" class="build-index-head">
+      <p>A build guide is one end-to-end path to a working result, not a feature tour. It lists the time it takes, the skill level and the exact package versions it was written against, so you can tell whether it still matches your setup. Commands and code are in order and every step ends in something you can check. Choose by outcome first: read the "You end up with" list on a card and pick the guide whose result you need. Then use the time and level to decide whether to start now. If a term is unfamiliar, the <a href="/docs/beginner">beginner path</a> covers the basics.</p>
+    </section>
+
+    {builds.length === 0 && <p>Guides are being written.</p>}
+
+    <ul class="build-list">
+      {builds.map((b) => (
+        <li class="build-card">
+          <a href={buildHref(b.id)}>
+            <span class="build-card-meta">{b.data.minutes} min · {b.data.level}</span>
+            <span class="build-card-title">{b.data.title}</span>
+            <span class="build-card-desc">{b.data.description}</span>
+            <ul aria-label="You end up with">
+              {b.data.outcome.map((o) => <li>{o}</li>)}
+            </ul>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>

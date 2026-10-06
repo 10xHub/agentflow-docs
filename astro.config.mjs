@@ -15,10 +15,12 @@ import { join, relative } from 'node:path';
 
 const SITE_URL = 'https://10xgraph.com';
 
-/** Every file under dir, recursively. */
-// @ts-ignore
+/**
+ * Every file under dir, recursively.
+ * @param {string} dir
+ * @returns {string[]}
+ */
 function walk(dir) {
-  // @ts-ignore
   return readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
     d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)],
   );
@@ -45,10 +47,10 @@ const lastmod = contentLastmod();
 // - Drop noindex pages (e.g. thin blog topic pages) from the sitemap, so the two never disagree.
 // - Markdown tables often leave the first header cell empty (| | a | b |); screen readers then
 //   announce nothing for that column, so it gets a visually hidden label.
+/** @type {import('astro').AstroIntegration} */
 const postBuild = {
   name: 'post-build-seo',
   hooks: {
-    // @ts-ignore
     'astro:build:done': ({ dir }) => {
       const out = dir.pathname;
       const pages = walk(out).filter((f) => f.endsWith('.html') && !f.includes('/pagefind/'));
