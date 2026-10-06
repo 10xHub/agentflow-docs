@@ -5,7 +5,7 @@ export const SITE = {
   url: 'https://10xgraph.com',
   tagline: '10xGraph by 10xScale: graph engineering for production AI agents.',
   description:
-    'Open-source Python multi-agent framework that generates the production server: auth, owner-only threads, rate limits, replay-safe tools, Docker and k8s. MIT.',
+    'Open-source Python multi-agent framework. Write the agent and 10xGraph generates its production server: auth, rate limits, replay-safe tools and Kubernetes.',
   // Current repo URLs. GitHub redirects these after the repos move to the 10xGraph org,
   // so they keep working; switch them once the transfer is done.
   github: 'https://github.com/10xHub/agentflow',
