@@ -1,0 +1,62 @@
+---
+// Tabbed panels. Children must be <TabItem label="...">. Tabs with the same syncKey switch together
+// across the page (pick "uv" once, every install block follows) and the choice is remembered.
+// Without JS every panel shows, each under its label.
+interface Props {
+  syncKey?: string;
+}
+const { syncKey } = Astro.props;
+---
+<div class="tabs" data-sync={syncKey}>
+  <div class="tab-list" role="tablist"></div>
+  <slot />
+</div>
+
+<script>
+  const KEY = 'tabs:';
+  function select(tabs: HTMLElement, label: string) {
+    const buttons = tabs.querySelectorAll<HTMLButtonElement>(':scope > .tab-list > button');
+    const panels = tabs.querySelectorAll<HTMLElement>(':scope > .tab-panel');
+    if (![...panels].some((p) => p.dataset.label === label)) return;
+    buttons.forEach((b) => {
+      const on = b.dataset.label === label;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach((p) => (p.hidden = p.dataset.label !== label));
+  }
+  document.querySelectorAll<HTMLElement>('.tabs').forEach((tabs, n) => {
+    const list = tabs.querySelector<HTMLElement>(':scope > .tab-list')!;
+    const panels = [...tabs.querySelectorAll<HTMLElement>(':scope > .tab-panel')];
+    panels.forEach((panel, i) => {
+      const id = `tab-${n}-${i}`;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.role = 'tab';
+      button.id = id;
+      button.textContent = panel.dataset.label ?? `Tab ${i + 1}`;
+      button.dataset.label = panel.dataset.label;
+      button.setAttribute('aria-controls', `${id}-panel`);
+      panel.id = `${id}-panel`;
+      panel.setAttribute('aria-labelledby', id);
+      button.addEventListener('click', () => {
+        const sync = tabs.dataset.sync;
+        if (!sync) return select(tabs, button.dataset.label!);
+        document.querySelectorAll<HTMLElement>(`.tabs[data-sync="${sync}"]`).forEach((t) => select(t, button.dataset.label!));
+        try { localStorage.setItem(KEY + sync, button.dataset.label!); } catch {}
+      });
+      button.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const all = [...list.querySelectorAll<HTMLButtonElement>('button')];
+        const next = all[(all.indexOf(button) + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length];
+        next.focus();
+        next.click();
+      });
+      list.append(button);
+    });
+    tabs.classList.add('is-ready');
+    let saved: string | null = null;
+    try { saved = tabs.dataset.sync ? localStorage.getItem(KEY + tabs.dataset.sync) : null; } catch {}
+    select(tabs, saved && panels.some((p) => p.dataset.label === saved) ? saved : panels[0]?.dataset.label ?? '');
+  });
+</script>

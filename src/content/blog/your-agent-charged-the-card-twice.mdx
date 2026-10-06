@@ -1,0 +1,305 @@
+---
+title: "Your agent charged the card twice: making tool calls replay-safe"
+seoTitle: "Agent charged twice: replay-safe tool calls"
+description: Why a crash mid-node re-runs tools that already fired, why the usual fixes fall short, and how 10xGraph's tool ledger and versioned writes close the gap.
+date: 2026-10-01
+updated: 2026-10-06
+author: Shudipto Trafder
+kind: engineering
+tags: [reliability, tools, checkpointing]
+featured: true
+faq:
+  - q: Does 10xGraph guarantee a tool runs exactly once?
+    a: No. The ledger records a call after it returns, so a crash in the short window between the side effect and the record can still re-run it. Pass an idempotency key to the downstream API to cover that window.
+  - q: Which checkpointers support the tool ledger?
+    a: PgCheckpointer stores it durably in a tool_executions table. InMemoryCheckpointer keeps it in process memory. SqliteCheckpointer does not implement it, so tools there run at least once, as before.
+  - q: Does the ledger work for streaming runs?
+    a: Not yet. As of 0.10.0 the ledger, per-step durable checkpoints and node and tool timeouts apply to invoke and ainvoke. Streaming runs persist state at terminal points and run tools without a ledger lookup.
+  - q: What happens if recording a tool result fails?
+    a: The tool result is still returned to the model and the run continues. The failure is logged at error level with an explicit warning that a replay of that node may run the tool again.
+---
+
+A support agent receives "please charge my saved card for order 4821 and email me the receipt." The model replies with three tool calls in a single assistant message: `lookup_order`, `charge_card` and `send_receipt`. The tool node starts all three in parallel. `charge_card` returns a successful payment. A deploy then sends SIGKILL to the container before the node finishes.
+
+The orchestrator restarts the run from its last checkpoint, which points at the start of that tool node. The node runs again and so do all three tools. The customer is charged twice.
+
+Neither the model nor the payment tool made an error here. The double charge comes from where the checkpoint boundary sits. This post explains why every durable agent runtime has this problem, why the common fixes are incomplete, and what 10xGraph does about it: a tool ledger keyed on the right identity, versioned state writes, and deadlines on the work that can hang.
+
+## Why does a resumed run repeat side effects?
+
+10xGraph runs a graph as a loop. Before a node executes, the run's state records it as the `current_node`. After the node completes, the loop picks the next node, advances the step counter and persists the state. That design gives you resumability: if the process dies, the next run on the same thread loads the state and continues from `current_node`.
+
+The catch is that the unit of progress is the node, while side effects happen inside the node. Here is the failure laid out as a timeline:
+
+| Time | Event | Durable state says |
+|---|---|---|
+| t0 | Model node finishes and emits three tool calls | `current_node = tools` |
+| t1 | Tool node starts `lookup_order`, `charge_card`, `send_receipt` | `current_node = tools` |
+| t2 | `lookup_order` returns | `current_node = tools` |
+| t3 | `charge_card` returns: payment captured | `current_node = tools` |
+| t4 | Container is killed | `current_node = tools` |
+| t5 | Run resumes on another worker | `current_node = tools` |
+| t6 | Tool node runs from the start, `charge_card` fires again | |
+
+At t5 the runtime cannot tell "the tool never ran" apart from "the tool ran and the process died right after." Both look the same in the checkpoint. Without more information the only safe choice is to run the node again, which means tools run **at least once**. Message queues and workflow engines provide the same guarantee for the same reason. The difference with agents is that the work inside the boundary is chosen by a model at runtime and often touches money, email, tickets or production systems.
+
+## The three fixes teams usually try first
+
+### 1. "Make every tool idempotent"
+
+This is correct advice and you should follow it. A charge endpoint that accepts an idempotency key, an upsert in place of an insert, and a "send if not already sent" check all make replays harmless.
+
+As the only defense it has two problems. It puts the burden on every tool author, and one tool written without it reopens the hole. It also does not cover tools you do not control: a third-party SDK, a shell command, or a tool exposed by someone else's MCP server.
+
+### 2. "Checkpoint after every tool"
+
+If the boundary is too coarse, make it finer. Persist the whole state after each tool call and the replay only covers the tool that was in flight.
+
+This costs a full state write per tool call, and parallel tools would write concurrently to the same thread. It also does not fully solve the problem. The crash can still land after the side effect and before the checkpoint, which leaves the same window at a smaller scale. A full state snapshot is heavy machinery for answering a small question: did this specific call already complete?
+
+### 3. "Keep a ledger keyed on `tool_call_id`"
+
+This is close to the right answer. Record each completed call under its `tool_call_id`, and on replay look it up before running the tool.
+
+It fails quietly because a `tool_call_id` is not unique over the life of a thread. Many models and providers generate short, sequential IDs such as `call_1`, and they reuse them on every turn. Consider:
+
+- Turn 1: the model calls `charge_card` as `call_1`. The ledger records `call_1`.
+- Turn 9: the customer asks for a refund. The model calls `refund_payment`, also as `call_1`.
+- The ledger finds `call_1`, returns the turn 1 result and skips the refund.
+
+The refund never happens and the model is told it succeeded. Replaying a side effect twice is bad. Skipping one that never ran and reporting success is worse, because nobody finds out until a customer complains.
+
+## How 10xGraph keys the ledger
+
+The question to ask is what uniquely identifies one tool invocation. The answer is the assistant message that issued it, combined with the call ID inside that message. That message is persisted with the thread, so on replay it has the same `message_id` and the key is stable. A different turn produces a different assistant message, so two turns never collide even when the model reuses `call_1`.
+
+```python title="tenxgraph/core/graph/utils/invoke_node_handler.py"
+@staticmethod
+def _ledger_key(origin_message_id: str | None, tool_call_id: str) -> str | None:
+    if not tool_call_id or not origin_message_id:
+        return None
+    return f"{origin_message_id}:{tool_call_id}"
+```
+
+If either part is missing, the key is `None` and the ledger is skipped for that call. A wrong key could skip a tool that never ran, so in that case the runtime falls back to running the tool.
+
+### The lookup and record cycle
+
+For each tool call in a node, the handler does the following:
+
+1. Builds the ledger key from the issuing message ID and the call ID.
+2. Asks the checkpointer for a recorded result under that key.
+3. On a hit, returns the recorded result and does not call the tool. A log line says the call was replayed from the ledger.
+4. On a miss, parses the arguments, runs the tool under its timeout, and **records the result as soon as the tool returns**, before the rest of the node continues.
+
+```python title="invoke_node_handler.py (abridged)"
+ledger_key = self._ledger_key(origin_message_id, tool_call_id)
+if checkpointer and ledger_key:
+    recorded = await self._get_recorded_tool_result(checkpointer, config, ledger_key)
+    if recorded is not None:
+        return recorded  # already ran: replay the result, do not call the tool
+
+timeout = resolve_timeout(config, "tool_timeout", DEFAULT_TOOL_TIMEOUT_SECONDS)
+tool_result = await self._invoke_tool_guarded(
+    function_name, function_args, tool_call_id, state, config, timeout, tool_attrs
+)
+
+if checkpointer and ledger_key:
+    await self._record_tool_result(checkpointer, config, ledger_key, tool_result)
+```
+
+Results are stored with a small envelope: `{"__kind__": "message", "value": ...}` for a tool message, or `{"__kind__": "raw", "value": ...}` for anything else. On a hit the envelope is turned back into a `Message`. Only a well-formed entry counts as a hit. A backend that returns an unexpected shape, or a message that no longer validates, is treated as "no record" and the tool runs. Running a tool a second time is recoverable. Silently skipping it because a ledger row was misread is not.
+
+### Where the ledger lives
+
+In `PgCheckpointer` the ledger is a table added by schema migration 3. The migration runs automatically when the checkpointer sets up its schema.
+
+```sql title="pg_checkpointer.py, schema v3 (abridged)"
+CREATE TABLE IF NOT EXISTS tool_executions (
+    thread_id   VARCHAR(255) NOT NULL
+        REFERENCES threads(thread_id) ON DELETE CASCADE,
+    tool_call_id VARCHAR(255) NOT NULL,   -- stores "<message_id>:<tool_call_id>"
+    result      JSONB NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (thread_id, tool_call_id)
+)
+```
+
+The thread ID column type follows your configured ID type. Three details matter in production:
+
+- **The primary key is the idempotency key.** Scoping by `thread_id` means two threads can never share an entry.
+- **Inserts use `ON CONFLICT DO NOTHING`.** If two attempts ever race to record the same call, the first recorded result stays authoritative.
+- **Deleting a thread deletes its ledger** through the foreign key cascade, so there is no separate cleanup job.
+
+`InMemoryCheckpointer` implements the same interface with a dictionary, which is useful in tests but only protects replays inside one process. `SqliteCheckpointer` does not implement the ledger. It inherits the base class default, which always returns "no record", so tools behave as they did before: at least once.
+
+## What happens when the ledger itself fails?
+
+A safety mechanism needs defined behavior for its own failures. The read side and the write side fail differently, on purpose.
+
+| Operation | What happens on failure | Reasoning |
+|---|---|---|
+| Ledger read (`aget_tool_result`) | Logged. Treated as "no record". The tool runs. | A database blip should not stop the run. The fallback is the old at-least-once behavior, not a hard failure. |
+| Ledger write in `PgCheckpointer` (`aput_tool_result`) | Raises to the node handler. | The checkpointer reports the failure instead of hiding it. |
+| Ledger write, seen by the node handler | Logged at error level. The result still goes back to the model and the run continues. | The side effect has already happened. Failing the run would not undo it, and the model needs the result. |
+
+The error log is deliberately specific: the call **completed but could not be recorded**, and a replay of the node may execute it again. In production, alert on that message. It marks the one case where the runtime knows its idempotency guarantee did not hold for a call.
+
+## The window the ledger cannot close
+
+The record is written after the tool returns. If the process dies after the payment provider captured the charge but before the ledger row commits, there is no record, and the replay charges again. The window is small, typically a few milliseconds of network and database time, but it is not zero.
+
+No orchestrator can close it alone. The side effect happens in another system, and making "do the thing" and "remember that we did it" atomic across two systems requires the other system to cooperate. Payment providers and many other APIs support this through idempotency keys.
+
+The best idempotency key comes from your domain, not from the runtime. A charge for an order should happen once per order, whichever turn or tool call asks for it:
+
+```python title="graph/tools.py"
+async def charge_card(order_id: str, amount_cents: int) -> str:
+    """Charge the customer's saved card for an order."""
+    charge = await payments.charges.create(
+        amount=amount_cents,
+        currency="usd",
+        customer=await customer_for(order_id),
+        idempotency_key=f"order-{order_id}-charge",  # one charge per order, ever
+    )
+    return f"Charged {amount_cents / 100:.2f} USD, charge {charge.id}"
+```
+
+`payments` stands in for your provider's client. The point is the key, which is derived from the business fact being enforced.
+
+<Callout type="warning" title="Use both layers">
+
+The ledger removes the large, common failure: a whole node replayed after a crash, with every completed tool firing again. The idempotency key removes the small remaining window and protects you from callers outside 10xGraph. Neither replaces the other.
+
+</Callout>
+
+## Parallel tools, failures and interrupts
+
+Most real tool nodes run several calls at once, and 10xGraph runs them in parallel by default. The ledger is checked per call, which has some useful effects.
+
+**Each parallel call gets its own copy of the state.** Tools can change injected state in place. If every parallel tool shared one state object, two tools writing different fields could overwrite each other. With more than one call, each branch gets a deep copy, and afterwards only the fields a branch actually changed are merged back against a baseline. A single tool call works on the shared state directly, so the common case has no copying cost.
+
+**One failing tool does not abandon its siblings.** The handler waits for every call to settle (`asyncio.gather` with `return_exceptions=True`) and then turns each failure into a tool error message the model can read and react to. Earlier, a single exception could escape while sibling tasks kept running without being awaited. Now every successful sibling is in the ledger before the node returns.
+
+**Malformed arguments are reported to the model.** If a model produces invalid JSON for a tool's arguments, the call returns a tool error saying so, rather than failing the whole node with a decode error.
+
+**Human-in-the-loop resumes do not repeat finished work.** A tool can call `interrupt()` to pause the graph for an approval. On resume the interrupted node runs again from the start. In a parallel tool node under `invoke`, calls that already finished are not run again: their results come from the ledger, and only the paused call continues. Code that runs before the `interrupt()` call inside the paused tool does run twice, so put side effects after the interrupt:
+
+```python title="graph/tools.py"
+from tenxgraph.utils import interrupt
+
+
+async def refund(order_id: str, amount: float) -> str:
+    decision = interrupt(
+        {"order_id": order_id, "amount": amount},
+        message=f"Refund ${amount:.2f} for order {order_id}?",
+    )
+    if not decision or not decision.get("approved"):
+        return "Refund declined"
+    return await issue_refund(order_id, amount)  # side effect after the interrupt
+```
+
+## Two runs, one thread: versioned writes
+
+Replay safety also depends on what happens when two executions touch the same thread. A client times out and retries while the original run is still going. A resumed run races a new message. Two API workers pick up the same thread. Without protection, the last writer wins and the other run's work disappears without an error.
+
+`PgCheckpointer` stores state as versioned rows and checks the version on every durable write:
+
+1. Reading a thread's state records its version in the run config under `_checkpoint_version`.
+2. A write opens a transaction, makes sure the thread row exists, and takes a row lock on it with `SELECT ... FOR UPDATE`. Concurrent writers on one thread are now serialized.
+3. Under the lock it reads the current maximum version and compares it with the version the run started from.
+4. If they differ, another execution committed in between, and the write raises `StaleStateError` instead of overwriting that work.
+5. Otherwise it inserts a new row at `version + 1` and stores the new version back in the run config for the next step.
+
+```python title="pg_checkpointer.py (abridged)"
+current_version = await self._lock_thread_for_write(conn, thread_id, user_id, config)
+
+if expected_version is not None and int(expected_version) != current_version:
+    raise StaleStateError(
+        message=f"State was modified by another execution "
+                f"(expected version {expected_version}, found {current_version})",
+        error_code="STORAGE_CONFLICT_001",
+        ...
+    )
+
+new_version = current_version + 1
+```
+
+A `UNIQUE (thread_id, version)` index backs this up at the database level, so two appends can never quietly produce the same version. State and the messages produced in that step are written in the **same transaction**, so a crash cannot leave state advanced without the messages that explain it.
+
+The Redis cache has its own version guard and is cleared when a write conflicts. Without both, a stale cache entry could make a thread fail every later write. The companion post, [Hot and cold agent memory](/blog/hot-and-cold-agent-memory), covers this in detail.
+
+## The other way a worker dies mid-node: hangs
+
+Crashes are not the only way a node fails to finish. A tool blocked on a half-open socket, or an MCP server that accepts a connection and never answers, will hold a node open forever. The model SDK's request timeout does not help, because it does not cover tool execution. The step counter never advances, so the recursion limit never trips. Eventually an operator kills the worker, and you are back in the crash-and-replay case.
+
+10xGraph puts a deadline on both levels:
+
+| Config key | Default | Bounds |
+|---|---|---|
+| `node_timeout` | 900 seconds | A whole node, including every tool it runs |
+| `tool_timeout` | 300 seconds | A single tool call |
+
+Both can be overridden per run in the config. `None` or any non-positive value, such as `0`, disables the deadline. An invalid value logs a warning and falls back to the default. The node default deliberately sits above the default model request timeout of 600 seconds, so a slow model call fails with its own error instead of a generic node timeout.
+
+```python title="run_agent.py"
+config = {
+    "thread_id": "order-4821",
+    "user_id": "customer-118",
+    "tool_timeout": 60,    # a stuck tool fails after one minute
+    "node_timeout": 300,   # no node runs longer than five minutes
+}
+result = await app.ainvoke({"messages": [message]}, config)
+```
+
+A timed-out tool raises `NodeTimeoutError` (error code `NODE_TIMEOUT_002`), which the node turns into a tool error message for the model. A timed-out node raises `NodeTimeoutError` with `NODE_TIMEOUT_001`.
+
+The same mechanism makes **stop requests actually stop work**. Stopping used to be checked only between nodes, so a run hung inside a node never saw the request. The node now runs as a cancellable task. While it waits, the runtime checks once per second whether a stop has been requested and cancels the task if so. A `stop()` call now ends a hung run instead of only appearing to.
+
+Each timeout, stop and error also increments a counter (`tenxgraph.node.timeouts`, `tenxgraph.tool.timeouts`, `tenxgraph.tool.errors` and related metrics), so you can alert on rates rather than reading logs.
+
+## How much can a crash replay?
+
+The ledger makes replaying a node safe. Per-step durable checkpoints keep the replay short.
+
+By default, `invoke` and `ainvoke` persist state and any new messages to the durable store after **every completed node**, not only when the run finishes, errors or pauses. Only messages not yet persisted are sent, so a long run does not rewrite its history on each step. A crash therefore replays at most the one node that was in flight, and the ledger makes that replay skip the tools that already finished.
+
+You can turn this off with `"durable_checkpoint_every_step": False` in the run config. Between terminal points the loop then writes only the Redis cache, which trades durability for fewer database writes. With that setting, a crash after the cache entry expires, or after a Redis restart, resumes from the last terminal checkpoint, which can be the start of the run. Keep the default for any agent with real side effects.
+
+## Current limits
+
+These are the limits we know about as of 0.10.0.
+
+- **Streaming runs are not covered yet.** The ledger lookup, per-step durable checkpoints and node and tool timeouts are implemented in the `invoke` / `ainvoke` path. The streaming path (`stream` / `astream`) runs tools without a ledger lookup, writes durably only at terminal points, and has no deadlines. If an agent has non-idempotent tools and runs over streaming, the provider idempotency key is your protection until streaming gets the same treatment.
+- **At least once, not exactly once.** The window between a side effect and its ledger record is small but real. See the section above.
+- **The ledger records outcomes, not intent.** A tool that starts a long external job and crashes before returning has no record, so it is started again on replay. For long-running work, have the tool return a job handle quickly and track the job's progress separately.
+- **SQLite has no ledger.** Use `PgCheckpointer` anywhere double execution matters.
+
+## Production checklist
+
+- [ ] Use `PgCheckpointer` (`pip install "10xgraph[pg_checkpoint]"`) and point the `checkpointer` key in `10xgraph.json` at it, for example `"checkpointer": "graph.agent:checkpointer"`.
+- [ ] Use `invoke` / `ainvoke` for runs whose tools have side effects you cannot repeat.
+- [ ] Give every money-moving or message-sending tool an idempotency key derived from your domain.
+- [ ] Put side effects after `interrupt()` calls, never before them.
+- [ ] Set `tool_timeout` to what your slowest healthy tool needs plus some margin, not to the 300 second default.
+- [ ] Alert on the "COMPLETED but could not be recorded" log line and on `tenxgraph.tool.timeouts`.
+- [ ] Always pass an explicit `thread_id`. Without one the runtime generates a random ID, and the run can be neither resumed nor stopped.
+- [ ] Keep `durable_checkpoint_every_step` at its default of `true`.
+
+```python title="graph/agent.py"
+from tenxgraph.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost/app",
+    redis_url="redis://localhost:6379/0",
+)
+app = graph.compile(checkpointer=checkpointer)
+```
+
+## Further reading
+
+- [Replay-safe tools](/docs/concepts/replay-safe-tools) is the reference for the ledger and which checkpointers support it.
+- [Hot and cold agent memory](/blog/hot-and-cold-agent-memory) explains the storage underneath: versioned rows, the Redis cache and how they stay consistent.
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) covers thread lifecycle and resume.
+- [Production runtime](/docs/concepts/production-runtime) covers timeouts, stop and metrics.
+- [Configuration](/docs/reference/api-cli/configuration) lists the keys in `10xgraph.json`.

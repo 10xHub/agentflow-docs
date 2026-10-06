@@ -1,0 +1,150 @@
+---
+title: Project structure
+seoTitle: 10xGraph production project structure
+description: The files that 10xgraph init --template production generates, what each one does, and what every key in the generated 10xgraph.json controls.
+section: Get started
+order: 35
+updated: 2026-10-03T00:00:00.000Z
+faq:
+  - q: Which template should I start from?
+    a: Use quick-start to try an idea, since it writes only a graph, an env example and 10xgraph.json. Use production when the agent will be deployed, because it adds auth options, a prompt-injection validator, evals, tests and lint configuration.
+  - q: Does init overwrite my existing files?
+    a: No. If a file already exists, init stops with an error unless you pass --force. An existing 10xgraph.json is also protected by that rule.
+---
+
+`10xgraph init --template production` writes a complete project: a graph package with a tool, a state class and input validators, plus evals, tests, lint and pre-commit config, an env template and an `10xgraph.json`. This page lists every generated file and explains each key in the config.
+
+## How do I generate it?
+
+```bash
+10xgraph init --template production --auth jwt --rate-limit redis --yes
+```
+
+`--yes` makes init use your flags instead of asking questions. Without `--yes` or `--non-interactive`, init runs its interactive prompts. `--auth` accepts `none`, `jwt` or `custom`. `--rate-limit` accepts `none`, `memory` or `redis`. Both flags need the production template. Add `--name` to set the agent name, `--path <dir>` to scaffold into another directory and `--dry-run` to list the files without writing them.
+
+## What files does it create?
+
+<FileTree>
+
+- **10xgraph.json** The config the server and CLI read
+- .env.example Copy to .env and add your keys
+- pyproject.toml Dependencies, ruff settings, test extras
+- .pre-commit-config.yaml ruff, bandit and file hygiene hooks
+- .python-version
+- graph/ Your agent package
+  - **agent.py** Builds the ReactAgent and exports `app`
+  - state.py Custom AgentState subclass
+  - thread_name_generator.py Names new threads
+  - tools/
+    - weather_tool.py Example tool
+  - validators/
+    - manager.py Registers the validator and the hook
+    - validators.py Prompt-injection validator
+    - lifecyle.py Lifecycle hooks
+- auth/ Only with `--auth custom`
+  - agent_auth.py BaseAuth subclass to implement
+- evals/ Evaluation sets
+  - weather_agents_eval.py
+  - user_simulator_eval.py
+- tests/ pytest suite
+
+</FileTree>
+
+The `auth/` folder is skipped for `--auth none` and `--auth jwt`. The `lifecyle.py` spelling is how the template names that file.
+
+## What does each file do?
+
+### graph/agent.py
+
+This is the entry point. It builds a `ReactAgent` with a `WeatherState`, a `MessageContextManager` that keeps the last 20 messages, the `get_weather` tool and a callback manager, then compiles it:
+
+```python title="graph/agent.py"
+app = react_agent.compile(
+    checkpointer=checkpointer,  # InMemoryCheckpointer() by default
+    callback_manager=callback_manager,
+)
+```
+
+The `app` variable is what `"agent": "graph.agent:app"` in `10xgraph.json` points at. The template uses `InMemoryCheckpointer`, so swap in a durable checkpointer before production (see [Memory: hot and cold](/docs/concepts/memory)).
+
+### graph/state.py and graph/tools/
+
+`state.py` subclasses `AgentState` and adds a `user_location` field that the system prompt reads. `tools/weather_tool.py` holds `get_weather`, which simulates a flaky API: it fails at random and the tool retries up to three times before returning an apology. Replace it with your own tools.
+
+### graph/validators/
+
+`validators.py` defines a `PromptInjectionValidator` with `strict_mode=True`, a `max_length` of 1000 and a list of suspicious keywords. `manager.py` registers it as an input validator on a `CallbackManager`, together with the `AgentLifecycleHook` from `lifecyle.py`. Edit the keyword list: it includes words such as "free" and "token", which are tuned for the weather example and may block legitimate input in your domain.
+
+### graph/thread_name_generator.py
+
+A `ThreadNameGenerator` subclass whose `generate_name` returns a fixed placeholder string. Implement it to name threads from the first messages.
+
+### auth/agent_auth.py
+
+Present with `--auth custom`. It subclasses `BaseAuth`, logs a warning at startup and answers every request with 401 until you implement `authenticate`. The returned `user_id` becomes the thread and memory owner, so derive it from a verified credential and never from a client-supplied field.
+
+### evals/ and tests/
+
+`evals/` holds two example evaluation files. Run them with `10xgraph eval`. `tests/` holds the pytest suite, run with `10xgraph test`. Check the generated tests against your graph layout before relying on them.
+
+### .env.example
+
+App settings, CORS, request limits, security headers, Snowflake ID settings, a Sentry DSN and `GOOGLE_API_KEY`. The `REDIS_URL` block appears only with `--rate-limit redis`, and the `JWT_SECRET_KEY` and `JWT_ALGORITHM` block only with `--auth jwt`. Origins and allowed hosts default to `*`, with a TODO to restrict them in production.
+
+## What is in the generated 10xgraph.json?
+
+For the command above, init writes:
+
+```json title="10xgraph.json"
+{
+  "agent": "graph.agent:app",
+  "env": ".env",
+  "auth": "jwt",
+  "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
+  "ag_ui": { "enabled": false },
+  "authorization": "ownership",
+  "injectq": "graph.agent:container",
+  "rate_limit": {
+    "enabled": true,
+    "backend": "redis",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": false,
+    "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
+  }
+}
+```
+
+| Key | What it controls |
+|---|---|
+| `agent` | `module:variable` path of the compiled graph. Required. |
+| `env` | `.env` file loaded before the server starts. |
+| `auth` | `null` for none, `"jwt"` for JWT (needs `JWT_SECRET_KEY` and `JWT_ALGORITHM`), or `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}`. |
+| `authorization` | Written when auth is on. `"ownership"` means a thread is reachable only by its owner. |
+| `thread_name_generator` | `module:class` used to name new threads. |
+| `ag_ui` | AG-UI endpoint for clients such as CopilotKit. Off until `enabled` is true. |
+| `injectq` | `module:variable` of an InjectQ container to activate for dependency injection. |
+| `rate_limit` | Sliding-window limiter. Absent unless you chose a backend. `by` is `ip` or `global`. |
+
+Other keys, such as `checkpointer`, `store` and `redis`, are optional and are not written by init. You can add them by hand.
+
+<Callout type="warning" title="Fix the injectq entry before you run the server">
+
+In the version this page was checked against, the production template writes `"injectq": "graph.agent:container"` but `graph/agent.py` does not define `container`. The server raises an error at startup when it cannot load that attribute. Either delete the `injectq` key, or add this to `graph/agent.py`:
+
+```python title="graph/agent.py"
+from injectq import InjectQ
+
+container = InjectQ.get_instance()
+```
+
+</Callout>
+
+## Related pages
+
+<CardGrid>
+
+<LinkCard title="Quickstart" href="/docs/get-started/first-agent" description="Build and serve a first agent from scratch." eyebrow="Get started" />
+<LinkCard title="Configuration reference" href="/docs/reference/api-cli/configuration" description="Every 10xgraph.json key." eyebrow="Reference" />
+</CardGrid>

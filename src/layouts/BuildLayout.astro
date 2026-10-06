@@ -1,0 +1,121 @@
+---
+// Build guide page: outcome first (time, level, what you end up with), then the steps.
+// Reuses the blog's reading grid (story-*) so long guides get the same TOC and measure.
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import AiNote from '../components/AiNote.astro';
+import Faq from '../components/Faq.astro';
+import Toc from '../components/Toc.astro';
+import { SITE } from '../lib/site';
+import { absolute, buildHref, buildMarkdownHref, faqJsonLd, formatDate, type Build } from '../lib/content';
+import '../styles/blog.css';
+import '../styles/build.css';
+
+interface Props {
+  entry: Build;
+  headings: MarkdownHeading[];
+  builds: Build[];
+}
+const { entry, headings, builds } = Astro.props;
+const { title, description, minutes, level, outcome, versions, updated, faq } = entry.data;
+const href = buildHref(entry.id);
+const url = absolute(href);
+const markdownHref = buildMarkdownHref(entry.id);
+const others = builds.filter((b) => b.id !== entry.id).slice(0, 3);
+const editHref = entry.filePath ? `${SITE.docsRepo}/edit/${SITE.docsBranch}/${entry.filePath}` : undefined;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: title,
+    description,
+    url,
+    mainEntityOfPage: url,
+    dateModified: updated.toISOString(),
+    timeRequired: `PT${minutes}M`,
+    proficiencyLevel: level,
+    about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    isPartOf: { '@type': 'WebSite', name: SITE.name, url: SITE.url },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Build', item: absolute('/build') },
+      { '@type': 'ListItem', position: 2, name: title, item: url },
+    ],
+  },
+  ...(faq.length ? [faqJsonLd(faq)] : []),
+];
+---
+<BaseLayout title={title} description={description} ogType="article" jsonLd={jsonLd} markdownHref={markdownHref} modifiedTime={updated}>
+  <article class="story build" data-pagefind-body>
+    <header class="build-head">
+      <nav class="build-crumbs" aria-label="Breadcrumb" data-pagefind-ignore>
+        <a href="/build">Build</a>
+      </nav>
+      <h1>{title}</h1>
+      <p class="build-dek">{description}</p>
+      <ul class="build-chips" data-pagefind-ignore>
+        <li>{minutes} min</li>
+        <li>{level}</li>
+        <li>{versions}</li>
+        <li>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></li>
+        <li><a href={markdownHref} rel="alternate" type="text/markdown" title="This guide as plain Markdown, for AI agents">Markdown</a></li>
+      </ul>
+      <div class="build-outcome">
+        <p class="build-outcome-label">You end up with</p>
+        <ul>
+          {outcome.map((o) => <li>{o}</li>)}
+        </ul>
+      </div>
+    </header>
+
+    <div class="story-grid">
+      <aside class="story-toc" data-pagefind-ignore>
+        <Toc headings={headings} hasFaq={faq.length > 0} />
+      </aside>
+      <div class="story-main">
+        <div class="prose build-prose">
+          <slot />
+        </div>
+        <Faq faq={faq} />
+        <div class="build-foot" data-pagefind-ignore>
+          <span>Written for {versions}</span>
+          {editHref && (
+            <span class="build-foot-links">
+              <a href={editHref} target="_blank" rel="noopener">Edit this guide on GitHub</a>
+            </span>
+          )}
+        </div>
+        <AiNote markdownHref={markdownHref} />
+      </div>
+    </div>
+  </article>
+
+  {others.length > 0 && (
+    <section class="more" aria-labelledby="more-builds" data-pagefind-ignore>
+      <div class="more-head">
+        <h2 id="more-builds">Build next</h2>
+        <a href="/build" class="more-rss">All guides</a>
+      </div>
+      <ul class="build-list">
+        {others.map((b) => (
+          <li class="build-card">
+            <a href={buildHref(b.id)}>
+              <span class="build-card-meta">{b.data.minutes} min · {b.data.level}</span>
+              <span class="build-card-title">{b.data.title}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+</BaseLayout>
+
+<script>
+  import { renderMermaid } from '../scripts/mermaid';
+  renderMermaid();
+</script>

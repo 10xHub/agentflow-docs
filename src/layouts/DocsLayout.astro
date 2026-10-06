@@ -1,0 +1,117 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import DocsMap from '../components/docs/DocsMap.astro';
+import RunBar from '../components/docs/RunBar.astro';
+import NextEdges from '../components/docs/NextEdges.astro';
+import Faq from '../components/Faq.astro';
+import AiNote from '../components/AiNote.astro';
+import { SECTION_INFO, SITE } from '../lib/site';
+import { absolute, docHref, docMarkdownHref, faqJsonLd, formatDate, readingMinutes, type Doc } from '../lib/content';
+import '../styles/docs.css';
+
+interface Props {
+  entry: Doc;
+  headings: MarkdownHeading[];
+  docs: Doc[];
+}
+const { entry, headings, docs } = Astro.props;
+const { title, seoTitle, description, section, group, updated, faq } = entry.data;
+const sectionHref = `/docs/${SECTION_INFO[section].slug}`;
+const href = docHref(entry.id);
+const markdownHref = docMarkdownHref(entry.id);
+const sectionCount = headings.filter((h) => h.depth === 2).length + (faq.length ? 1 : 0);
+const position = docs.filter((d) => d.data.section === section).findIndex((d) => d.id === entry.id) + 1;
+const sectionSize = docs.filter((d) => d.data.section === section).length;
+const editHref = entry.filePath ? `${SITE.docsRepo}/edit/${SITE.docsBranch}/${entry.filePath}` : undefined;
+const issueHref = `${SITE.docsRepo}/issues/new?title=${encodeURIComponent(`Docs: ${title}`)}&body=${encodeURIComponent(`Page: ${absolute(href)}\n\nWhat is wrong or missing:\n`)}`;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: title,
+    description,
+    url: absolute(href),
+    ...(updated && { dateModified: updated.toISOString() }),
+    // Only the beginner path is written for beginners; other pages make no level claim.
+    ...(section === 'Beginner path' && { proficiencyLevel: 'Beginner' }),
+    about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    isPartOf: { '@type': 'WebSite', name: SITE.name, url: SITE.url },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Docs', item: absolute('/docs') },
+      { '@type': 'ListItem', position: 2, name: section, item: absolute(sectionHref) },
+      { '@type': 'ListItem', position: 3, name: title, item: absolute(href) },
+    ],
+  },
+  ...(faq.length ? [faqJsonLd(faq)] : []),
+];
+---
+<BaseLayout title={seoTitle ?? title} description={description} ogType="article" jsonLd={jsonLd} markdownHref={markdownHref} modifiedTime={updated}>
+  <div class="reader" data-doc-id={entry.id} data-lens="read">
+    <aside class="reader-map">
+      <button class="map-toggle" type="button" aria-expanded="false" aria-controls="docs-map">
+        <span class="map-toggle-kicker">{section} · {position} of {sectionSize}</span>
+        <span class="map-toggle-title">{title}</span>
+      </button>
+      <div id="docs-map" class="map-wrap">
+        <DocsMap docs={docs} current={entry} />
+      </div>
+    </aside>
+
+    <article class="reader-main" data-pagefind-body>
+      <header class="doc-hero">
+        <nav class="doc-path" aria-label="Breadcrumb">
+          <a href="/docs">Docs</a>
+          <span class="doc-path-edge" aria-hidden="true" />
+          <a href={sectionHref}>{section}</a>
+          {group && (
+            <>
+              <span class="doc-path-edge" aria-hidden="true" />
+              <span>{group}</span>
+            </>
+          )}
+          <span class="doc-path-edge" aria-hidden="true" />
+          <span aria-current="page">{title}</span>
+        </nav>
+        <h1>{title}</h1>
+        <p class="doc-tldr"><span class="doc-tldr-label">In short</span>{description}</p>
+        <ul class="doc-chips" data-pagefind-ignore>
+          <li>{readingMinutes(entry.body)} min read</li>
+          {sectionCount > 0 && <li>{sectionCount} section{sectionCount === 1 ? '' : 's'}</li>}
+          {updated && <li>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></li>}
+          <li>v{SITE.version}</li>
+          <li><a href={markdownHref} rel="alternate" type="text/markdown" title="This page as plain Markdown, for AI agents">Markdown</a></li>
+        </ul>
+      </header>
+
+      <RunBar headings={headings} hasFaq={faq.length > 0} />
+
+      <div class="prose doc-prose">
+        <slot />
+      </div>
+      <Faq faq={faq} />
+      <div class="doc-foot" data-pagefind-ignore>
+        <span>{updated ? <>Last updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></> : 'Docs'} for v{SITE.version}</span>
+        <span class="doc-foot-links">
+          {editHref && <a href={editHref} target="_blank" rel="noopener">Edit this page on GitHub</a>}
+          <a href={issueHref} target="_blank" rel="noopener">Report an issue</a>
+        </span>
+      </div>
+      <AiNote markdownHref={markdownHref} />
+      <NextEdges docs={docs} current={entry} />
+    </article>
+  </div>
+</BaseLayout>
+
+<script>
+  import { initReader } from '../scripts/docs-reader';
+  import { renderMermaid } from '../scripts/mermaid';
+  initReader();
+  renderMermaid();
+</script>

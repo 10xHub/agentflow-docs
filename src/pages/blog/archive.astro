@@ -1,0 +1,77 @@
+---
+// Every post on one page, grouped by year and month: the scannable index for returning readers.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { absolute, getPosts, postHref, readingMinutes, tagHref, type Post } from '../../lib/content';
+import '../../styles/blog.css';
+
+const posts = await getPosts();
+const years = new Map<number, Map<string, Post[]>>();
+for (const p of posts) {
+  const y = p.data.date.getUTCFullYear();
+  const m = p.data.date.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+  if (!years.has(y)) years.set(y, new Map());
+  const months = years.get(y)!;
+  months.set(m, [...(months.get(m) ?? []), p]);
+}
+const day = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', timeZone: 'UTC' });
+// While the blog is small the archive repeats the blog index, so it stays out of search until
+// there are enough posts for it to add something.
+const MIN_ARCHIVE_POSTS = 10;
+const description = `All ${posts.length} posts from the 10xGraph engineering blog, newest first, grouped by year and month.`;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: '10xGraph blog archive',
+    description,
+    url: absolute('/blog/archive'),
+    hasPart: posts.map((p) => ({ '@type': 'BlogPosting', headline: p.data.title, url: absolute(postHref(p.id)), datePublished: p.data.date.toISOString() })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: absolute('/blog') },
+      { '@type': 'ListItem', position: 2, name: 'Archive', item: absolute('/blog/archive') },
+    ],
+  },
+];
+---
+<BaseLayout title="10xGraph blog archive: every post by date" exactTitle description={description} jsonLd={jsonLd} noindex={posts.length < MIN_ARCHIVE_POSTS}>
+  <div class="blog">
+    <header class="blog-head blog-head-tag">
+      <div>
+        <p class="blog-kicker"><a href="/blog">Blog</a> / archive</p>
+        <h1>Archive</h1>
+        <p class="blog-intro">{posts.length} post{posts.length === 1 ? '' : 's'}, newest first.</p>
+      </div>
+    </header>
+
+    <div class="archive">
+      {[...years].map(([year, months]) => (
+        <section class="archive-year" aria-labelledby={`y${year}`}>
+          <h2 id={`y${year}`}>{year}</h2>
+          <div>
+            {[...months].map(([month, list]) => (
+              <div class="archive-month">
+                <h3>{month}</h3>
+                <ol>
+                  {list.map((p) => (
+                    <li class="archive-row">
+                      <time datetime={p.data.date.toISOString()}>{day(p.data.date)}</time>
+                      <a href={postHref(p.id)}>{p.data.title}</a>
+                      <span class="archive-meta">
+                        {p.data.tags.slice(0, 2).map((t) => <a href={tagHref(t)}>{t}</a>)}
+                        <span>{readingMinutes(p.body)} min</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

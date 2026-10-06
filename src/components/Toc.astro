@@ -1,0 +1,47 @@
+---
+// "On this page" list with scroll-spy: the heading currently in view is marked aria-current.
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+  hasFaq?: boolean;
+}
+const { headings, hasFaq = false } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+if (hasFaq) items.push({ depth: 2, slug: 'faq', text: 'FAQ' });
+---
+{items.length > 0 && (
+  <nav class="toc" aria-label="On this page">
+    <p class="side-title">On this page</p>
+    <ul>
+      {items.map((h) => (
+        <li class={`toc-d${h.depth}`}><a href={`#${h.slug}`}>{h.text}</a></li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<script>
+  const links = new Map<string, HTMLAnchorElement>();
+  document.querySelectorAll<HTMLAnchorElement>('.toc a').forEach((a) => links.set(decodeURIComponent(a.hash.slice(1)), a));
+  const targets = [...links.keys()].map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+  if (targets.length) {
+    const update = () => {
+      // The last heading above the top quarter of the viewport is the current one.
+      const line = window.innerHeight * 0.25;
+      let current = targets[0];
+      for (const t of targets) if (t.getBoundingClientRect().top <= line) current = t;
+      links.forEach((a, id) => (id === current.id ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current')));
+    };
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        update();
+        ticking = false;
+      });
+    }, { passive: true });
+    update();
+  }
+</script>

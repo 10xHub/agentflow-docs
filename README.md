@@ -1,151 +1,136 @@
-# AgentFlow Docs
+# 10xgraph-docs
 
-> **Build multi-agent AI systems that actually ship.** Agentflow is the production-grade framework that takes you from prototype to production without rewriting your stack.
+Docs and blog for 10xGraph. Static Astro site, custom design, built for search engines and AI answer engines.
 
-Most agent frameworks stop at a demo. Agentflow ships the whole thing — orchestration, memory, API, auth, SDK, and UI — so you spend your time on agents, not plumbing.
+This repository was the Docusaurus site for Agentflow. The old site now lives in `docusaurus/` (run it with `cd docusaurus && npm install && npm start`) and is deleted once its content is migrated into `src/content/`. The repository keeps its history and contributors; it moves to the 10xGraph org and is renamed later.
 
-- 🧠 **Memory that remembers** — a 3-layer system: working state → Redis hot cache → Postgres durable → vector recall (Qdrant/Mem0). Your agents have short-term speed and long-term knowledge.
-- 🔌 **Any model, no lock-in** — OpenAI, Google GenAI, Anthropic, or your own. Swap providers with a config change, not a rewrite.
-- ⚡ **Live agents, real-time** — token-by-token streaming, live state inspection, and parallel tool execution by default.
-- 🕸️ **Graph-based orchestration** — model complex, cyclic agent workflows with `StateGraph`. LangGraph power, far less ceremony.
-- 🛠️ **Production from day one** — auto-generated FastAPI backend, JWT/RBAC auth, rate limiting, dual-layer checkpointing, and Docker/Kubernetes builds.
-- 🤝 **MCP native** — plug into the Model Context Protocol ecosystem out of the box.
-- 📦 **Batteries included** — backend, REST API + CLI, typed TypeScript SDK, and a visual React playground. One framework, end to end.
+## Commands
 
-**From `pip install` to a streaming multi-agent API in minutes.**
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies (Node 22.12+) |
+| `npm run dev` | Builds the search index into `public/pagefind`, then starts the dev server at http://localhost:4321 |
+| `npm run dev:fast` | Dev server without rebuilding the search index (search shows the last indexed content) |
+| `npm run search:index` | Rebuild the search index for dev after adding or renaming pages |
+| `npm run build` | Static build to `dist/`, then the Pagefind search index |
+| `npm run preview` | Serve `dist/` locally |
+| `npm run check` | Type-check `.astro` and `.ts` files |
 
-This repo holds the documentation for that ecosystem.
+## Structure
 
-📖 **Read the docs:** https://agentflow.10xscale.ai
-
-Built with [Docusaurus 3](https://docusaurus.io). Deployed to **agentflow.10xscale.ai** via GitHub Pages.
-
-## 🧩 The Agentflow Ecosystem
-
-| Package | What it does | Install |
-|---|---|---|
-| **Core framework** (`10xscale-agentflow`) | Graph-based agent orchestration, 3-layer memory, parallel tools, MCP | `pip install 10xscale-agentflow` |
-| **API + CLI** (`10xscale-agentflow-cli`) | FastAPI server auto-generated from your graph, auth, RBAC, rate limiting | `pip install 10xscale-agentflow-cli` |
-| **Client SDK** (`@10xscale/agentflow-client`) | Typed TypeScript/React client with streaming hooks | `npm install @10xscale/agentflow-client` |
-| **Playground** | Visual React UI to test agents against a local server | `agentflow play` |
-| **Docs** (this repo) | Tutorials, how-to guides, reference, and concepts | https://agentflow.10xscale.ai |
-
-## Local development
-
-```bash
-npm install
-npm run start
 ```
-
-Dev server: `http://localhost:3000`.
-
-## Build
-
-```bash
-npm run build
-npm run serve
-```
-
-Static output in `build/`.
-
-> **Windows + Git Bash note:** if `npm run build` mangles `BASE_URL=/` (you'll see broken links resolving to `C:/Program Files/Git/...`), run from PowerShell with `$env:MSYS_NO_PATHCONV='1'`.
-
-## Checks
-
-```bash
-npm run build              # fails on any broken internal link
-npm run typecheck
-npm run lint:frontmatter   # every page needs title, description, keywords
-npm run lint:links         # every external URL must resolve
-npm run verify:api         # documented symbols, routes, and commands must exist
-npm run og-image           # regenerate the PNG social card from the SVG
-```
-
-`verify:api` checks the docs against the packages published to PyPI, which is
-what readers actually install:
-
-```bash
-pip install 10xscale-agentflow 10xscale-agentflow-cli
-npm run verify:api
-```
-
-All of these run in CI (`.github/workflows/ci.yml`).
-
-## Deploy
-
-`.github/workflows/deploy.yml` builds and deploys to GitHub Pages on push to `main`.
-
-Required GitHub repo secrets (optional but recommended):
-
-- `GOOGLE_ANALYTICS_ID` — e.g. `G-XXXXXXXXXX`
-- `MICROSOFT_CLARITY_ID` — for heatmaps / session replay
-
-The site is configured for the custom domain **agentflow.10xscale.ai** (CNAME in `static/`).
-
-## Repo layout
-
-```text
-docs/
-  get-started/         # golden path, beginner-friendly
-  beginner/            # guided tutorial path
-  concepts/            # mental models, with an "In depth" tier beneath
-  prebuild/            # prebuilt agents and tools
-  how-to/              # task-oriented guides (python, production, cli, client)
-  qa/                  # unit testing and evaluation
-  tutorials/           # from-examples deep dives
-  reference/           # API reference (Python, REST, CLI, TS client)
-  troubleshooting/
-  use-cases/           # production reference architectures
-  integrations/        # FastAPI / Next.js / Postgres
-  providers/           # LLM provider configuration
-  glossary/            # definition pages
-  compare/             # framework comparisons (LangGraph, CrewAI, AutoGen, etc.)
-  courses/             # GenAI beginner + advanced curriculum
-  project/             # changelog, upgrade guide, roadmap, security, support
-
-blog/                  # cornerstone posts, RSS at /blog/rss.xml
 src/
-  components/          # CompareTable, FAQ, RelatedDocs, BlogStructuredData
-  pages/               # Homepage
-  theme/               # MDXComponents, Root swizzles
-static/                # CNAME, robots.txt, llms.txt, social card, favicon
-scripts/               # front-matter, link, and API-drift checks
-COURSE_STYLE_GUIDE.md  # authoring rules for docs/courses (not published)
+  content.config.ts        Collection schemas (docs, blog). Frontmatter is validated at build time.
+  content/docs/            Docs, .md or .mdx. Folder path = URL path.
+  content/blog/            Blog posts, .md or .mdx.
+  lib/site.ts              Site facts, nav, docs sections. Keep in sync with POSITIONING.md.
+  lib/content.ts           Collection helpers, URLs, markdown export.
+  layouts/BaseLayout.astro All SEO head tags, JSON-LD, theme script, header and footer.
+  layouts/DocsLayout.astro Docs reader page (styles/docs.css, scripts/docs-reader.ts), TechArticle JSON-LD.
+  components/docs/         DocsMap (pages as nodes, visited tracking), RunBar (lenses, section run, AI menu), NextEdges.
+  layouts/BlogLayout.astro Post header, reading time, BlogPosting JSON-LD.
+  components/              Header, Footer, ThemeToggle, SearchDialog, AiActions, Toc, Faq, PostList.
+  components/mdx/          Components usable in any .mdx file without an import (see below).
+  lib/code-frame.mjs       Shiki transformer: file-name header and copy button on every code block.
+  lib/authors.ts           Blog author roles.
+  scripts/search.ts        Search UI on the Pagefind JS API (header dialog, Ctrl/Cmd+K, and /search).
+  pages/                   Routes (see below).
+  styles/global.css        Design tokens (dark default, full light theme) and all styles.
 ```
 
-Docs versions are cut only when a release line needs to stay available:
+## Routes
 
-```bash
-npm run docs:cut-version -- 1.0
+| URL | Source | For |
+|---|---|---|
+| `/` | `pages/index.astro` + `styles/home.css` | Homepage (animated code-to-production hero, moat sections, FAQ) |
+| `/docs`, `/docs/<id>` | `pages/docs/[...slug].astro` | Docs |
+| `/docs/<id>.md` | `pages/docs/[...slug].md.ts` | Plain-markdown copy of each doc, for AI agents |
+| `/blog`, `/blog/<id>` | `pages/blog/` | Blog |
+| `/blog/<id>.md` | `pages/blog/[...slug].md.ts` | Plain-markdown copy of each post |
+| `/blog/tags/<tag>` | `pages/blog/tags/[tag].astro` | Posts per topic |
+| `/llms.txt` | `pages/llms.txt.ts` | LLM index of the site ([llmstxt.org](https://llmstxt.org)) |
+| `/llms-full.txt` | `pages/llms-full.txt.ts` | All docs and posts in one file |
+| `/rss.xml` | `pages/rss.xml.ts` | Blog feed |
+| `/sitemap-index.xml` | `@astrojs/sitemap` | Sitemap (excludes noindex pages) |
+| `/robots.txt` | `pages/robots.txt.ts` | Allows search and AI crawlers, points to the sitemap |
+| `/search` | `pages/search.astro` | Full-page search, supports `?q=` (noindex). The header search opens a modal instead. |
+
+## Docs reader
+
+Reading a doc is a graph run, matching the product:
+
+- **Docs map** (left): pages as nodes on each section's line. Only the current section is open; closed sections show progress dots. Pages you have opened are filled in (stored in localStorage) with an "N of M explored" counter.
+- **Run bar** (sticky): the page's H2 sections as nodes that fill as you scroll; click a node to jump. It also holds the reading lenses and the "For AI" menu (Markdown, copy, llms.txt).
+- **Lenses**: Read (everything), Skim (headings, first paragraphs, callouts, tables), Code (headings and code only). Remembered per reader. Pure CSS over the full HTML, so search engines always see everything.
+- **Numbered sections**: each H2 is a numbered node on a spine; it lights up once reached.
+- **Outgoing edges**: the page ends with the next page plus branches into other sections ("if to understand", "if to ship").
+- **Keys**: `[` and `]` previous and next page, `1` `2` `3` lenses, Ctrl/Cmd+K or `/` search.
+
+## SEO and AI-readability built in
+
+- Canonical URL, Open Graph and Twitter tags on every page; canonical paths have no `.html` or trailing slash.
+- JSON-LD: Organization, WebSite and SoftwareApplication on the homepage; TechArticle + BreadcrumbList on docs; BlogPosting + BreadcrumbList on posts; Blog on the blog index.
+- Each doc and post links its markdown copy with `<link rel="alternate" type="text/markdown">` and shows "View as Markdown" / "Copy page as Markdown" buttons.
+- `description` frontmatter is required (50-170 characters). It becomes the meta description and the summary in `llms.txt`.
+- Static HTML with no client JS except the theme toggle, copy button and search.
+
+## Writing content
+
+Docs frontmatter:
+
+```yaml
+---
+title: Replay-safe tools
+description: 50-170 characters. Used for search results and llms.txt.
+section: Concepts        # one of DOC_SECTIONS in src/lib/site.ts (12 sections)
+group: In depth          # optional sub-group shown as a heading in the docs map
+label: Replay safety     # optional short name for the docs map
+order: 1                 # position within the section (migrated pages use steps of 10)
+updated: 2026-10-03      # optional; shown on the page and in JSON-LD
+faq:                     # optional; rendered at the end and as FAQPage JSON-LD
+  - q: Does this need Redis?
+    a: Plain-text answer, one to three sentences.
+draft: false             # optional
+---
 ```
 
-That snapshots `docs/` into `versioned_docs/version-1.0`; the navbar version
-dropdown then appears automatically.
+Blog frontmatter: `title`, `description`, `date`, `author`, optional `updated`, `tags`, `featured` (pins the post to the top of /blog), `faq`, `draft`.
 
-## Contributing
+A doc at `<folder>/index.md` takes the folder URL (`concepts/index.md` is `/docs/concepts`). When the folder is a section's slug, that page becomes the intro of the section landing page.
 
-PRs welcome. Before opening one, run the checks above and read
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Diagrams: write ```` ```mermaid ```` blocks. They are drawn in the browser (Mermaid loads only on pages that have one) and follow the light and dark themes.
 
-Writing conventions, where a page belongs, and the release process are
-documented on the site: [Contributing](https://agentflow.10xscale.ai/docs/project/contributing).
+Start each page with a 40-60 word paragraph that answers the page's question on its own. AI answer engines quote it.
 
-Two rules worth repeating here:
+### Components
 
-- **Verify before asserting.** Read the source for the signature, the default,
-  and the error message. Documented APIs that never existed have shipped before;
-  `npm run verify:api` exists to stop that.
-- **Moving or renaming a page requires a redirect** in `docusaurus.config.ts`.
+Available in every `.mdx` file without an import. Put opening and closing tags on their own lines, with a blank line inside, so the markdown twins convert them cleanly.
 
-## Related repos
+| Component | Use |
+|---|---|
+| `<Callout type="note\|tip\|warning\|danger" title="...">` | Aside. Becomes a blockquote in the markdown twin. |
+| `<Tabs syncKey="pkg">` + `<TabItem label="pip">` | Alternatives (pip/uv, Python/TypeScript). Tabs with the same `syncKey` switch together and are remembered. |
+| `<Steps>` around an ordered list | Numbered procedure with a connecting line. |
+| `<CardGrid>` + `<LinkCard title href description eyebrow />` | "Where to next" links. |
+| `<FileTree>` around a nested list | Project layout. Names ending in `/` are folders; **bold** marks the file in focus. |
 
-- [`10xHub/Agentflow`](https://github.com/10xHub/Agentflow) — the core Python framework (`10xscale-agentflow`)
-- [`10xscale-agentflow-cli`](https://pypi.org/project/10xscale-agentflow-cli/) — FastAPI server + CLI
-- [`@10xscale/agentflow-client`](https://www.npmjs.com/package/@10xscale/agentflow-client) — TypeScript/React client SDK
-- Playground — visual React UI for testing agents (`agentflow play`)
-- **Docs:** https://agentflow.10xscale.ai
+### Code blocks
 
-## License
+````md
+```python title="graph/agent.py" {3}
+from tenxgraph.core.graph import StateGraph
+graph = StateGraph()
+graph.add_node("agent", agent)       # [!code highlight]
+graph.add_node("tools", tool_node)   # [!code ++]
+```
+````
 
-Agentflow is [MIT licensed](LICENSE) and made by [10xScale](https://10xscale.ai). Contributions
-are accepted under the same license.
+- `title="..."` puts a file name in the header; without it the header shows the language, or "Terminal" for shell.
+- `{3}` or `{2,4-6}` highlights lines. Comments `[!code highlight]`, `[!code ++]`, `[!code --]` and `[!code focus]` mark lines too; they are removed from the rendered code and from the markdown twins.
+- Every block gets a copy button. Removed diff lines are not copied.
+
+## Before launch
+
+- Set the final domain in `astro.config.mjs` (`site`) and `src/lib/site.ts`.
+- Add an Open Graph image and a favicon (waiting on the logo).
+- The Docusaurus content is migrated (Oct 2026) with the same URLs. Delete `docusaurus/` once you have checked the migrated pages.

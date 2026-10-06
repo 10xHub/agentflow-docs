@@ -1,0 +1,18 @@
+---
+// Brand lockup: the graph-in-a-shell mark plus the live-text wordmark. The mark draws in
+// currentColor with the entry node in --brand-amber, so it follows the theme. It uses the heavier
+// small-size weights (same as favicon.svg). Source artwork and exports: design/10xgraph/logo/.
+interface Props {
+  label?: string;
+}
+const { label } = Astro.props;
+---
+<a class="wordmark" href="/" aria-label={label}>
+  <svg class="wordmark-mark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true">
+    <rect x="4" y="4" width="40" height="40" rx="11" fill="none" stroke="currentColor" stroke-width="4.4" />
+    <path d="M13 33L21 23L34 15L34 31L21 23" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <g fill="currentColor"><circle cx="21" cy="23" r="4" /><circle cx="34" cy="15" r="4" /><circle cx="34" cy="31" r="4" /></g>
+    <circle cx="13" cy="33" r="4.6" fill="var(--brand-amber)" />
+  </svg>
+  <span>10xGraph</span>
+</a>

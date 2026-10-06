@@ -1,46 +1,34 @@
 {
-  "name": "agentflow-docs",
+  "name": "10xgraph-docs",
   "version": "0.1.0",
   "private": true,
-  "license": "MIT",
-  "description": "Professional documentation site for AgentFlow.",
+  "type": "module",
+  "description": "Documentation and blog for 10xGraph. Static Astro site built for search and AI readability.",
   "scripts": {
-    "start": "NO_UPDATE_NOTIFIER=1 docusaurus clear && NO_UPDATE_NOTIFIER=1 docusaurus start",
-    "build": "NO_UPDATE_NOTIFIER=1 docusaurus build",
-    "serve": "NO_UPDATE_NOTIFIER=1 docusaurus serve",
-    "clear": "NO_UPDATE_NOTIFIER=1 docusaurus clear",
-    "typecheck": "tsc --noEmit",
-    "lint:frontmatter": "node scripts/audit-frontmatter.mjs",
-    "lint:links": "node scripts/check-external-links.mjs",
-    "verify:api": "python3 scripts/verify_api_reference.py",
-    "og-image": "node scripts/generate-og-image.mjs",
+    "dev": "npm run search:index && astro dev",
+    "dev:fast": "astro dev",
+    "build": "astro build && pagefind --site dist",
+    "search:index": "astro build && pagefind --site dist --output-path public/pagefind",
+    "preview": "npm run build && wrangler dev",
+    "check": "astro check",
     "contributors": "node scripts/fetch-contributors.mjs",
-    "release:prep": "node scripts/prepare-release.mjs",
-    "docs:cut-version": "docusaurus docs:version"
+    "generate-types": "wrangler types",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.8.1",
-    "@docusaurus/plugin-client-redirects": "^3.9.2",
-    "@docusaurus/preset-classic": "^3.8.1",
-    "@docusaurus/theme-mermaid": "^3.8.1",
-    "@easyops-cn/docusaurus-search-local": "^0.55.1",
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
-    "@mdx-js/react": "^3.1.0",
-    "lucide-react": "^1.14.0",
-    "prism-react-renderer": "^2.4.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@astrojs/mdx": "^8.0.2",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "astro": "^7.3.5"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^3.8.1",
-    "@docusaurus/tsconfig": "^3.8.1",
-    "@docusaurus/types": "^3.8.1",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "typescript": "~5.7.2"
-  },
-  "engines": {
-    "node": ">=20.0"
+    "@astrojs/check": "^0.9.10",
+    "@shikijs/transformers": "^4.5.0",
+    "pagefind": "^1.5.2",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.147.0"
   }
 }

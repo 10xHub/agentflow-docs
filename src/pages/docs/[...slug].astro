@@ -1,0 +1,28 @@
+---
+import { render } from 'astro:content';
+import { mdxComponents } from '../../components/mdx';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { getDocs, isSectionIntro, readerDocs, type Doc } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const all = await getDocs();
+  const docs = readerDocs(all);
+  // Section intros render on their section landing page (pages/docs/[section].astro).
+  return all
+    .filter((entry) => !isSectionIntro(entry))
+    .map((entry) => ({
+      params: { slug: entry.id === 'index' ? undefined : entry.id.replace(/\/index$/, '') },
+      props: { entry, docs },
+    }));
+}
+
+interface Props {
+  entry: Doc;
+  docs: Doc[];
+}
+const { entry, docs } = Astro.props;
+const { Content, headings } = await render(entry);
+---
+<DocsLayout entry={entry} headings={headings} docs={docs}>
+  <Content components={mdxComponents} />
+</DocsLayout>

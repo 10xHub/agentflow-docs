@@ -1,0 +1,119 @@
+---
+title: "Best Python Agent Frameworks in 2026: Roundup"
+seoTitle: "Python agent frameworks compared in 2026"
+description: A sourced 2026 roundup of Python agent frameworks by the 10xGraph team. LangGraph, CrewAI, AutoGen, LlamaIndex, Google ADK and 10xGraph, with when to pick each.
+section: Learn more
+group: Compare
+order: 2280
+label: 2026 roundup
+updated: "2026-10-06"
+faq:
+  - q: Are these frameworks mutually exclusive?
+    a: No. A common pattern is LlamaIndex for retrieval and another framework for the runtime. Pick the framework that owns the runtime and use the others as libraries.
+  - q: Is AutoGen still developed?
+    a: According to the AutoGen repository, AutoGen is in maintenance mode, with no new features, and Microsoft recommends Microsoft Agent Framework for new projects.
+  - q: Is open source enough, or do I need a hosted option?
+    a: "Every framework here has an MIT or Apache-2.0 licensed core you can run yourself. They differ in the server layer: some route deployment through a paid platform, some document a server, and 10xGraph generates one in the open-source install."
+  - q: How do I evaluate two frameworks side by side?
+    a: Pick one small, real use case, such as a support agent with a lookup tool, a refund tool and persistent threads. Build it in both, then compare auth, crash behavior, deploy files and how much code you maintain.
+  - q: Where does 10xGraph differ most from the field?
+    a: In the production layer. The open-source install generates the API server with JWT or custom auth, owner-only threads, rate limits, replay-safe tools, versioned state writes, and Docker Compose and Kubernetes manifests.
+---
+
+This roundup is written by the 10xGraph team. We maintain 10xGraph, so we say where it is a fit and where it is not. Claims about other frameworks link to their documentation or package metadata, checked on 2026-10-06. If something has changed, the linked source wins.
+
+## What we compare
+
+The questions that matter once an agent leaves a notebook:
+
+- **Server.** What does it take to expose the agent over HTTP, and is that in the open-source install?
+- **Auth and isolation.** Who can call it, and can one user read another user's thread?
+- **Failure behavior.** What happens to a tool call with side effects when a worker dies mid-run?
+- **Persistence and timeouts.** Where state lives, and what bounds a hung node.
+- **Frontend.** Whether there is a first-party client for TypeScript.
+- **Licensing and lock-in.** What is free, and what needs a paid platform or a license key.
+
+## The frameworks at a glance
+
+| Framework | Core license | Server layer | Source |
+|---|---|---|---|
+| 10xGraph | MIT | Generated REST, SSE and WebSocket server with JWT or custom auth in the open-source install | [Compare pages](#10xgraph) |
+| LangGraph | MIT | Agent Server through LangSmith Deployment, with plan or license requirements | [PyPI](https://pypi.org/project/langgraph/), [deployments](https://docs.langchain.com/langsmith/deployments) |
+| CrewAI | MIT | CrewAI AMP platform for deployed crews, with a free Basic plan and an Enterprise plan | [PyPI](https://pypi.org/project/crewai/), [pricing](https://www.crewai.com/pricing) |
+| AutoGen | MIT and CC-BY-4.0 | AutoGen Studio is a prototyping UI, not production-ready per its README. Project in maintenance mode | [repository](https://github.com/microsoft/autogen) |
+| LlamaIndex | MIT | Workflow server with REST endpoints, run locally or on LlamaCloud | [PyPI](https://pypi.org/project/llama-index-core/), [workflow server](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/) |
+| Google ADK | Apache-2.0 | `adk api_server` with REST and SSE, deployable to Agent Runtime, Cloud Run, GKE or containers | [PyPI](https://pypi.org/project/google-adk/), [API server](https://adk.dev/runtime/api-server/) |
+
+## The frameworks, one by one
+
+### 10xGraph
+
+10xGraph is an MIT-licensed Python graph framework that generates the production server around your agent. From a compiled graph, `10xgraph api` serves REST, SSE and WebSocket endpoints, and the production template turns on JWT auth, owner-only threads and Redis rate limits. Tool calls are recorded in a ledger so a resumed run does not repeat a refund, durable writes use a version check, and `node_timeout` and `tool_timeout` bound hung calls. `10xgraph build --docker-compose --k8s` writes the deploy files.
+
+**When to pick it:** you are putting a Python agent in front of real users, you need auth, thread isolation and crash-safe tools without building them, and you want it self-hosted under MIT. **Weak spots:** smaller community than LangGraph or CrewAI, pre-1.0, renamed from Agentflow, no Studio-equivalent visual tool, Python 3.12 or newer. [Get started](/docs/get-started).
+
+### LangGraph
+
+LangGraph is an MIT-licensed low-level orchestration library for stateful agents ([repository](https://github.com/langchain-ai/langgraph)). Production serving goes through Agent Server: LangSmith Deployment offers cloud (Plus plan or above), a self-hosted control plane (Enterprise) and a standalone server that needs a LangSmith license ([deployment options](https://docs.langchain.com/langsmith/deployments)). Custom auth is supported on all plans ([auth docs](https://docs.langchain.com/langgraph-platform/auth)), per-node `TimeoutPolicy` exists for async nodes ([fault tolerance](https://docs.langchain.com/oss/python/langgraph/fault-tolerance)), and LangSmith Studio is free with a LangSmith account ([Studio](https://docs.langchain.com/oss/python/langgraph/studio)). LangChain publishes a JavaScript client, [`@langchain/langgraph-sdk`](https://www.npmjs.com/package/@langchain/langgraph-sdk).
+
+**When to pick it:** your stack already uses LangChain and LangSmith, you want Studio, or you want the largest community and integration list. [10xGraph vs LangGraph](/docs/compare/agentflow-vs-langgraph).
+
+### CrewAI
+
+CrewAI is an MIT-licensed framework built around agents with roles and goals, tasks, and crews that run under a sequential or hierarchical process ([PyPI](https://pypi.org/project/crewai/), [processes](https://docs.crewai.com/en/concepts/processes)). Flows add event-driven orchestration with `@persist` state persistence, SQLite by default ([Flows](https://docs.crewai.com/en/concepts/flows)). Deployed crews are exposed through REST endpoints on CrewAI AMP, which has a free Basic plan limited to 50 workflow executions a month and a custom-priced Enterprise plan ([pricing](https://www.crewai.com/pricing)).
+
+**When to pick it:** you think in roles and tasks, you want a visual studio and managed deployment, or you are prototyping a crew quickly. [10xGraph vs CrewAI](/docs/compare/agentflow-vs-crewai).
+
+### AutoGen
+
+AutoGen is Microsoft's framework for conversational multi-agent systems, with AgentChat team types such as `RoundRobinGroupChat`, `SelectorGroupChat`, `Swarm` and `GraphFlow` ([teams docs](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/teams.html)). Its repository states that AutoGen is in maintenance mode and recommends Microsoft Agent Framework for new users ([repository](https://github.com/microsoft/autogen)). Microsoft Agent Framework is MIT-licensed, supports Python and .NET, and lists checkpointing among its features ([repository](https://github.com/microsoft/agent-framework)).
+
+**When to pick it:** you have existing AutoGen code, or you are doing research on agent conversation. For new projects on a Microsoft stack, evaluate Microsoft Agent Framework. [10xGraph vs AutoGen](/docs/compare/agentflow-vs-autogen).
+
+### LlamaIndex
+
+LlamaIndex is an MIT-licensed framework for connecting LLMs to your data, with agents (`FunctionAgent`, `AgentWorkflow`) built on its retrieval layer ([agents docs](https://developers.llamaindex.ai/python/framework/understanding/agent/)). LlamaAgents adds a workflow server that exposes workflows as REST endpoints, a `llamactl` CLI, and LlamaCloud document services such as Parse and Extract ([overview](https://developers.llamaindex.ai/python/llamaagents/overview/)).
+
+**When to pick it:** retrieval over documents is the core of your product. Many teams keep LlamaIndex for retrieval and run the agent on another runtime. [10xGraph vs LlamaIndex Agents](/docs/compare/agentflow-vs-llamaindex-agents).
+
+### Google ADK
+
+Google's Agent Development Kit is an Apache-2.0 licensed, code-first framework ([PyPI](https://pypi.org/project/google-adk/)). `adk api_server` exposes session endpoints and `/run` and `/run_sse` ([API server docs](https://adk.dev/runtime/api-server/)), deployment targets include Agent Runtime, Cloud Run, GKE and any container host ([deployment](https://adk.dev/deploy/)), and sessions can live in memory, in Vertex AI or in PostgreSQL, MySQL or SQLite ([sessions](https://adk.dev/sessions/session/)). Models beyond Gemini are available through LiteLLM ([docs](https://adk.dev/agents/models/litellm/)).
+
+**When to pick it:** you run on Google Cloud, you want a managed agent runtime, or you want one framework across several languages. [10xGraph vs Google ADK](/docs/compare/agentflow-vs-google-adk).
+
+## A quick decision table
+
+| Your situation | Worth evaluating first |
+|---|---|
+| Python agent for real users, self-hosted, with auth, thread isolation and crash-safe tools | 10xGraph |
+| Already on LangChain and LangSmith, or you want Studio | LangGraph |
+| Role-based crews, visual studio, managed deployment | CrewAI |
+| Existing AutoGen code, or a Microsoft and .NET stack | AutoGen or Microsoft Agent Framework |
+| Retrieval over documents is the product | LlamaIndex |
+| Google Cloud with a managed agent runtime | Google ADK |
+
+## How to choose
+
+Two teams can pick different frameworks for the same use case and both be right. Questions that narrow it down:
+
+1. **Where does the server come from?** Check whether the server layer is in the open-source install, needs a paid platform, or is yours to build.
+2. **What happens when a worker dies mid-run?** Ask whether a tool with side effects can run twice on resume.
+3. **Who can read whose thread?** Check for built-in isolation or a handler you write.
+4. **What language is your product surface?** A Python backend with a TypeScript frontend needs a client.
+5. **How much glue can your team maintain?** Count the pieces you assemble yourself.
+
+When you have answers, the choice usually narrows to two frameworks. Each comparison page above runs 10xGraph head-to-head with one of the others, with sources.
+
+## Next steps
+
+<CardGrid>
+
+<LinkCard title="10xGraph vs LangGraph" href="/docs/compare/agentflow-vs-langgraph" description="Graph runtimes compared on the production layer." eyebrow="compare" />
+<LinkCard title="10xGraph vs CrewAI" href="/docs/compare/agentflow-vs-crewai" description="Graphs vs role-based crews." eyebrow="compare" />
+<LinkCard title="10xGraph vs Microsoft AutoGen" href="/docs/compare/agentflow-vs-autogen" description="Typed graphs vs conversational agents." eyebrow="compare" />
+<LinkCard title="10xGraph vs LlamaIndex Agents" href="/docs/compare/agentflow-vs-llamaindex-agents" description="Runtime-first vs retrieval-first." eyebrow="compare" />
+<LinkCard title="10xGraph vs Google ADK" href="/docs/compare/agentflow-vs-google-adk" description="Provider-neutral server vs Google's agent kit." eyebrow="compare" />
+<LinkCard title="Get started with 10xGraph" href="/docs/get-started" description="Install, build an agent, expose an API, connect from TypeScript." eyebrow="Guide" />
+
+</CardGrid>

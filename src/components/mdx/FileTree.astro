@@ -1,0 +1,13 @@
+---
+// Project layout. Wrap a nested markdown list. Names ending in "/" render as folders;
+// text after the name becomes a dimmed comment. Mark the file you are talking about with **bold**.
+const html = await Astro.slots.render('default');
+const marked = html.replace(/<li>([\s\S]*?)(?=<ul>|<\/li>)/g, (_, inner: string) => {
+  const m = /^\s*((?:<strong>)?[^\s<]+(?:<\/strong>)?)\s*([\s\S]*?)\s*$/.exec(inner);
+  if (!m) return `<li>${inner}`;
+  const [, name, note] = m;
+  const dir = /\/(<\/strong>)?$/.test(name);
+  return `<li${dir ? ' class="ft-dir"' : ''}><span class="ft-name">${name}</span>${note ? `<span class="ft-note">${note}</span>` : ''}`;
+});
+---
+<div class="file-tree" set:html={marked} />

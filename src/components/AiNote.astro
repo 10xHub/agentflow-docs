@@ -1,0 +1,40 @@
+---
+// End-of-page note for AI agents. A plain link to this page's Markdown twin (also announced in
+// <head> as rel="alternate" type="text/markdown"), with the full URL written out as text so
+// fetchers that strip link targets still see it. Site-wide files (llms.txt) live in the footer.
+import { absolute } from '../lib/content';
+
+interface Props {
+  markdownHref: string;
+  kind?: 'page' | 'post';
+}
+const { markdownHref, kind = 'page' } = Astro.props;
+const url = absolute(markdownHref);
+---
+<aside class="ai-note" aria-labelledby="ai-note-title" data-pagefind-ignore>
+  <p class="ai-note-label" id="ai-note-title">For AI agents</p>
+  <p class="ai-note-text">
+    This {kind} is available as plain Markdown, with no navigation or styling. AI agents and LLM tools should read it from:
+  </p>
+  <a class="ai-note-url" href={markdownHref} rel="alternate" type="text/markdown">{url}</a>
+  <div class="ai-note-actions">
+    <a class="ai-note-btn ai-note-btn-primary" href={markdownHref} rel="alternate" type="text/markdown">View as Markdown</a>
+    <button class="ai-note-btn" type="button" data-copy-md={markdownHref}>Copy as Markdown</button>
+  </div>
+</aside>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.ai-note [data-copy-md]').forEach((btn) => {
+    const label = btn.textContent;
+    btn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(btn.dataset.copyMd!);
+        await navigator.clipboard.writeText(await res.text());
+        btn.textContent = 'Copied';
+      } catch {
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => (btn.textContent = label), 1800);
+    });
+  });
+</script>

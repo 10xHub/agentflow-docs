@@ -1,0 +1,359 @@
+---
+title: "Lesson 4: Retrieval, Grounding, and Citations"
+description: Ground agent responses in real knowledge using retrieval-augmented generation.
+section: Courses
+group: GenAI beginner
+order: 2450
+label: Lesson 4
+updated: "2026-07-21"
+---
+
+## Learning Outcome
+
+By the end of this lesson, you will be able to:
+- Implement basic retrieval-augmented generation (RAG)
+- Ground responses in specific knowledge sources
+- Add citations to agent outputs
+- Identify when retrieval is and isn't needed
+
+## Prerequisites
+
+- Read [Embeddings and similarity](/docs/courses/shared/embeddings-vectorization-and-similarity)
+- Read [Chunking and retrieval primitives](/docs/courses/shared/chunking-and-retrieval-primitives)
+
+---
+
+## Concept: Why Retrieval?
+
+LLMs have two fundamental limitations:
+
+1. **Knowledge cutoff** — They don't know about recent events or private data
+2. **Hallucination** — They can generate plausible but incorrect information
+
+```mermaid
+flowchart LR
+    subgraph LLM["LLM Alone"]
+        Q["Question"] --> L["LLM"]
+        L --> A["Answer (may hallucinate)"]
+    end
+    
+    subgraph RAG["With Retrieval"]
+        Q2["Question"] --> R["Retrieve\nRelevant Docs"]
+        R --> G["LLM"]
+        G --> A2["Grounded\nAnswer"]
+    end
+    
+    style A fill:#ffcccc
+    style A2 fill:#ccffcc
+```
+
+### When Retrieval Helps
+
+| Situation | Retrieval? | Why |
+|-----------|-----------|-----|
+| Answering questions about your company | ✅ Yes | Private knowledge |
+| Recent news or events | ✅ Yes | Knowledge cutoff |
+| Technical documentation | ✅ Yes | Precise facts needed |
+| General knowledge ("What is Python?") | ❌ No | LLM already knows |
+| Creative writing | ❌ No | No factual grounding needed |
+
+---
+
+## Concept: The 2-Step RAG Pattern
+
+The classic RAG pattern has two steps:
+
+```mermaid
+flowchart TB
+    subgraph Indexing["1. Indexing (One-time)"]
+        Docs["Documents"] --> Chunk["Chunk\n(500 tokens)"]
+        Chunk --> Embed["Embed\nChunk"]
+        Embed --> Store["Vector\nStore"]
+    end
+    
+    subgraph Query["2. Query (Per request)"]
+        Q["User Query"] --> QEmbed["Embed Query"]
+        QEmbed --> Search["Search\nVector Store"]
+        Search --> TopK["Top-K\nChunks"]
+        TopK --> Prompt["Build\nPrompt"]
+        Prompt --> LLM["LLM"]
+        LLM --> Answer["Grounded\nAnswer"]
+    end
+    
+    Store -.-> |"at query time"| Search
+```
+
+### Retrieval vs. Context Window
+
+Retrieval is often better than stuffing everything into context:
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Long context** | Simpler implementation | Higher cost, quality degrades |
+| **Retrieval** | Targeted, cheaper | Additional complexity |
+| **Hybrid** | Best of both | Most complex |
+
+---
+
+## Concept: Grounding and Citations
+
+Grounding means ensuring answers come from specific sources. Citations make this verifiable.
+
+### Grounding Prompt Pattern
+
+```python
+grounding_prompt = """
+Answer the question using ONLY the provided context.
+If the answer is not in the context, say "I don't know based on the provided information."
+
+Context:
+---
+{retrieved_chunks}
+---
+
+Question: {user_question}
+
+Answer with citations: [Source: filename]
+"""
+```
+
+### Citation Format
+
+```mermaid
+flowchart LR
+    subgraph Answer["Grounded Answer"]
+        Text["The system was deployed on March 15, 2024."]
+        Source["[Source: deployment-guide.md]"]
+    end
+    
+    Text --> Combined
+    Source --> Combined
+```
+
+### Citation Schema
+
+```python
+from pydantic import BaseModel
+from typing import Optional
+
+class GroundedAnswer(BaseModel):
+    answer: str
+    sources: list[str]
+    confidence: float
+    
+    # Optional: specific citations with quotes
+    citations: Optional[list[dict]] = None
+```
+
+---
+
+## Concept: Retrieval Failure Modes
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| **Irrelevant chunks** | Poor embeddings | Use better model, add filters |
+| **Missed relevant docs** | Low recall | Hybrid search, lower threshold |
+| **Stale data** | Outdated index | Refresh index periodically |
+| **Prompt injection** | Malicious docs | Sanitize retrieved content |
+
+### Prompt Injection Risk
+
+⚠️ **Never trust retrieved content without sanitization**
+
+```python
+# ❌ Dangerous: Retained doc content in prompt
+prompt = f"""
+Answer based on this document:
+
+{doc_content}  # Could contain injected instructions!
+"""
+
+# ✅ Safer: Citation only, not raw content
+prompt = f"""
+Answer based on documents with IDs: {doc_ids}
+Cite the source in your response.
+"""
+```
+
+---
+
+## Example: Building a Q&A System with RAG
+
+### Step 1: Define the Schema
+
+```python
+from pydantic import BaseModel
+
+class Document(BaseModel):
+    content: str
+    source: str
+    chunk_id: str
+
+class QAResponse(BaseModel):
+    answer: str
+    sources: list[str]
+    confidence: float
+```
+
+### Step 2: Index Documents
+
+The store owns the embedding model, so indexing means handing it text plus metadata. It embeds and writes the vector for you.
+
+```python
+from tenxgraph.storage.store import QdrantStore
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+from tenxgraph.storage.store.store_schema import MemoryType
+
+vector_store = QdrantStore(
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
+    collection_name="knowledge_base",
+    path="./qdrant_data",
+)
+
+config = {"user_id": "docs-index"}
+
+async def index_documents(documents: list[Document]):
+    await vector_store.asetup()
+    for doc in documents:
+        await vector_store.astore(
+            config=config,
+            content=doc.content,
+            memory_type=MemoryType.SEMANTIC,
+            metadata={"source": doc.source, "chunk_id": doc.chunk_id},
+        )
+```
+
+### Step 3: Retrieve and Answer
+
+`asearch()` embeds the query with the same model and returns `MemorySearchResult` objects carrying `content`, `score`, and the `metadata` you indexed.
+
+```python
+import json
+
+from tenxgraph.core.llm import call_llm
+
+async def rag_query(question: str, top_k: int = 5) -> QAResponse:
+    # 1. Retrieve relevant chunks (the query is embedded for you)
+    results = await vector_store.asearch(
+        config=config,
+        query=question,
+        limit=top_k,
+    )
+
+    # 2. Build context
+    context = "\n\n".join(
+        f"[Source: {r.metadata['source']}]\n{r.content}" for r in results
+    )
+
+    # 3. Generate answer with grounding
+    prompt = f"""
+    Answer the question using the provided sources.
+    Cite each statement with [Source: filename].
+    Reply as JSON matching: {QAResponse.model_json_schema()}
+
+    Sources:
+    {context}
+
+    Question: {question}
+    """
+
+    text, *_ = await call_llm("gpt-4o", prompt, json_mode=True)
+    return QAResponse(**json.loads(text))
+```
+
+`call_llm` returns the tuple `(text, input_tokens, output_tokens, cache_read_tokens)`, so the answer text is the first element. Inside a graph you would use an `Agent` node with `output_schema=QAResponse` instead, and let the framework parse the structured output.
+
+### Step 4: Run the System
+
+```python
+# Index some documents
+documents = [
+    Document(content="10xGraph was founded in 2024...", source="about.md", chunk_id="1"),
+    Document(content="To install 10xGraph: pip install...", source="install.md", chunk_id="2"),
+]
+
+await index_documents(documents)
+
+# Query
+result = await rag_query("When was 10xGraph founded?")
+print(result.answer)
+# "10xGraph was founded in 2024. [Source: about.md]"
+```
+
+---
+
+## Exercise: Add Citations to an Existing Agent
+
+### Your Task
+
+Take a simple Q&A agent and add:
+
+1. **Citation support** — Every factual statement includes a source
+2. **"Don't know" handling** — When retrieval returns nothing relevant
+3. **Confidence scoring** — Rate answer confidence based on retrieval quality
+
+### Template
+
+```python
+class CitationAwareAgent:
+    def __init__(self, vector_store, llm):
+        self.store = vector_store
+        self.llm = llm
+    
+    def query(self, question: str) -> dict:
+        # 1. Retrieve relevant documents
+        # 2. Check if retrieval is sufficient
+        # 3. Generate answer with citations
+        # 4. Calculate confidence
+        pass
+```
+
+### Test Cases
+
+| Question | Expected |
+|----------|----------|
+| "When was 10xGraph founded?" | Answer with source citation |
+| "What is the meaning of life?" | "I don't have information about this" |
+| "Tell me about [undocumented topic]" | "I don't have information about this" |
+
+---
+
+## What You Learned
+
+1. **Retrieval grounds knowledge** — Use it when LLM knowledge is insufficient
+2. **Citations build trust** — Always cite sources for factual claims
+3. **Retrieval can fail** — Have fallback for when retrieval returns nothing
+4. **Watch for injection** — Never blindly trust retrieved content
+
+---
+
+## Common Failure Mode
+
+**Retrieval without citation**
+
+Retrieving context but not citing sources:
+
+```python
+# ❌ No citation
+prompt = f"Answer based on: {retrieved_context}"
+
+# ✅ With citation
+prompt = f"""
+Answer based on [Source: {source}].
+{retrieved_context}
+Cite sources in your response.
+"""
+```
+
+---
+
+## Next Step
+
+Continue to [Lesson 5: State, memory, threads, and streaming](/docs/courses/genai-beginner/lesson-5-state-memory-threads-and-streaming) to build conversation-aware applications.
+
+### Or Explore
+
+- [Memory Tutorial](/docs/tutorials/from-examples/memory) — Vector store setup
+- [Memory and Store concepts](/docs/concepts/memory-and-store) — Memory architecture

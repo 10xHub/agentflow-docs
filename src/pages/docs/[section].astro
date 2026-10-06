@@ -1,0 +1,124 @@
+---
+// Section landing pages: /docs/get-started, /docs/concepts, /docs/how-to, /docs/reference.
+// Every page in the section, in reading order, as a numbered run.
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { mdxComponents } from '../../components/mdx';
+import DocsMap from '../../components/docs/DocsMap.astro';
+import { DOC_SECTIONS, SECTION_INFO, type DocSection } from '../../lib/site';
+import { absolute, docHref, getDocs, isSectionIntro, readerDocs, readingMinutes, type Doc } from '../../lib/content';
+import '../../styles/docs.css';
+
+export async function getStaticPaths() {
+  const all = await getDocs();
+  const docs = readerDocs(all);
+  return DOC_SECTIONS.filter((s) => all.some((d: Doc) => d.data.section === s)).map((section) => ({
+    params: { section: SECTION_INFO[section].slug },
+    props: { section, docs, intro: all.find((d: Doc) => d.data.section === section && isSectionIntro(d)) },
+  }));
+}
+
+interface Props {
+  section: DocSection;
+  docs: Doc[];
+  intro?: Doc;
+}
+const { section, docs, intro } = Astro.props;
+const Intro = intro ? (await render(intro)).Content : undefined;
+const { slug, title: seoTitle, blurb } = SECTION_INFO[section];
+const pages = docs.filter((d) => d.data.section === section);
+// Pages grouped by their `group` frontmatter, in reading order; ungrouped pages come first.
+const grouped: { group?: string; items: Doc[] }[] = [];
+for (const d of pages) {
+  const last = grouped[grouped.length - 1];
+  if (last && last.group === d.data.group) last.items.push(d);
+  else grouped.push({ group: d.data.group, items: [d] });
+}
+let n = 0;
+const minutes = pages.reduce((n, d) => n + readingMinutes(d.body), 0);
+const href = `/docs/${slug}`;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${section}: 10xGraph docs`,
+    description: blurb,
+    url: absolute(href),
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: pages.map((d, i) => ({ '@type': 'ListItem', position: i + 1, name: d.data.title, url: absolute(docHref(d.id)) })),
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Docs', item: absolute('/docs') },
+      { '@type': 'ListItem', position: 2, name: section, item: absolute(href) },
+    ],
+  },
+];
+---
+<BaseLayout title={seoTitle} exactTitle description={blurb} jsonLd={jsonLd}>
+  <div class="reader" data-lens="read">
+    <aside class="reader-map">
+      <button class="map-toggle" type="button" aria-expanded="false" aria-controls="docs-map">
+        <span class="map-toggle-kicker">Docs map</span>
+        <span class="map-toggle-title">{section}</span>
+      </button>
+      <div id="docs-map" class="map-wrap">
+        <DocsMap docs={docs} section={section} />
+      </div>
+    </aside>
+
+    <div class="reader-main section-main" data-pagefind-body>
+      <header class="doc-hero">
+        <nav class="doc-path" aria-label="Breadcrumb">
+          <a href="/docs">Docs</a>
+          <span class="doc-path-edge" aria-hidden="true" />
+          <span aria-current="page">{section}</span>
+        </nav>
+        <h1>{section}</h1>
+        <p class="doc-tldr"><span class="doc-tldr-label">In this section</span>{intro?.data.description ?? blurb}</p>
+        <ul class="doc-chips" data-pagefind-ignore>
+          <li>{pages.length} page{pages.length === 1 ? '' : 's'}</li>
+          <li>About {minutes} min to read all</li>
+        </ul>
+      </header>
+
+      {Intro && (
+        <div class="prose doc-prose section-intro">
+          <Intro components={mdxComponents} />
+        </div>
+      )}
+
+      <h2 class="section-list-title" id="pages">All pages in {section}</h2>
+      {grouped.map((g) => (
+        <section class="section-group" aria-label={g.group ?? section}>
+          {g.group && <h3 class="section-group-title">{g.group}</h3>}
+          <ol class="section-run">
+            {g.items.map((d) => (
+              <li>
+                <a href={docHref(d.id)}>
+                  <span class="section-num" aria-hidden="true">{String(++n).padStart(2, '0')}</span>
+                  <span class="section-body">
+                    <span class="section-title">{d.data.title}</span>
+                    <span class="section-desc">{d.data.description}</span>
+                  </span>
+                  <span class="section-time">{readingMinutes(d.body)} min</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { initReader } from '../../scripts/docs-reader';
+  import { renderMermaid } from '../../scripts/mermaid';
+  initReader();
+  renderMermaid();
+</script>

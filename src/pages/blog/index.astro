@@ -1,0 +1,96 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/blog/PostCard.astro';
+import PostCover from '../../components/blog/PostCover.astro';
+import TopicNav from '../../components/blog/TopicNav.astro';
+import KindNav from '../../components/blog/KindNav.astro';
+import { SITE } from '../../lib/site';
+import { AUTHORS, initials } from '../../lib/authors';
+import { absolute, formatDate, getKinds, getPosts, getTags, postHref, readingMinutes, tagHref } from '../../lib/content';
+import '../../styles/blog.css';
+
+const posts = await getPosts();
+const featured = posts.find((p) => p.data.featured) ?? posts[0];
+const rest = posts.filter((p) => p !== featured);
+const tags = getTags(posts);
+const kinds = getKinds(posts);
+const description = 'Engineering notes from the 10xGraph team on production AI agents: replay-safe tools, two-tier memory, auth, deployment and release news.';
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: `${SITE.name} blog`,
+    description,
+    url: absolute('/blog'),
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    blogPost: posts.map((p) => ({
+      '@type': 'BlogPosting',
+      headline: p.data.title,
+      url: absolute(postHref(p.id)),
+      datePublished: p.data.date.toISOString(),
+    })),
+  },
+];
+---
+<BaseLayout title="10xGraph blog: production AI agents in Python" exactTitle description={description} jsonLd={jsonLd}>
+  <div class="blog">
+    <header class="blog-head">
+      <div>
+        <p class="blog-kicker">10xGraph blog</p>
+        <h1>Engineering notes</h1>
+        <p class="blog-intro">{description}</p>
+      </div>
+      <div class="blog-actions">
+      <a class="blog-subscribe blog-archive-link" href="/blog/archive">Archive</a>
+      <a class="blog-subscribe" href="/rss.xml">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="currentColor" /><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+        Subscribe via RSS
+      </a>
+      </div>
+    </header>
+
+    <section aria-label="About the blog" style="display:grid;gap:12px;margin-top:32px">
+      <p class="blog-intro">The blog has three kinds of posts. Tutorials build one real use case from an empty folder, with working code that was run before it was published. Engineering notes explain how 10xGraph behaves when things go wrong: a process killed mid-tool, two runs on one thread, a hung node, a stale cache. Release posts say what changed in a version and how to upgrade.</p>
+      <p class="blog-intro">It is written for Python developers who are moving an agent from a demo to a service other people depend on, and for the platform engineers who run it. Every version is listed in the <a href="/changelog">changelog</a>. For reference material, use the <a href="/docs">docs</a>.</p>
+    </section>
+
+    {featured && (
+      <article class="feature">
+        <a class="feature-art" href={postHref(featured.id)} tabindex="-1" aria-hidden="true">
+          <PostCover seed={featured.id} variant="hero" animate />
+        </a>
+        <div class="feature-body">
+          <p class="feature-label">Featured</p>
+          <h2><a href={postHref(featured.id)}>{featured.data.title}</a></h2>
+          <p class="feature-desc">{featured.data.description}</p>
+          <div class="byline">
+            <span class="avatar" aria-hidden="true">{initials(featured.data.author)}</span>
+            <span class="byline-text">
+              <span class="byline-name">{featured.data.author}</span>
+              <span class="byline-meta">
+                {AUTHORS[featured.data.author] && <span>{AUTHORS[featured.data.author].role}</span>}
+                <time datetime={featured.data.date.toISOString()}>{formatDate(featured.data.date)}</time>
+                <span>{readingMinutes(featured.body)} min read</span>
+              </span>
+            </span>
+          </div>
+          {featured.data.tags.length > 0 && (
+            <ul class="post-card-tags" aria-label="Tags">
+              {featured.data.tags.map((t) => <li><a href={tagHref(t)}>{t}</a></li>)}
+            </ul>
+          )}
+        </div>
+      </article>
+    )}
+
+    <KindNav kinds={kinds} total={posts.length} />
+    <TopicNav tags={tags} total={posts.length} />
+
+    {rest.length > 0 && (
+      <section aria-label="More posts" class="post-grid-list">
+        {rest.map((p) => <PostCard post={p} />)}
+      </section>
+    )}
+    <p class="blog-more"><a href="/blog/archive">Browse all {posts.length} posts in the archive</a></p>
+  </div>
+</BaseLayout>

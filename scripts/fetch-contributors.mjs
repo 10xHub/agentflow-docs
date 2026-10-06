@@ -2,10 +2,10 @@
 /**
  * Contributor data generator.
  *
- * Agentflow is spread across five repositories, so no single GitHub contributor
+ * 10xGraph is spread across five repositories, so no single GitHub contributor
  * graph shows the whole picture. This merges all five into one list, deduped by
- * login, and writes it to `src/data/contributors.json` for <ContributorWall /> to
- * render.
+ * login, and writes it to `src/data/contributors.json` for the /maintainers page
+ * (src/pages/maintainers.astro) to render.
  *
  * The output is committed. Builds read the JSON and never call the API, so the
  * docs site keeps building when GitHub is down or rate-limiting, and page loads
@@ -15,8 +15,8 @@
  * usually fine; CI runners share IPs and can hit the cap).
  *
  * Usage:
- *   node scripts/fetch-contributors.mjs
- *   GITHUB_TOKEN=ghp_... node scripts/fetch-contributors.mjs
+ *   npm run contributors
+ *   GITHUB_TOKEN=ghp_... npm run contributors
  */
 import {writeFile, mkdir} from 'node:fs/promises';
 import {resolve, dirname} from 'node:path';
@@ -26,7 +26,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'src/data/contributors.json');
 
 const REPOS = [
-  '10xHub/agentflow',
+  '10xGraph/10xGraph',
   '10xHub/agentflow-cli',
   '10xHub/agentflow-client',
   '10xHub/agentflow-docs',
@@ -47,7 +47,7 @@ async function fetchContributors(repo) {
   const res = await fetch(url, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'agentflow-docs-contributor-sync',
+      'User-Agent': '10xgraph-docs-contributor-sync',
       ...(token ? {Authorization: `Bearer ${token}`} : {}),
     },
   });

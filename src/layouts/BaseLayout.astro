@@ -1,0 +1,137 @@
+---
+// Fonts are self-hosted (no third-party request, no render-blocking stylesheet). Each family is
+// split by unicode range, so browsers download only the subsets a page uses.
+import '@fontsource-variable/bricolage-grotesque/opsz.css';
+import '@fontsource-variable/ibm-plex-sans';
+import '@fontsource-variable/jetbrains-mono';
+import displayFont from '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-opsz-normal.woff2?url';
+import bodyFont from '@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2?url';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE } from '../lib/site';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Use the title as-is instead of appending " | 10xGraph" (homepage). */
+  exactTitle?: boolean;
+  ogType?: 'website' | 'article';
+  /** schema.org objects; rendered as one JSON-LD script. */
+  jsonLd?: Record<string, unknown>[];
+  /** Path of the plain-markdown version of this page, for AI agents. */
+  markdownHref?: string;
+  noindex?: boolean;
+  publishedTime?: Date;
+  modifiedTime?: Date;
+}
+
+const {
+  title,
+  description,
+  exactTitle = false,
+  ogType = 'website',
+  jsonLd = [],
+  markdownHref,
+  noindex = false,
+  publishedTime,
+  modifiedTime,
+} = Astro.props;
+
+const fullTitle = exactTitle ? title : `${title} | ${SITE.name}`;
+// Clean canonical path: build.format 'file' reports /docs.html and /index.html, but the site is served at /docs and /.
+const cleanPath = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
+const canonical = new URL(cleanPath, Astro.site).toString();
+// Shared social card (logo lockup on the dark brand background) until pages get their own.
+const ogImage = new URL('/og-default.png', Astro.site).toString();
+---
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="generator" content={Astro.generator} />
+
+    <!-- Theme: stored choice, then OS preference, then dark. Runs before paint to avoid a flash. -->
+    <script is:inline>
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+        // Lets CSS show JS-only controls from the first paint, so they do not shift the layout later.
+        document.documentElement.classList.add('js');
+      })();
+    </script>
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0B0E13" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FAFAF8" media="(prefers-color-scheme: light)" />
+
+    <!-- Open Graph / social -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content={SITE.locale} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="10xGraph logo" />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {modifiedTime && <meta property="article:modified_time" content={modifiedTime.toISOString()} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <!-- Machine-readable alternates: RSS for readers, markdown and llms.txt for AI agents -->
+    <link rel="alternate" type="application/rss+xml" title={`${SITE.name} blog`} href="/rss.xml" />
+    {markdownHref && <link rel="alternate" type="text/markdown" title="This page as Markdown" href={markdownHref} />}
+    <link rel="alternate" type="text/plain" title="LLM-readable site index" href="/llms.txt" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={bodyFont} as="font" type="font/woff2" crossorigin />
+
+    {jsonLd.length > 0 && <script type="application/ld+json" set:html={JSON.stringify(jsonLd.length === 1 ? jsonLd[0] : jsonLd)} />}
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <script>
+      // Copy buttons on code frames (lib/code-frame.mjs). Removed diff lines are left out of the copy.
+      document.addEventListener('click', async (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.code-copy');
+        const pre = btn?.closest('.code-frame')?.querySelector('pre');
+        if (!btn || !pre) return;
+        const lines = [...pre.querySelectorAll('.line')].filter((l) => !l.classList.contains('remove'));
+        const text = lines.length ? lines.map((l) => l.textContent).join('\n') : pre.textContent ?? '';
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = 'Copied';
+          btn.dataset.copied = '';
+        } catch {
+          btn.textContent = 'Press Ctrl+C';
+        }
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          delete btn.dataset.copied;
+        }, 1600);
+      });
+    </script>
+  </body>
+</html>

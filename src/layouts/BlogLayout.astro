@@ -1,0 +1,233 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import AiNote from '../components/AiNote.astro';
+import Faq from '../components/Faq.astro';
+import Toc from '../components/Toc.astro';
+import PostCard from '../components/blog/PostCard.astro';
+import PostCover from '../components/blog/PostCover.astro';
+import { BLOG_KINDS, SITE } from '../lib/site';
+import { AUTHORS, initials } from '../lib/authors';
+import {
+  absolute,
+  faqJsonLd,
+  formatDate,
+  kindHref,
+  postHref,
+  postMarkdownHref,
+  readingMinutes,
+  tagHref,
+  type Post,
+} from '../lib/content';
+import '../styles/blog.css';
+
+interface Props {
+  entry: Post;
+  headings: MarkdownHeading[];
+  posts: Post[];
+}
+const { entry, headings, posts } = Astro.props;
+const { title, seoTitle, description, date, updated, author, kind, tags, faq } = entry.data;
+const href = postHref(entry.id);
+const url = absolute(href);
+const markdownHref = postMarkdownHref(entry.id);
+const role = AUTHORS[author]?.role;
+const minutes = readingMinutes(entry.body);
+
+// Keep reading: posts sharing the most tags first, then the newest.
+const related = posts
+  .filter((p) => p.id !== entry.id)
+  .map((p) => ({ p, shared: p.data.tags.filter((t) => tags.includes(t)).length }))
+  .sort((a, b) => b.shared - a.shared || b.p.data.date.getTime() - a.p.data.date.getTime())
+  .slice(0, 2)
+  .map((r) => r.p);
+
+// Brand marks are Simple Icons paths (24x24 viewBox).
+const share = [
+  {
+    label: 'X',
+    href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,
+    icon: 'M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z',
+  },
+  {
+    label: 'LinkedIn',
+    href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+    icon: 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z',
+  },
+  {
+    label: 'Hacker News',
+    href: `https://news.ycombinator.com/submitlink?u=${encodeURIComponent(url)}&t=${encodeURIComponent(title)}`,
+    icon: 'M0 24V0h24v24H0zM6.951 5.896l4.112 7.708v5.064h1.583v-4.972l4.148-7.799h-1.749l-2.457 4.875c-.372.745-.688 1.434-.688 1.434s-.297-.708-.651-1.434L8.831 5.896h-1.88z',
+  },
+];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    url,
+    mainEntityOfPage: url,
+    datePublished: date.toISOString(),
+    dateModified: (updated ?? date).toISOString(),
+    author: { '@type': 'Person', name: author, ...(role && { jobTitle: role }) },
+    publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
+    keywords: tags.join(', '),
+    wordCount: (entry.body ?? '').split(/\s+/).length,
+    isPartOf: { '@type': 'Blog', name: `${SITE.name} blog`, url: absolute('/blog') },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: absolute('/blog') },
+      { '@type': 'ListItem', position: 2, name: BLOG_KINDS[kind].label, item: absolute(kindHref(kind)) },
+      { '@type': 'ListItem', position: 3, name: title, item: url },
+    ],
+  },
+  ...(faq.length ? [faqJsonLd(faq)] : []),
+];
+---
+<BaseLayout
+  title={seoTitle ?? title}
+  description={description}
+  ogType="article"
+  jsonLd={jsonLd}
+  markdownHref={markdownHref}
+  publishedTime={date}
+  modifiedTime={updated ?? date}
+>
+  <div class="read-progress" aria-hidden="true"><span></span></div>
+
+  <article class="story" data-pagefind-body>
+    <header class="story-head">
+      <nav class="story-crumbs" aria-label="Breadcrumb" data-pagefind-ignore>
+        <a href="/blog">Blog</a>
+        <a href={kindHref(kind)}>{BLOG_KINDS[kind].label}</a>
+        {tags.slice(0, 3).map((t) => <a class="story-tag" href={tagHref(t)}>{t}</a>)}
+      </nav>
+      <h1>{title}</h1>
+      <p class="story-dek">{description}</p>
+      <div class="byline">
+        <span class="avatar" aria-hidden="true">{initials(author)}</span>
+        <span class="byline-text">
+          <span class="byline-name">{author}</span>
+          <span class="byline-meta">
+            {role && <span>{role}</span>}
+            <time datetime={date.toISOString()}>{formatDate(date)}</time>
+            <span>{minutes} min read</span>
+            {updated && <span>Updated <time datetime={updated.toISOString()}>{formatDate(updated)}</time></span>}
+            <a href={markdownHref} rel="alternate" type="text/markdown" title="This post as plain Markdown, for AI agents">Markdown</a>
+          </span>
+        </span>
+      </div>
+    </header>
+
+    <figure class="story-cover" aria-hidden="true">
+      <PostCover seed={entry.id} variant="hero" animate />
+    </figure>
+
+    <div class="story-grid">
+      <aside class="story-toc" data-pagefind-ignore>
+        <Toc headings={headings} hasFaq={faq.length > 0} />
+      </aside>
+      <div class="story-main">
+        <div class="prose story-prose">
+          <slot />
+        </div>
+        <Faq faq={faq} />
+
+        <footer class="story-end" data-pagefind-ignore>
+          {tags.length > 0 && (
+            <ul class="story-tags" aria-label="Tags">
+              {tags.map((t) => <li><a href={tagHref(t)}>{t}</a></li>)}
+            </ul>
+          )}
+          <div class="author-card">
+            <span class="avatar avatar-lg" aria-hidden="true">{initials(author)}</span>
+            <div>
+              <p class="author-kicker">Written by</p>
+              <p class="author-name">{author}</p>
+              {role && <p class="author-role">{role}</p>}
+            </div>
+          </div>
+          <div class="share">
+            <span class="share-label">Share</span>
+            <button type="button" class="share-btn" data-copy-link={url} aria-label="Copy link" title="Copy link">
+              <svg class="share-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              <svg class="share-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </button>
+            {share.map((s) => (
+              <a class="share-btn" href={s.href} target="_blank" rel="noopener" aria-label={`Share on ${s.label}`} title={`Share on ${s.label}`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={s.icon} /></svg>
+              </a>
+            ))}
+            <span class="sr-only" role="status" data-copy-status></span>
+          </div>
+          <AiNote markdownHref={markdownHref} kind="post" />
+        </footer>
+      </div>
+    </div>
+  </article>
+
+  <section class="more" aria-labelledby="more-title" data-pagefind-ignore>
+    <div class="more-head">
+      <h2 id="more-title">Keep reading</h2>
+      <a href="/rss.xml" class="more-rss">Subscribe via RSS</a>
+    </div>
+    {related.length > 0 && (
+      <div class="post-grid-list">
+        {related.map((p) => <PostCard post={p} headingLevel="h3" />)}
+      </div>
+    )}
+    <p class="more-all"><a href="/blog">Blog home</a> <span aria-hidden="true">·</span> <a href="/blog/archive">Archive</a></p>
+  </section>
+</BaseLayout>
+
+<script>
+  // Reading progress along the top edge, and the "Copy link" share button.
+  const bar = document.querySelector<HTMLElement>('.read-progress span');
+  const story = document.querySelector<HTMLElement>('.story-prose');
+  if (bar && story) {
+    let ticking = false;
+    const update = () => {
+      const r = story.getBoundingClientRect();
+      const total = r.height - window.innerHeight * 0.6;
+      const p = total > 0 ? Math.min(1, Math.max(0, -r.top / total)) : 1;
+      bar.style.transform = `scaleX(${p})`;
+      ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }, { passive: true });
+    update();
+  }
+  const copyStatus = document.querySelector<HTMLElement>('[data-copy-status]');
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-link]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      let msg = 'Link copied';
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copyLink!);
+        btn.classList.add('is-copied');
+      } catch {
+        msg = 'Copy failed';
+      }
+      btn.title = msg;
+      if (copyStatus) copyStatus.textContent = msg;
+      setTimeout(() => {
+        btn.classList.remove('is-copied');
+        btn.title = 'Copy link';
+        if (copyStatus) copyStatus.textContent = '';
+      }, 1600);
+    });
+  });
+</script>

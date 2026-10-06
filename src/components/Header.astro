@@ -1,0 +1,26 @@
+---
+import Logo from './Logo.astro';
+import SearchDialog from './SearchDialog.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { NAV, SITE } from '../lib/site';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => href.startsWith('/') && (path === href || path.startsWith(`${href}/`));
+---
+<header class="site-header">
+  <div class="wrap header-row">
+    <Logo label="10xGraph home" />
+    <a class="version-pill" href="/changelog" title={`Current release: v${SITE.version}. Read the changelog`}>v{SITE.version}</a>
+    <nav aria-label="Primary">
+      <ul>
+        {NAV.map((item) => (
+          <li>
+            <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>{item.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <SearchDialog />
+    <ThemeToggle />
+  </div>
+</header>

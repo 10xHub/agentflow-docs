@@ -1,0 +1,30 @@
+---
+---
+<button class="theme-toggle" type="button" aria-label="Dark theme" aria-pressed="true" title="Switch color theme">
+  <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8" />
+    <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+  </svg>
+  <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+  </svg>
+</button>
+
+<script>
+  const root = document.documentElement;
+  // A toggle button: its label names the setting and aria-pressed says whether dark is on.
+  const sync = (btn: HTMLButtonElement) => btn.setAttribute('aria-pressed', String(root.getAttribute('data-theme') !== 'light'));
+  document.querySelectorAll<HTMLButtonElement>('.theme-toggle').forEach((btn) => {
+    sync(btn);
+    btn.addEventListener('click', () => {
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      sync(btn);
+      try {
+        localStorage.setItem('theme', next);
+      } catch {
+        /* storage blocked: the choice lasts for this page view */
+      }
+    });
+  });
+</script>
