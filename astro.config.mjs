@@ -12,6 +12,7 @@ import { codeFrame } from './src/lib/code-frame.mjs';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+
 const SITE_URL = 'https://10xgraph.com';
 
 /** Every file under dir, recursively. */
@@ -124,6 +125,7 @@ export default defineConfig({
   trailingSlash: 'never',
   build: { format: 'file' },
   redirects,
+
   integrations: [
     mdx(),
     // Utility pages are noindex, so keep them out of the sitemap too.
@@ -136,6 +138,7 @@ export default defineConfig({
     }),
     postBuild,
   ],
+
   markdown: {
     // Mermaid blocks are left as plain code and drawn in the browser (scripts/mermaid.ts).
     syntaxHighlight: { type: 'shiki', excludeLangs: ['mermaid', 'math'] },
@@ -154,4 +157,5 @@ export default defineConfig({
       ],
     },
   },
+
 });

@@ -20,3 +20,8 @@ __pycache__/
 *.pyc
 
 .wrangler
+
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
