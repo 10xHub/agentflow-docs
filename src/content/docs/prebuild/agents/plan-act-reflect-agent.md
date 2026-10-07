@@ -294,7 +294,7 @@ asyncio.run(main())
 
 ---
 
-## Running with `agentflow play`
+## Running with `10xgraph play`
 
 **`graph.py`**
 
@@ -335,5 +335,5 @@ GOOGLE_API_KEY=AIza...
 ```
 
 ```bash
-agentflow play
+10xgraph play
 ```

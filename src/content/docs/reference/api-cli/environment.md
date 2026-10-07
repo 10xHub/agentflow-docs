@@ -35,7 +35,7 @@ MODE=production
 ### At the process level
 
 ```bash
-MODE=production agentflow api --no-reload
+MODE=production 10xgraph api --no-reload
 ```
 
 ---
@@ -49,9 +49,9 @@ MODE=production agentflow api --no-reload
 | `MODE` | `development` | `development` or `production`. Normalized to lowercase. Drives several defaults, including the authorization backend and whether the CORS check is fatal. |
 | `LOG_LEVEL` | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `IS_DEBUG` | `true` | Enable debug mode. Set `false` in production; leaving it on logs a startup warning. |
-| `SUMMARY` | `Agentflow Backend` | One-line service summary shown in the OpenAPI schema |
-| `LOGGER_NAME` | `agentflow-cli` | Name of the root logger the server writes under. Read at import time, so it must be a process environment variable; setting it in `.env` is too late. |
-| `GRAPH_PATH` | `10xgraph.json` | Path to the config file the ASGI app loads. `agentflow api --config` sets this for you; set it directly when running the app under an external server such as Gunicorn or Uvicorn. |
+| `SUMMARY` | `10xGraph Backend` | One-line service summary shown in the OpenAPI schema |
+| `LOGGER_NAME` | `10xgraph-api` | Name of the root logger the server writes under. Read at import time, so it must be a process environment variable; setting it in `.env` is too late. |
+| `GRAPH_PATH` | `10xgraph.json` | Path to the config file the ASGI app loads. `10xgraph api --config` sets this for you; set it directly when running the app under an external server such as Gunicorn or Uvicorn. |
 
 The settings model allows extra variables, so unknown names in the environment are tolerated
 rather than rejected.
@@ -122,7 +122,7 @@ before it does.
 
 Both must be set when `10xgraph.json` has `"auth": "jwt"`; the config load raises a `ValueError`
 otherwise and the server does not start. JWT support also needs the extra:
-`pip install "10xscale-agentflow-cli[jwt]"`.
+`pip install "10xgraph-api[jwt]"`.
 
 ---
 
@@ -184,11 +184,11 @@ See [ID Generator](/docs/reference/api-cli/id-generator) for the constructor con
 | Variable | Default | Description |
 | --- | --- | --- |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing |
-| `OTEL_SERVICE_NAME` | `agentflow-api` | Service name reported in spans |
+| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name reported in spans |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `null` | OTLP collector endpoint |
 | `OTEL_LEVEL` | `standard` | Trace detail: `spans`, `standard`, or `full` |
 
-OpenTelemetry needs the extra: `pip install "10xscale-agentflow-cli[otel]"`, which also brings the
+OpenTelemetry needs the extra: `pip install "10xgraph-api[otel]"`, which also brings the
 FastAPI instrumentation and the OTLP exporter.
 
 Logfire and LangSmith are configured through the `observability` block in `10xgraph.json`; their
@@ -217,7 +217,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 | `MEDIA_SIGNED_URL_TTL_SECONDS` | `3600` | Lifetime of a signed direct URL |
 | `MEDIA_SIGNED_URL_REFRESH_BUFFER_SECONDS` | `60` | Re-sign this many seconds before expiry |
 
-Document text extraction needs the extra: `pip install "10xscale-agentflow-cli[media]"`.
+Document text extraction needs the extra: `pip install "10xgraph-api[media]"`.
 
 See [Multimodal and vision](/docs/how-to/production/multimodal-and-vision) for how these fit
 together.

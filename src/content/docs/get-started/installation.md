@@ -4,7 +4,7 @@ seoTitle: Install 10xGraph (Python and TypeScript)
 description: Install 10xGraph and the API server with pip on Python 3.12 or newer, add provider extras and a checkpointer, verify the CLI, and install the TypeScript client.
 section: Get started
 order: 20
-updated: 2026-10-06
+updated: 2026-10-08
 faq:
   - q: Which Python version does 10xGraph need?
     a: Python 3.12 or newer. Both the core package and the API package declare requires-python >=3.12, so pip refuses to install them on an older interpreter.
@@ -48,6 +48,8 @@ uv pip install 10xgraph 10xgraph-api
 ```
 
 `10xgraph` is the core framework. `10xgraph-api` adds the API server and the command-line tool.
+
+Upgrading from `10xscale-agentflow-cli` or `10xscale-agentflow`? Uninstall both first (`pip uninstall 10xscale-agentflow-cli 10xscale-agentflow`), because each ships an `agentflow` module that clashes with the new packages.
 
 ## Which extras should I add?
 

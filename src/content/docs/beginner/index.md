@@ -44,7 +44,7 @@ pip install 10xgraph-api
 | 3 | [Add a tool](/docs/beginner/add-a-tool) | Give the agent a callable function |
 | 4 | [Add memory](/docs/beginner/add-memory) | Persist conversation state across calls |
 | 5 | [Run with the API](/docs/beginner/run-with-api) | Expose the agent over HTTP |
-| 6 | [Test with the playground](/docs/beginner/test-with-playground) | Inspect requests with `agentflow play` |
+| 6 | [Test with the playground](/docs/beginner/test-with-playground) | Inspect requests with `10xgraph play` |
 | 7 | [Call from TypeScript](/docs/beginner/call-from-typescript) | Connect a frontend or Node.js client |
 
 ## How each page is structured

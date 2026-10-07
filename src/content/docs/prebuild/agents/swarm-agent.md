@@ -348,7 +348,7 @@ app = swarm.compile()
 
 ---
 
-## Running with `agentflow play`
+## Running with `10xgraph play`
 
 **`graph.py`**
 
@@ -406,5 +406,5 @@ app = swarm.compile()
 ```
 
 ```bash
-agentflow play
+10xgraph play
 ```

@@ -21,9 +21,9 @@ The bundled skill follows the [Agent Skills specification](https://agentskills.i
 
 | # | Agent | Install path |
 | --- | --- | --- |
-| 1 | Codex | `.agents/skills/agentflow/` |
-| 2 | Claude | `.claude/skills/agentflow/` |
-| 3 | GitHub | `.github/skills/agentflow/` and `.github/instructions/agentflow.instructions.md` |
+| 1 | Codex | `.agents/skills/10xgraph/` |
+| 2 | Claude | `.claude/skills/10xgraph/` |
+| 3 | GitHub | `.github/skills/10xgraph/` and `.github/instructions/10xgraph.instructions.md` |
 
 List supported agents:
 
@@ -92,8 +92,8 @@ A manifest file (`.agentflow-skill.json`) is written into the installed director
 
 Two artifacts are installed:
 
-1. `.github/instructions/agentflow.instructions.md`, a single instruction file read by GitHub Copilot
-2. `.github/skills/agentflow/`, the full skills folder with the same content as Codex and Claude
+1. `.github/instructions/10xgraph.instructions.md`, a single instruction file read by GitHub Copilot
+2. `.github/skills/10xgraph/`, the full skills folder with the same content as Codex and Claude
 
 A manifest is written into the skills folder.
 
@@ -112,7 +112,7 @@ A manifest is written into the skills folder.
 
 ## After installation
 
-Once installed, open your AI coding assistant and it can reference the 10xGraph skill documentation during your session. For Claude Code, the skill is loaded automatically from `.claude/skills/agentflow/`. For Codex, it is available in `.agents/skills/agentflow/`.
+Once installed, open your AI coding assistant and it can reference the 10xGraph skill documentation during your session. For Claude Code, the skill is loaded automatically from `.claude/skills/10xgraph/`. For Codex, it is available in `.agents/skills/10xgraph/`.
 
 To update skills after a CLI upgrade, re-run the install with `--force`:
 
@@ -121,9 +121,11 @@ pip install --upgrade 10xgraph-api
 10xgraph skills --agent claude --force
 ```
 
+Before 0.7.0 the skill installed as `agentflow` (for example `.claude/skills/agentflow/`). The new install does not remove that folder, so delete it after installing `10xgraph`.
+
 ## Validate skills
 
-`--validate` checks skills you write yourself, for your coding agent or for an 10xGraph `Agent` (see the [Skills reference](/docs/reference/python/skills)), against the [Agent Skills specification](https://agentskills.io/specification):
+`--validate` checks skills you write yourself, for your coding agent or for a 10xGraph `Agent` (see the [Skills reference](/docs/reference/python/skills)), against the [Agent Skills specification](https://agentskills.io/specification):
 
 ```bash
 10xgraph skills --validate ./.agents/skills

@@ -1,6 +1,6 @@
 ---
 title: "10xGraph with FastAPI: Embed an Agent in Your App"
-description: How to embed an 10xGraph agent in your existing FastAPI service. Mount the runtime, add custom routes, share auth, and stream responses.
+description: How to embed a 10xGraph agent in your existing FastAPI service. Mount the runtime, add custom routes, share auth, and stream responses.
 section: Learn more
 group: Integrations
 order: 2040
@@ -8,16 +8,16 @@ label: with FastAPI
 updated: "2026-07-27"
 ---
 
-`agentflow api` is the fastest path from a compiled graph to an HTTP endpoint. But many teams already run a FastAPI service with auth, middleware, and routes they cannot rewrite. Embedding 10xGraph inside that service is straightforward.
+`10xgraph api` is the fastest path from a compiled graph to an HTTP endpoint. But many teams already run a FastAPI service with auth, middleware, and routes they cannot rewrite. Embedding 10xGraph inside that service is straightforward.
 
 ## Two approaches
 
-1. **Run `agentflow api` as a separate service.** Your FastAPI app proxies to it. Cleanest separation; one extra hop.
+1. **Run `10xgraph api` as a separate service.** Your FastAPI app proxies to it. Cleanest separation; one extra hop.
 2. **Embed the graph in your existing FastAPI app.** Direct calls into Python. Fewer hops; more code.
 
 For most production teams, option 1 is the default. Option 2 makes sense when you have shared business logic.
 
-## Option 1: `agentflow api` as a sidecar
+## Option 1: `10xgraph api` as a sidecar
 
 Run 10xGraph as its own process behind the same load balancer:
 
@@ -33,7 +33,7 @@ services:
   agent:
     image: my-agent:latest
     ports: ["8001:8001"]
-    command: agentflow api --host 0.0.0.0 --port 8001
+    command: 10xgraph api --host 0.0.0.0 --port 8001
 ```
 
 Your FastAPI app proxies the `/agent/*` routes:
@@ -203,7 +203,7 @@ Default to sidecar; embed when you have a real reason.
 
 ## Further reading
 
-- [Run with API](/docs/beginner/run-with-api).`agentflow api` standalone
+- [Run with API](/docs/beginner/run-with-api).`10xgraph api` standalone
 - [Streaming agent responses with SSE](/docs/concepts/streaming)
 - [Deployment guide](/docs/how-to/production/deployment)
 - [Get started](/docs/get-started)

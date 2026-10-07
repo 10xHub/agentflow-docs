@@ -533,7 +533,7 @@ result = await app.ainvoke({"messages": [...]}, config)
 
 ### HTTP status from the API server
 
-The server maps exceptions to responses in `agentflow_cli/src/app/core/exceptions/handle_errors.py`:
+The server maps exceptions to responses in `tenxgraph_api/src/app/core/exceptions/handle_errors.py`:
 
 | Exception | Status |
 |---|---|

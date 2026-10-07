@@ -58,10 +58,10 @@ flowchart TB
 | `BaseConverter` | `tenxgraph/runtime/adapters/llm/base_converter.py` | `convert_response()`, `convert_streaming_response()` |
 | `BaseValidator` | `tenxgraph/utils/callbacks.py` | `validate(messages)` |
 | `BaseIDGenerator` | `tenxgraph/utils/id_generator.py` | `generate()` |
-| `BaseAuth` | `agentflow-api/agentflow_cli/src/app/core/auth/base_auth.py` | `authenticate(request, response, credential)` |
-| `AuthorizationBackend` | `agentflow-api/agentflow_cli/src/app/core/auth/authorization.py` | `authorize(user, resource, action, resource_id=None, **context)` |
-| `BaseRateLimitBackend` | `agentflow-api/agentflow_cli/src/app/core/middleware/rate_limit/base.py` | `check(key, limit, window)`, `close()` |
-| `ThreadNameGenerator` | `agentflow-api/agentflow_cli/src/app/utils/thread_name_generator.py` | `generate_name(messages)` |
+| `BaseAuth` | `tenxgraph_api/src/app/core/auth/base_auth.py` | `authenticate(request, response, credential)` |
+| `AuthorizationBackend` | `tenxgraph_api/src/app/core/auth/authorization.py` | `authorize(user, resource, action, resource_id=None, **context)` |
+| `BaseRateLimitBackend` | `tenxgraph_api/src/app/core/middleware/rate_limit/base.py` | `check(key, limit, window)`, `close()` |
+| `ThreadNameGenerator` | `tenxgraph_api/src/app/utils/thread_name_generator.py` | `generate_name(messages)` |
 | `BaseCriterion` | `tenxgraph/qa/evaluation/criteria/base.py` | `score(trajectory, response)` |
 | `BaseReporter` | `tenxgraph/qa/evaluation/reporters/base.py` | `generate(report, output_dir)` |
 
@@ -275,7 +275,7 @@ All four server-layer ABCs are wired via `10xgraph.json`, with no code changes t
 `authenticate` is synchronous and takes `(request, response, credential)`:
 
 ```python
-from agentflow_cli import BaseAuth
+from tenxgraph_api import BaseAuth
 
 class ApiKeyAuth(BaseAuth):
     def authenticate(self, request, response, credential) -> dict | None:
@@ -286,7 +286,7 @@ class ApiKeyAuth(BaseAuth):
 ### `AuthorizationBackend`
 
 ```python
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
 class RBACBackend(AuthorizationBackend):
     async def authorize(self, user, resource, action, resource_id=None, **context) -> bool:
@@ -300,7 +300,7 @@ owner-only threads with no code.
 ### `BaseRateLimitBackend`
 
 ```python
-from agentflow_cli.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
 
 class RedisClusterRateLimiter(BaseRateLimitBackend):
     async def check(self, key: str, *, limit: int, window: int) -> RateLimitDecision: ...
@@ -314,7 +314,7 @@ class RedisClusterRateLimiter(BaseRateLimitBackend):
 `ThreadNameGenerator` is deprecated in favour of the built-in `AIThreadNameGenerator`, but the `thread_name_generator` config loader still requires a `ThreadNameGenerator` subclass or instance, so a custom generator extends it. `generate_name` receives the message texts as `list[str]`:
 
 ```python
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 class DatePrefixNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:
@@ -341,7 +341,7 @@ The string format for class references is `module.path:ClassName` (dot-separated
 
 ```python
 from injectq import InjectQ
-from agentflow_cli.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
 
 container = InjectQ.get_instance()
 container.bind_instance(BaseRateLimitBackend, RedisClusterRateLimiter())

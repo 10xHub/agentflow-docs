@@ -230,7 +230,7 @@ After `10xgraph init`:
 
 ## Troubleshooting
 
-**"ModuleNotFoundError: No module named 'agentflow_cli'"**
+**"ModuleNotFoundError: No module named 'tenxgraph_api'"**
 - Install the CLI: `pip install 10xgraph-api`
 
 **"File already exists" error**

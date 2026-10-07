@@ -13,7 +13,7 @@ updated: "2026-10-06"
 
 ## Start here
 
-If you have an existing Python service, read [10xGraph with FastAPI](/docs/integrations/agentflow-with-fastapi) first. It compares two approaches: running `agentflow api` as a sidecar, or embedding the compiled graph directly in your own routes, with auth patterns and streaming gotchas for each.
+If you have an existing Python service, read [10xGraph with FastAPI](/docs/integrations/agentflow-with-fastapi) first. It compares two approaches: running `10xgraph api` as a sidecar, or embedding the compiled graph directly in your own routes, with auth patterns and streaming gotchas for each.
 
 If the caller is a browser, read [10xGraph with Next.js](/docs/integrations/agentflow-with-nextjs) to stream tokens from the agent API into a React frontend. If you already use CopilotKit, [10xGraph with CopilotKit](/docs/integrations/agentflow-with-copilotkit) shows how the API server's AG-UI endpoint feeds a CopilotKit chat, including frontend tools and shared state.
 

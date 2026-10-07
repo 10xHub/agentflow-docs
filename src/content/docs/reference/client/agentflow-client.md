@@ -9,7 +9,7 @@ label: "AgentFlowClient"
 updated: "2026-09-29"
 ---
 
-`AgentFlowClient` is the main class in the `@10xscale/agentflow-client` package. It wraps every 10xGraph REST endpoint behind a single, strongly-typed object so that TypeScript and JavaScript applications can call an 10xGraph-powered API without writing any fetch code themselves.
+`AgentFlowClient` is the main class in the `@10xscale/agentflow-client` package. It wraps every 10xGraph REST endpoint behind a single, strongly-typed object so that TypeScript and JavaScript applications can call a 10xGraph-powered API without writing any fetch code themselves.
 
 **Package:** `@10xscale/agentflow-client`  
 **Source:** `src/client.ts`

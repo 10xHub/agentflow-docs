@@ -1,6 +1,6 @@
 ---
 title: How to give an agent skills
-description: Add Agent Skills (SKILL.md folders with scripts, references and assets) to an 10xGraph Agent, validate them, and observe when the model uses them.
+description: Add Agent Skills (SKILL.md folders with scripts, references and assets) to a 10xGraph Agent, validate them, and observe when the model uses them.
 section: How-to guides
 group: Python library
 order: 660

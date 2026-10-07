@@ -36,7 +36,7 @@ The endpoint is off by default.
 Install the extra:
 
 ```bash
-pip install "10xscale-agentflow-cli[ag-ui]"
+pip install "10xgraph-api[ag-ui]"
 ```
 
 Enable it in `10xgraph.json`:
@@ -48,7 +48,7 @@ Enable it in `10xgraph.json`:
 }
 ```
 
-Start the server as usual (`agentflow api`). `POST /v1/ag-ui` is now mounted. With the key absent
+Start the server as usual (`10xgraph api`). `POST /v1/ag-ui` is now mounted. With the key absent
 or `"enabled": false` the route does not exist. See [`ag_ui`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
 
 Check it with curl:

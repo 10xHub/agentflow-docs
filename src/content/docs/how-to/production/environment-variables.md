@@ -24,8 +24,8 @@ Environment variables take precedence over defaults. The `.env` file pointed to 
 | `MODE` | `string` | `"development"` | Runtime mode. Set to `"production"` to enable security warnings and disable debug features. Normalized to lowercase. |
 | `LOG_LEVEL` | `string` | `"INFO"` | Python logging level: `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"`. |
 | `IS_DEBUG` | `bool` | `true` | Enables FastAPI debug mode. Set to `false` in production. |
-| `SUMMARY` | `string` | `"Agentflow Backend"` | One-line summary shown in Swagger UI. |
-| `LOGGER_NAME` | `string` | `"agentflow-cli"` | Name of the root logger the server writes under. Read at module import time, so it must be a process environment variable; setting it in `.env` is too late to take effect. |
+| `SUMMARY` | `string` | `"10xGraph Backend"` | One-line summary shown in Swagger UI. |
+| `LOGGER_NAME` | `string` | `"10xgraph-api"` | Name of the root logger the server writes under. Read at module import time, so it must be a process environment variable; setting it in `.env` is too late to take effect. |
 | `GRAPH_PATH` | `string` | `"10xgraph.json"` | Path to the config file the ASGI app loads at import. `10xgraph api --config` sets this for you. Set it explicitly when running the app under an external server such as Gunicorn. |
 
 The settings model allows extra fields, so unrecognised variables in the environment are tolerated rather than rejected at startup.
@@ -189,7 +189,7 @@ The generator's constructor is also all-or-nothing: pass no arguments (environme
 | Variable | Type | Default | Description |
 | --- | --- | --- | --- |
 | `OTEL_ENABLED` | `bool` | `false` | Enable OpenTelemetry tracing. |
-| `OTEL_SERVICE_NAME` | `string` | `"agentflow-api"` | Service name reported in traces. |
+| `OTEL_SERVICE_NAME` | `string` | `"10xgraph-api"` | Service name reported in traces. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `string \| null` | `null` | OTLP gRPC or HTTP endpoint for trace export (e.g. `http://otel-collector:4318`). |
 | `OTEL_LEVEL` | `string` | `"standard"` | Tracing granularity: `"spans"` (coarse), `"standard"` (recommended), `"full"` (verbose). |
 

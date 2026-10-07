@@ -7,7 +7,7 @@ label: Client Troubleshooting
 updated: "2026-09-29"
 ---
 
-Use this page when your frontend or programmatic client cannot invoke, stream, or authenticate against an 10xGraph API.
+Use this page when your frontend or programmatic client cannot invoke, stream, or authenticate against a 10xGraph API.
 
 ## Client troubleshooting map
 

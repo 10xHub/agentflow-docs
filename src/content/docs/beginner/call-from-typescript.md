@@ -14,7 +14,7 @@ Once your agent is running behind the API, any TypeScript application can call i
 Keep the API server running from the previous page:
 
 ```bash
-agentflow api --host 127.0.0.1 --port 8000
+10xgraph api --host 127.0.0.1 --port 8000
 ```
 
 ## Install the client

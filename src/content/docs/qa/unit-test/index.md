@@ -1,7 +1,7 @@
 ---
 title: Unit Testing
 seoTitle: "Unit testing AI agents with 10xGraph"
-description: How to unit-test 10xGraph agents without LLM API calls using TestAgent, QuickTest, MockToolRegistry, and the agentflow test CLI command.
+description: How to unit-test 10xGraph agents without LLM API calls using TestAgent, QuickTest, MockToolRegistry, and the 10xgraph test CLI command.
 section: Testing and QA
 group: Unit testing
 order: 1070
@@ -20,7 +20,7 @@ The `tenxgraph.qa.testing` module provides three building blocks:
 | `MockToolRegistry` | Registers mock tools and tracks every invocation |
 | `TestResult` | Fluent assertions on the graph output |
 
-The `agentflow test` CLI wraps pytest so you can run these tests with a single command.
+The `10xgraph test` CLI wraps pytest so you can run these tests with a single command.
 
 ---
 
@@ -269,28 +269,28 @@ The `final_response`, `messages`, `tool_calls`, and `state` attributes are also 
 
 ---
 
-## agentflow test CLI
+## 10xgraph test CLI
 
-`agentflow test` is a thin pytest wrapper. It reads optional defaults from `10xgraph.json` and forwards any extra arguments straight to pytest.
+`10xgraph test` is a thin pytest wrapper. It reads optional defaults from `10xgraph.json` and forwards any extra arguments straight to pytest.
 
 ```bash
 # Run all tests (pytest auto-discovery)
-agentflow test
+10xgraph test
 
 # Target a specific path
-agentflow test tests/unit
+10xgraph test tests/unit
 
 # Run with coverage
-agentflow test --coverage
+10xgraph test --coverage
 
 # Open the HTML coverage report automatically
-agentflow test --coverage --html
+10xgraph test --coverage --html
 
 # Filter by keyword
-agentflow test -k "weather"
+10xgraph test -k "weather"
 
 # Pass raw pytest flags
-agentflow test -- -m "not integration" --tb=short
+10xgraph test -- -m "not integration" --tb=short
 ```
 
 ### 10xgraph.json configuration
@@ -312,10 +312,10 @@ agentflow test -- -m "not integration" --tb=short
 | `coverage` | Enable coverage on every run |
 | `coverage_threshold` | Minimum coverage %; run fails if coverage drops below this |
 
-A bare `agentflow test` with the above config is equivalent to:
+A bare `10xgraph test` with the above config is equivalent to:
 
 ```bash
-agentflow test tests --coverage -- --cov-fail-under=80
+10xgraph test tests --coverage -- --cov-fail-under=80
 ```
 
 ### CI example
@@ -323,7 +323,7 @@ agentflow test tests --coverage -- --cov-fail-under=80
 ```yaml
 # .github/workflows/ci.yml
 - name: Run tests
-  run: agentflow test --coverage
+  run: 10xgraph test --coverage
 ```
 
 Set `coverage_threshold` in `10xgraph.json` — no extra flags needed in the workflow.
@@ -384,5 +384,5 @@ async def test_single_turn_quick():
 
 ## Further reading
 
-- [How to run tests with agentflow test](/docs/how-to/api-cli/run-tests)
+- [How to run tests with 10xgraph test](/docs/how-to/api-cli/run-tests)
 - [Evaluation guide](/docs/qa/evaluation) — for scoring real agent behaviour

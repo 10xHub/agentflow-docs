@@ -47,7 +47,7 @@ WebSocket connections that cannot set an `Authorization` header have two options
 
 ```javascript
 // Preferred for browsers: the token rides in a request header, not the URL
-new WebSocket("ws://host/v1/graph/ws", ["agentflow-bearer", token]);
+new WebSocket("ws://host/v1/graph/ws", ["10xgraph-bearer", token]);
 ```
 
 ```
@@ -55,7 +55,7 @@ new WebSocket("ws://host/v1/graph/ws", ["agentflow-bearer", token]);
 /v1/graph/ws?token=<token>
 ```
 
-The server echoes the `agentflow-bearer` sentinel back on `accept()`, which browsers require to complete the handshake.
+The server echoes the sentinel back on `accept()`, which browsers require to complete the handshake. The older `agentflow-bearer` sentinel is still accepted until 2.0.
 
 If auth is not configured (`"auth": null`), credentials are not required and the auth layer is skipped entirely.
 

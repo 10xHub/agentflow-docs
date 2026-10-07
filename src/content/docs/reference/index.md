@@ -35,7 +35,7 @@ Everything importable from `tenxgraph.*`.
 
 ## REST and WebSocket API
 
-What the API server exposes once you run `agentflow api`.
+What the API server exposes once you run `10xgraph api`.
 
 The server generates its own OpenAPI schema, so the authoritative contract for
 *your* build is always available locally:

@@ -245,4 +245,4 @@ case.conversation[0].expected_final_response.get_text()
 
 - [Criteria reference](/docs/qa/evaluation/criteria) — what gets scored and how
 - [Presets](/docs/qa/evaluation/presets) — ready-made `EvalConfig` objects
-- [Running evaluations](/docs/qa/evaluation) — the `agentflow eval` CLI
+- [Running evaluations](/docs/qa/evaluation) — the `10xgraph eval` CLI

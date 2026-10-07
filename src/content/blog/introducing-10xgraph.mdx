@@ -30,7 +30,8 @@ Graph orchestration, tool-calling loops, MCP and streaming are in there too, but
 ## What stays the same
 
 - **The project and the people.** Same code base, same maintainers, same [license](https://github.com/10xGraph/10xGraph/blob/main/LICENSE): MIT, made by 10xScale.
-- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `10xgraph.json`.
+- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `10xgraph.json`, and `agentflow.json` is still read until 2.0.
+- **Your server setup keeps running.** In `10xgraph-api` the `agentflow` command, `from agentflow_cli import BaseAuth` and the `AGENTFLOW_*` CLI variables still work as deprecated aliases until 2.0.
 - **Your existing code keeps running.** `from agentflow import StateGraph` still works: `agentflow` stays importable as a deprecated alias until 2.0. New code should import from `tenxgraph`, as in `from tenxgraph import StateGraph`.
 
 ## What changes

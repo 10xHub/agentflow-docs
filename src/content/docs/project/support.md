@@ -41,9 +41,9 @@ instead of three.
 
 ```bash
 # Versions of everything involved
-agentflow version
+10xgraph version
 python --version
-pip show 10xgraph 10xscale-agentflow-cli | grep -E "Name|Version"
+pip show 10xgraph 10xgraph-api | grep -E "Name|Version"
 node --version && npm list @10xscale/agentflow-client
 ```
 

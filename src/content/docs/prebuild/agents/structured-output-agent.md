@@ -319,7 +319,7 @@ asyncio.run(main())
 
 ---
 
-## Running with `agentflow play`
+## Running with `10xgraph play`
 
 **`graph.py`**
 
@@ -368,5 +368,5 @@ OPENAI_API_KEY=sk-...
 ```
 
 ```bash
-agentflow play
+10xgraph play
 ```

@@ -8,12 +8,12 @@ label: Run with the API
 updated: "2026-07-21"
 ---
 
-Running the agent as a script is fine for testing, but production use requires an HTTP API. The `agentflow-cli` package provides two commands that handle this: `agentflow init` scaffolds the project and `agentflow api` starts the server.
+Running the agent as a script is fine for testing, but production use requires an HTTP API. The `10xgraph-api` package provides two commands that handle this: `10xgraph init` scaffolds the project and `10xgraph api` starts the server.
 
 ## Install the CLI
 
 ```bash
-pip install 10xscale-agentflow-cli
+pip install 10xgraph-api
 ```
 
 ## Scaffold the project
@@ -22,7 +22,7 @@ Create a new folder for your API project, then run:
 
 ```bash
 mkdir my-agent-api && cd my-agent-api
-agentflow init
+10xgraph init
 ```
 
 This creates:
@@ -100,7 +100,7 @@ app = graph.compile(checkpointer=checkpointer)
 From the folder that contains `10xgraph.json`:
 
 ```bash
-agentflow api --host 127.0.0.1 --port 8000
+10xgraph api --host 127.0.0.1 --port 8000
 ```
 
 Expected output:
@@ -159,8 +159,8 @@ The CLI started a FastAPI server. The server loaded your graph module based on `
 
 ## What you learned
 
-- `agentflow init` scaffolds a project with `10xgraph.json` and a graph module.
-- `agentflow api` starts a FastAPI server that loads your compiled graph.
+- `10xgraph init` scaffolds a project with `10xgraph.json` and a graph module.
+- `10xgraph api` starts a FastAPI server that loads your compiled graph.
 - The `agent` field in `10xgraph.json` uses `module.path:variable` notation.
 - The API exposes `/v1/graph/invoke` and `/v1/graph/stream`.
 

@@ -313,7 +313,7 @@ agent = SupervisorTeamAgent(
 
 ---
 
-## Running with `agentflow play`
+## Running with `10xgraph play`
 
 **`graph.py`**
 
@@ -360,5 +360,5 @@ app = agent.compile()
 ```
 
 ```bash
-agentflow play
+10xgraph play
 ```

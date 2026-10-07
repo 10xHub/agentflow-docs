@@ -25,7 +25,7 @@ Testing pairs with the runtime guarantees in [Replay-safe tools](/docs/concepts/
 | Goal | Verify graph logic and tool routing | Measure response quality and agent behaviour |
 | LLM calls | None, fully mocked | Optional (LLM-as-judge criteria) |
 | Speed | Fast (milliseconds per case) | Slower (real inference per case) |
-| Entry point | `agentflow test` CLI or pytest directly | `agentflow eval` CLI or `AgentEvaluator` |
+| Entry point | `10xgraph test` CLI or pytest directly | `10xgraph eval` CLI or `AgentEvaluator` |
 | Output | pytest pass/fail + coverage | HTML + JSON report with per-criterion scores |
 
 Both layers are independent, you can use one without the other, or run them together in CI.
@@ -38,7 +38,7 @@ The unit-testing layer lets you test the graph logic of your agent without makin
 - **`QuickTest`**, one-liner helpers for single-turn, multi-turn, and tool-call scenarios.
 - **`MockToolRegistry`**, registers mock tool functions and tracks all invocations.
 - **`TestResult`**, fluent assertion helpers on top of the raw graph output.
-- **`agentflow test`**, CLI wrapper around pytest that reads defaults from `10xgraph.json`.
+- **`10xgraph test`**, CLI wrapper around pytest that reads defaults from `10xgraph.json`.
 
 [Read the unit-testing guide](/docs/qa/unit-test)
 
@@ -61,7 +61,7 @@ The evaluation layer runs your real (or staging) agent against test cases and sc
 - **`BatchSimulator`**, runs multiple scenarios concurrently.
 - **`SimulationGoalsCriterion`**, scores the full conversation transcript against stated goals.
 
-**`agentflow eval`**, CLI that auto-discovers eval files, runs all cases from all files in a flat parallel pool, and always writes reports.
+**`10xgraph eval`**, CLI that auto-discovers eval files, runs all cases from all files in a flat parallel pool, and always writes reports.
 
 [Read the evaluation guide](/docs/qa/evaluation)
 
@@ -69,22 +69,22 @@ The evaluation layer runs your real (or staging) agent against test cases and sc
 
 ```bash
 # Run the test suite
-agentflow test
+10xgraph test
 
 # Run with coverage
-agentflow test --coverage --html
+10xgraph test --coverage --html
 
 # Run evaluations (sequential)
-agentflow eval
+10xgraph eval
 
 # Run evaluations in parallel across all cases and files
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 
 # Evaluate a specific file and open the report
-agentflow eval evals/my_agent_eval.py --open
+10xgraph eval evals/my_agent_eval.py --open
 
 # Enforce a pass-rate threshold (useful in CI)
-agentflow eval --threshold 0.8
+10xgraph eval --threshold 0.8
 ```
 
 See also:

@@ -242,7 +242,7 @@ app = agent.compile()
 
 ---
 
-## Running with `agentflow play`
+## Running with `10xgraph play`
 
 **`graph.py`**
 
@@ -287,7 +287,7 @@ OPENAI_API_KEY=sk-...
 **Start the playground:**
 
 ```bash
-agentflow play
+10xgraph play
 ```
 
 This starts the API server on `:8000` and opens the React playground in your browser.

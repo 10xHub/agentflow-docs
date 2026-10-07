@@ -16,7 +16,7 @@ The thread name generator produces a short human-readable label such as `thought
 
 ## Built-in generator
 
-10xGraph ships with a built-in generator in `agentflow_cli/src/app/utils/thread_name_generator.py`.
+10xGraph ships with a built-in generator in `tenxgraph_api/src/app/utils/thread_name_generator.py`.
 
 The built-in generator supports three name patterns:
 
@@ -48,7 +48,7 @@ The loader accepts either:
 The custom generator must implement the deprecated `ThreadNameGenerator` abstract interface:
 
 ```python
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 class MyNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:

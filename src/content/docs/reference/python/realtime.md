@@ -492,7 +492,7 @@ These hooks are no-ops for `invoke` and `stream`. Tool/MCP before/after/error ca
 
 ## API server WebSocket bridge
 
-`agentflow api` exposes `ws://<host>/v1/graph/live` when the configured graph contains a `LiveAgent`.
+`10xgraph api` exposes `ws://<host>/v1/graph/live` when the configured graph contains a `LiveAgent`.
 
 ### Protocol reference
 

@@ -14,7 +14,7 @@ documentation, and examples are all welcome.
 | You want to change | Repository |
 | --- | --- |
 | The core Python framework | [10xGraph/10xGraph](https://github.com/10xGraph/10xGraph) |
-| The API server or CLI | [10xHub/agentflow-cli](https://github.com/10xHub/agentflow-cli) |
+| The API server or CLI | [10xGraph/10xgraph-api](https://github.com/10xGraph/10xgraph-api) |
 | The TypeScript client | [10xHub/agentflow-client](https://github.com/10xHub/agentflow-client) |
 | This documentation site | [10xHub/agentflow-docs](https://github.com/10xHub/agentflow-docs) |
 
@@ -89,7 +89,7 @@ npm run verify:api         # documented symbols and routes must exist
 the packages users actually get:
 
 ```bash
-pip install 10xgraph 10xscale-agentflow-cli
+pip install 10xgraph 10xgraph-api
 npm run verify:api
 ```
 

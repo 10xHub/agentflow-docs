@@ -6,7 +6,7 @@ order: 1920
 updated: "2026-09-29"
 ---
 
-Use this page when `agentflow api` starts incorrectly, crashes, or serves requests unreliably.
+Use this page when `10xgraph api` starts incorrectly, crashes, or serves requests unreliably.
 
 ## Server troubleshooting map
 
@@ -135,7 +135,7 @@ same as no scopes.
 
 | Code | Cause | Fix |
 | --- | --- | --- |
-| `1008` | Auth or authorization rejected at the handshake, or the wrong socket for the graph type | Check the token transport; browsers should offer `["agentflow-bearer", token]` as the subprotocol. Read `info.is_realtime` on `GET /v1/graph` to pick between `/v1/graph/ws` and `/v1/graph/live`. |
+| `1008` | Auth or authorization rejected at the handshake, or the wrong socket for the graph type | Check the token transport; browsers should offer `["10xgraph-bearer", token]` as the subprotocol. Read `info.is_realtime` on `GET /v1/graph` to pick between `/v1/graph/ws` and `/v1/graph/live`. |
 | `1013` | The global rate limit or `websocket.max_connections` was exceeded | Handshakes share the REST rate-limit bucket. Raise the limit, raise `max_connections`, or back off and retry. |
 | `1003` | Invalid init frame on `/v1/graph/live`: not JSON, or JSON that is not an object | Send the init control frame as a JSON object first, before any audio |
 | `1011` | Unexpected server error during the session | Check server logs; this is not an auth or config rejection |
@@ -195,7 +195,7 @@ which of the two `1008` causes applies.
 **Fix**
 
 ```bash
-agentflow api --no-reload
+10xgraph api --no-reload
 ```
 
 Use reload only for active local development.

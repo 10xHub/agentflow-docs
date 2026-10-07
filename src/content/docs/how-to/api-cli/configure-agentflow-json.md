@@ -100,7 +100,7 @@ Set `thread_name_generator` to a `module:Class` path to give new threads readabl
 
 ```python
 # graph/thread_name_generator.py
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 class MyThreadNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:

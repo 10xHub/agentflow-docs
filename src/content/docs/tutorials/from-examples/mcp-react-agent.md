@@ -179,7 +179,7 @@ Expected behavior:
 
 ## What you learned
 
-- How to combine MCP with an 10xGraph ReAct graph.
+- How to combine MCP with a 10xGraph ReAct graph.
 - How `ToolNode` can broker remote tool calls.
 - Why MCP is a clean boundary between tool hosting and graph orchestration.
 

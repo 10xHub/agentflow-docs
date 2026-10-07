@@ -12,7 +12,7 @@ This guide walks you through installing `10xgraph-client`, creating a client ins
 ## Prerequisites
 
 - Node.js 18+ or a modern browser environment.
-- An 10xGraph API server running locally (`10xgraph api`) or hosted.
+- A 10xGraph API server running locally (`10xgraph api`) or hosted.
 - If the server requires auth, have the token or credentials ready.
 
 ---

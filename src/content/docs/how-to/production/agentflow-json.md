@@ -28,7 +28,7 @@ covers only what changes when you move from a laptop to a deployment.
     "requests": 100,
     "window": 60,
     "by": "user",
-    "redis": {"url": "${REDIS_URL}", "prefix": "agentflow:rate-limit"},
+    "redis": {"url": "${REDIS_URL}", "prefix": "10xgraph:rate-limit"},
     "trusted_proxy_headers": true,
     "trusted_proxy_hops": 1,
     "fail_open": true

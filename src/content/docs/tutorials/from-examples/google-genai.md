@@ -14,7 +14,7 @@ updated: "2026-07-21"
 
 Three standalone examples that demonstrate how to use the `GoogleGenAIConverter` adapter:
 
-1. **Standard response** — convert a single `generate_content` response into an 10xGraph `Message`.
+1. **Standard response** — convert a single `generate_content` response into a 10xGraph `Message`.
 2. **Streaming response** — consume a `generate_content_stream` and yield `StreamChunk` messages as they arrive.
 3. **Function calling** — inspect tool call blocks from a model response.
 

@@ -3,7 +3,7 @@ title: Installation Troubleshooting
 description: Symptoms, causes, and fixes for common 10xGraph installation and environment setup issues.
 section: Troubleshooting
 order: 1910
-updated: "2026-08-13"
+updated: "2026-10-08"
 ---
 
 Use this page when 10xGraph fails before your app even starts: package install problems, import errors, missing dependencies, or broken Python environments.
@@ -38,7 +38,7 @@ flowchart TD
 - create a fresh virtual environment
 - reinstall inside the fresh environment
 
-## Issue: `agentflow` command is not found
+## Issue: `10xgraph` command is not found
 
 **Symptoms**
 
@@ -53,13 +53,33 @@ flowchart TD
 **Fix**
 
 ```bash
-pip install 10xscale-agentflow-cli
-which agentflow
-agentflow version
-agentflow audit          # interpreter, packages, project config, and port
+pip install 10xgraph-api
+which 10xgraph
+10xgraph version
+10xgraph audit          # interpreter, packages, project config, and port
 ```
 
-If `which agentflow` points somewhere unexpected, activate the correct environment first. `agentflow audit` reports the interpreter it runs under and the installed CLI and core versions, so it is the fastest way to spot a wrong environment or a CLI/core version skew.
+If `which 10xgraph` points somewhere unexpected, activate the correct environment first. `10xgraph audit` reports the interpreter it runs under and the installed CLI and core versions, so it is the fastest way to spot a wrong environment or a CLI/core version skew.
+
+## Issue: upgrading from `10xscale-agentflow-cli`
+
+**Symptoms**
+
+- `pip list` still shows `10xscale-agentflow-cli` or `10xscale-agentflow`
+- imports of `agentflow` resolve to the wrong package after an upgrade
+
+**Cause**
+
+Since 0.7.0 the API package is `10xgraph-api` and the core is `10xgraph`. The old `10xscale-agentflow-cli` and `10xscale-agentflow` packages each ship an `agentflow` module, so they must not stay installed next to the new ones.
+
+**Fix**
+
+```bash
+pip uninstall 10xscale-agentflow-cli 10xscale-agentflow
+pip install 10xgraph-api
+```
+
+Then run `10xgraph` instead of `agentflow`. Until 2.0 the old command, `agentflow.json` and `from agentflow_cli import ...` keep working, so you can rename the config file and imports at your own pace.
 
 ## Issue: imports fail even after install
 

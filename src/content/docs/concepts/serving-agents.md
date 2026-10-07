@@ -43,10 +43,10 @@ not file paths.
 ## Starting the server
 
 ```bash
-agentflow api                                    # starts with auto-reload (development default)
-agentflow api --host 0.0.0.0 --port 8000        # bind address
-agentflow api --config 10xgraph.json            # explicit config path
-agentflow play                                   # API + hosted playground in browser
+10xgraph api                                    # starts with auto-reload (development default)
+10xgraph api --host 0.0.0.0 --port 8000        # bind address
+10xgraph api --config 10xgraph.json            # explicit config path
+10xgraph play                                   # API + hosted playground in browser
 ```
 
 The server loads the compiled graph once at startup and keeps it in memory. All requests share the same graph instance; per-request isolation comes from `thread_id`. In development `--reload` is on by default — any change to your source files restarts the server automatically. In production, run with multiple workers (see [Production deployment](#production-deployment)) and omit `--reload`.
@@ -57,7 +57,7 @@ The server loads the compiled graph once at startup and keeps it in memory. All 
 
 ```mermaid
 flowchart TB
-  subgraph "agentflow api process"
+  subgraph "10xgraph api process"
     UV[Uvicorn ASGI]
     FA[FastAPI]
     AUTH[BaseAuth middleware]
@@ -111,7 +111,7 @@ Point to the built-in class in `10xgraph.json` using its importable path:
 
 ```json
 {
-  "auth": "agentflow_cli.src.app.core.auth.jwt_auth:JwtAuth"
+  "auth": "tenxgraph_api.src.app.core.auth.jwt_auth:JwtAuth"
 }
 ```
 
@@ -134,7 +134,7 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli import BaseAuth
+from tenxgraph_api import BaseAuth
 
 class FirebaseAuth(BaseAuth):
     def authenticate(
@@ -166,7 +166,7 @@ Authorization is a separate extension point from authentication. After a user is
 # auth/agent_auth.py
 from typing import Any
 
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
 class TenantAuthorizationBackend(AuthorizationBackend):
     async def authorize(
@@ -204,7 +204,7 @@ Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in
 
 ```python
 # services/rate_limit.py
-from agentflow_cli.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
 
 class CustomRateLimitBackend(BaseRateLimitBackend):
     async def check(self, key: str, limit: int, window: int) -> bool:
@@ -330,7 +330,7 @@ Always-injected parameters — no annotation needed:
 
 ### Wiring the container via `10xgraph.json`
 
-When using `agentflow api`, point `injectq` to the exported `InjectQ` instance in your graph module. The server loads that object and activates it as the global singleton.
+When using `10xgraph api`, point `injectq` to the exported `InjectQ` instance in your graph module. The server loads that object and activates it as the global singleton.
 
 ```json
 {
@@ -348,7 +348,7 @@ By default the API generates an AI-powered name for each new thread. Override it
 
 ```python
 # services/naming.py
-from agentflow_cli.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
 
 class SlugThreadNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list) -> str:
@@ -375,12 +375,12 @@ flowchart LR
   W1 & W2 & W3 --> QD[(Qdrant\nlong-term memory)]
 ```
 
-`agentflow build` generates a production-ready `Dockerfile` (and optional `docker-compose.yml`):
+`10xgraph build` generates a production-ready `Dockerfile` (and optional `docker-compose.yml`):
 
 ```bash
-agentflow build                          # Dockerfile only
-agentflow build --docker-compose         # + docker-compose.yml
-agentflow build --python-version 3.13
+10xgraph build                          # Dockerfile only
+10xgraph build --docker-compose         # + docker-compose.yml
+10xgraph build --python-version 3.13
 ```
 
 Key environment variables — set them in a `.env` file, via `export`, or as Docker `ENV` / `--env-file`:
@@ -405,7 +405,7 @@ OTEL_LEVEL=standard
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `SENTRY_DSN` | `None` | Sentry error tracking |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing (see [OpenTelemetry](#opentelemetry)) |
-| `OTEL_SERVICE_NAME` | `agentflow-api` | Service name reported in all traces |
+| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name reported in all traces |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `None` | OTLP collector URL — omit to print spans to console |
 | `OTEL_LEVEL` | `standard` | Span detail level: `spans` \| `standard` \| `full` |
 | `ORIGINS` | `*` | CORS allowed origins — restrict in production |
@@ -452,7 +452,7 @@ No code changes are needed. The SDK does not need to be configured separately �
 
 ### Graph layer — `OtelPublisher` and `ObservabilityLevel`
 
-When running the graph directly (without `agentflow api`), pass `OtelPublisher` to `StateGraph` at init time:
+When running the graph directly (without `10xgraph api`), pass `OtelPublisher` to `StateGraph` at init time:
 
 ```python
 from tenxgraph.core.graph import StateGraph
@@ -509,7 +509,7 @@ The `tenxgraph.graph` span carries `thread_id` as `session.id` so tools like Lan
 
 ```bash
 pip install "10xgraph[otel]"           # graph-level spans (OtelPublisher)
-pip install "10xscale-agentflow-cli[otel]"       # API layer (FastAPIInstrumentor + OTLP exporter)
+pip install "10xgraph-api[otel]"       # API layer (FastAPIInstrumentor + OTLP exporter)
 ```
 
 ---

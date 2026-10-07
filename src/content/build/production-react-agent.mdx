@@ -428,9 +428,9 @@ This writes a `Dockerfile` (non-root user, health check on `/ping`), a `.dockeri
 
 ```yaml title="docker-compose.yml"
 services:
-  agentflow-cli:
+  10xgraph-api:
     build: .
-    image: agentflow-cli:latest
+    image: 10xgraph-api:latest
     env_file: .env # [!code ++]
     environment:
       - PYTHONUNBUFFERED=1

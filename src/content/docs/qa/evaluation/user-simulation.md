@@ -48,7 +48,7 @@ EvalCaseResult → HTML / JSON report
 
 ## CLI protocol — recommended
 
-The simplest way to run user simulations is via the `agentflow eval` CLI. You only write the scenarios. The CLI handles running the simulator, scoring, and producing the report — identical to regular eval cases.
+The simplest way to run user simulations is via the `10xgraph eval` CLI. You only write the scenarios. The CLI handles running the simulator, scoring, and producing the report — identical to regular eval cases.
 
 **Create an eval file with `get_scenarios()`:**
 
@@ -98,10 +98,10 @@ def get_scenarios() -> list[ConversationScenario]:
 **Run it:**
 
 ```bash
-agentflow eval evals/user_simulator_eval.py
+10xgraph eval evals/user_simulator_eval.py
 
 # Or together with all other eval files in parallel
-agentflow eval --parallel --max-concurrency 4
+10xgraph eval --parallel --max-concurrency 4
 ```
 
 The CLI detects `get_scenarios()` (or a `SCENARIOS` module-level constant), runs each scenario, and produces the same HTML + JSON report as regular eval cases. Regular eval cases and simulation scenarios are mixed in the same flat pool and the same report.
@@ -437,7 +437,7 @@ Run both in CI to get full coverage:
 
 ```bash
 # All evals and simulations in one run
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 ```
 
 ---

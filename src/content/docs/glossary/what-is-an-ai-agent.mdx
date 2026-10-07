@@ -86,9 +86,9 @@ The agent will call `get_weather` for Tokyo, call `search_web` for the news quer
 Once you have a compiled agent, one command starts a production HTTP server:
 
 ```bash
-pip install 10xscale-agentflow-cli
-agentflow init
-agentflow api
+pip install 10xgraph-api
+10xgraph init
+10xgraph api
 ```
 
 This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET /v1/graph/threads/{id}` — no extra FastAPI code required.

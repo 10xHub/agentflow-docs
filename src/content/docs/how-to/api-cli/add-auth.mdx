@@ -113,7 +113,7 @@ For roles and scopes, `authorization` also accepts an object with `"backend": "r
 Subclass `BaseAuth` and return a dict containing at least `user_id`. Raise `HTTPException(status_code=401)` for a bad credential.
 
 ```python title="auth/agent_auth.py"
-from agentflow_cli import BaseAuth
+from tenxgraph_api import BaseAuth
 from fastapi import HTTPException
 
 class AgentAuth(BaseAuth):

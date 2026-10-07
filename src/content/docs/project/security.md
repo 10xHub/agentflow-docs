@@ -43,7 +43,7 @@ See the [changelog](/changelog) for what is current.
 ## Scope
 
 This policy covers the `10xgraph` core package. Issues in the API
-server (`10xscale-agentflow-cli`), the TypeScript client, or third-party
+server (`10xgraph-api`), the TypeScript client, or third-party
 dependencies should be reported against their own projects, though we are happy
 to route a report to the right place.
 

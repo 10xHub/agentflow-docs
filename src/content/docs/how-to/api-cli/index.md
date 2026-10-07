@@ -119,7 +119,7 @@ Generates a production `Dockerfile`. Optionally generates `docker-compose.yml` a
 10xgraph build --force         # overwrite existing Dockerfile
 ```
 
-Default Python version: `3.13`. Default service name in docker-compose and k8s.yaml: `agentflow-cli`.
+Default Python version: `3.13`. Default service name in docker-compose and k8s.yaml: `10xgraph-api`.
 
 See [Generate Docker files](/docs/how-to/api-cli/generate-docker-files) for the full guide.
 
@@ -250,7 +250,7 @@ Root flags go before the command name and apply to every command: `--format` (`h
 
 ```bash
 10xgraph --format json audit
-10xgraph --no-fullscreen dev
+10xgraph --fullscreen dev
 10xgraph --cwd ../my-agent eval --parallel
 ```
 

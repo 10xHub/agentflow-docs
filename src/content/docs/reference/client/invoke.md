@@ -236,7 +236,7 @@ const result = await client.invoke(
 |---|---|---|
 | `AgentFlowError` status `401` | Missing or invalid auth token. | Set `auth` in `AgentFlowConfig`. |
 | `AgentFlowError` status `422` | Invalid request payload (e.g. empty `messages` array, bad `config` shape). | Check that `messages` is non-empty and all required fields are correct. |
-| `AgentFlowError` status `500` | Server-side error during graph execution. | Check the server logs with `agentflow api --verbose`. |
+| `AgentFlowError` status `500` | Server-side error during graph execution. | Check the server logs with `10xgraph api --verbose`. |
 | `Request timeout` | The graph took longer than `config.timeout`. | Increase `timeout` in `AgentFlowConfig` or optimise the graph. |
 | `recursion_limit_reached: true` | The tool call loop ran more than `recursion_limit` iterations. | Increase `recursion_limit` in options, or check that tools are completing without infinite loops. |
 

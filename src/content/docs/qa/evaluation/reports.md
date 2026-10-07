@@ -41,7 +41,7 @@ open eval_reports/weather-agent-regression_20260519_142301.html
 Or open automatically after the run:
 
 ```bash
-agentflow eval --open
+10xgraph eval --open
 ```
 
 ---
@@ -113,13 +113,13 @@ manager = ReporterManager(
 manager.run_all(report)
 ```
 
-Or via the `agentflow eval` command — JUnit XML is off by default. You can enable it programmatically in your `run()` function.
+Or via the `10xgraph eval` command — JUnit XML is off by default. You can enable it programmatically in your `run()` function.
 
 GitHub Actions example using the JUnit XML output:
 
 ```yaml
 - name: Run evaluations
-  run: agentflow eval
+  run: 10xgraph eval
 
 - name: Publish eval results
   uses: EnricoMi/publish-unit-test-result-action@v2
@@ -266,7 +266,7 @@ if output.has_errors:
 
 ## Combined reports from multiple eval files
 
-When `agentflow eval` runs more than one eval file, results from all files are merged into a single combined report. The merged report has `eval_set_id="combined_eval"` and contains all cases from all files.
+When `10xgraph eval` runs more than one eval file, results from all files are merged into a single combined report. The merged report has `eval_set_id="combined_eval"` and contains all cases from all files.
 
 If you run multiple files manually, merge them the same way:
 
@@ -293,7 +293,7 @@ A case passes only when **all enabled criteria** meet their thresholds. The pass
 - `1.0` (100%) — every criterion passed for every case
 - `< 1.0` — at least one case has at least one criterion below threshold
 
-The `agentflow eval` CLI exits with code `1` whenever pass rate is below `1.0` or below the configured threshold. Code `0` means a perfect 100% pass rate (or threshold was met and no errors occurred).
+The `10xgraph eval` CLI exits with code `1` whenever pass rate is below `1.0` or below the configured threshold. Code `0` means a perfect 100% pass rate (or threshold was met and no errors occurred).
 
 ### Diagnosing failures
 

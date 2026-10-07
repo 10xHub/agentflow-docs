@@ -15,7 +15,7 @@ several new defaults that change runtime behaviour without changing any API you
 call. Work through this page before upgrading a running deployment.
 
 ```bash
-pip install --upgrade 10xgraph 10xscale-agentflow-cli
+pip install --upgrade 10xgraph 10xgraph-api
 npm install @10xscale/agentflow-client@latest
 ```
 
@@ -157,7 +157,7 @@ concurrent workers cannot race the DDL.
 pg_dump "$DATABASE_URL" > agentflow-pre-1.0.sql
 
 # Migrations apply on first startup of the upgraded server.
-agentflow api --no-reload
+10xgraph api --no-reload
 ```
 
 Roll out one instance first and confirm the schema version before scaling up.
@@ -168,7 +168,7 @@ Roll out one instance first and confirm the schema version before scaling up.
 
 After upgrading, before sending production traffic:
 
-1. `agentflow version` reports the expected core and CLI versions.
+1. `10xgraph version` reports the expected core and CLI versions.
 2. The server starts with `MODE=production` and no CORS warning.
 3. An existing thread can still be read by its owner and returns 404 for anyone
    else.

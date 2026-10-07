@@ -1,6 +1,6 @@
 ---
 title: Auth and Authorization
-description: Production guidance for securing an 10xGraph API with JWT auth, custom auth backends, and permission checks.
+description: Production guidance for securing a 10xGraph API with JWT auth, custom auth backends, and permission checks.
 section: How-to guides
 group: Production
 order: 770
@@ -153,7 +153,7 @@ Every row below is HTTP `403`; the `error.code` in the body is what tells them a
 
 | `error.code` | Likely cause | Fix |
 |---|---|---|
-| `REVOKED_TOKEN` | No credential presented at all | Attach `Authorization: Bearer <token>`, or the `agentflow-bearer` subprotocol on a WebSocket |
+| `REVOKED_TOKEN` | No credential presented at all | Attach `Authorization: Bearer <token>`, or the `10xgraph-bearer` subprotocol on a WebSocket |
 | `EXPIRED_TOKEN` | `exp` is in the past | Refresh the token; check for clock skew between issuer and server |
 | `INVALID_TOKEN` | Bad signature, mismatched algorithm, or **no `user_id` claim** | Verify `JWT_SECRET_KEY` and `JWT_ALGORITHM`; confirm the issuer emits `user_id`, not just `sub` |
 | `JWT_SETTINGS_NOT_CONFIGURED` | `JWT_SECRET_KEY` or `JWT_ALGORITHM` unset at request time | Set both; the config load also checks them at startup |
@@ -194,7 +194,7 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli import BaseAuth
+from tenxgraph_api import BaseAuth
 
 class ApiKeyAuth(BaseAuth):
     def authenticate(
@@ -393,7 +393,7 @@ set.
 | `403 Missing required scope: ...` | the identity's scopes do not cover this endpoint | add the `"<resource>:<action>"` pair to the role, or to `default_scopes` |
 | user cannot read a thread they created | a different `user_id` between the two requests, or the thread was created before auth was enabled | check the `user_id` claim is stable across token refreshes |
 | ownership seems not to apply | the checkpointer does not implement `aget_thread_owner`, or none is configured | look for the "cannot resolve thread ownership" warning in the logs and switch to a checkpointer that supports it |
-| WebSocket closes immediately with `1008` | auth or authorization rejected at the handshake | check the token transport; browsers should use the `agentflow-bearer` subprotocol |
+| WebSocket closes immediately with `1008` | auth or authorization rejected at the handshake | check the token transport; browsers should use the `10xgraph-bearer` subprotocol |
 | frontend works locally but not in production | missing CORS origin or missing auth header forwarding | fix `ORIGINS` and proxy/header config |
 | JWT works in curl but not in browser app | frontend is not attaching `Authorization` header | inspect client config and browser network tab |
 

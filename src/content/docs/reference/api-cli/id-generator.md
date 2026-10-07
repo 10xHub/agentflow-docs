@@ -41,7 +41,7 @@ This interface lets 10xGraph support standard UUIDs, timestamp-based integers, a
 
 ## Snowflake ID generator
 
-The API package includes `SnowFlakeIdGenerator` in `agentflow-api/agentflow_cli/src/app/utils/snowflake_id_generator.py`.
+The API package includes `SnowFlakeIdGenerator` in `tenxgraph_api/src/app/utils/snowflake_id_generator.py`.
 
 This generator uses the optional `snowflakekit` dependency and returns a 64-bit integer suitable for distributed systems.
 
@@ -118,7 +118,7 @@ set of defaults.
 ### Example usage
 
 ```python
-from agentflow_cli import SnowFlakeIdGenerator
+from tenxgraph_api import SnowFlakeIdGenerator
 
 id_generator = SnowFlakeIdGenerator()
 ```

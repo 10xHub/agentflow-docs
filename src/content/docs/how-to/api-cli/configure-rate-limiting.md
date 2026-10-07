@@ -80,7 +80,7 @@ pip install "10xgraph-api[redis]"
     "exclude_paths": ["/ping", "/metrics", "/docs", "/redoc", "/openapi.json"],
     "redis": {
       "url": "${RATE_LIMIT_REDIS_URL}",
-      "prefix": "agentflow:rate-limit"
+      "prefix": "10xgraph:rate-limit"
     },
     "fail_open": true
   }
@@ -112,7 +112,7 @@ database, a distributed cache, or an external rate-limit service).
 
 ```python
 # graph/rate_limit.py
-from agentflow_cli.src.app.core.middleware.rate_limit import (
+from tenxgraph_api.src.app.core.middleware.rate_limit import (
     BaseRateLimitBackend,
     RateLimitDecision,
 )

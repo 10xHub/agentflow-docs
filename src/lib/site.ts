@@ -80,7 +80,7 @@ export const POLICIES = [
 // Packages that publish releases, with the names they are published under today.
 export const PACKAGES = {
   core: { label: 'Core framework', registry: 'PyPI', name: '10xgraph', url: 'https://pypi.org/project/10xgraph/' },
-  api: { label: 'API server and CLI', registry: 'PyPI', name: '10xscale-agentflow-cli', url: 'https://pypi.org/project/10xscale-agentflow-cli/' },
+  api: { label: 'API server and CLI', registry: 'PyPI', name: '10xgraph-api', url: 'https://pypi.org/project/10xgraph-api/' },
   client: { label: 'TypeScript client', registry: 'npm', name: '@10xscale/agentflow-client', url: 'https://www.npmjs.com/package/@10xscale/agentflow-client' },
 } as const;
 export type PackageKey = keyof typeof PACKAGES;

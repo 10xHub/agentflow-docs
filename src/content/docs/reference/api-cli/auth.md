@@ -38,7 +38,7 @@ Set `auth` to `"jwt"` in `10xgraph.json`:
 JWT support needs an extra:
 
 ```bash
-pip install "10xscale-agentflow-cli[jwt]"
+pip install "10xgraph-api[jwt]"
 ```
 
 Set the required environment variables:
@@ -78,7 +78,7 @@ Failures raise `UserAccountError`, which the error handler returns as HTTP **403
 
 | `error_code` | Cause |
 | --- | --- |
-| `REVOKED_TOKEN` | No credential was presented at all: no `Authorization` header, no `agentflow-bearer` subprotocol, no `?token=` on a WebSocket |
+| `REVOKED_TOKEN` | No credential was presented at all: no `Authorization` header, no `10xgraph-bearer` subprotocol, no `?token=` on a WebSocket |
 | `EXPIRED_TOKEN` | `exp` is in the past |
 | `INVALID_TOKEN` | Signature or structure is invalid, or `user_id` is missing from an otherwise valid token |
 | `JWT_SETTINGS_NOT_CONFIGURED` | `JWT_SECRET_KEY` or `JWT_ALGORITHM` is unset at request time |
@@ -114,17 +114,19 @@ A token keyed on `sub` instead of `user_id` is rejected with `INVALID_TOKEN`, an
 WebSocket routes use the same bearer credential as HTTP, but browsers cannot set an `Authorization` header on a `WebSocket` handshake. The server therefore looks in three places, in this order:
 
 1. **`Authorization: Bearer <token>`** — non-browser clients.
-2. **`Sec-WebSocket-Protocol: agentflow-bearer, <token>`** — the preferred browser mechanism. The token rides in a request header, so it never lands in a URL, an access log, or browser history. The server echoes the `agentflow-bearer` sentinel back on `accept()`, which browsers require in order to complete the handshake.
+2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`** — the preferred browser mechanism. The token rides in a request header, so it never lands in a URL, an access log, or browser history. The server echoes the sentinel back on `accept()`, which browsers require in order to complete the handshake.
 3. **`?token=<jwt>`** — a last-resort fallback, accepted on WebSocket connections only. The token ends up in URLs and access logs.
 
 ```javascript
 const ws = new WebSocket(
   "ws://localhost:8000/v1/graph/ws",
-  ["agentflow-bearer", token],  // sentinel first, then the raw JWT
+  ["10xgraph-bearer", token],  // sentinel first, then the raw JWT
 );
 ```
 
 The offer must be exactly two entries with the sentinel first. Anything else falls through to the query parameter.
+
+The older sentinel `agentflow-bearer` is accepted the same way until 2.0, and the server echoes whichever one the client offered. The TypeScript client still sends `agentflow-bearer`.
 
 ---
 
@@ -152,7 +154,7 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
-from agentflow_cli import BaseAuth
+from tenxgraph_api import BaseAuth
 
 class MyAuthBackend(BaseAuth):
     def authenticate(
@@ -220,7 +222,7 @@ fails loudly rather than silently falling back to something permissive.
 The classes behind these names are importable, so you can subclass or compose them:
 
 ```python
-from agentflow_cli.src.app.core.auth.authorization import (
+from tenxgraph_api.src.app.core.auth.authorization import (
     AuthorizationBackend,             # the abstract base
     DefaultAuthorizationBackend,      # "allow_all" / "default" / "none"
     OwnershipAuthorizationBackend,    # "ownership"
@@ -297,7 +299,7 @@ are optional overrides.
 ```python
 from typing import Any
 
-from agentflow_cli.src.app.core.auth.authorization import AuthorizationBackend
+from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
 class MyAuthorizationBackend(AuthorizationBackend):
     async def authorize(
@@ -379,7 +381,7 @@ An `authorization` object whose `backend`/`type` is not one of the three RBAC na
 The same behaviour is available in code when you want to compute the role table at runtime:
 
 ```python
-from agentflow_cli.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
+from tenxgraph_api.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
 
 backend = RoleBasedAuthorizationBackend(
     role_scopes={

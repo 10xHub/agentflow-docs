@@ -56,7 +56,7 @@ The generated manifest is a correct skeleton, not a finished deployment. Change
 these:
 
 ```yaml
-image: agentflow-cli:latest        # -> your registry and an immutable tag
+image: 10xgraph-api:latest        # -> your registry and an immutable tag
 env:
   - name: ORIGINS
     value: "https://your-frontend.example.com"   # -> your real origin

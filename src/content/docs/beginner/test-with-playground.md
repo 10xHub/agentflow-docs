@@ -1,24 +1,24 @@
 ---
 title: Test with the Playground
-description: Use agentflow play to open the hosted playground and inspect your agent in a browser UI.
+description: Use 10xgraph play to open the hosted playground and inspect your agent in a browser UI.
 section: Beginner path
 order: 110
 label: Test with the Playground
 updated: "2026-07-21"
 ---
 
-The hosted playground gives you a chat UI for your agent without writing any frontend code. You reach it through one command: `agentflow play`.
+The hosted playground gives you a chat UI for your agent without writing any frontend code. You reach it through one command: `10xgraph play`.
 
 ## How it works
 
-`agentflow play` does two things at once:
+`10xgraph play` does two things at once:
 
-1. Starts the same local API server as `agentflow api`.
+1. Starts the same local API server as `10xgraph api`.
 2. Opens the hosted playground in your browser with your local backend URL pre-configured.
 
 ```mermaid
 flowchart LR
-  Command[agentflow play] --> API[Local API server\n127.0.0.1:8000]
+  Command[10xgraph play] --> API[Local API server\n127.0.0.1:8000]
   Command --> Browser[Hosted playground\npassed backendUrl]
   Browser -->|HTTP requests| API
   API --> Graph[Your compiled graph]
@@ -31,7 +31,7 @@ Your graph runs locally. The hosted playground is just a UI that calls your loca
 From the folder that contains `10xgraph.json`:
 
 ```bash
-agentflow play --host 127.0.0.1 --port 8000
+10xgraph play --host 127.0.0.1 --port 8000
 ```
 
 Expected output:
@@ -72,7 +72,7 @@ Press `Ctrl+C` in the terminal to stop the API server. The hosted playground wil
 
 ## What you learned
 
-- `agentflow play` starts the API server and opens the hosted playground in one command.
+- `10xgraph play` starts the API server and opens the hosted playground in one command.
 - The playground calls your local API — your graph never leaves your machine.
 - You can test multi-turn memory, tool calls, and raw message structure from the UI.
 

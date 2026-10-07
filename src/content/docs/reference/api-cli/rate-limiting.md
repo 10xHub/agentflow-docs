@@ -27,7 +27,7 @@ to turn it off.
 | `trusted_proxies` | string array | `[]` | IPs or CIDR ranges your proxies connect from. When set, `X-Forwarded-For` is honoured only for requests whose peer address is in one of them. See [Proxy hops](#proxy-hops). An invalid network raises a `ValueError`. |
 | `redis` | object or string | `null` | Redis connection for the `"redis"` backend, as `{"url": ..., "prefix": ...}` or the URL as a bare string (which keeps the default prefix). |
 | `redis.url` | string | `null` | Redis connection URL. Required for the `"redis"` backend unless a Redis client is already bound in InjectQ. Supports `$ENV_VAR` and `${ENV_VAR}` expansion; an unset variable stops the server from starting. |
-| `redis.prefix` | string | `"agentflow:rate-limit"` | Key prefix used for all Redis entries. |
+| `redis.prefix` | string | `"10xgraph:rate-limit"` | Key prefix used for all Redis entries. Before 0.7.0 the default was `"agentflow:rate-limit"`, so counters restart once on upgrade. |
 | `fail_open` | boolean | `true` | When `true`, requests are allowed if the Redis backend is unreachable. When `false`, they are denied. Only applies to the `"redis"` backend. |
 
 Invalid values are rejected at config load: `by` outside `ip`/`user`/`global`, `backend` outside `memory`/`redis`/`custom`, a non-positive `requests` or `window`, `trusted_proxy_hops` below `1`, or an entry in `trusted_proxies` that is not an IP or CIDR range all raise a `ValueError` and stop the server from starting.
@@ -102,7 +102,7 @@ The separate [`websocket.max_connections`](/docs/reference/api-cli/configuration
     "exclude_paths": ["/ping", "/metrics", "/docs", "/redoc", "/openapi.json"],
     "redis": {
       "url": "${RATE_LIMIT_REDIS_URL}",
-      "prefix": "agentflow:rate-limit"
+      "prefix": "10xgraph:rate-limit"
     },
     "fail_open": true
   }
@@ -117,7 +117,7 @@ RATE_LIMIT_REDIS_URL=redis://localhost:6379/0
 Install the Redis extra before using `"backend": "redis"`:
 
 ```bash
-pip install "10xscale-agentflow-cli[redis]"
+pip install "10xgraph-api[redis]"
 ```
 
 ## Backend comparison
@@ -167,7 +167,7 @@ Every response includes rate-limit headers:
 ## Custom backend interface
 
 ```python
-from agentflow_cli.src.app.core.middleware.rate_limit import (
+from tenxgraph_api.src.app.core.middleware.rate_limit import (
     BaseRateLimitBackend,
     RateLimitDecision,
 )

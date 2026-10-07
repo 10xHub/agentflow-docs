@@ -19,7 +19,7 @@ flowchart TB
     TS[AgentFlowClient]
   end
 
-  subgraph Server["10xscale-agentflow-cli (Python)"]
+  subgraph Server["10xgraph-api (Python)"]
     CLI[agentflow CLI]
     API[FastAPI server]
     Auth[Auth middleware]
@@ -65,12 +65,12 @@ flowchart TB
 | `tenxgraph.utils` | `ResponseGranularity`, `CallbackManager`, `tool` decorator |
 | `tenxgraph.qa` | Testing helpers and evaluation tools |
 
-### `10xscale-agentflow-cli` — API and CLI
+### `10xgraph-api` — API and CLI
 
-- **`agentflow api`** — starts a FastAPI server that serves a compiled graph
-- **`agentflow play`** — same as `api`, plus opens the hosted playground
-- **`agentflow init`** — scaffolds `10xgraph.json` and `graph/react.py`
-- **`agentflow build`** — generates a Dockerfile and docker-compose
+- **`10xgraph api`** — starts a FastAPI server that serves a compiled graph
+- **`10xgraph play`** — same as `api`, plus opens the hosted playground
+- **`10xgraph init`** — scaffolds `10xgraph.json` and `graph/react.py`
+- **`10xgraph build`** — generates a Dockerfile and docker-compose
 - REST routers for graph invoke, streaming, threads, memory store, and file uploads
 
 ### `@10xscale/agentflow-client` — TypeScript HTTP client

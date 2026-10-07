@@ -12,7 +12,7 @@ Skills are folders of instructions, scripts and references that follow the Agent
 
 ## Start here
 
-To teach an assistant, run `agentflow skills --agent claude` (or `codex`, `github`) from your project root. The sections below list exactly which files get installed. For the command itself, see [Install skills](/docs/how-to/api-cli/install-skills) and the [CLI commands reference](/docs/reference/api-cli/commands).
+To teach an assistant, run `10xgraph skills --agent claude` (or `codex`, `github`) from your project root. The sections below list exactly which files get installed. For the command itself, see [Install skills](/docs/how-to/api-cli/install-skills) and the [CLI commands reference](/docs/reference/api-cli/commands).
 
 To give your own agents skills, read [How to give an agent skills](/docs/how-to/python/use-skills), then the [Skills reference](/docs/reference/python/skills). The tutorial [Skills](/docs/tutorials/from-examples/skills) walks through a working example from the repository.
 
@@ -28,15 +28,15 @@ To give your own agents skills, read [How to give an agent skills](/docs/how-to/
 10xGraph skills are bundled assistant instructions for coding agents such as Codex, Claude, and GitHub Copilot. They are copied from:
 
 ```text
-agentflow-api/agentflow_cli/cli/templates/skills
+tenxgraph_api/cli/templates/skills
 ```
 
-Use these skills when you want an assistant to understand 10xGraph package boundaries, graph patterns, CLI behavior, API routes, TypeScript client conventions, testing, and production guidance while editing an 10xGraph project.
+Use these skills when you want an assistant to understand 10xGraph package boundaries, graph patterns, CLI behavior, API routes, TypeScript client conventions, testing, and production guidance while editing a 10xGraph project.
 
 ```bash
-agentflow skills --agent codex
-agentflow skills --agent claude
-agentflow skills --agent github
+10xgraph skills --agent codex
+10xgraph skills --agent claude
+10xgraph skills --agent github
 ```
 
 ## What gets installed
@@ -45,25 +45,25 @@ The same base skill bundle is copied into the assistant-specific location.
 
 | Assistant | Installed files |
 |---|---|
-| Codex | `.agents/skills/agentflow/` |
-| Claude | `.claude/skills/agentflow/` |
-| GitHub Copilot | `.github/instructions/agentflow.instructions.md` and `.github/skills/agentflow/` |
+| Codex | `.agents/skills/10xgraph/` |
+| Claude | `.claude/skills/10xgraph/` |
+| GitHub Copilot | `.github/instructions/10xgraph.instructions.md` and `.github/skills/10xgraph/` |
 
 Every assistant gets the same folder, copied from:
 
 ```text
-agentflow-api/agentflow_cli/cli/templates/skills/agentflow
+tenxgraph_api/cli/templates/skills/10xgraph
 ```
 
-The bundle follows the [Agent Skills specification](https://agentskills.io/specification). Paths inside `SKILL.md` are relative to the skill folder, so one copy works in every install location. Check it, or your own skills, with `agentflow skills --validate <path>`.
+The bundle follows the [Agent Skills specification](https://agentskills.io/specification). Paths inside `SKILL.md` are relative to the skill folder, so one copy works in every install location. Check it, or your own skills, with `10xgraph skills --validate <path>`.
 
 For GitHub Copilot, 10xGraph also copies:
 
 ```text
-agentflow-api/agentflow_cli/cli/templates/skills/copilot/agentflow.instructions.md
+tenxgraph_api/cli/templates/skills/copilot/10xgraph.instructions.md
 ```
 
-That file points Copilot at the installed skill bundle under `.github/skills/agentflow/`.
+That file points Copilot at the installed skill bundle under `.github/skills/10xgraph/`.
 
 ## What the skill contains
 
@@ -112,7 +112,7 @@ The reference files cover:
 | Architecture | Package layout across `agentflow`, `agentflow-api`, `agentflow-client`, docs, and playground |
 | Agents and graphs | `Agent`, `ToolNode`, `StateGraph`, prebuilt agents, state, messages, tools, and handoffs |
 | Runtime behavior | Checkpointing, dependency injection, memory, media, streaming, publishers, and protocols |
-| API and CLI | `agentflow init`, `api`, `play`, `build`, `skills`, `10xgraph.json`, auth, settings, middleware, routes, and errors |
+| API and CLI | `10xgraph init`, `api`, `play`, `build`, `skills`, `10xgraph.json`, auth, settings, middleware, routes, and errors |
 | TypeScript client | Auth, invoke, stream, messages, threads, memory, files, and client-side tool execution |
 | Quality and safety | Testing, evaluation, provider adapters, validators, and prompt-injection safeguards |
 
@@ -121,7 +121,7 @@ The reference files cover:
 Run from the project root:
 
 ```bash
-agentflow skills --agent codex
+10xgraph skills --agent codex
 ```
 
 Supported values are `codex`, `claude`, `github`, or menu numbers `1`, `2`, `3`.
@@ -140,7 +140,7 @@ In non-interactive environments, pass `--agent` or `--all`.
 ## Install for every assistant
 
 ```bash
-agentflow skills --all
+10xgraph skills --all
 ```
 
 If an installation already exists, `--all` skips that assistant unless you also pass `--force`.
@@ -148,7 +148,7 @@ If an installation already exists, `--all` skips that assistant unless you also 
 ## Install into another project
 
 ```bash
-agentflow skills --agent claude --path ./my-agent
+10xgraph skills --agent claude --path ./my-agent
 ```
 
 The command refuses to install directly into the filesystem root or your home directory. Point `--path` at a project folder.
@@ -156,7 +156,7 @@ The command refuses to install directly into the filesystem root or your home di
 ## Update an existing install
 
 ```bash
-agentflow skills --agent github --force
+10xgraph skills --agent github --force
 ```
 
 Use `--force` to replace an existing installed 10xGraph skill after updating the CLI.
@@ -164,7 +164,7 @@ Use `--force` to replace an existing installed 10xGraph skill after updating the
 ## List supported assistants
 
 ```bash
-agentflow skills --list
+10xgraph skills --list
 ```
 
 ## Options

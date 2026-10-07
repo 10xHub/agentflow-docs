@@ -21,14 +21,14 @@ Base URL: `ws://<host>/v1/graph/live`
 Uses `RequirePermission("graph", "stream")`. The server looks for a bearer token in three places, in this order:
 
 1. **`Authorization: Bearer <token>` header** — for non-browser clients (Python, server-to-server).
-2. **`Sec-WebSocket-Protocol: agentflow-bearer, <token>`** — the preferred mechanism for browsers. The token rides in a request header, so it never lands in URLs, access logs, or browser history. The server echoes the `agentflow-bearer` sentinel back on `accept()`, which browsers require.
+2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`** — the preferred mechanism for browsers. The token rides in a request header, so it never lands in URLs, access logs, or browser history. The server echoes the sentinel back on `accept()`, which browsers require.
 3. **`?token=<jwt>` query parameter** — last-resort fallback. The token is exposed in URLs and access logs; use (2) instead when you can.
 
 ```javascript
 // Browser: preferred subprotocol transport
 const ws = new WebSocket(
   "ws://localhost:8000/v1/graph/live",
-  ["agentflow-bearer", jwt],
+  ["10xgraph-bearer", jwt],
 );
 ```
 
@@ -36,6 +36,8 @@ const ws = new WebSocket(
 # Query fallback
 ws://localhost:8000/v1/graph/live?token=<jwt>
 ```
+
+The older `agentflow-bearer` sentinel is still accepted until 2.0.
 
 An authentication or authorization failure closes the handshake with code `1008` before `accept()`.
 

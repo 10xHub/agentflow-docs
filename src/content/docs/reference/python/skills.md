@@ -276,7 +276,7 @@ Diagnostics are logged as warnings on the `tenxgraph.skills.registry` logger and
 Check skills against the specification before shipping them:
 
 ```bash
-agentflow skills --validate ./.agents/skills
+10xgraph skills --validate ./.agents/skills
 ```
 
 ```python

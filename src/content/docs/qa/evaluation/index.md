@@ -53,13 +53,13 @@ eval_set = (
 Put the file in `evals/` and run:
 
 ```bash
-agentflow eval
+10xgraph eval
 ```
 
 Reports are written to `eval_reports/` automatically. Run in parallel across all cases from all files:
 
 ```bash
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 ```
 
 ### 3. Or run programmatically
@@ -166,7 +166,7 @@ Every run produces an HTML visual dashboard and a JSON file. JUnit XML output is
 
 ## Eval file protocols
 
-The `agentflow eval` CLI discovers files matching `*_eval.py` or `eval_*.py` inside the `evals/` directory. It auto-detects which protocol each file uses.
+The `10xgraph eval` CLI discovers files matching `*_eval.py` or `eval_*.py` inside the `evals/` directory. It auto-detects which protocol each file uses.
 
 ### Protocol summary
 
@@ -297,7 +297,7 @@ SCENARIOS = [
 By default all cases run sequentially. Pass `--parallel` to run all cases from all files in a single flat pool under one asyncio event loop:
 
 ```bash
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 ```
 
 **How the flat pool works:** cases from all files (including simulation scenarios) are collected first, then all run concurrently throttled by a single semaphore. Cases complete out of order — that is expected and shown in the progress output:
@@ -316,32 +316,32 @@ Regular eval cases and simulation scenarios are mixed in the same pool and appea
 
 ---
 
-## agentflow eval CLI
+## 10xgraph eval CLI
 
 ```bash
 # Run all eval files in evals/
-agentflow eval
+10xgraph eval
 
 # Target a single file
-agentflow eval evals/weather_eval.py
+10xgraph eval evals/weather_eval.py
 
 # Target a subdirectory
-agentflow eval evals/regression/
+10xgraph eval evals/regression/
 
 # Run in parallel with up to 8 concurrent cases
-agentflow eval --parallel --max-concurrency 8
+10xgraph eval --parallel --max-concurrency 8
 
 # Open the HTML report after running
-agentflow eval --open
+10xgraph eval --open
 
 # Set a pass-rate threshold (exits non-zero if below)
-agentflow eval --threshold 0.8
+10xgraph eval --threshold 0.8
 
 # Write reports to a custom directory
-agentflow eval --output ci/reports
+10xgraph eval --output ci/reports
 
 # Disable file reports (console output only)
-agentflow eval --no-report
+10xgraph eval --no-report
 ```
 
 ### 10xgraph.json configuration
@@ -367,7 +367,7 @@ agentflow eval --no-report
 | `parallel` | Run all cases from all files in a flat parallel pool |
 | `max_concurrency` | Maximum cases running at once when `parallel` is true |
 
-Report filenames from `agentflow eval` always carry a timestamp; `10xgraph.json` has no
+Report filenames from `10xgraph eval` always carry a timestamp; `10xgraph.json` has no
 setting for it.
 
 **Config priority (highest first):** CLI flags → `10xgraph.json` → per-file `get_eval_config()` → built-in defaults
@@ -379,7 +379,7 @@ CLI flags always take precedence over `10xgraph.json` values.
 ```yaml
 # .github/workflows/ci.yml
 - name: Run evaluations
-  run: agentflow eval --parallel
+  run: 10xgraph eval --parallel
   env:
     GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # needed for LLM-judge criteria
 ```

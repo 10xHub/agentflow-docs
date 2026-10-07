@@ -182,4 +182,4 @@ That is the next tutorial:
 
 ## Next step
 
-→ [MCP ReAct Agent](/docs/tutorials/from-examples/mcp-react-agent) to let an 10xGraph graph call those MCP tools automatically.
+→ [MCP ReAct Agent](/docs/tutorials/from-examples/mcp-react-agent) to let a 10xGraph graph call those MCP tools automatically.

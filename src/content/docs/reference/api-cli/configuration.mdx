@@ -8,11 +8,15 @@ faq:
   - q: Which key is required in 10xgraph.json?
     a: Only agent, a string in module:attribute form that points at your compiled graph. Every other key is optional.
   - q: Where does the CLI look for the config file?
-    a: It searches the working directory and its parents for the path you pass with --config (default 10xgraph.json). Without a path, test and eval also try .10xgraph.json and agentflow.config.json.
+    a: It searches the working directory and its parents for the path you pass with --config (default 10xgraph.json). With the default name, each directory is checked for 10xgraph.json first and the older agentflow.json second. Without a path, test and eval also try .agentflow.json and agentflow.config.json.
+  - q: Does agentflow.json still work?
+    a: Yes, until 2.0. When 10xgraph.json is missing, the CLI and the server read agentflow.json from the same directory. Rename the file to 10xgraph.json when convenient; the keys are identical.
 group: CLI and configuration
 ---
 
 `10xgraph.json` tells the 10xGraph API server which graph to serve and how to secure it. Only `agent` is required. The file is plain JSON, and the server also reads settings from environment variables, listed at the end of this page. Edit it by hand or with `10xgraph config`.
+
+Projects created before 0.7.0 have `agentflow.json`. It keeps working until 2.0: the CLI and the server read it when `10xgraph.json` is missing from the same directory. The keys are identical, so moving over is a rename (`mv agentflow.json 10xgraph.json`) or a save from `10xgraph config`.
 
 ## Which keys does it accept?
 
@@ -81,7 +85,7 @@ Rate limiting applies to REST requests. `/ping` is always excluded. Set `"enable
 | `by` | string | `ip` | Count per `ip`, `user` or `global` |
 | `exclude_paths` | array | `[]` | Extra paths to skip |
 | `redis` | object or string | none | `{"url": "...", "prefix": "..."}` or a URL string. `$VAR` and `${VAR}` are expanded |
-| `redis.prefix` | string | `agentflow:rate-limit` | Redis key prefix |
+| `redis.prefix` | string | `10xgraph:rate-limit` | Redis key prefix |
 | `fail_open` | boolean | `true` | Allow requests when the backend errors. `false` denies them |
 | `trusted_proxy_headers` | boolean | `false` | Honour `X-Forwarded-For`. Only behind a proxy you control |
 | `trusted_proxy_hops` | integer | `1` | Proxies you control, counted from the right of `X-Forwarded-For`. At least 1 |
@@ -137,8 +141,8 @@ Set these in the process environment or in the file named by `env`.
 | `MODE` | `development` | `production` disables the local telemetry store and the docs pages, and defaults authorization to ownership |
 | `IS_DEBUG` | `true` | Set `false` in production |
 | `LOG_LEVEL` | `INFO` | Logging level |
-| `LOGGER_NAME` | `agentflow-cli` | Logger name |
-| `APP_NAME`, `APP_VERSION`, `SUMMARY` | `MyApp`, `0.1.0`, `Agentflow Backend` | Application metadata |
+| `LOGGER_NAME` | `10xgraph-api` | Logger name |
+| `APP_NAME`, `APP_VERSION`, `SUMMARY` | `MyApp`, `0.1.0`, `10xGraph Backend` | Application metadata |
 | `ORIGINS` | `*` | Comma-separated CORS origins. Wildcard with credentials is refused in production |
 | `ALLOWED_HOST` | `*` | Allowed hosts. `*` warns in production |
 | `CORS_ALLOW_CREDENTIALS` | `true` | Allow credentialed cross-origin requests |
@@ -151,7 +155,7 @@ Set these in the process environment or in the file named by `env`.
 | `SENTRY_DSN` | none | Enables Sentry in production, staging or development modes |
 | `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE` | `0.1`, `0.0` | Sampling rates from 0 to 1 |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry |
-| `OTEL_SERVICE_NAME` | `agentflow-api` | Service name |
+| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | none | OTLP endpoint |
 | `OTEL_LEVEL` | `standard` | `spans`, `standard` or `full` |
 | `SECURITY_HEADERS_ENABLED` | `true` | Add security headers |
@@ -160,7 +164,8 @@ Set these in the process environment or in the file named by `env`.
 | `PERMISSIONS_POLICY`, `CSP_POLICY` | none | Header values. Built-in defaults apply when unset |
 | `GRAPH_PATH` | `10xgraph.json` | Config file path used by the server. `10xgraph api` sets it for you |
 | `WEB_CONCURRENCY` | `2` in generated Dockerfile | Gunicorn worker count |
-| `AGENTFLOW_NO_FULLSCREEN` | unset | Set to `1` to disable the full-screen CLI |
+| `TENXGRAPH_FULLSCREEN` | unset | CLI only. Set to `1` to pin the full-screen frame, like `--fullscreen` |
+| `TENXGRAPH_NO_FULLSCREEN`, `TENXGRAPH_NO_SPINNER`, `TENXGRAPH_ASCII` | unset | CLI only. Force the frame off, drop animation, or use ASCII symbols. The old `AGENTFLOW_*` names still work until 2.0 |
 
 Media upload settings:
 

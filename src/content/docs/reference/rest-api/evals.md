@@ -9,7 +9,7 @@ label: Evals
 updated: "2026-07-21"
 ---
 
-The eval endpoints serve the JSON reports written by [`agentflow eval`](/docs/reference/api-cli/commands#eval) over HTTP, so the playground's Evals inspector can browse them. They read `eval_reports/*.json` from the server's working directory; they do not run evaluations.
+The eval endpoints serve the JSON reports written by [`10xgraph eval`](/docs/reference/api-cli/commands#eval) over HTTP, so the playground's Evals inspector can browse them. They read `eval_reports/*.json` from the server's working directory; they do not run evaluations.
 
 Base path: `/v1/evals`
 
@@ -159,5 +159,5 @@ Cases that exist in only one of the two runs are omitted from `rows`.
 
 ## See also
 
-- [`agentflow eval`](/docs/reference/api-cli/commands#eval)
+- [`10xgraph eval`](/docs/reference/api-cli/commands#eval)
 - [Run evals](/docs/how-to/api-cli/run-evals)

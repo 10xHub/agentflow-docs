@@ -13,9 +13,9 @@ group: CLI and configuration
 
 The `10xgraph` command ships with the `10xgraph-api` package. It has twelve subcommands: `init`, `api`, `play`, `dev`, `build`, `eval`, `test`, `skills`, `audit`, `config`, `demo` and `version`. Global options go before the subcommand, and `-h` or `--help` works everywhere.
 
-<Callout type="note" title="Binary name during the rename">
+<Callout type="note" title="Coming from agentflow">
 
-The installed executable in the current source is still registered as `agentflow` (see `[project.scripts]` in the API package). Where this page says `10xgraph`, use `agentflow` until the rename ships.
+The `agentflow` command still works as a deprecated alias of `10xgraph` and prints a notice when it runs. It is removed in 2.0, so switch scripts and CI to `10xgraph`. The package was `10xscale-agentflow-cli` before 0.7.0.
 
 </Callout>
 
@@ -30,8 +30,8 @@ Placed before the subcommand, for example `10xgraph --no-color build`.
 | `--color` | `auto` | Color policy: `auto`, `always` or `never` |
 | `--no-color` | off | Shorthand for `--color never` |
 | `--progress` | `auto` | Progress mode: `auto`, `tty`, `plain`, `json` or `quiet` |
-| `--animation / --no-animation` | unset | Enable or disable decorative animation |
-| `--fullscreen / --no-fullscreen` | on for an interactive terminal | Run on a full-screen surface. `AGENTFLOW_NO_FULLSCREEN=1` also disables it |
+| `--animation / --no-animation` | on for an interactive terminal | Play the command intro. `--no-animation` prints a static header instead |
+| `--fullscreen / --no-fullscreen` | off | Pin a header and footer on a full-screen surface. `TENXGRAPH_FULLSCREEN=1` turns it on |
 | `--cwd` | current directory | Run as if started in this directory (must exist) |
 | `--verbose`, `-v` | 0 | Increase diagnostics, repeatable |
 | `--quiet`, `-q` | off | Suppress informational and success output |
@@ -41,6 +41,10 @@ Placed before the subcommand, for example `10xgraph --no-color build`.
 | `--version`, `-V` | | Print the CLI version and exit |
 
 `--json` cannot be combined with a different `--format`, and `--no-color` cannot be combined with a different `--color`.
+
+On an interactive terminal each command opens with a short intro, under a second, that shows the CLI, core and Python versions and then leaves a one-line header in your scrollback. Press any key to skip it, or Ctrl+C to quit at once. Nothing waits for Enter unless you opted into `--fullscreen`.
+
+Wherever a command takes `--config` with the default `10xgraph.json`, it uses `agentflow.json` from the same directory when `10xgraph.json` is missing. `10xgraph api` flags the old name in its startup output.
 
 ## init
 
@@ -122,7 +126,7 @@ Generate deployment files. See [Deploy with Docker and Kubernetes](/docs/how-to/
 | `--port`, `-p` | `8000` | Port to expose |
 | `--docker-compose / --no-docker-compose` | off | Also write `docker-compose.yml`, omit `CMD` from the Dockerfile |
 | `--k8s / --no-k8s` | off | Also write `k8s.yaml` |
-| `--service-name` | `agentflow-cli` | Service name in generated files |
+| `--service-name` | `10xgraph-api` | Service name in generated files |
 | `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
 
 ## eval
@@ -182,7 +186,7 @@ Install the bundled coding-agent skill, or validate skills.
 | `--validate` | unset | Validate a skill directory or folder of them against the Agent Skills spec. Repeatable |
 | `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
 
-Install locations: `.agents/skills/agentflow` (Codex), `.claude/skills/agentflow` (Claude), and `.github/skills/agentflow` plus `.github/instructions/agentflow.instructions.md` (GitHub).
+Install locations: `.agents/skills/10xgraph` (Codex), `.claude/skills/10xgraph` (Claude), and `.github/skills/10xgraph` plus `.github/instructions/10xgraph.instructions.md` (GitHub).
 
 ## audit
 
@@ -199,7 +203,7 @@ Read-only environment check: Python version, installed packages, core evaluation
 
 ## config
 
-Edit and validate `10xgraph.json` in a browser UI. The file is created on first save.
+Edit and validate `10xgraph.json` in a browser UI. The file is created on first save. If only `agentflow.json` exists, the editor starts from its contents and saving writes them to `10xgraph.json`, leaving `agentflow.json` untouched.
 
 ```bash
 10xgraph config [--config FILE] [--port PORT] [--no-open]
