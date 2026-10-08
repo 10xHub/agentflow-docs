@@ -304,7 +304,7 @@ Vertex AI authenticates via [Application Default Credentials](https://cloud.goog
 | --- | --- |
 | `ANTHROPIC_API_KEY` | API key from https://console.anthropic.com |
 
-For Vertex AI models, see [Anthropic integration](/docs/integrations/anthropic#vertex-ai-and-bedrock).
+For Vertex AI models, see [Anthropic integration](/docs/integrations/anthropic#choosing-a-claude-backend).
 
 ---
 

@@ -25,3 +25,6 @@ __pycache__/
 !.dev.vars.example
 .env*
 !.env.example
+
+# Local build checks
+.tmp-check-build/
