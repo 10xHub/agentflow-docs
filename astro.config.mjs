@@ -12,6 +12,10 @@ import { codeFrame } from './src/lib/code-frame.mjs';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+// Old docs URLs moved in the October 2026 restructure. Static output writes a redirect page at each
+// old path (meta refresh plus canonical), which works on GitHub Pages.
+const redirects = JSON.parse(readFileSync(new URL('./src/redirects.json', import.meta.url), 'utf8'));
+
 
 const SITE_URL = 'https://10xgraph.com';
 
@@ -77,6 +81,7 @@ export default defineConfig({
   site: 'https://10xgraph.com',
   output: 'static',
   trailingSlash: 'never',
+  redirects,
   build: { format: 'file' },
   integrations: [
     mdx(),

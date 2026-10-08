@@ -3,7 +3,7 @@ title: Troubleshooting
 seoTitle: "Troubleshooting 10xGraph: find your problem"
 description: "Find the right 10xGraph troubleshooting page by symptom: install failures, provider keys, server startup, client connections, playground and error codes."
 section: Troubleshooting
-order: 1900
+order: 10
 label: Overview
 updated: "2026-10-06"
 ---
@@ -21,7 +21,7 @@ Most 10xGraph problems fall into five groups: the install, the environment, the 
 | A request returns `403 Missing required scope`, a WebSocket closes at once, or `/ping` works but graph routes fail | [API server troubleshooting](/docs/troubleshooting/api-server) |
 | Every client request fails, the browser fails but curl works, threads lose continuity, or streaming differs from invoke | [Client troubleshooting](/docs/troubleshooting/client) |
 | The browser opens but the playground cannot connect, the Live page will not start, or the microphone does not work | [Playground troubleshooting](/docs/troubleshooting/playground) |
-| A run stops on a step limit, a node times out, a thread is not found, or a checkpoint fails to save | [Error codes reference](/docs/troubleshooting/error-codes), which has a symptom lookup table |
+| A run stops on a step limit, a node times out, a thread is not found, or a checkpoint fails to save | [Error codes reference](/docs/reference/error-codes), which has a symptom lookup table |
 
 If a message contains a code such as `RECURSION_000` or `NODE_TIMEOUT_000`, go straight to the error codes page. It lists every code, the exception behind it and the structured error response the server returns.
 

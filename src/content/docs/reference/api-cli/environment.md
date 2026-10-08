@@ -3,8 +3,8 @@ title: Environment Variables
 seoTitle: "API server environment variables reference"
 description: "Reference for every environment variable the 10xGraph API server recognizes, grouped by area such as auth, CORS, logging, and Snowflake ID settings."
 section: Reference
-group: CLI and configuration
-order: 1770
+group: "CLI and configuration"
+order: 430
 label: Environment Variables
 updated: "2026-09-29"
 ---
@@ -175,7 +175,7 @@ or worker, and never rely on either set of defaults.
 
 </aside>
 
-See [ID Generator](/docs/reference/api-cli/id-generator) for the constructor contract.
+See [ID Generator](/docs/reference/python/id-generator) for the constructor contract.
 
 ---
 
@@ -219,7 +219,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 
 Document text extraction needs the extra: `pip install "10xgraph-api[media]"`.
 
-See [Multimodal and vision](/docs/how-to/production/multimodal-and-vision) for how these fit
+See [Multimodal and vision](/docs/server/files-and-multimodal) for how these fit
 together.
 
 ---
@@ -273,7 +273,7 @@ Set these based on the `provider` you use on your `Agent`. They are read at clie
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `AGENTFLOW_LLM_TIMEOUT` | `600.0` | Default request timeout in seconds applied to every LLM client. Must be a positive number. See [Configure Agent](/docs/how-to/python/configure-agent#llm-call-timeout) for the programmatic API. |
+| `AGENTFLOW_LLM_TIMEOUT` | `600.0` | Default request timeout in seconds applied to every LLM client. Must be a positive number. See [Configure Agent](/docs/guides/configure-agent#llm-call-timeout) for the programmatic API. |
 
 ### OpenAI (`provider="openai"`)
 
@@ -283,7 +283,7 @@ Set these based on the `provider` you use on your `Agent`. They are read at clie
 
 ### Google Gemini (`provider="google"`)
 
-The Google provider supports two backends: the Gemini API (default) and Vertex AI. See [Using Vertex AI](/docs/providers/google#using-vertex-ai).
+The Google provider supports two backends: the Gemini API (default) and Vertex AI. See [Using Vertex AI](/docs/integrations/google#using-vertex-ai).
 
 **Gemini API (Google AI Studio):**
 

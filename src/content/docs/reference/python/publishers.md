@@ -3,8 +3,8 @@ title: Publishers
 seoTitle: "Publishers API reference (Python)"
 description: Reference for ConsolePublisher, RedisPublisher, KafkaPublisher, RabbitMQPublisher, OtelPublisher, LogfirePublisher, and LangsmithPublisher event publishers.
 section: Reference
-group: Python library
-order: 1520
+group: "Python library"
+order: 190
 label: Publishers
 updated: "2026-07-21"
 ---
@@ -404,7 +404,7 @@ setup_observability(graph, {
 
 Pass `graph=None` to configure providers and exporters only, without binding a publisher onto a graph. Secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) must come from the environment, never from the config dict. An unrecognised `level` falls back to `STANDARD`.
 
-See [Send traces to Logfire or LangSmith](/docs/how-to/python/send-traces-to-logfire-langsmith) for the end-to-end setup.
+See [Send traces to Logfire or LangSmith](/docs/guides/send-traces-to-logfire-langsmith) for the end-to-end setup.
 
 ---
 

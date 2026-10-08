@@ -1,110 +1,205 @@
 ---
-title: Memory and Store
-seoTitle: "Long-term memory and store in 10xGraph"
-description: How long-term memory works in 10xGraph — memory_tool, retrieval modes, MemoryIntegration, and MemoryConfig.
+title: Long-term Memory
+seoTitle: "Long-term memory in 10xGraph"
+description: How to build agents that learn and remember across conversations using semantic memory storage and retrieval.
 section: Concepts
-order: 153
-group: Memory and reliability
-label: Memory and Store
-updated: "2026-07-21"
+order: 120
+group: "Memory and reliability"
+label: Long-term Memory
+updated: "2026-10-08"
 ---
 
-The **memory store** provides long-term, cross-thread memory. Unlike the checkpointer (which saves per-thread state), the memory store lets an agent remember facts about users and itself **across different conversations**.
+Your agent needs to remember facts across conversations: a user's preferences, resolved questions, learned skills. The **memory store** makes this possible by providing a semantic, searchable database of memories that persists independently of the thread. It works alongside the checkpointer to create a two-level recall system: fast thread-specific state and cross-thread semantic knowledge.
 
-## Checkpointer vs store
+## Why long-term memory matters
 
-| | Checkpointer | Memory store |
+As an agent serves multiple users and conversations, it accumulates context that is too specific or expensive to carry in every message:
+
+- A user mentioned their timezone once; future conversations should know it.
+- You discovered an error-handling workaround; later conversations should learn from it.
+- You extracted a fact from a document; it should be available without re-uploading.
+
+The checkpointer solves this within a thread (conversation continuity), but it cannot share knowledge across threads. The memory store adds that cross-thread layer, enabling agents to learn from experience and personalize behavior over time.
+
+## How it works: memory store vs checkpointer
+
+The **checkpointer** saves your full agent state (messages, context, custom fields) to resume a thread. The **memory store** saves individual semantic memories you want to recall across threads. They solve different problems:
+
+| Aspect | Checkpointer | Memory store |
 | --- | --- | --- |
 | Scope | One thread | Cross-thread, cross-user |
-| Content | Full `AgentState` snapshot | Individual memory records |
+| Content | Full `AgentState` snapshot | Individual semantic records |
 | Lifetime | Until thread is deleted | Until explicitly deleted |
-| Retrieval | Exact key — `thread_id` | Semantic similarity search |
-| Primary use | Conversation continuity | User preferences, facts, knowledge |
+| Access | By `thread_id` | By semantic similarity |
+| Use case | Conversation continuity | Facts, preferences, knowledge |
 
----
+For example, if a user says "I'm in UTC-5", the checkpointer remembers it for that thread. The memory store lets you *save* it (to find later) and *retrieve* it in any future thread when the agent asks "What timezone is the user in?"
 
-## How the agent accesses memory: `memory_tool`
+## How the agent uses memory
 
-Memory is not injected passively — the LLM **calls a tool** to interact with it.  
-`memory_tool` is an `@tool`-decorated async function exposed to the agent's `ToolNode`.
+The LLM doesn't passively receive memories; it **calls a tool** to work with them. The `memory_tool` function is a special tool that the framework exposes, giving the LLM three actions:
+
+| Action | Behaviour |
+|---|---|
+| `action="store"` | Save a new memory or update an existing one by `memory_key` |
+| `action="search"` | Recall the top-N memories matching a query (semantic similarity) |
+| `action="delete"` | Remove a memory by its `memory_id` |
+
+The LLM decides when to use each action:
 
 ```
-LLM decides to remember/recall
+LLM thinks: "I should remember this timezone"
        ↓
-  calls memory_tool(action="store"|"search"|"delete", ...)
+Calls: memory_tool(action="store", content="User is in UTC-5", memory_key="user_timezone", ...)
        ↓
-  memory_tool writes / searches BaseStore (Qdrant, Mem0, …)
-       ↑
-  returns result to LLM
+Result: Memory saved and deduplicated in the store
+       ↓
+Future thread: LLM asks "What's the user's timezone?"
+       ↓
+Calls: memory_tool(action="search", query="user timezone")
+       ↓
+Result: "User is in UTC-5" (retrieved by semantic match, not keyword lookup)
 ```
 
-The three supported actions:
+**Automatic deduplication:** if you call `store` with the same `memory_key`, the old record is updated rather than duplicated. Similarity-based deduplication (≥ 0.95 match) also prevents near-duplicate memories.
 
-| Action | When to use |
+**Non-blocking writes:** all memory writes run asynchronously in the background via `BackgroundTaskManager`, so they never delay the agent's response to the user.
+
+## Retrieval modes: when do memories reach the LLM?
+
+The framework supports three strategies for when the LLM sees memories. Choose based on how much memory context you want injected, and whether you prefer the agent to drive retrieval:
+
+### No retrieval (default)
+
+The LLM **cannot read** past memories but **can write** them.
+
+**When to use:** Your agent is mostly stateless, or memories are only for logging/analytics. The agent can store context it learned, but doesn't need to recall it.
+
+| Pros | Cons |
 |---|---|
-| `action="store"` | Save a new fact or update an existing one (by `memory_key`) |
-| `action="search"` | Recall relevant memories matching a query |
-| `action="delete"` | Remove an outdated memory by `memory_id` |
+| Fast; no store queries | No cross-conversation learning |
+| Simple; minimal overhead | Agent can't retrieve past context |
 
-**Deduplication** is automatic: if you call `store` with a `memory_key` that already exists (e.g. `"user_name"`), the existing record is *updated* rather than duplicated. As a fallback, near-identical text (similarity ≥ 0.95) is also deduplicated.
+### Preload
 
-**Writes are asynchronous** — they run in the background via `BackgroundTaskManager` and never block the LLM's response.
+Relevant memories are **retrieved automatically** and injected as a system message **before** the LLM runs.
 
----
+**How it works:** 
+1. A hidden preload node runs first, extracting the user's latest message as a search query.
+2. Memories matching that query (by semantic similarity) are fetched.
+3. They are injected as a system message: "Here is context relevant to your request: [memories]".
+4. The LLM then sees the full conversation with these memories in context.
 
-## Retrieval modes
+**When to use:** Your agent should proactively use past knowledge. Ideal for retrieval-augmented generation (RAG), customer support, or personalization where the agent should *always* have relevant context available.
 
-Control *when* memories flow into the LLM context:
-
-| Mode | Behaviour |
+| Pros | Cons |
 |---|---|
-| `"no_retrieval"` (default) | LLM cannot read past memories but CAN write new ones via `memory_tool` |
-| `"preload"` | Relevant memories are retrieved and injected as a `system` message **before** the LLM call |
-| `"postload"` | LLM retrieves memories on-demand by calling `memory_tool(action="search", ...)` |
+| Agent sees memories by default | Extra latency (preload query) |
+| Good for RAG patterns | More tokens injected per message |
+| Transparent to agent | Noisy if memories are not well-curated |
+
+### Postload
+
+The LLM **decides when to retrieve** memories by calling `memory_tool(action="search", ...)` itself.
+
+**How it works:** The `memory_tool` is offered alongside your other tools. When the agent wants to check past context, it calls the tool with a query, receives results, and decides what to do with them.
+
+**When to use:** Your agent should *selectively* retrieve memories only when needed. Ideal for conversational agents that can ask "Do I know about this user?" or agents that are memory-efficient and don't need context injected automatically.
+
+| Pros | Cons |
+|---|---|
+| Agent controls memory use | More tool calls (latency) |
+| Avoids injecting irrelevant context | Requires the agent to know to retrieve |
+| Efficient | Agent might forget to retrieve |
+
+### Trade-off table
+
+| Aspect | No retrieval | Preload | Postload |
+|---|---|---|---|
+| Memory injection | Never | Automatic (every message) | On-demand (agent calls tool) |
+| Latency | Lowest | Higher (one search per message) | Variable (depends on agent) |
+| Best for | Stateless agents | RAG, personalization | Selective retrieval |
+| Token cost | Lowest | Highest (if many memories match) | Variable |
+
+## Memory scoping: user vs agent memory
+
+You can partition memories into **scopes** so different agents or users see different memories:
+
+| Scope | Who can access | Use case |
+|---|---|---|
+| **User memory** | The LLM can read and write | Facts about a specific user (timezone, preferences, history) |
+| **Agent memory** | The LLM can read but not write | Shared knowledge the agent learned (domain facts, workarounds, decisions) |
+
+**Example:** A customer support agent remembers the customer's billing cycle (user memory) and also stores a workaround it discovered for a common error (agent memory). Both memories persist across conversations, but user memory is scoped per user, while agent memory is shared across all users.
+
+Both scopes use the same backing store and retrieval mechanism, but are queried separately with their own memory records.
+
+## Choosing: memory tools (postload) vs preload
+
+The most important decision is **how the agent accesses memory**. This determines your latency, token usage, and agent behavior.
+
+**Use postload (memory tools) if:**
+- The agent should decide when to recall, not every message.
+- You want to minimize token overhead and latency.
+- Your agent is sophisticated enough to know when to ask "Do I have context on this?"
+- Example: A conversational assistant that occasionally checks past notes, but doesn't need proactive context.
+
+**Use preload if:**
+- Memories should always be available without the agent asking.
+- You're building RAG and expect relevant memories to match most queries.
+- You want the simplest behavior: the agent always sees relevant context.
+- Token cost is secondary to ensuring the agent has context.
+- Example: A customer support bot that needs a user's history for every message.
+
+**Use no_retrieval if:**
+- You don't need cross-conversation memory at all, only in-thread state.
+- Memories are for analytics or audit, not agent behavior.
+- You want the fastest, simplest setup.
 
 ---
 
 ## Available store backends
 
-| Class | Module | Backend |
-|---|---|---|
-| `QdrantStore` | `tenxgraph.storage.store` | Qdrant vector database (local or cloud) |
-| `Mem0Store` | `tenxgraph.storage.store` | Mem0 managed memory service |
+The two main options are **Qdrant** (vector database you host) and **Mem0** (managed service):
 
-Both backends support semantic similarity search via embeddings.
+| Store | Hosting | Embeddings | Good for |
+|---|---|---|---|
+| `QdrantStore` | Local or cloud Qdrant | Your choice (OpenAI, Google, custom) | Full control, self-hosted |
+| `Mem0Store` | Mem0 managed service | Mem0-provided | Low ops, Mem0 handles scaling |
 
-### Creating a local Qdrant store
+Both use semantic similarity search, so searches match meaning, not keywords. A query like "What's my timezone?" will find a memory "I'm UTC-5" even though the words are different.
+
+### Setting up Qdrant locally
 
 ```python
-from tenxgraph.storage.store import QdrantStore, create_local_qdrant_store, OpenAIEmbedding
+from tenxgraph.storage.store import (
+    create_local_qdrant_store,
+    OpenAIEmbedding
+)
 
-# Convenience factory (persistent on disk)
 store = create_local_qdrant_store(
     collection="agent-memories",
     path="./memory_data",
-    embedding=OpenAIEmbedding(),
-)
-
-# Or directly
-store = QdrantStore(
-    embedding=OpenAIEmbedding(),
-    path="./memory_data",
-    collection="agent-memories",
+    embedding=OpenAIEmbedding(),  # requires OPENAI_API_KEY
 )
 ```
 
----
+This creates a persistent database on disk. For production, use `create_cloud_qdrant_store` (cloud-hosted Qdrant) instead.
 
-## Option A: Using `MemoryConfig` with `Agent`
+## Implementation patterns
 
-This is the recommended approach when you build an agent with the high-level `Agent` class.
+### Pattern 1: With the high-level `Agent` class
+
+This is the simplest approach. Pass `memory` to `Agent` and the framework wires everything:
 
 ```python
 from tenxgraph.core.graph import Agent, ToolNode
 from tenxgraph.storage.store import (
-    QdrantStore, MemoryConfig, OpenAIEmbedding,
+    MemoryConfig,
     create_local_qdrant_store,
+    OpenAIEmbedding,
 )
+from tenxgraph.utils import tool
 
 store = create_local_qdrant_store(
     collection="user-memories",
@@ -112,71 +207,48 @@ store = create_local_qdrant_store(
     embedding=OpenAIEmbedding(),
 )
 
-# Tool for the agent's regular work
+# Define your agent's tools
 @tool
 def search_web(query: str) -> str:
-    ...
+    """Search the web for information."""
+    # implementation
+    pass
 
 tool_node = ToolNode([search_web])
 
+# Create the agent with memory enabled
 agent = Agent(
     model="gemini/gemini-2.5-flash",
     tools=tool_node,
     memory=MemoryConfig(
         store=store,
-        retrieval_mode="postload",   # LLM calls memory_tool to search
+        retrieval_mode="postload",  # Agent calls memory_tool when needed
+        limit=5,                     # max memories to retrieve per search
     ),
 )
+
+# Use it like any agent
+state = {"messages": [{"role": "user", "content": "What's my timezone?"}]}
+result = agent.invoke(state, config={"user_id": "user-42"})
 ```
 
-`Agent.__init__` calls `_setup_memory()` internally, which:
+The `Agent` class automatically:
+1. Adds memory tool instructions to the system prompt.
+2. Registers `memory_tool` on the `ToolNode`.
+3. Scopes memories by `user_id` from the config.
 
-1. Appends a system prompt fragment (instructions about how to use memory) to the agent.
-2. Registers `memory_tool` (and scope-specific tools) onto the existing `ToolNode`.
+You **must** pass a `ToolNode` when enabling memory; the framework raises `RuntimeError` otherwise.
 
-You **must** pass a `ToolNode` to `Agent` when memory tools are enabled; the framework will raise a `RuntimeError` otherwise.
+### Pattern 2: With `StateGraph` and `MemoryIntegration`
 
-### MemoryConfig fields
-
-```python
-from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig, AgentMemoryConfig
-
-MemoryConfig(
-    store=store,                    # default store used if scope stores are not set
-    retrieval_mode="postload",      # "no_retrieval" | "preload" | "postload"
-    limit=5,                        # max memories to retrieve
-    score_threshold=0.0,            # min similarity score (0.0 = all results)
-    max_tokens=None,                # optional token budget for retrieved context
-    inject_system_prompt=True,      # auto-add memory instructions to system prompt
-    user_memory=UserMemoryConfig(   # user-scoped memory the LLM can search & write
-        enabled=True,
-        store=store,                # can override the top-level store
-        user_id="user-42",          # if None, injected at runtime from config
-        memory_type="episodic",
-        category="general",
-        limit=5,
-    ),
-    agent_memory=AgentMemoryConfig( # agent/app-scoped memory the LLM can only search
-        enabled=False,
-        store=store,
-        agent_id="my-agent",
-        memory_type="semantic",
-    ),
-)
-```
-
----
-
-## Option B: Using `MemoryIntegration` with `StateGraph`
-
-For lower-level graph control, use `MemoryIntegration` directly.
+For more control (custom routing, multiple nodes), use `MemoryIntegration` with `StateGraph`:
 
 ```python
 from tenxgraph.core.graph import StateGraph, Agent, ToolNode
 from tenxgraph.storage.store import (
     MemoryIntegration,
-    QdrantStore, OpenAIEmbedding,
     create_local_qdrant_store,
+    OpenAIEmbedding,
 )
 from tenxgraph.utils import END
 
@@ -186,148 +258,150 @@ store = create_local_qdrant_store(
     embedding=OpenAIEmbedding(),
 )
 
-memory = MemoryIntegration(store=store, retrieval_mode="preload")
+# Create the memory integration
+memory = MemoryIntegration(
+    store=store,
+    retrieval_mode="preload",  # Auto-inject memories before LLM
+    limit=5,
+)
 
-tool_node = ToolNode([search_web, *memory.tools])  # include memory_tool
-agent = Agent(model="gemini/gemini-2.5-flash", system_prompt=memory.system_prompt)
+# Your tools
+@tool
+def search_web(query: str) -> str:
+    pass
 
+# Tool node includes both your tools and memory tools
+tool_node = ToolNode([search_web, *memory.tools])
+
+# Agent with memory system prompt
+agent = Agent(
+    model="gemini/gemini-2.5-flash",
+    system_prompt=memory.system_prompt,
+)
+
+# Build the graph
 graph = StateGraph()
 graph.add_node("AGENT", agent)
 graph.add_node("TOOLS", tool_node)
 graph.add_edge("TOOLS", "AGENT")
-graph.add_conditional_edges("AGENT", lambda s: "TOOLS" if s.tool_calls else END)
+graph.add_conditional_edges(
+    "AGENT",
+    lambda s: "TOOLS" if s.tool_calls else END,
+)
 
-# wire() sets the entry point and (for preload mode) inserts the preload node
+# Wire memory (adds preload node in preload mode)
 memory.wire(graph, entry_to="AGENT")
 
+# Compile and use
 app = graph.compile(store=store)
-```
-
-### `MemoryIntegration` properties
-
-| Property | Type | Description |
-|---|---|---|
-| `memory.tools` | `list[Callable]` | Contains `memory_tool` — add to your `ToolNode` |
-| `memory.system_prompt` | `str` | System prompt fragment — pass to your LLM node |
-| `memory.preload_node` | `Callable \| None` | Async node function; only set in `preload` mode |
-| `memory.retrieval_mode` | `ReadMode` | The configured mode |
-| `memory.store` | `BaseStore` | The underlying store instance |
-
-### `wire()` method
-
-```python
-memory.wire(
-    graph,
-    entry_to="AGENT",           # the node to run after memory retrieval
-    preload_node_name="memory_preload",  # name for the auto-added preload node
+result = app.invoke(
+    {"messages": [...]},
+    config={"user_id": "user-42"},
 )
 ```
 
-- **preload mode**: adds a `memory_preload` node, sets it as the graph entry point, edges it to `entry_to`.
-- **no_retrieval / postload**: just calls `graph.set_entry_point(entry_to)`.
+Key differences from Pattern 1:
+- You build the graph yourself, so you have full control over nodes and edges.
+- `memory.tools` gives you the `memory_tool` function to add alongside your own tools.
+- `memory.wire(graph, entry_to="AGENT")` sets the entry point and (in preload mode) inserts the preload node automatically.
+- `memory.system_prompt` contains the LLM instructions for using memory.
 
----
+### MemoryConfig options
 
-## System prompt fragments
-
-`get_memory_system_prompt(mode)` returns the correct instructions for the LLM depending on the retrieval mode:
+If using Pattern 1, customize memory behavior:
 
 ```python
-from tenxgraph.storage.store import get_memory_system_prompt
+from tenxgraph.storage.store import (
+    MemoryConfig,
+    UserMemoryConfig,
+    AgentMemoryConfig,
+)
 
-print(get_memory_system_prompt("no_retrieval"))
-# → "You do NOT have access to read or search long-term memories. ..."
-#   + write instructions (memory_tool store/update/delete)
-
-print(get_memory_system_prompt("preload"))
-# → "You have been provided with long-term memory context ..."
-#   + write instructions
-
-print(get_memory_system_prompt("postload"))
-# → "You have access to a memory_tool that can search, store, and delete ..."
-#   (full read + write instructions)
+config = MemoryConfig(
+    store=store,                       # The vector store
+    retrieval_mode="postload",         # "no_retrieval" | "preload" | "postload"
+    limit=5,                           # Max memories to retrieve per search
+    score_threshold=0.0,               # Min similarity (0.0 = all results)
+    max_tokens=None,                   # Optional: limit tokens in injected memories
+    inject_system_prompt=True,         # Auto-add memory instructions
+    user_memory=UserMemoryConfig(
+        enabled=True,                  # User-scoped memories the LLM can read/write
+        memory_type="episodic",        # Type of memory (for categorization)
+        category="general",
+        limit=5,
+    ),
+    agent_memory=AgentMemoryConfig(
+        enabled=False,                 # Agent-scoped memories (shared across users)
+        memory_type="semantic",        # The agent learns domain facts
+        agent_id="my-agent",           # Scoped by agent ID
+    ),
+)
 ```
 
-All modes include **write instructions** — the LLM can always decide to persist new information.
+## How memories are written and retrieved
 
----
-
-## Writing memories: important rules
-
-The system prompt instructs the LLM to:
-
-- Use `action="store"` with a short `memory_key` (e.g. `"user_name"`, `"favorite_language"`).
-- The framework handles deduplication — if the same `memory_key` exists it updates the old record.
-- Use `action="delete"` only with an explicit `memory_id` returned from a prior search.
-- **Never** use `action="update"` unless you have a specific `memory_id`.
+The LLM **writes** memories by calling `memory_tool`:
 
 ```python
-# The LLM internally calls something like:
+# The agent decides to remember something:
 memory_tool(
     action="store",
-    content="User's name is Shudipto",
-    memory_key="user_name",
-    memory_type="semantic",
+    content="User is in UTC-5 timezone",
+    memory_key="user_timezone",          # Scoped key for deduplication
+    memory_type="episodic",              # Episodic = specific to this user
+    category="preferences",
 )
+# Result: Memory stored. If "user_timezone" already existed, it's updated.
 ```
 
----
-
-## Preload node
-
-In `preload` mode the `_preload_node` function:
-
-1. Extracts the latest user message as the search query.
-2. Searches the store for the top-`limit` memories by similarity (cross-thread — `thread_id` is stripped).
-3. Flushes any in-flight background writes first to avoid stale reads.
-4. Returns a `[Message.text_message(..., role="system")]` list injected into state before the LLM sees the conversation.
-
-You can customise the query extractor:
+The LLM **searches** memories (in postload mode only) by calling:
 
 ```python
-from tenxgraph.storage.store import create_memory_preload_node
-
-def my_query_builder(state):
-    return state.context[-1].text() if state.context else ""
-
-preload = create_memory_preload_node(
-    store=store,
-    query_builder=my_query_builder,
-    limit=5,
-    score_threshold=0.3,
+memory_tool(
+    action="search",
+    query="What timezone is the user in?",
 )
-graph.add_node("memory_preload", preload)
+# Result: Top 5 memories by semantic similarity: 
+# [{"memory_id": "...", "content": "User is in UTC-5 timezone", "score": 0.95}]
 ```
 
----
+**In preload mode**, the framework does the search automatically and injects results as a system message. The agent sees: "Here is context relevant to your request: [memories]" and doesn't call the search tool directly.
 
-## REST API for the store
+## Accessing memory in the REST API
 
-When a store is configured in `10xgraph.json`, the API exposes memory CRUD endpoints:
+When a store is configured in `10xgraph.json`, the server exposes memory endpoints:
 
 ```bash
-POST   /v1/store/memories        # store a memory
-POST   /v1/store/search          # search memories by query
-GET    /v1/store/memories        # list memories
-PUT    /v1/store/memories/{id}   # update a memory
-DELETE /v1/store/memories/{id}   # delete a memory
+POST   /v1/store/memories        # Store a new memory
+GET    /v1/store/memories        # List all memories for a user
+POST   /v1/store/search          # Search memories by query
+PUT    /v1/store/memories/{id}   # Update a memory
+DELETE /v1/store/memories/{id}   # Delete a memory
 ```
 
-See [REST API: Memory store](/docs/reference/rest-api/memory-store) for schemas.
+See [REST API: Memory store](/docs/reference/rest-api/memory-store) for request/response schemas.
 
-## Configuring via 10xgraph.json
+Memories are scoped by the request's `user_id` (from auth or config), so users cannot see each other's memories.
+
+## Configuring memory in 10xgraph.json
+
+Point the API server to a memory store:
 
 ```json
 {
-  "agent": "graph.react:app",
-  "store": "graph.dependencies:my_store"
+  "agent": "graph:app",
+  "store": "graph.dependencies:my_memory_store"
 }
 ```
 
+The `store` key expects a module path pointing to a `BaseStore` instance. The server will use it for all memory operations on that agent.
+
 ---
 
-## Related concepts
+## Next steps
 
-- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads)
-- [Agents and tools](/docs/concepts/agents-and-tools)
-- [REST API: Memory store](/docs/reference/rest-api/memory-store)
+- **To set up memory:** See the task guide [Use memory store](/docs/guides/use-memory-store).
+- **To understand preload vs postload deeper:** See [Stream and approve](/docs/guides/stream-graph) (includes pattern examples).
+- **For REST API details:** See [REST API: Memory store](/docs/reference/rest-api/memory-store).
+- **To learn about thread memory:** See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) (in-thread state is different from long-term memory).
+- **To understand scoping:** See [Authorization scopes](/docs/guides/authorization-scopes) (user isolation is handled by auth).

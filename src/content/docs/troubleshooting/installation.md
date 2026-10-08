@@ -2,7 +2,7 @@
 title: Installation Troubleshooting
 description: Symptoms, causes, and fixes for common 10xGraph installation and environment setup issues.
 section: Troubleshooting
-order: 1910
+order: 20
 updated: "2026-10-08"
 ---
 
@@ -137,9 +137,9 @@ Install the required extras or packages for the feature you are actually using.
 ## Related docs
 
 - [Installation](/docs/get-started/installation)
-- [Configure 10xgraph.json](/docs/how-to/api-cli/configure-agentflow-json)
-- [Environment Variables](/docs/how-to/production/environment-variables)
-- [Error Codes Reference](/docs/troubleshooting/error-codes)
+- [Configure 10xgraph.json](/docs/server/configure)
+- [Environment Variables](/docs/server/production-checklist)
+- [Error Codes Reference](/docs/reference/error-codes)
 
 ## What you learned
 

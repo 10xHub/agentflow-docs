@@ -2,9 +2,8 @@
 title: "10xGraph vs LangGraph, CrewAI, AutoGen: Compared"
 seoTitle: "10xGraph compared with other agent frameworks"
 description: Sourced comparisons of 10xGraph with LangGraph, CrewAI, AutoGen, LlamaIndex Agents and Google ADK, led by the production layer each framework includes.
-section: Learn more
-group: Compare
-order: 2220
+section: Compare
+order: 10
 label: Overview
 updated: "2026-10-06"
 ---
@@ -13,11 +12,11 @@ These pages compare **10xGraph** with other Python agent frameworks, written by 
 
 ## Pick a comparison
 
-- [**10xGraph vs LangGraph**](/docs/compare/agentflow-vs-langgraph). Graph runtimes compared on the production layer
-- [**10xGraph vs CrewAI**](/docs/compare/agentflow-vs-crewai). Role-based crews vs typed graphs
-- [**10xGraph vs AutoGen**](/docs/compare/agentflow-vs-autogen). AutoGen (now in maintenance mode) vs 10xGraph
-- [**10xGraph vs LlamaIndex Agents**](/docs/compare/agentflow-vs-llamaindex-agents). Retrieval-first agents vs a runtime-first server
-- [**10xGraph vs Google ADK**](/docs/compare/agentflow-vs-google-adk). Google's Agent Development Kit vs 10xGraph
+- [**10xGraph vs LangGraph**](/docs/compare/10xgraph-vs-langgraph). Graph runtimes compared on the production layer
+- [**10xGraph vs CrewAI**](/docs/compare/10xgraph-vs-crewai). Role-based crews vs typed graphs
+- [**10xGraph vs AutoGen**](/docs/compare/10xgraph-vs-autogen). AutoGen (now in maintenance mode) vs 10xGraph
+- [**10xGraph vs LlamaIndex Agents**](/docs/compare/10xgraph-vs-llamaindex-agents). Retrieval-first agents vs a runtime-first server
+- [**10xGraph vs Google ADK**](/docs/compare/10xgraph-vs-google-adk). Google's Agent Development Kit vs 10xGraph
 
 ## What the comparisons focus on
 

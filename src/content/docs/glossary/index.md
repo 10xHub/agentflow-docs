@@ -3,7 +3,7 @@ title: AI Agent Glossary
 seoTitle: "AI agent glossary: definitions and examples"
 description: Plain definitions of AI agent terms, from ReAct agents and state graphs to MCP, RAG, durable execution and idempotent tool calls, with Python examples.
 section: Glossary
-order: 2300
+order: 10
 label: Glossary
 updated: "2026-10-06"
 ---
@@ -37,4 +37,4 @@ For connecting an agent to the outside world, read [What is the Model Context Pr
 
 - [Compare frameworks](/docs/compare) - 10xGraph vs LangGraph, CrewAI, AutoGen, Google ADK
 - [Get started with 10xGraph](/docs/get-started) - build your first agent in Python
-- [Prebuilt agents](/docs/prebuild/agents/react-agent) - ReactAgent, RAGAgent, SwarmAgent, and more
+- [Prebuilt agents](/docs/guides/prebuilt/react-agent) - ReactAgent, RAGAgent, SwarmAgent, and more

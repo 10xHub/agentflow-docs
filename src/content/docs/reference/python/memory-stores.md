@@ -3,8 +3,8 @@ title: Memory stores
 seoTitle: "Memory stores API reference (Python)"
 description: BaseStore, QdrantStore, Mem0Store — long-term semantic memory for agents.
 section: Reference
-group: Python library
-order: 1500
+group: "Python library"
+order: 220
 label: Memory stores
 updated: "2026-07-21"
 ---

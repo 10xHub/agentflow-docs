@@ -3,8 +3,8 @@ title: LLM Utilities
 seoTitle: "LLM utilities API reference (Python)"
 description: call_llm, create_llm_client, detect_provider, and the default LLM timeout controls exported from tenxgraph.core.llm.
 section: Reference
-group: Python library
-order: 1430
+group: "Python library"
+order: 80
 label: LLM utilities
 updated: "2026-07-21"
 ---
@@ -196,4 +196,4 @@ This bounds the provider request only. Node and tool execution have their own de
 ## Related docs
 
 - [Agent reference](/docs/reference/python/agent)
-- [Providers](/docs/providers)
+- [Providers](/docs/integrations/models)

@@ -3,8 +3,8 @@ title: Memory
 seoTitle: "Memory store methods in the TS client"
 description: Reference for all memory store methods on AgentFlowClient, store, search, list, update, and delete memories.
 section: Reference
-group: TypeScript client
-order: 1870
+group: "TypeScript client"
+order: 530
 label: Memory
 updated: "2026-07-21"
 ---

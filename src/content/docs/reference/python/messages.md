@@ -3,8 +3,8 @@ title: Messages
 seoTitle: "Messages API reference (Python)"
 description: Message, ContentBlock types, MediaRef, TokenUsages — the wire format for all agent communication.
 section: Reference
-group: Python library
-order: 1460
+group: "Python library"
+order: 60
 label: Messages
 updated: "2026-09-29"
 ---

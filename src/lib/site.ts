@@ -39,34 +39,38 @@ export type BlogKind = keyof typeof BLOG_KINDS;
 // else). A doc picks its section with the `section` frontmatter field and, optionally, a `group`.
 export const DOC_SECTIONS = [
   'Get started',
-  'Beginner path',
   'Concepts',
-  'Prebuilt',
-  'How-to guides',
-  'Testing and QA',
-  'Tutorials',
+  'Build agents',
+  'API server',
+  'TypeScript client',
+  'Testing and evaluation',
+  'Integrations',
+  'Examples',
   'Reference',
   'Troubleshooting',
-  'Learn more',
   'Glossary',
+  'Compare',
   'Project',
 ] as const;
 export type DocSection = (typeof DOC_SECTIONS)[number];
+// Sections reached from the footer and in-page links, not the docs map.
+export const MAP_HIDDEN: readonly DocSection[] = ['Glossary', 'Compare', 'Project'];
 
 // Section landing pages (/docs/<slug>). When a doc with id `<slug>/index` exists, its content
 // is shown at the top of the landing page.
 export const SECTION_INFO: Record<DocSection, { slug: string; title: string; blurb: string }> = {
-  'Get started': { slug: 'get-started', title: 'Get started with 10xGraph: install and first agent', blurb: 'Install 10xGraph, build a first agent with a tool, and learn what the production template generates.' },
-  'Beginner path': { slug: 'beginner', title: '10xGraph beginner path: from zero to a served agent', blurb: 'A guided path from zero: the mental model, a first agent, tools, memory, the API server and a TypeScript client.' },
-  Concepts: { slug: 'concepts', title: '10xGraph concepts: graphs, tools, memory, serving', blurb: 'How 10xGraph works: graphs and state, tools, memory, serving, clients and the production runtime.' },
-  Prebuilt: { slug: 'prebuild', title: 'Prebuilt agents and tools in 10xGraph', blurb: 'Ready-made 10xGraph agents (ReAct, RAG, supervisor team, swarm, plan-act-reflect, structured output, audio) and tools to use as they are or extend.' },
-  'How-to guides': { slug: 'how-to', title: '10xGraph how-to guides: Python, CLI, production', blurb: 'Task-focused recipes for the Python library, production, the CLI and the TypeScript client.' },
-  'Testing and QA': { slug: 'qa', title: 'Testing and evaluating AI agents with 10xGraph', blurb: 'Unit tests, evaluation sets, simulated users and quality gates for agents.' },
-  Tutorials: { slug: 'tutorials', title: '10xGraph tutorials: end-to-end agent builds', blurb: 'End-to-end 10xGraph builds based on the examples in the repository, from a single tool agent to multi-agent systems.' },
-  Reference: { slug: 'reference', title: '10xGraph reference: Python, REST API, CLI, TS client', blurb: 'Exact details: the Python library, the REST API, the CLI and configuration, and the TypeScript client.' },
-  Troubleshooting: { slug: 'troubleshooting', title: 'Troubleshooting 10xGraph: install, providers, server', blurb: 'Fixes for common problems with installation, providers, the server and deployments.' },
-  'Learn more': { slug: 'learn-more', title: 'Learn more: 10xGraph use cases and comparisons', blurb: 'Use cases, integrations, LLM providers, agent skills, and comparisons of 10xGraph with other agent frameworks.' },
+  'Get started': { slug: 'get-started', title: 'Get started with 10xGraph: install and first agent', blurb: 'Install 10xGraph, build and serve a first agent, then follow the tutorial from a hand-built graph to a tested, served agent.' },
+  Concepts: { slug: 'concepts', title: '10xGraph concepts: graphs, state, memory, serving', blurb: 'How 10xGraph works: graphs and state, agents and tools, interrupts, memory and durability, serving, security and observability.' },
+  'Build agents': { slug: 'guides', title: 'Build agents with 10xGraph: Python guides', blurb: 'Task guides for the Python library: agents and graphs, prebuilt agents and tools, MCP, memory, multi-agent flows, streaming, safety and observability.' },
+  'API server': { slug: 'server', title: 'The 10xGraph API server: run, secure, deploy', blurb: 'Run your graph as a production API: configuration, auth, rate limits, streaming, WebSockets, AG-UI, files, observability and deployment.' },
+  'TypeScript client': { slug: 'client', title: '10xGraph TypeScript client: call agents from apps', blurb: 'Call a 10xGraph server from TypeScript: invoke, stream, threads, remote tools, files, memory, realtime audio, errors and Next.js.' },
+  'Testing and evaluation': { slug: 'testing', title: 'Testing and evaluating AI agents with 10xGraph', blurb: 'Unit tests with mocked models, evaluation sets, criteria, simulated users, reports and quality gates in CI.' },
+  Integrations: { slug: 'integrations', title: '10xGraph integrations: models, frameworks, storage', blurb: 'Use 10xGraph with OpenAI, Google and Anthropic models, FastAPI, CopilotKit, Postgres and Redis, and AI coding assistants.' },
+  Examples: { slug: 'examples', title: '10xGraph examples: walkthroughs and use cases', blurb: 'Walkthroughs of the examples in the repository, from a single tool agent to MCP and multi-agent systems, plus complete use cases.' },
+  Reference: { slug: 'reference', title: '10xGraph reference: Python, REST API, CLI, TS client', blurb: 'Exact details: the Python library, the REST API, the CLI and configuration, the TypeScript client and error codes.' },
+  Troubleshooting: { slug: 'troubleshooting', title: 'Troubleshooting 10xGraph: install, server, client', blurb: 'Fixes for common problems with installation, providers, the API server, deployments, the client and the playground.' },
   Glossary: { slug: 'glossary', title: 'AI agent glossary: key terms, explained', blurb: 'Plain definitions of AI agent terms: agents, ReAct, state graphs, memory, MCP, RAG, streaming, durable execution and idempotent tool calls.' },
+  Compare: { slug: 'compare', title: '10xGraph compared with other agent frameworks', blurb: 'How 10xGraph compares with LangGraph, CrewAI, AutoGen, LlamaIndex agents and Google ADK, and when to pick each.' },
   Project: { slug: 'project', title: '10xGraph project: roadmap, security, upgrades', blurb: 'How the 10xGraph project is run: roadmap, security policy, upgrade guides, maintainers, support and contributing.' },
 };
 

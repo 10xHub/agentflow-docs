@@ -3,8 +3,8 @@ title: Graph
 seoTitle: "StateGraph API reference (Python)"
 description: StateGraph, CompiledGraph, START, END — the core execution engine of 10xGraph.
 section: Reference
-group: Python library
-order: 1410
+group: "Python library"
+order: 20
 label: Graph
 updated: "2026-07-21"
 ---
@@ -327,7 +327,7 @@ Releases all resources gracefully: stops background tasks, closes the checkpoint
 | `timestamp` | `str` | Yes | ISO 8601 timestamp of the run. |
 | `node_timeout` | `float \| None` | No (framework default: `900.0` seconds) | Deadline for a single node execution. |
 | `tool_timeout` | `float \| None` | No (framework default: `300.0` seconds) | Deadline for a single tool call inside a `ToolNode`. |
-| `durable_checkpoint_every_step` | `bool` | No (default `True`) | Persist state and new messages after each completed step. See [Set up checkpointing](/docs/how-to/python/set-up-checkpointing#durability-guarantees-pgcheckpointer). |
+| `durable_checkpoint_every_step` | `bool` | No (default `True`) | Persist state and new messages after each completed step. See [Set up checkpointing](/docs/guides/set-up-checkpointing#durability-guarantees-pgcheckpointer). |
 
 ### Execution deadlines
 

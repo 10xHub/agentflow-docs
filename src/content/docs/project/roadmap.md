@@ -2,7 +2,7 @@
 title: Roadmap and known gaps
 description: What 10xGraph does not do yet, which surfaces are incomplete, and where dated release planning actually lives.
 section: Project
-order: 2630
+order: 30
 label: Roadmap
 updated: "2026-09-29"
 ---
@@ -33,8 +33,8 @@ dead code in the wheel. They can be restored from git history when the surface i
 actually built.
 
 **Today:** agents talk to each other in-process through
-[handoffs](/docs/how-to/python/handoff-between-agents) and
-[supervisor or swarm topologies](/docs/prebuild/agents/supervisor-team-agent).
+[handoffs](/docs/guides/handoff-between-agents) and
+[supervisor or swarm topologies](/docs/guides/prebuilt/supervisor-team-agent).
 Cross-process agent calls go over the normal REST API.
 
 ### File attachments in the playground
@@ -43,14 +43,14 @@ The playground's **Files** page is a placeholder marked "Soon", and the papercli
 button in the chat composer is inert.
 
 **Today:** file upload works over the REST API and the TypeScript client. See
-[send images and documents](/docs/how-to/client/send-images-and-documents).
+[send images and documents](/docs/client/files-and-multimodal).
 
 ### Server-owned schemas for client tools
 
 `registerToolHandler()` stores a handler locally. Tools the browser can execute
 must be declared under `remote_tools` in server `10xgraph.json`.
 
-See [register remote tools](/docs/how-to/client/register-remote-tools).
+See [register remote tools](/docs/client/remote-tools).
 
 ---
 
@@ -58,8 +58,8 @@ See [register remote tools](/docs/how-to/client/register-remote-tools).
 
 | Area | What works | What does not |
 | --- | --- | --- |
-| Gemini explicit context caching | Caching through the provider directly | `SummaryContextManager` does not accept `cached_content`, and caching is not wired through `CriterionConfig`. See [Google provider](/docs/providers/google). |
-| OpenAI evaluation judge | The judge calls `call_llm` normally | Extra kwargs are not forwarded from the judge configuration. See [OpenAI provider](/docs/providers/openai). |
+| Gemini explicit context caching | Caching through the provider directly | `SummaryContextManager` does not accept `cached_content`, and caching is not wired through `CriterionConfig`. See [Google provider](/docs/integrations/google). |
+| OpenAI evaluation judge | The judge calls `call_llm` normally | Extra kwargs are not forwarded from the judge configuration. See [OpenAI provider](/docs/integrations/openai). |
 | `ExactMatchCriterion` | Usable by constructing it directly | Not reachable through `CriteriaConfig`, which forbids unknown keys and has no `exact_match` field. |
 | Light theme on this docs site | Readable and complete | Tuned less carefully than the dark theme, which is canonical. |
 

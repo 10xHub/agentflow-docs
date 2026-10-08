@@ -2,8 +2,8 @@
 title: Background Task Manager
 description: BackgroundTaskManager — launch and track asyncio tasks from node functions without blocking the graph response.
 section: Reference
-group: Python library
-order: 1610
+group: "Python library"
+order: 160
 label: Background Task Manager
 updated: "2026-07-21"
 ---

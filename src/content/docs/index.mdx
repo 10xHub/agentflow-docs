@@ -1,10 +1,10 @@
 ---
 title: Introduction
 seoTitle: 10xGraph documentation and introduction
-description: What 10xGraph is, what it generates for you, and where to start. An open-source Python framework for production multi-agent AI.
-section: Get started
+description: "10xGraph is an open-source Python framework for production multi-agent AI: a core library, an API server and CLI, and a TypeScript client."
+section: "Get started"
 order: 0
-updated: 2026-10-06
+updated: "2026-10-08"
 faq:
   - q: "Is 10xGraph production-ready?"
     a: "10xGraph is pre-1.0, so pin versions and read the changelog before each upgrade. The production layer (API server, JWT or custom auth, owner-only threads, rate limits, replay-safe tools, Docker and Kubernetes files) ships in the same install, and 10xScale runs it for its own AI products."
@@ -16,97 +16,66 @@ faq:
     a: "Yes. 10xGraph is MIT licensed and self-hosted, with no hosted platform required. The build command writes a Dockerfile, docker-compose.yml and a Kubernetes manifest so you can run it on your own infrastructure."
 ---
 
-10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL.
+10xGraph is an open-source Python framework for production multi-agent AI. You build agents and graphs in Python; 10xGraph generates a production server that handles authentication, scoped access control, durable state, replay-safe tools, and deployment to Docker or Kubernetes. The framework includes three packages: a core library for building agents, an API server and CLI for serving them, and a TypeScript client SDK for calling them from your frontend.
 
-## What you write
+## The three packages
 
-A graph of agents and tools in plain Python. Use the prebuilt `ReactAgent` for the common tool-calling loop, or build your own `StateGraph` when you need routing, parallel branches or human approval steps. Tools are ordinary Python functions, such as `lookup_order(order_id: str)` or `refund_order(order_id: str, amount: float)`. Models come from OpenAI, Google Gemini or Anthropic, and you can change the model without touching the graph.
+10xGraph ships as three packages that work together or standalone.
 
-When you are ready to serve it, you point `10xgraph.json` at your compiled graph. You do not write routes, auth middleware or deployment files by hand.
+**Core library** (`10xgraph`, import `tenxgraph`) is the foundation. You use `StateGraph` to define a graph of agents and nodes, `ReactAgent` for the standard tool-calling loop, and custom nodes for control flow, human approval, or data transformation. Tools are ordinary Python functions. Models come from OpenAI, Google Gemini, or Anthropic. The library handles state management, checkpointing to memory, SQLite or Postgres, tool replay on failure, streaming, MCP servers, and dependency injection. It has no external dependencies beyond the LLM provider SDK you choose. You can run your agent entirely within Python with no server.
 
-## What 10xGraph generates
+**API server and CLI** (`10xgraph-api`, import `tenxgraph_api`, command `10xgraph`) wraps your graph in a FastAPI server. You point `10xgraph.json` at your compiled graph, and the server auto-generates REST and WebSocket endpoints, Swagger UI, authentication, rate limits, thread and memory management, file uploads, and observability hooks. The `10xgraph` CLI scaffolds a new project, runs the server in development or production, serves the built-in playground, tests your agent, evaluates against test sets, and generates Docker and Kubernetes files. Running `10xgraph api` starts the server on port 8000.
 
-| Piece | What you get |
-|---|---|
-| API server | REST, SSE streaming, WebSocket and realtime audio endpoints on port 8000 |
-| Security | JWT or custom auth, owner-only threads, role scopes on every endpoint, rate limits |
-| Reliability | Replay-safe tools, versioned state writes, node and tool timeouts |
-| Deployment | Dockerfile, docker-compose.yml and a Kubernetes Deployment and Service |
+**TypeScript client** (`@10xgraph/client`) is a typed SDK for Node.js and browsers. It handles authentication, invokes the graph over REST or WebSocket, streams responses, manages threads and memory, uploads files, and abstracts the transport. It works with Next.js, React, plain TypeScript and Node backends. You can also call the server with plain HTTP or curl.
 
-<Callout type="tip" title="Formerly Agentflow">
-10xGraph was published as Agentflow until 2026. The Python package is now imported as `tenxgraph`, as in `from tenxgraph import StateGraph`. The old `agentflow` import stays available as a deprecated alias until 2.0.
+All three are optional. You can use the library standalone (no server), the server without the client (curl is fine), or the client with any compatible API.
+
+## Get started
+
+The fastest path depends on what you want to build.
+
+<Callout type="tip" title="New to multi-agent AI?">
+Start with [Get Started](/docs/get-started) for installation, a quickstart agent, and what the production template generates. Then move to [Concepts](/docs/concepts) to understand state, checkpointing, and the runtime model.
 </Callout>
 
-## Where to go next
+<Callout type="tip" title="Coming from LangGraph?">
+10xGraph is inspired by LangGraph but simpler. Read [10xGraph vs LangGraph](/docs/compare/10xgraph-vs-langgraph) for a side-by-side comparison. Then follow the [quickstart](/docs/get-started/first-agent) and read [Concepts](/docs/concepts) to see how `StateGraph` and streaming map across.
+</Callout>
 
-<CardGrid>
-<LinkCard eyebrow="Get started" title="Quickstart" href="/docs/get-started/first-agent" description="Build an agent with a tool, run it, then serve it over HTTP." />
-<LinkCard eyebrow="Get started" title="Project structure" href="/docs/get-started/project-structure" description="Every file the production template generates and what it does." />
-<LinkCard eyebrow="Concept" title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How a resumed run skips tools that already finished." />
-<LinkCard eyebrow="Concept" title="Memory: hot and cold" href="/docs/concepts/memory" description="Redis for the hot path, PostgreSQL for durable history." />
-<LinkCard eyebrow="How-to" title="Add JWT authentication" href="/docs/how-to/api-cli/add-auth" description="Turn on auth and owner-only threads in 10xgraph.json." />
-<LinkCard eyebrow="Reference" title="CLI reference" href="/docs/reference/api-cli/commands" description="Every command and flag of the 10xgraph CLI." />
-</CardGrid>
+<Callout type="tip" title="Ready to deploy to production?">
+Begin with [Server](/docs/server) to understand the API server and CLI. Then tackle [authentication](/docs/server/auth), [durable checkpointing](/docs/guides/set-up-checkpointing), and [deployment](/docs/server/deploy). Read [Replay-safe tools](/docs/concepts/replay-safe-tools) before giving your agent tools that move money or send email.
+</Callout>
 
-## Build something real
+## What the docs cover
 
-Each use case page gives a reference architecture, the tools it needs and the guardrails to add before it ships.
+Navigate by the question you want to answer.
 
-<CardGrid>
-<LinkCard eyebrow="Use case" title="Customer support agent" href="/docs/use-cases/customer-support-agent" description="Intent routing, order lookup, refund tools and human handoff on escalation." />
-<LinkCard eyebrow="Use case" title="Data extraction agent" href="/docs/use-cases/data-extraction-agent" description="Pull structured fields from unstructured text, validate them and retry on errors." />
-<LinkCard eyebrow="Use case" title="Coding agent" href="/docs/use-cases/coding-agent" description="Plan first, then read files, edit with diff approval and run tests." />
-<LinkCard eyebrow="Use case" title="Research agent" href="/docs/use-cases/research-agent" description="Split a question into searches, fetch sources and enforce citations." />
-<LinkCard eyebrow="Use case" title="RAG agent" href="/docs/use-cases/rag-agent" description="Agentic retrieval with hybrid search, reranking and forced citations." />
-</CardGrid>
+**[Get Started](/docs/get-started).** Installation, your first agent, the production template, and how to migrate from Agentflow. Read this first.
 
-## Integrate with your stack
+**[Concepts](/docs/concepts).** The mental model: graphs, state, messages, agents, tools, threads, checkpointers, memory, context, interrupts, streaming, serving and events. Understand how 10xGraph works.
 
-10xGraph fits into a service or frontend you already run. It does not ask you to replace it.
+**[Build Agents](/docs/guides).** How-to guides for building: custom graphs, prebuilt agents, tools, MCP, state, dependency injection, memory, context, multi-agent orchestration, streaming, media, authentication, interrupts, testing and observability. Each guide is a complete recipe with code.
 
-<CardGrid>
-<LinkCard eyebrow="Integration" title="FastAPI" href="/docs/integrations/agentflow-with-fastapi" description="Embed an agent in an existing FastAPI app, or run the API server beside it." />
-<LinkCard eyebrow="Integration" title="Next.js" href="/docs/integrations/agentflow-with-nextjs" description="Stream tokens from a Python agent into a Next.js frontend with auth and typed responses." />
-<LinkCard eyebrow="Integration" title="CopilotKit" href="/docs/integrations/agentflow-with-copilotkit" description="Serve the agent over the AG-UI endpoint and connect a CopilotKit chat." />
-<LinkCard eyebrow="Integration" title="Postgres" href="/docs/integrations/agentflow-with-postgres" description="Durable agent threads with PgCheckpointer on Postgres, with Redis as the hot cache." />
-<LinkCard eyebrow="Providers" title="Model providers" href="/docs/providers" description="OpenAI, Google Gemini and Anthropic, plus any OpenAI-compatible endpoint." />
-</CardGrid>
+**[API Server](/docs/server).** Run and configure the server: the CLI, configuration file, authentication, authorization, rate limiting, REST and WebSocket endpoints, files and multimodal, observability, deployment to Docker and Kubernetes, and production checklist. Use this when you need to serve your agent over HTTP.
 
-## Ship to production
+**[TypeScript Client](/docs/client).** Call the server from a Node.js backend or browser frontend: create a client, invoke the graph, stream responses, manage threads, upload files, retrieve memory. Works with Next.js, React and plain TypeScript.
 
-Start with the build guide, which takes a support agent from code to a secured API with tests and Docker files. Then use the how-tos for each concern.
+**[Testing and Evaluation](/docs/testing).** Unit test with mocked models, run eval sets against your agent, define criteria, simulate users, and generate reports. Verify your agent works before it ships.
 
-<CardGrid>
-<LinkCard eyebrow="Build guide" title="Production ReAct agent" href="/build/production-react-agent" description="A support agent that looks up and refunds orders, served with JWT auth, rate limits and Postgres memory." />
-<LinkCard eyebrow="How-to" title="Deployment" href="/docs/how-to/production/deployment" description="Containers, runtime settings, shared persistence and release checks." />
-<LinkCard eyebrow="How-to" title="Docker and Kubernetes" href="/docs/how-to/api-cli/generate-docker-files" description="Generate a Dockerfile, docker-compose.yml and Kubernetes manifest with 10xgraph build." />
-<LinkCard eyebrow="How-to" title="Kubernetes" href="/docs/how-to/production/kubernetes" description="Set grace periods, probes and scaling so rolling deploys do not cut off a run." />
-<LinkCard eyebrow="How-to" title="Auth and authorization" href="/docs/how-to/production/auth-and-authorization" description="Secure the API with JWT or a custom backend and scope access on every endpoint." />
-<LinkCard eyebrow="How-to" title="Rate limiting" href="/docs/how-to/api-cli/configure-rate-limiting" description="Turn on the built-in sliding-window limiter, in memory or on Redis." />
-<LinkCard eyebrow="How-to" title="Checkpointing" href="/docs/how-to/production/checkpointing" description="Choose and configure a checkpointer so threads survive restarts." />
-</CardGrid>
+**[Integrations](/docs/integrations).** Connect to models (OpenAI, Google, Anthropic), frameworks (FastAPI, Next.js, CopilotKit), storage (Postgres, Redis), and coding assistants. Each integration shows how and when to use it.
 
-## How the docs are organized
+**[Examples](/docs/examples).** Runnable code you can clone and modify: simple agents, custom state, tools, streaming, MCP, multi-agent, memory, media, production patterns. Build on these rather than from scratch.
 
-Each section answers a different question. Use the list to jump to the one you need.
+**[Reference](/docs/reference).** Exact signatures, parameters and return types for the Python library, REST API, CLI, configuration and TypeScript client. Use this when you need to check an option or understand an error.
 
-- [Get started](/docs/get-started): install 10xGraph, build a first agent and see what the production template generates.
-- [Beginner path](/docs/beginner): a guided route from the mental model to a served agent and a TypeScript client.
-- [Concepts](/docs/concepts): how graphs, state, tools, memory and the production runtime work.
-- [Prebuilt](/docs/prebuild): ready-made agents and tools to use as they are or extend.
-- [How-to guides](/docs/how-to): task recipes for the Python library, the CLI, the TypeScript client and production.
-- [Testing and QA](/docs/qa): unit tests with mocked models, evaluation sets and simulated users.
-- [Tutorials](/docs/tutorials): end-to-end builds based on the examples in the repository.
-- [Reference](/docs/reference): exact details for the Python library, REST API, CLI and client.
-- [Troubleshooting](/docs/troubleshooting): symptoms, causes and fixes, plus the error code reference.
-- [Learn more](/docs/learn-more): use cases, integrations, providers and framework comparisons.
-- [Glossary](/docs/glossary): plain definitions of AI agent terms, from ReAct to durable execution.
-- [Project](/docs/project): roadmap, security policy, upgrade guides, support and contributing.
+**[Troubleshooting](/docs/troubleshooting).** Symptoms, causes and fixes. Common errors with solutions. Error code reference. Start here if something is not working.
 
-## Pick a path
+**[Glossary](/docs/glossary).** Plain definitions of AI agent concepts: what is a ReAct agent, state graph, durable execution, idempotent tools, interrupts.
 
-**New to agents.** Read the [beginner mental model](/docs/beginner/mental-model), then build [your first agent](/docs/beginner/your-first-agent) and [add a tool](/docs/beginner/add-a-tool).
+**[Compare](/docs/compare).** 10xGraph vs LangGraph, CrewAI, AutoGen, LlamaIndex and Google ADK. Honest side-by-sides, including where other frameworks are stronger.
 
-**Already using LangGraph.** Start with [10xGraph vs LangGraph](/docs/compare/agentflow-vs-langgraph) for an honest side-by-side, including where LangGraph is stronger, such as its visual tooling. Then read [Concepts](/docs/concepts) to see how `StateGraph` maps across, and the [Quickstart](/docs/get-started/first-agent) to run something. 10xGraph is pre-1.0, so pin versions and read the changelog.
+**[Project](/docs/project).** Roadmap, security policy, upgrade guides, support and how to contribute.
 
-**Going to production.** Begin with [production how-to guides](/docs/how-to/production) for [auth and authorization](/docs/how-to/production/auth-and-authorization), [checkpointing](/docs/how-to/production/checkpointing) and [deployment](/docs/how-to/production/deployment). Then read [Replay-safe tools](/docs/concepts/replay-safe-tools) before you give an agent tools that move money or send email, and keep [Troubleshooting](/docs/troubleshooting) close when you deploy.
+<Callout type="note" title="Formerly Agentflow">
+10xGraph was published as Agentflow until 2026. The Python packages are now imported as `tenxgraph` (core library) and `tenxgraph_api` (server), as in `from tenxgraph import StateGraph`. The old `agentflow` and `agentflow_cli` imports stay available as deprecated aliases until 2.0. See [Coming from Agentflow](/docs/get-started/coming-from-agentflow) for the full migration path.
+</Callout>

@@ -3,8 +3,8 @@ title: Auth
 seoTitle: "Auth in the TypeScript client"
 description: Reference for all authentication options available in AgentFlowClient.
 section: Reference
-group: TypeScript client
-order: 1890
+group: "TypeScript client"
+order: 550
 label: Auth
 updated: "2026-07-21"
 ---
@@ -357,4 +357,4 @@ const client = new AgentFlowClient({
 
 ## Next step
 
-See [Register remote tools](/docs/how-to/client/register-remote-tools) to learn how to register client-side tools that the agent can invoke remotely.
+See [Register remote tools](/docs/client/remote-tools) to learn how to register client-side tools that the agent can invoke remotely.

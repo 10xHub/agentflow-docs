@@ -1,0 +1,206 @@
+---
+title: "10xGraph vs LlamaIndex Agents: Runtime vs RAG"
+seoTitle: "10xGraph vs LlamaIndex Agents: compared"
+description: "10xGraph vs LlamaIndex Agents compared with sources: server, auth, thread isolation, replay-safe tools, and using LlamaIndex retrieval inside 10xGraph."
+section: Compare
+order: 50
+label: vs LlamaIndex Agents
+updated: "2026-10-06"
+faq:
+  - q: Can I use my LlamaIndex indexes inside a 10xGraph agent?
+    a: Yes. Wrap your query engine in a Python function, hand it to a ToolNode, and the agent calls it like any other tool. Your indexing and retrieval stack stays the same.
+  - q: Does 10xGraph have its own retrieval or indexing?
+    a: 10xGraph does not bundle an indexing framework. Pair it with LlamaIndex, LangChain retrievers, raw vector clients such as Qdrant or pgvector, or your own retriever. It has Qdrant and Mem0 long-term memory stores.
+  - q: How does memory in 10xGraph compare to LlamaIndex's Context?
+    a: LlamaIndex serializes a Context object that you save and restore yourself. 10xGraph checkpoints the full graph state per thread_id to SQLite or to Postgres with a Redis cache, so threads survive restarts without extra code.
+  - q: Does LlamaIndex have a production server for agents?
+    a: LlamaIndex documents a workflow server that exposes workflows as REST endpoints with streaming, run locally with llamactl serve and deployed to LlamaCloud or self-hosted. 10xGraph generates a different server, with JWT auth and owner-only threads, from a compiled graph.
+  - q: Is 10xGraph free for commercial use?
+    a: Yes. 10xGraph, including the API server, CLI and TypeScript client, is MIT-licensed. llama-index-core is MIT-licensed too.
+---
+
+<Callout type="tip" title="10xGraph vs LlamaIndex Agents">
+
+LlamaIndex is built around retrieval over your data. 10xGraph is the runtime and server around an agent. Many teams use both.
+
+</Callout>
+
+This page is written by the 10xGraph team, so read it with that in mind. Claims about LlamaIndex link to its documentation or package metadata, checked on 2026-10-06.
+
+**LlamaIndex** started as a framework for connecting LLMs to your data and is MIT-licensed ([PyPI](https://pypi.org/project/llama-index-core/)). Its agent layer includes `FunctionAgent` and `AgentWorkflow` ([agents docs](https://developers.llamaindex.ai/python/framework/understanding/agent/)), and its LlamaAgents toolkit adds a workflow server, a `llamactl` CLI and LlamaCloud document services ([overview](https://developers.llamaindex.ai/python/llamaagents/overview/)). **10xGraph** is a graph runtime that also generates a secured production server, with retrieval handled by whatever you plug in as a tool.
+
+## Production layer compared
+
+The first rows are where the two differ most. Orchestration and retrieval basics are at the bottom.
+
+| | 10xGraph | LlamaIndex |
+|---|---|---|
+| Production server (REST, SSE, WebSocket) in the open-source install | Yes. `10xgraph api` generates REST, SSE, WebSocket and realtime-audio endpoints from the compiled graph | The workflow server wraps workflows as REST endpoints with event streaming. `llamactl serve` runs it locally, and LlamaCloud or self-hosted infrastructure are the documented deployment options ([workflow server docs](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/), [overview](https://developers.llamaindex.ai/python/llamaagents/overview/)) |
+| Auth (JWT or custom) | JWT (`"auth": "jwt"`) or a custom `BaseAuth` subclass | Local development runs unprotected. Cloud deployments use a LlamaCloud API token ([workflow server docs](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/)) |
+| Authorization | Role scopes (such as `graph:invoke`, `checkpointer:read`) or a custom `AuthorizationBackend` | Not documented |
+| Thread ownership isolation | Built-in `"authorization": "ownership"` backend, with a two-tier cached owner check | Not documented |
+| Rate limiting | Memory or Redis sliding-window limits on the API, set in `10xgraph.json` | Not documented |
+| Replay-safe tool calls after a crash | Tool ledger in the checkpointer: a tool that already ran is not executed again on resume. Needs a checkpointer | Not documented. The docs mention durable workflows without detail ([workflow server docs](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/)) |
+| Versioned (compare-and-swap) state writes | Optimistic version check on durable writes in `PgCheckpointer` | Not documented |
+| Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | Not documented |
+| Docker Compose and Kubernetes manifests | `10xgraph build --docker-compose --k8s` writes `Dockerfile`, `docker-compose.yml`, `k8s.yaml` | Not documented |
+| License | MIT, including API/CLI and client | `llama-index-core` is MIT ([PyPI](https://pypi.org/project/llama-index-core/)). LlamaParse is credit-priced with Free, Starter, Pro and Enterprise tiers ([pricing](https://www.llamaindex.ai/pricing)) |
+| TypeScript | Typed `10xgraph-client` for the 10xGraph API | LlamaIndex.TS, a separate MIT-licensed TypeScript framework ([repository](https://github.com/run-llama/LlamaIndexTS)), and React UI hooks in LlamaAgents ([overview](https://developers.llamaindex.ai/python/llamaagents/overview/)) |
+| Retrieval and indexing | Bring your own, exposed as a tool | The core of the framework: indexes, query engines, parsing ([PyPI](https://pypi.org/project/llama-index-core/)) |
+| Orchestration | Typed `StateGraph` with conditional edges and sub-graphs | `FunctionAgent`, `AgentWorkflow`, and event-driven Workflows ([agents docs](https://developers.llamaindex.ai/python/framework/understanding/agent/)) |
+| State persistence | `InMemoryCheckpointer`, `PgCheckpointer` (Postgres plus Redis), SQLite, keyed by `thread_id` | A serializable `Context` that you save and restore, for example with `to_dict` and `from_dict` ([state docs](https://developers.llamaindex.ai/python/framework/understanding/agent/state/)) |
+| Python version | 3.12 or newer | 3.10 or newer ([PyPI](https://pypi.org/project/llama-index-core/)) |
+
+## Why teams pair LlamaIndex with 10xGraph, or switch
+
+1. **Retrieval is one tool, not the whole app.** Agent products also call APIs, issue refunds and route between specialists. 10xGraph models the whole flow as a graph, and retrieval is one tool.
+2. **Auth and isolation are generated.** The workflow server docs describe an API token for LlamaCloud deployments and an unprotected local server. 10xGraph's production template adds JWT auth, owner-only threads and a Redis rate limit.
+3. **Side effects survive crashes.** 10xGraph's tool ledger skips tools that already ran when a run resumes. See [replay-safe tools](/docs/concepts/replay-safe-tools).
+4. **Threads persist without extra code.** The checkpointer stores state per `thread_id`, so you do not serialize a context yourself.
+
+## Using 10xGraph with LlamaIndex
+
+Keep your LlamaIndex index and expose it as a tool. LlamaIndex persists and reloads an index with `StorageContext` and `load_index_from_storage` ([storing docs](https://developers.llamaindex.ai/python/framework/module_guides/storing/save_load/)):
+
+```python title="graph/tools.py"
+from llama_index.core import StorageContext, load_index_from_storage
+
+storage = StorageContext.from_defaults(persist_dir="./index_store")
+index = load_index_from_storage(storage)
+query_engine = index.as_query_engine()
+
+
+def search_policies(query: str) -> str:
+    """Search the returns and refund policy documents."""
+    return str(query_engine.query(query))
+```
+
+Then give it to a 10xGraph agent next to the tools that act on orders:
+
+```python title="graph/agent.py"
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+
+from graph.tools import search_policies
+
+
+def lookup_order(order_id: str) -> dict:
+    """Return status and total for an order."""
+    return {"order_id": order_id, "status": "delivered", "total": 59.0}
+
+
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund part or all of an order."""
+    return f"Refunded {amount} on {order_id}"
+
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{
+        "role": "system",
+        "content": "Answer from search_policies and cite the source. Confirm the order before refunding.",
+    }],
+    tools=[search_policies, lookup_order, refund_order],
+)
+
+app = agent.compile(checkpointer=InMemoryCheckpointer())
+```
+
+Your indexing pipeline does not change. For the LlamaIndex agent version, see LlamaIndex's [agent docs](https://developers.llamaindex.ai/python/framework/understanding/agent/).
+
+## Persistence and threads
+
+```python
+from tenxgraph.core.state import Message
+from tenxgraph.storage.checkpointer import PgCheckpointer
+
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:password@localhost:5432/agents",
+    redis_url="redis://localhost:6379/0",
+)
+checkpointer.setup()
+
+app = agent.compile(checkpointer=checkpointer)
+
+app.invoke(
+    {"messages": [Message.text_message("What did you tell me earlier about the refund window?")]},
+    config={"thread_id": "user-42"},
+)
+```
+
+## Serving as an API
+
+```bash
+pip install 10xgraph 10xgraph-api google-genai
+10xgraph init --yes --template production --auth jwt --rate-limit redis
+10xgraph api --host 0.0.0.0 --port 8000
+10xgraph build --docker-compose --k8s
+```
+
+You get REST and SSE endpoints for invoke, stream and thread state, plus a WebSocket endpoint, with JWT checks and owner-only threads in front of them.
+
+## Calling from TypeScript
+
+```typescript
+import { AgentFlowClient, Message, bearerAuth } from "10xgraph-client";
+
+const client = new AgentFlowClient({
+  baseUrl: "http://127.0.0.1:8000",
+  auth: bearerAuth(token),
+});
+
+const result = await client.invoke(
+  [Message.text_message("What is the refund window for opened items?")],
+  { config: { thread_id: "ts-rag-1" } },
+);
+console.log(result.messages.at(-1)?.text());
+```
+
+## Migrating from LlamaIndex Agents
+
+1. Keep your LlamaIndex indexes and retrievers. Wrap them as Python functions.
+2. Replace `FunctionAgent` or `AgentWorkflow` with a 10xGraph `ReactAgent`, or an `Agent` plus a `ToolNode` and conditional edges.
+3. Replace Workflow events with explicit graph nodes and `add_conditional_edges`.
+4. Replace saved `Context` objects with a checkpointer and `thread_id`.
+5. Replace your server with `10xgraph api`.
+
+## Where LlamaIndex is the better choice
+
+- **Retrieval is the product.** For document chat or corpus search, LlamaIndex's indexing, parsing and query engines are the core of the framework, and 10xGraph has none of them.
+- **A single retrieval agent.** A `FunctionAgent` over a query engine is a short path to a working assistant. 10xGraph pays off once you add side-effect tools, persistent threads or a separate frontend.
+- **Managed document services.** LlamaCloud offers Parse, Extract and Classify as hosted services ([overview](https://developers.llamaindex.ai/python/llamaagents/overview/)). 10xGraph does not replace them.
+- **A TypeScript-first stack.** LlamaIndex.TS is a full TypeScript framework, where 10xGraph's TypeScript package is a client.
+- **Python 3.10 or 3.11.** 10xGraph requires 3.12 or newer.
+
+## Weak spots of 10xGraph
+
+- Smaller community and fewer integrations.
+- Pre-1.0: pin versions and read changelogs before upgrading.
+- Renamed from Agentflow, so the 10xGraph name has little search history yet.
+- No built-in retrieval stack and no visual tooling. The playground is a test chat.
+- Code-first only, and Python 3.12 or newer.
+
+## Sources
+
+Verified on 2026-10-06.
+
+- [llama-index-core on PyPI](https://pypi.org/project/llama-index-core/)
+- [LlamaAgents overview](https://developers.llamaindex.ai/python/llamaagents/overview/)
+- [Workflow server](https://developers.llamaindex.ai/python/llamaagents/llamactl/workflow-api/)
+- [Building agents](https://developers.llamaindex.ai/python/framework/understanding/agent/)
+- [Agent state](https://developers.llamaindex.ai/python/framework/understanding/agent/state/)
+- [Persisting and loading indexes](https://developers.llamaindex.ai/python/framework/module_guides/storing/save_load/)
+- [LlamaIndex pricing](https://www.llamaindex.ai/pricing)
+- [LlamaIndex.TS repository](https://github.com/run-llama/LlamaIndexTS)
+
+## Next steps
+
+<CardGrid>
+
+<LinkCard title="Get started with 10xGraph" href="/docs/get-started" description="Install, build an agent, expose an API, connect from TypeScript." eyebrow="Guide" />
+<LinkCard title="Add a tool" href="/docs/get-started/tutorial/build-a-graph" description="Wrap any retriever as a tool the agent can call." eyebrow="Tutorial" />
+<LinkCard title="Memory and store" href="/docs/concepts/memory-and-store" description="Persistence patterns for agent state." eyebrow="Concept" />
+<LinkCard title="RAG agent reference architecture" href="/docs/examples/rag-agent" description="Production-shaped agentic RAG with hybrid search and citations." eyebrow="Guide" />
+
+</CardGrid>

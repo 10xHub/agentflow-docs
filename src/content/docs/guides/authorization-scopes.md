@@ -1,0 +1,268 @@
+---
+title: "Authorization scopes"
+description: "Read caller identity and enforce scopes inside graph nodes and tools using get_authz, has_scope, and isolation_scope."
+order: 380
+group: "Safety"
+section: "Build agents"
+updated: "2026-10-08"
+label: "Authorization scopes"
+faq:
+  - question: "What is the difference between identity and scopes?"
+    answer: "Identity is the caller (user_id), set by the auth system. Scopes are permissions - each scope is a resource:action pair like graph:invoke or store:read. The API server stamps both into config user authz so your nodes and tools can enforce them."
+  - question: "Can I use these functions in direct SDK calls?"
+    answer: "Yes. In direct calls to CompiledGraph.invoke(), you build the authz block yourself and pass it in config authz. If you do not pass one, all functions return permissive defaults (all scopes allowed, no isolation)."
+  - question: "Who fills the authz block when I use the API server?"
+    answer: "The API server's auth system (RequirePermission) fills user authz server-side after authenticating and authorizing the request. This happens before your graph runs and is non-hijackable - clients cannot override it."
+---
+
+When your 10xGraph application runs over the API server, the caller's identity and scopes are automatically added to the request. Inside your nodes and tools, you can read this information to enforce fine-grained permissions: restrict certain operations to authorized users, log who performed actions, or apply policies like "only the thread owner can read this."
+
+This guide covers the three authorization functions — `get_authz`, `has_scope`, and `isolation_scope` — and how to use them in your agent code.
+
+## How authorization reaches your code
+
+The API server authenticates every request and builds an authorization context from the verified identity and the configured authorization backend. This context is stamped into `config["user"]["authz"]` before your graph runs. Inside any node, tool, or hook, you can access this information through the config:
+
+```python
+from tenxgraph.core.authz import get_authz, has_scope
+
+@tool
+def sensitive_operation(*, config):
+    authz = get_authz(config)
+    if authz is None:
+        # No authz context — either direct SDK call with no authz,
+        # or auth is not configured on the server.
+        print("No authorization context")
+        return "Allowed (no policy)"
+    
+    user_id = authz.get("user_id")
+    scopes = authz.get("scopes", [])
+    print(f"User {user_id} has scopes: {scopes}")
+    return f"Operation performed by {user_id}"
+```
+
+When you run over the API server with auth enabled, `get_authz()` always returns a dict with three keys:
+
+- `user_id`: The authenticated caller's identity.
+- `scope`: The data isolation policy (`"owner"` or `"none"`).
+- `scopes`: A list of resource:action permissions the caller holds.
+
+When no auth is configured, `get_authz()` returns `None`, and all scopes are implicitly allowed.
+
+## Check if a caller has a specific scope
+
+Use `has_scope()` to gate operations behind permissions:
+
+```python
+from tenxgraph.core.authz import has_scope
+
+@tool
+def create_memory(text: str, *, config):
+    """Store long-term memory — only for users with store:write scope."""
+    if not has_scope(config, "store:write"):
+        raise PermissionError("You do not have permission to write to memory")
+    
+    # Proceed with the memory operation
+    return f"Memory created: {text}"
+```
+
+The scope string is always `"resource:action"`. The full list of scopes is:
+
+- Graph execution: `graph:invoke`, `graph:stream`, `graph:stop`, `graph:fix`, `graph:setup`, `graph:read`
+- Thread state (checkpointer): `checkpointer:read`, `checkpointer:write`, `checkpointer:delete`
+- Long-term memory (store): `store:read`, `store:write`, `store:delete`
+- Media and files: `files:read`, `files:upload`
+- Configuration: `config:read`
+
+`has_scope()` is permissive by default: if no authorization context is present (auth not configured, or a direct SDK call without an authz block), it returns `True`. This ensures backward compatibility — existing graphs work unchanged.
+
+## Read caller identity inside tools and nodes
+
+The `user_id` from the authz block tells you who made the request. Use it to log actions, associate resources with owners, or enforce object-level access control:
+
+```python
+from tenxgraph.core.authz import get_authz
+
+@tool
+def query_user_threads(*, config):
+    """Retrieve threads belonging to the caller."""
+    authz = get_authz(config)
+    if authz is None:
+        # No identity available; cannot scope by user.
+        return []
+    
+    user_id = authz.get("user_id")
+    # Query the checkpointer or thread store filtered to this user.
+    # (The checkpointer respects isolation_scope too; see below.)
+    return find_threads_for_user(user_id)
+```
+
+Combining `user_id` with a checkpointer that supports owner-only access (like `PgCheckpointer` with the ownership authorization backend) ensures that data isolation is enforced at the storage layer too.
+
+## Understand isolation scope
+
+The `isolation_scope` returned by `isolation_scope()` tells you (and the storage layer) which data-isolation policy is in effect:
+
+```python
+from tenxgraph.core.authz import isolation_scope, SCOPE_OWNER, SCOPE_NONE
+
+def authorize_thread_access(thread_id: str, user_id: str, config):
+    """Apply custom per-thread access control based on the isolation policy."""
+    policy = isolation_scope(config)
+    
+    if policy == SCOPE_OWNER:
+        # Owner-only: validate that thread_id is owned by user_id.
+        owner = get_thread_owner(thread_id)  # Your storage backend
+        if owner != user_id:
+            raise PermissionError(f"Thread {thread_id} is owned by {owner}, not {user_id}")
+    elif policy == SCOPE_NONE:
+        # No isolation: any authenticated user can access.
+        pass
+    else:
+        # No policy set; each layer applies its own default.
+        pass
+```
+
+- `SCOPE_OWNER` (`"owner"`): Data is scoped to the caller's `user_id`. The checkpointer filters rows; your code should too.
+- `SCOPE_NONE` (`"none"`): No scoping. All authenticated users see all data.
+- `None`: No policy is set. Storage backends (like `PgCheckpointer`) fall back to their own `enforce_user_isolation` setting.
+
+In practice, the checkpointer and store already respect the isolation policy, so you rarely need to call `isolation_scope()` directly. Use it when your code implements custom data filtering or when you want to log what policy is active.
+
+## Example: Multi-tenant agent with scope checks
+
+Here is a complete example of a graph that uses authorization scopes to enforce multi-tenant data isolation and fine-grained permissions:
+
+```python
+from tenxgraph import StateGraph, Agent, ToolNode
+from tenxgraph.core.authz import get_authz, has_scope, isolation_scope
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import tool
+
+@tool
+def list_notes(*, config) -> str:
+    """List notes belonging to the current user."""
+    authz = get_authz(config)
+    if authz is None:
+        return "Error: No authorization context"
+    
+    user_id = authz.get("user_id")
+    # Your storage layer (e.g., memory store) returns notes for this user.
+    notes = fetch_user_notes(user_id)
+    return f"Found {len(notes)} notes for {user_id}"
+
+@tool
+def create_note(text: str, *, config) -> str:
+    """Create a note — restricted to users with store:write scope."""
+    if not has_scope(config, "store:write"):
+        raise PermissionError("Missing scope: store:write")
+    
+    authz = get_authz(config)
+    user_id = authz.get("user_id") if authz else "anonymous"
+    
+    # Store the note, associated with the user.
+    note_id = save_note(user_id, text)
+    return f"Note created (id={note_id}) for {user_id}"
+
+@tool
+def export_data(format: str, *, config) -> str:
+    """Export all user data — admin-only."""
+    if not has_scope(config, "config:read"):
+        raise PermissionError("Missing scope: config:read")
+    
+    authz = get_authz(config)
+    user_id = authz.get("user_id")
+    return f"Exported {format} for {user_id}"
+
+# Build a simple agent that uses these tools
+tools = [list_notes, create_note, export_data]
+tool_node = ToolNode(tools)
+
+graph = StateGraph(AgentState)
+graph.add_node("agent", Agent(model="gemini/gemini-2.5-flash", tools=tools))
+graph.add_node("tools", tool_node)
+graph.add_edge("agent", "tools")
+graph.add_edge("tools", "agent")
+graph.set_entry_point("agent")
+
+compiled = graph.compile()
+```
+
+When you invoke this over the API server:
+
+1. A user authenticates (JWT or custom auth).
+2. The authorization backend (`OwnershipAuthorizationBackend` or custom) checks scopes.
+3. `RequirePermission` builds `user["authz"]` with the user's ID and granted scopes.
+4. Your graph runs; each tool calls `get_authz()`, `has_scope()`, or `isolation_scope()`.
+5. If a tool tries to perform an unauthorized action, it raises an error.
+6. If the caller's scopes don't include `store:write`, `create_note()` fails immediately with a PermissionError.
+
+## Direct SDK calls with authorization
+
+When you call `CompiledGraph.invoke()` directly in Python (not over the API server), you can build and pass an authz block yourself:
+
+```python
+from tenxgraph.core.authz import build_authz
+
+authz_block = build_authz(
+    user_id="alice",
+    scope="owner",
+    scopes=["graph:invoke", "checkpointer:read", "store:write"]
+)
+
+result = compiled.invoke(
+    {"messages": [Message.text_message("List my notes")]},
+    config={"authz": authz_block, "thread_id": "session-1"}
+)
+```
+
+Without an authz block, `get_authz()` returns `None`, and all functions default to permissive (all scopes allowed, no isolation). This keeps your graphs backward compatible.
+
+## How the API server fills the authz block
+
+When a request reaches the API server, the `RequirePermission` dependency (in the route's `Depends()`) performs this flow:
+
+1. **Authenticate**: Extract and verify the bearer token (JWT or custom `BaseAuth`). Decode claims to get `user_id`, `roles`, `scopes`, etc.
+2. **Check scopes**: Call the authorization backend's `scopes_for(user)` to map roles to scopes. Verify that the required scope (e.g., `"graph:invoke"` for a POST to `/v1/graph/invoke`) is granted.
+3. **Check object access**: Call `authorize(user, resource, action, resource_id)` to enforce object-level rules (e.g., ownership checks).
+4. **Build and stamp authz**: Call `build_authz(user_id, scope=isolation_policy, scopes=granted_scopes)` and place it in `user["authz"]`. This overwrites anything the client sent — it is non-hijackable.
+5. **Place in config**: Every service (graph execution, checkpointer, store) copies `user` into `config["user"]`, so the authz block reaches your code.
+
+This flow is defined in `/tenxgraph_api/src/app/core/auth/permissions.py`. For details on configuring backends, see `/docs/server/auth`.
+
+## Common errors and fixes
+
+**PermissionError: "Missing scope: store:write"**
+
+The caller doesn't have the required scope. This happens when:
+
+- The user's role is not mapped to that scope in your authorization backend.
+- The JWT `scope` claim doesn't include the required scope.
+- The user is authenticated but no authorization backend is configured (all routes are allowed).
+
+Fix: Check your `authorization` setting in `10xgraph.json` and your role-scope mappings.
+
+**get_authz() returns None inside a tool**
+
+This is not an error — it means either:
+
+- Auth is not configured on the API server (`"auth": null` in `10xgraph.json`).
+- You're calling the graph directly in Python without passing an authz block.
+
+In both cases, `has_scope()` and `isolation_scope()` default to permissive, and your code should handle the None case gracefully.
+
+**"Thread is owned by user2, not user1"**
+
+The caller tried to access a thread they don't own, but the ownership check passed the initial route guard. This means:
+
+- The ownership backend is configured but your code is checking ownership a second time.
+- Or, you're using a custom authorization backend that does not enforce ownership.
+
+Fix: Ensure your authorization backend's `OwnershipAuthorizationBackend` or custom implementation is checking thread ownership. If you need a custom check, call `get_thread_owner()` from the checkpointer and compare.
+
+## Related pages
+
+- `/docs/server/auth`: Configure authentication and authorization on the API server.
+- `/docs/guides/protect-against-prompt-injection`: Additional safety patterns for input validation.
+- `/docs/guides/use-dependency-injection`: Access config and other dependencies in nodes and tools.
+- `/docs/concepts/security-and-validators`: Design patterns for secure agent systems.

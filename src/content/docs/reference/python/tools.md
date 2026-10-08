@@ -3,8 +3,8 @@ title: Tools
 seoTitle: "ToolNode API reference (Python)"
 description: ToolNode — the unified tool registry and executor for local functions, MCP, Composio, and LangChain tools.
 section: Reference
-group: Python library
-order: 1470
+group: "Python library"
+order: 40
 label: Tools
 updated: "2026-07-21"
 ---
@@ -155,7 +155,7 @@ graph = StateGraph()
 graph.add_node("TOOL", tools)
 ```
 
-See [Use MCP servers](/docs/how-to/python/use-mcp) for the full setup.
+See [Use MCP servers](/docs/guides/use-mcp) for the full setup.
 
 When `client` is provided, `ToolNode` fetches available tool schemas from the MCP server on startup and routes calls matching MCP tool names to the remote server.
 

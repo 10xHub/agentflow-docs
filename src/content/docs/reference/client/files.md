@@ -3,8 +3,8 @@ title: Files
 seoTitle: "File upload and media in the TS client"
 description: Reference for file upload and media access methods on AgentFlowClient.
 section: Reference
-group: TypeScript client
-order: 1880
+group: "TypeScript client"
+order: 540
 label: Files
 updated: "2026-09-29"
 ---

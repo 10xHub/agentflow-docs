@@ -2,7 +2,7 @@
 title: API Server Troubleshooting
 description: Symptoms, causes, and fixes for common 10xGraph API server startup and runtime issues.
 section: Troubleshooting
-order: 1920
+order: 40
 updated: "2026-09-29"
 ---
 
@@ -231,7 +231,7 @@ Use reload only for active local development.
 | Database timeout | `STORAGE_TRANSIENT_000` | Retry with backoff, check DB health |
 | Schema mismatch | `STORAGE_SCHEMA_000` | Run migrations after upgrade |
 
-See [Error Codes Reference](/docs/troubleshooting/error-codes) for full documentation.
+See [Error Codes Reference](/docs/reference/error-codes) for full documentation.
 
 ## Issue: requests are unexpectedly public
 
@@ -251,9 +251,9 @@ See [Error Codes Reference](/docs/troubleshooting/error-codes) for full document
 
 ## Related docs
 
-- [Run the API Server](/docs/how-to/api-cli/run-api-server)
-- [Production Troubleshooting](/docs/how-to/production/troubleshooting)
-- [Auth and Authorization](/docs/how-to/production/auth-and-authorization)
+- [Run the API Server](/docs/server/run-the-server)
+- [Production Troubleshooting](/docs/troubleshooting/api-server)
+- [Auth and Authorization](/docs/server/auth)
 
 ## What you learned
 

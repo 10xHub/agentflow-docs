@@ -3,8 +3,8 @@ title: Evaluation
 seoTitle: "Evaluation API reference (Python)"
 description: AgentEvaluator, EvalSet, EvalCase, EvalConfig, EvalReport and TrajectoryCollector — how a scored evaluation run is wired together.
 section: Reference
-group: Python library
-order: 1550
+group: "Python library"
+order: 270
 label: Evaluation
 updated: "2026-07-21"
 ---
@@ -266,7 +266,7 @@ eval_set = EvalSet(eval_set_id="capitals", name="Capitals", eval_cases=[case1, c
 
 The on-disk format is a single JSON object, not JSONL. `EvalSetBuilder` offers a
 fluent way to construct one — see
-[Building eval sets](/docs/qa/evaluation/eval-set).
+[Building eval sets](/docs/testing/eval-sets).
 
 ---
 
@@ -349,7 +349,7 @@ The "reported as" column is the criterion's `name` — the key you will see in
 | `with_rubrics(rubrics)` | Return a deep copy with `rubric_based` configured. |
 
 `CriterionConfig` fields and factory methods are documented in
-[Criteria](/docs/qa/evaluation/criteria#criterionconfig-reference); the criterion
+[Criteria](/docs/testing/criteria#criterionconfig-reference); the criterion
 classes themselves in [Evaluation criteria](/docs/reference/python/evaluation-criteria).
 
 ---

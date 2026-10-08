@@ -3,8 +3,8 @@ title: Checkpointers
 seoTitle: "Checkpointers API reference (Python)"
 description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer — state persistence for conversation threads.
 section: Reference
-group: Python library
-order: 1490
+group: "Python library"
+order: 210
 label: Checkpointers
 updated: "2026-07-21"
 ---

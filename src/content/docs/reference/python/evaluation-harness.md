@@ -3,8 +3,8 @@ title: Evaluation harness
 seoTitle: "Evaluation harness API reference (Python)"
 description: EvaluationRunner, ReporterManager, ExecutionResult and the pytest helpers for writing 10xGraph eval tests, with real signatures and defaults.
 section: Reference
-group: Python library
-order: 1570
+group: "Python library"
+order: 290
 label: Evaluation harness
 updated: "2026-07-21"
 ---

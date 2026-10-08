@@ -3,8 +3,8 @@ title: Agent
 seoTitle: "Agent class API reference (Python)"
 description: The Agent class — a smart node that handles LLM calls, tool use, memory, skills, and retries.
 section: Reference
-group: Python library
-order: 1420
+group: "Python library"
+order: 30
 label: Agent
 updated: "2026-09-29"
 ---
@@ -52,7 +52,7 @@ agent = Agent(
 | `fallback_models` | `list[str \| tuple[str, str]] \| None` | `None` | Ordered list of fallback model identifiers (or `(model, provider)` tuples) to try if the primary model fails. |
 | `multimodal_config` | `MultimodalConfig \| None` | `None` | Image and document handling limits for multimodal requests. See [`media`](/docs/reference/python/media#multimodalconfig). |
 | `output_schema` | `type[BaseModel] \| None` | `None` | Pydantic model the final answer must conform to. Only valid with `output_type="text"`; combining it with a media `output_type` raises at construction time. |
-| `use_vertex_ai` | `bool` | `False` | Google provider only. Route Gemini calls through Vertex AI instead of the Gemini API. Equivalent to setting `GOOGLE_GENAI_USE_VERTEXAI=true`. See [Using Vertex AI](/docs/providers/google#using-vertex-ai). |
+| `use_vertex_ai` | `bool` | `False` | Google provider only. Route Gemini calls through Vertex AI instead of the Gemini API. Equivalent to setting `GOOGLE_GENAI_USE_VERTEXAI=true`. See [Using Vertex AI](/docs/integrations/google#using-vertex-ai). |
 | `**kwargs` | any | — | Additional provider-specific parameters passed directly to the LLM SDK. |
 
 ---
@@ -61,13 +61,13 @@ agent = Agent(
 
 | `provider` | Backend | Models |
 |---|---|---|
-| [`"openai"`](/docs/providers/openai) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
-| [`"google"`](/docs/providers/google) | Gemini API (Google AI Studio) or Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
-| [`"anthropic"`](/docs/providers/anthropic) | Claude API directly, Vertex AI, or Bedrock | `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5-20251001` |
+| [`"openai"`](/docs/integrations/openai) | OpenAI API | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3`, `o4-mini` |
+| [`"google"`](/docs/integrations/google) | Gemini API (Google AI Studio) or Vertex AI | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` |
+| [`"anthropic"`](/docs/integrations/anthropic) | Claude API directly, Vertex AI, or Bedrock | `claude-sonnet-5-5`, `claude-opus-5-5`, `claude-haiku-4-5-20251001` |
 
-The `"google"` provider supports both the Gemini API and Vertex AI. Toggle Vertex AI with `use_vertex_ai=True` on the agent or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment — see [Using Vertex AI](/docs/providers/google#using-vertex-ai).
+The `"google"` provider supports both the Gemini API and Vertex AI. Toggle Vertex AI with `use_vertex_ai=True` on the agent or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment — see [Using Vertex AI](/docs/integrations/google#using-vertex-ai).
 
-See the [Providers](/docs/providers) section for setup, environment variables, and full examples.
+See the [Providers](/docs/integrations/models) section for setup, environment variables, and full examples.
 
 ### Provider inference
 
@@ -177,7 +177,7 @@ agent = Agent(
 )
 ```
 
-See [Configure Agent](/docs/how-to/python/configure-agent#circuit-breaker) for more detail.
+See [Configure Agent](/docs/guides/configure-agent#circuit-breaker) for more detail.
 
 ---
 

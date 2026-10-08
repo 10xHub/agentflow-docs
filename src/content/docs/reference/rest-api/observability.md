@@ -2,8 +2,8 @@
 title: Observability endpoints
 description: Reference for the GET /v1/observability/{thread_id} endpoint that reconstructs a run trace with spans, events, and token usage.
 section: Reference
-group: REST API
-order: 1700
+group: "REST API"
+order: 380
 label: Observability
 updated: "2026-07-21"
 ---

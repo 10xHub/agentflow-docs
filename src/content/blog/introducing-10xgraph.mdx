@@ -19,11 +19,11 @@ You write a Python agent as a graph of nodes and tools. From the same install yo
 
 ## The five pillars
 
-1. **The production server ships in the box.** The API server, auth, rate limits and deployment files come with the framework under the MIT license, not as a separate product. See [Serving agents](/docs/concepts/serving-agents) and [Production runtime](/docs/concepts/production-runtime).
+1. **The production server ships in the box.** The API server, auth, rate limits and deployment files come with the framework under the MIT license, not as a separate product. See [Serving agents](/docs/concepts/serving-agents) and [Production runtime](/docs/concepts/serving-agents).
 2. **Correct under failure.** Tool calls are replay-safe: if a process dies mid-run, a tool that already finished is not executed again, so a resumed run does not charge a card twice. Durable writes are versioned, and nodes and tools have real timeouts. Read [Replay-safe tools](/docs/concepts/replay-safe-tools) and the engineering post [Your agent charged the card twice](/blog/your-agent-charged-the-card-twice).
 3. **Built to scale.** Active thread state is cached in Redis for fast reads, while full history lives in PostgreSQL. Events can be published to Kafka, Redis Pub/Sub, RabbitMQ or OpenTelemetry. See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) and [Memory and store](/docs/concepts/memory-and-store).
-4. **One stack, from backend to frontend.** A typed TypeScript client covers invoke, stream, threads, memory and files, and tools can run in the user's browser. See [Connecting clients](/docs/concepts/connecting-clients) and [Remote tools](/docs/concepts/remote-tools).
-5. **You own it.** MIT licensed, self-hosted, and not tied to one model vendor. It works with OpenAI, Google Gemini, Anthropic and any OpenAI-compatible endpoint. See [Providers](/docs/providers).
+4. **One stack, from backend to frontend.** A typed TypeScript client covers invoke, stream, threads, memory and files, and tools can run in the user's browser. See [Connecting clients](/docs/client) and [Remote tools](/docs/concepts/remote-tools).
+5. **You own it.** MIT licensed, self-hosted, and not tied to one model vendor. It works with OpenAI, Google Gemini, Anthropic and any OpenAI-compatible endpoint. See [Providers](/docs/integrations/models).
 
 Graph orchestration, tool-calling loops, MCP and streaming are in there too, but every serious framework has those. The pillars above are why you would pick this one.
 
@@ -66,7 +66,7 @@ The [roadmap](/docs/project/roadmap) lists what is missing or partial.
 
 ## Next steps
 
-- New to the project: follow [Get started](/docs/get-started) or the [beginner path](/docs/beginner).
+- New to the project: follow [Get started](/docs/get-started) or the [beginner path](/docs/get-started/tutorial/mental-model).
 - Moving an existing install: read [Installation](/docs/get-started/installation) and the [changelog](/changelog).
 - Choosing between frameworks: see the [comparisons](/docs/compare).
 - Questions or bugs: see [Support](/docs/project/support), or the [maintainers page](/maintainers) for who to contact.

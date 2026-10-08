@@ -2,7 +2,7 @@
 // Docs navigation drawn as a graph: each page is a node on its section's line. Only the current
 // section is open; the others collapse to a row of progress dots. Visited nodes are filled in by
 // scripts/docs-reader.ts from localStorage. Native <details>, so it works without JS.
-import { DOC_SECTIONS, SECTION_INFO } from '../../lib/site';
+import { DOC_SECTIONS, MAP_HIDDEN, SECTION_INFO } from '../../lib/site';
 import { docHref, type Doc } from '../../lib/content';
 
 interface Props {
@@ -13,8 +13,6 @@ interface Props {
 }
 const { docs, current, section } = Astro.props;
 const openSection = current?.data.section ?? section;
-// Project pages (roadmap, security, support...) are linked from the footer, not the reading map.
-const MAP_HIDDEN: readonly string[] = ['Project'];
 const mapDocs = docs.filter((d) => !MAP_HIDDEN.includes(d.data.section));
 const groups = DOC_SECTIONS.filter((s) => !MAP_HIDDEN.includes(s))
   .map((s) => ({ section: s, items: mapDocs.filter((d) => d.data.section === s) }))

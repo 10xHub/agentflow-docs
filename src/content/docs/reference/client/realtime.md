@@ -3,8 +3,8 @@ title: "realtime()"
 seoTitle: "realtime() audio session in the TS client"
 description: Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket.
 section: Reference
-group: TypeScript client
-order: 1850
+group: "TypeScript client"
+order: 510
 label: "realtime()"
 updated: "2026-09-29"
 ---

@@ -2,7 +2,7 @@
 title: 10xgraph.json reference
 description: Every 10xgraph.json key the server and CLI read, with types, defaults and examples, the rate_limit sub-keys, and the environment variables the API server uses.
 section: Reference
-order: 1740
+order: 420
 updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: Which key is required in 10xgraph.json?
@@ -11,7 +11,7 @@ faq:
     a: It searches the working directory and its parents for the path you pass with --config (default 10xgraph.json). With the default name, each directory is checked for 10xgraph.json first and the older agentflow.json second. Without a path, test and eval also try .agentflow.json and agentflow.config.json.
   - q: Does agentflow.json still work?
     a: Yes, until 2.0. When 10xgraph.json is missing, the CLI and the server read agentflow.json from the same directory. Rename the file to 10xgraph.json when convenient; the keys are identical.
-group: CLI and configuration
+group: "CLI and configuration"
 ---
 
 `10xgraph.json` tells the 10xGraph API server which graph to serve and how to secure it. Only `agent` is required. The file is plain JSON, and the server also reads settings from environment variables, listed at the end of this page. Edit it by hand or with `10xgraph config`.
@@ -49,7 +49,7 @@ Import paths use `module:attribute`. Unknown top-level keys are kept in the file
 | `"jwt"` | Verify bearer JWTs. Needs `JWT_SECRET_KEY` and `JWT_ALGORITHM` |
 | `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` | Load a `BaseAuth` subclass. Both `method` and `path` are required |
 
-See [Add JWT authentication](/docs/how-to/api-cli/add-auth).
+See [Add JWT authentication](/docs/server/auth).
 
 ### authorization
 

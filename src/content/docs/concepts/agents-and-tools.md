@@ -1,15 +1,21 @@
 ---
 title: Agents and Tools
 seoTitle: "Agent and ToolNode concepts"
-description: How Agent wraps a language model, how ToolNode dispatches tool calls, and all constructor options.
+description: "How Agent wraps a model, why ToolNode is needed, parallel tool dispatch, and error handling."
 section: Concepts
-order: 142
-group: Graphs and agents
+order: 40
+group: "Foundations"
 label: Agents and Tools
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-`Agent` and `ToolNode` are the two built-in node types that handle language model interaction. `Agent` calls the model. `ToolNode` executes the functions the model requested.
+`Agent` and `ToolNode` are the two built-in node types that handle language model interaction. `Agent` sends the current state to a language model and appends its response. `ToolNode` executes the tool calls the model requested and runs them in parallel. Together they form the core of tool-using agents.
+
+## Why Agent exists
+
+You can wrap an LLM call in a plain graph node function, but `Agent` exists to handle the machinery that all language model nodes need: message formatting, provider detection, retry logic with backoff, fallback models when retries are exhausted, response parsing, system prompt templating with state interpolation, streaming, tool integration, skills, memory, multimodal content, and reasoning modes.
+
+Writing all of that by hand for each node is error-prone and verbose. An `Agent` node does it for you. Use `Agent` whenever a node needs to call an LLM. Use a plain function node only when you need custom logic that `Agent` does not support (custom model logic, external API calls, data processing, or routing decisions).
 
 ---
 
@@ -91,7 +97,7 @@ A skill is a folder with a `SKILL.md` (instructions plus a short description) an
 - The model calls `activate_skill` to load a skill's instructions only when a task matches the description.
 - The model calls `read_skill_resource` to read a bundled file when the instructions point to one.
 
-Unused skills cost only their one-line description. See [How to give an agent skills](/docs/how-to/python/use-skills).
+Unused skills cost only their one-line description. See [How to give an agent skills](/docs/guides/use-skills).
 
 ### Retry and fallback
 
@@ -161,6 +167,12 @@ tool_node = ToolNode([lookup_order, refund_order])
 
 The function's **docstring** becomes the tool description shown to the model. **Type annotations** define the parameter schema. Both are required for good model behavior.
 
+### Parallel tool dispatch
+
+When the model requests multiple tool calls, `ToolNode` executes them in parallel using `asyncio.gather`. This is orders of magnitude faster than running them sequentially: if the model calls three tools that each take 2 seconds, parallel execution takes 2 seconds; sequential would take 6 seconds. All tool results are collected and appended to state together, so the next node in the graph sees them all at once.
+
+To opt out of parallelism and execute tools sequentially, you can iterate over tool calls and invoke them one at a time in your own node. In practice, parallelism is the right default.
+
 ### Adding tools after creation
 
 ```python
@@ -226,24 +238,17 @@ def select_city(city: str) -> ToolResult:
 
 ### MCP tools
 
-Connect to an MCP server and expose its tools alongside local functions:
+10xGraph supports the Model Context Protocol (MCP), allowing you to expose both local Python functions and MCP server tools through the same `ToolNode`. Install with `pip install "10xgraph[mcp]"`, create an MCP client (using fastmcp or another MCP SDK), and pass it to `ToolNode(client=...)`. The same parallel execution, error handling, and injectable parameters apply to MCP tools. Set `pass_user_info_to_mcp=True` to forward the caller's `user_id` and other config to the MCP server so it can scope resource access. For details, see [Using MCP](/docs/guides/use-mcp).
 
-```bash
-pip install "10xgraph[mcp]"
-```
+---
 
-```python
-from fastmcp import FastMCP
-from tenxgraph.core.graph import ToolNode
+## Tool errors
 
-mcp_client = ...  # your MCP client
+When a tool raises an exception, `ToolNode` catches it and returns the error as a `ToolResultBlock` with `is_error=True` and status `"failed"`. The error message is forwarded to the model so it can retry with different arguments or report the failure to the user.
 
-tool_node = ToolNode(
-    [local_function],
-    client=mcp_client,
-    pass_user_info_to_mcp=True,  # forward config["user"] to MCP context
-)
-```
+This is the right default: a tool failure is not a graph failure. The model sees the error and decides what to do next. If you want a specific tool error to fail the entire run, raise it after logging, and the graph will stop. For details on exception taxonomy and handling, see [Errors and limits](/docs/concepts/errors-and-limits).
+
+Tool errors are also published as events, so you can monitor and alert on them. Tool functions can also return a `ToolResult` with `is_error=True` to signal a business error (e.g., "insufficient permissions") rather than an exception.
 
 ---
 
@@ -357,14 +362,16 @@ This is useful when you want to share one `ToolNode` across multiple agents.
 
 Use `ainvoke` and `astream` inside an async context. `invoke` and `stream` are sync wrappers. See [Streaming](/docs/concepts/streaming) for chunk fields and events.
 
-For prebuilt agents, callbacks, `Command`, validators and background tasks, see [Callbacks and Command](/docs/concepts/callbacks-and-command), [Prebuilt agents and tools](/docs/concepts/prebuilt-agents-and-tools), [Security and validators](/docs/concepts/security-and-validators) and [Context ID and background tasks](/docs/concepts/context-id-background).
+For prebuilt agents, callbacks, `Command`, validators and background tasks, see [Callbacks and Command](/docs/concepts/callbacks-and-command), [Choosing a building block](/docs/concepts/choosing-a-building-block), [Security and validators](/docs/concepts/security-and-validators) and [Context management](/docs/concepts/context-management).
 
 ---
 
 ## What you learned
 
-- `Agent` wraps a language model and handles system prompt templating.
-- `ToolNode` dispatches the tool calls returned by the model.
+- `Agent` exists to handle all LLM integration machinery (retry, fallback, system prompts, streaming, tools, skills, memory, reasoning) so you do not have to build it by hand.
+- `ToolNode` executes tool calls from the model in parallel, making multi-tool workflows orders of magnitude faster than sequential execution.
+- Tools are ordinary Python functions with docstrings and type hints; MCP tools work the same way through the `client` parameter.
+- Tool errors are caught and returned to the model as failed results, not graph failures; the model decides what to do next.
 - `state`, `tool_call_id`, `config` and other services are injectable parameters that do not appear in the tool schema.
 - The ReAct loop uses a conditional edge to route between `Agent` and `ToolNode`.
 

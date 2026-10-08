@@ -3,15 +3,15 @@ title: Skills
 seoTitle: "Skills API reference (Python)"
 description: SkillConfig, SkillMeta and SkillsRegistry — load Agent Skills (agentskills.io) into an Agent and let the model activate them on demand.
 section: Reference
-group: Python library
-order: 1440
+group: "Python library"
+order: 90
 label: Skills
 updated: "2026-09-29"
 ---
 
 ## When to use this
 
-Use skills to give an agent specialised instructions that it loads only when a task needs them. For a step-by-step walkthrough, see [How to give an agent skills](/docs/how-to/python/use-skills). 10xGraph implements the [Agent Skills specification](https://agentskills.io/specification), so a skill written for Claude Code, Codex, GitHub Copilot or any other compatible client works in 10xGraph unchanged, and the other way round.
+Use skills to give an agent specialised instructions that it loads only when a task needs them. For a step-by-step walkthrough, see [How to give an agent skills](/docs/guides/use-skills). 10xGraph implements the [Agent Skills specification](https://agentskills.io/specification), so a skill written for Claude Code, Codex, GitHub Copilot or any other compatible client works in 10xGraph unchanged, and the other way round.
 
 ## Import path
 

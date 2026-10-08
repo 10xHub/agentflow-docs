@@ -4,7 +4,7 @@ title: Upgrade to 1.0
 seoTitle: "Upgrade 10xGraph to 1.0: breaking changes"
 description: Migration guide from 10xGraph 0.8 and 0.9 to 1.0, covering the four breaking changes and the new defaults that change runtime behaviour.
 section: Project
-order: 2620
+order: 20
 label: Upgrade to 1.0
 updated: "2026-07-21"
 ---
@@ -51,7 +51,7 @@ UPDATE states   SET user_id = 'anonymous' WHERE user_id = 'test-user-id';
 UPDATE messages SET user_id = 'anonymous' WHERE user_id = 'test-user-id';
 ```
 
-Take a backup first. See [backup and restore](/docs/how-to/production/backup-and-restore).
+Take a backup first. See [backup and restore](/docs/server/backup-and-restore).
 
 In production, pass a real `user_id` from your auth layer rather than relying on
 either default.
@@ -182,5 +182,5 @@ After upgrading, before sending production traffic:
 ## Related
 
 - [Changelog](/changelog) for the full 1.0 release notes
-- [Checkpointing](/docs/how-to/production/checkpointing)
-- [Deployment](/docs/how-to/production/deployment)
+- [Checkpointing](/docs/server/production-checklist)
+- [Deployment](/docs/server/deploy)

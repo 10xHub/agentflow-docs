@@ -1,53 +1,60 @@
 ---
 title: Media and Files
 seoTitle: "Multimodal messages: media and files"
-description: How to build multimodal messages with images, audio, video, and documents using MediaRef, content blocks, and media stores.
+description: "How 10xGraph handles media in multimodal messages: MediaRef decouples location from structure, storage backends serve files, and providers adapt automatically."
 section: Concepts
-order: 164
-group: Serving and clients
+order: 200
+group: "Serving"
 label: Media and Files
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: "What's the difference between file_id, url, and data?"
+    a: "file_id stores media in a backend store and references it by key (best for production); url points to external media the provider fetches; data embeds bytes inline as base64 (only for small payloads)."
+  - q: "Do I need to upload files myself?"
+    a: "No. For Python, you can inline data or use external URLs directly. For the API server, use /v1/files/upload; the server manages the store. For the TypeScript client, use uploadFile()."
+  - q: "Which approach is best for my use case?"
+    a: "Inline data (base64) for small, one-off payloads. External URLs if the media is already hosted. file_id for multi-step flows or production systems where durability matters."
 ---
 
-10xGraph has first-class multimodal support. Any message can contain a mix of text, images, audio, video, and documents through typed **content blocks**. Media is referenced via `MediaRef`, which decouples the message structure from where the bytes actually live.
+10xGraph has built-in multimodal support for messages containing text, images, audio, video, and documents. The design separates message structure from data location through **MediaRef**, allowing the same message to reference media from URLs, inline base64, or cloud storage without changing the block types. This page explains the architecture; task guides for sending media are in `/docs/guides/send-media` and `/docs/client/files-and-multimodal`.
 
----
+## Why separate location from structure
+
+Messages in 10xGraph are lightweight: a message does not hold binary data directly. Instead, blocks (ImageBlock, AudioBlock, DocumentBlock) reference media via `MediaRef`, which specifies where the bytes actually live. This design buys three things: messages stay small and copy fast over the network, media can be deduplicated across runs on the same backend store, and different contexts (Python, REST API, TypeScript) handle media differently without changing your message structure.
 
 ## Content block types
 
-All block types live in `tenxgraph.core.state`.
+All block types live in `tenxgraph.core.state`. Multimodal blocks (Image, Audio, Video, Document, Data) all carry a `MediaRef` that points to the actual media.
 
-| Class | type discriminator | When to use |
-|---|---|---|
-| `TextBlock` | `"text"` | Plain text content |
-| `ImageBlock` | `"image"` | Images (PNG, JPEG, WebP, GIF) |
-| `AudioBlock` | `"audio"` | Audio data (WAV, MP3, OGG) |
-| `VideoBlock` | `"video"` | Video data (MP4, WebM) |
-| `DocumentBlock` | `"document"` | PDFs, Word docs, plain text |
-| `DataBlock` | `"data"` | Any raw binary blob with a MIME type |
-| `ToolCallBlock` | `"tool_call"` | Tool invocation request from the model |
-| `ToolResultBlock` | `"tool_result"` | Result returned from a tool execution |
-| `ReasoningBlock` | `"reasoning"` | Chain-of-thought reasoning traces |
-| `AnnotationBlock` | `"annotation"` | Citations, references, structured notes |
-| `ErrorBlock` | `"error"` | Error information from failed operations |
+| Class | Role |
+|---|---|
+| `TextBlock` | Plain text content |
+| `ImageBlock` | Images referenced by MediaRef (PNG, JPEG, WebP, GIF) |
+| `AudioBlock` | Audio referenced by MediaRef (WAV, MP3, OGG) |
+| `VideoBlock` | Video referenced by MediaRef (MP4, WebM) |
+| `DocumentBlock` | Documents referenced by MediaRef, with optional extracted text (PDFs, Word, plain text) |
+| `DataBlock` | Any binary blob with a MIME type |
+| `ToolCallBlock` | Tool invocation request from the model |
+| `ToolResultBlock` | Result returned from a tool execution |
+| `ReasoningBlock` | Chain-of-thought reasoning traces |
+| `AnnotationBlock` | Citations and structured references |
+| `ErrorBlock` | Error information from failed operations |
 
----
+## MediaRef — how to reference media
 
-## MediaRef — the reference model
-
-`MediaRef` is how you tell a block *where* the binary data is. It has three `kind` values:
+`MediaRef` tells a block where to fetch the binary data. It has three `kind` values, each with different trade-offs:
 
 ```python
 from tenxgraph.core.state import MediaRef
 
-# 1. External URL — the agent fetches it per provider
+# 1. URL: external hosted media; provider fetches it
 MediaRef(kind="url", url="https://example.com/photo.png", mime_type="image/png")
 
-# 2. Inline base64 — embed the bytes directly (small payloads only)
-MediaRef(kind="data", data_base64="<base64-string>", mime_type="image/png")
+# 2. Inline base64: bytes embedded in the message (small payloads only)
+MediaRef(kind="data", data_base64="iVBORw0KGg...", mime_type="image/png")
 
-# 3. Store key — uploaded to a MediaStore first, then referenced by key
-MediaRef(kind="file_id", file_id="a1b2c3d4...", mime_type="image/png")
+# 3. Store key: media uploaded to a MediaStore first, referenced by opaque key
+MediaRef(kind="file_id", file_id="a1b2c3d4e5f6...", mime_type="image/png")
 ```
 
 ### Full MediaRef fields
@@ -55,441 +62,128 @@ MediaRef(kind="file_id", file_id="a1b2c3d4...", mime_type="image/png")
 ```python
 class MediaRef(BaseModel):
     kind: Literal["url", "file_id", "data"] = "url"
-    url: str | None = None          # https:// or graph://media/<key>
-    file_id: str | None = None      # opaque key from MediaStore.store()
-    data_base64: str | None = None  # base64-encoded bytes (small payloads only)
+    url: str | None = None              # https:// or graph://media/<key>
+    file_id: str | None = None          # storage key from MediaStore.store()
+    data_base64: str | None = None      # small payloads only
     mime_type: str | None = None
-    size_bytes: int | None = None
-    sha256: str | None = None
-    filename: str | None = None
-    # Media-specific hints
-    width: int | None = None
-    height: int | None = None
-    duration_ms: int | None = None
-    page: int | None = None
+    size_bytes: int | None = None       # optional size hint
+    sha256: str | None = None           # optional checksum
+    filename: str | None = None         # original filename if applicable
+    # Media-specific metadata
+    width: int | None = None            # image width
+    height: int | None = None           # image height
+    duration_ms: int | None = None      # audio/video duration
+    page: int | None = None             # document page number
 ```
 
----
+### When to use each kind
 
-## Building multimodal messages
+**kind="url"** is best when media is already hosted (CDN, public web link, or a signed URL from cloud storage). The provider fetches it over HTTPS. No upload step needed, but network access from the provider is required.
 
-Import blocks from the `tenxgraph.core.state` module rather than guessing a top-level name. Blocks live in `tenxgraph.core.state`:
+**kind="data"** is simplest for small files (icons, small images, short audio clips) but the bytes go over the wire with every message. Avoid for large media or when the same file is sent multiple times.
+
+**kind="file_id"** is production best practice: upload once, reference forever. The file lives in a backend store (in-memory for tests, local filesystem or cloud storage for real systems). Ideal for multi-step flows or when the same document is analyzed by multiple agents.
+
+## MediaStore — persistent storage backends
+
+A `MediaStore` holds media bytes outside the message system. Each backend is a class implementing `BaseMediaStore`:
 
 ```python
-from tenxgraph.core.state import (
-    AudioBlock,
-    DocumentBlock,
-    ImageBlock,
-    MediaRef,
-    Message,
-    TextBlock,
-    VideoBlock,
-)
+class BaseMediaStore(ABC):
+    async def store(data: bytes, mime_type: str, metadata: dict | None) -> str
+    async def retrieve(storage_key: str) -> tuple[bytes, str]
+    async def delete(storage_key: str) -> bool
+    async def exists(storage_key: str) -> bool
+    async def get_metadata(storage_key: str) -> dict | None
 ```
 
-### Example 1: Image from an external URL
+All methods are async; they are safe to call from agent nodes and tools via normal `await`.
 
-```python
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="What is in this image?"),
-            ImageBlock(
-                media=MediaRef(
-                    kind="url",
-                    url="https://upload.wikimedia.org/wikipedia/commons/4/47/example.png",
-                    mime_type="image/png",
-                )
-            ),
-        ],
-    )
-]
+### Available implementations
 
-result = app.invoke({"messages": messages}, config={"thread_id": "t1"})
-```
-
-### Example 2: Image from inline base64
-
-```python
-import base64
-
-with open("photo.jpg", "rb") as f:
-    b64 = base64.b64encode(f.read()).decode()
-
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Describe this photo."),
-            ImageBlock(
-                media=MediaRef(
-                    kind="data",
-                    data_base64=b64,
-                    mime_type="image/jpeg",
-                )
-            ),
-        ],
-    )
-]
-```
-
-### Example 3: File uploaded to MediaStore (recommended for production)
-
-Upload the file once and reference it by key in any number of subsequent messages:
-
-```python
-import asyncio
-from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
-from tenxgraph.storage.media import InMemoryMediaStore
-
-media_store = InMemoryMediaStore()
-
-# Upload — returns an opaque storage key
-with open("photo.png", "rb") as f:
-    file_key = asyncio.run(media_store.store(data=f.read(), mime_type="image/png"))
-
-# Reference by key in a message
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Analyze this uploaded image."),
-            ImageBlock(
-                media=MediaRef(
-                    kind="file_id",
-                    file_id=file_key,
-                    mime_type="image/png",
-                )
-            ),
-        ],
-    )
-]
-```
-
-### Example 4: Audio
-
-```python
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Transcribe this audio clip."),
-            AudioBlock(
-                media=MediaRef(
-                    kind="data",
-                    data_base64=base64.b64encode(audio_bytes).decode(),
-                    mime_type="audio/wav",
-                ),
-                # optional hints
-                sample_rate=16000,
-                channels=1,
-            ),
-        ],
-    )
-]
-```
-
-### Example 5: Document
-
-```python
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Summarize this document."),
-            DocumentBlock(
-                text="Pre-extracted text content (optional — provide when you already have the text).",
-                media=MediaRef(
-                    kind="file_id",
-                    file_id="doc-storage-key",
-                    mime_type="application/pdf",
-                ),
-            ),
-        ],
-    )
-]
-```
-
-### Example 6: Mixed media in one message
-
-```python
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Here are multiple inputs — process all of them."),
-            ImageBlock(media=MediaRef(kind="url", url="https://example.com/chart.png", mime_type="image/png")),
-            DocumentBlock(
-                text="This document discusses agent frameworks.",
-                media=MediaRef(kind="file_id", file_id="doc-001", mime_type="text/plain"),
-            ),
-        ],
-    )
-]
-```
-
----
-
-## MediaStore — binary storage backends
-
-`MediaStore` stores the actual bytes outside the message, keeping messages lightweight. The `BaseMediaStore` interface exposes five methods:
-
-```python
-async def store(data: bytes, mime_type: str, metadata: dict | None) -> str  # returns storage key
-async def retrieve(storage_key: str) -> tuple[bytes, str]                    # bytes + mime_type
-async def delete(storage_key: str) -> bool
-async def exists(storage_key: str) -> bool
-async def get_metadata(storage_key: str) -> dict | None                      # without loading bytes
-```
-
-### Available backends
-
-| Class | Module | Use case |
+| Class | Location | Best for |
 |---|---|---|
-| `InMemoryMediaStore` | `tenxgraph.storage.media.storage` | Development, tests |
-| `LocalFileMediaStore` | `tenxgraph.storage.media.storage` | Single-server, dev |
-| `CloudMediaStore` | `tenxgraph.storage.media.storage` | S3 / GCS (production) |
+| `InMemoryMediaStore` | `tenxgraph.storage.media` | Tests, development, single-process |
+| `LocalFileMediaStore` | `tenxgraph.storage.media.storage` | Development, single-server deployments |
+| `CloudMediaStore` | `tenxgraph.storage.media.storage` | Production with S3 / GCS |
 
-#### InMemoryMediaStore
+**InMemoryMediaStore** stores files in RAM. Data is lost on process restart and is not shared across workers. Use it for testing and local development.
 
-```python
-from tenxgraph.storage.media import InMemoryMediaStore
+**LocalFileMediaStore** shards files on disk under a base directory. Each file is stored as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with a `.meta.json` sidecar. Suitable for single-server deployments or development environments with persistent storage.
 
-store = InMemoryMediaStore()
-key = await store.store(data=image_bytes, mime_type="image/png")
-bytes_back, mime = await store.retrieve(key)
-```
+**CloudMediaStore** offloads to S3 or GCS via the cloud-storage-manager SDK. Requires the `[cloud-storage]` extra. Generates signed URLs so providers can fetch media directly without re-downloading to your server. The right choice for distributed systems and production deployments.
 
-Data is lost on process restart. Thread-safe via asyncio.
+## MultimodalConfig — how agents adapt media for providers
 
-#### LocalFileMediaStore
-
-```python
-from tenxgraph.storage.media.storage import LocalFileMediaStore
-
-store = LocalFileMediaStore(base_dir="./agentflow_media")
-key = await store.store(data=pdf_bytes, mime_type="application/pdf")
-```
-
-Files are sharded on disk as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with a `.meta.json` sidecar.
-
-#### CloudMediaStore (S3 / GCS)
-
-```bash
-pip install "10xgraph[cloud-storage]"
-```
-
-```python
-from cloud_storage_manager import CloudStorageFactory, StorageProvider, StorageConfig, AwsConfig
-from tenxgraph.storage.media.storage import CloudMediaStore
-
-config = StorageConfig(
-    aws=AwsConfig(bucket_name="my-bucket", access_key_id="...", secret_access_key="...")
-)
-cloud_storage = CloudStorageFactory.get_storage(StorageProvider.AWS, config)
-store = CloudMediaStore(cloud_storage, prefix="10xgraph-media")
-```
-
-Stores binary blobs in the cloud bucket. Supports generating signed URLs via `get_direct_url()` so providers can fetch media directly.
-
----
-
-## MultimodalConfig — per-agent media handling
-
-Pass `MultimodalConfig` to `Agent` to control how media is delivered to the LLM provider:
+Not every LLM provider handles every media type or transport mode the same way. `MultimodalConfig` lets you specify per-agent strategies, and the runtime adapts messages automatically.
 
 ```python
 from tenxgraph.core.graph import Agent
-from tenxgraph.storage.media import DocumentHandling, ImageHandling, MultimodalConfig
+from tenxgraph.storage.media import ImageHandling, DocumentHandling, MultimodalConfig
 
 agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
     multimodal_config=MultimodalConfig(
-        image_handling=ImageHandling.BASE64,           # "base64" | "url" | "file_id"
-        document_handling=DocumentHandling.EXTRACT_TEXT,  # "extract_text" | "pass_raw" | "skip"
+        image_handling=ImageHandling.BASE64,
+        document_handling=DocumentHandling.EXTRACT_TEXT,
         max_image_size_mb=10.0,
         max_image_dimension=2048,
         supported_image_types={"image/jpeg", "image/png", "image/webp", "image/gif"},
-        supported_doc_types={"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
+        supported_doc_types={"application/pdf"},
     ),
 )
 ```
 
 ### Image handling strategies
 
-| Strategy | Description |
+| Strategy | When to use |
 |---|---|
-| `ImageHandling.BASE64` | Convert image to base64 and embed inline |
-| `ImageHandling.URL` | Send a URL (external or signed from `CloudMediaStore`) |
-| `ImageHandling.FILE_ID` | Upload via provider-native file API (e.g. Google File API) |
+| `ImageHandling.BASE64` | Embed inline (provider must accept base64; best for small images) |
+| `ImageHandling.URL` | Send a URL directly (provider fetches it; requires network access) |
+| `ImageHandling.FILE_ID` | Use provider-native file APIs (e.g., Google File API; most robust) |
+
+The runtime tries strategies in order of preference. If the first fails, it falls back to the next.
 
 ### Document handling strategies
 
-| Strategy | Description |
+| Strategy | Behavior |
 |---|---|
-| `DocumentHandling.EXTRACT_TEXT` | Extract text and send as text context |
-| `DocumentHandling.FORWARD_RAW` | Forward the raw bytes to the provider |
+| `DocumentHandling.EXTRACT_TEXT` | Parse the document and send extracted text as TextBlock |
+| `DocumentHandling.FORWARD_RAW` | Send raw bytes to the provider (if supported) |
 | `DocumentHandling.SKIP` | Ignore document blocks entirely |
 
----
+## Provider capability matrix and fallback
 
-## Full graph wiring with a media store
+10xGraph maintains an internal capability matrix (`tenxgraph.storage.media.capabilities`) that maps each provider and model to what it supports. When your agent sends media, the system tries to deliver it in this order:
 
-```python
-import asyncio
-from tenxgraph.core.graph import Agent, StateGraph
-from tenxgraph.core.state import ImageBlock, MediaRef, Message, TextBlock
-from tenxgraph.storage.checkpointer import InMemoryCheckpointer
-from tenxgraph.storage.media import (
-    DocumentHandling,
-    ImageHandling,
-    InMemoryMediaStore,
-    MultimodalConfig,
-)
-from tenxgraph.utils import END
+1. **remote_url**: Send a public or signed HTTPS URL directly.
+2. **provider_file**: Use the provider's native file upload API (e.g., Google Files API, OpenAI file search).
+3. **inline_bytes**: Embed as base64 data URI.
+4. **unsupported**: The provider does not support this media type.
 
-checkpointer = InMemoryCheckpointer()
-media_store = InMemoryMediaStore()
+You do not manually manage this chain. `MultimodalConfig` tells the system which strategies you prefer, and the resolver automatically picks the best transport for each provider and falls back gracefully.
 
-agent = Agent(
-    model="gemini-2.5-flash",
-    provider="google",
-    system_prompt=[{"role": "system", "content": "You are a helpful multimodal assistant."}],
-    multimodal_config=MultimodalConfig(
-        image_handling=ImageHandling.BASE64,
-        document_handling=DocumentHandling.EXTRACT_TEXT,
-    ),
-)
+### Example: why this matters
 
-graph = StateGraph()
-graph.add_node("agent", agent)
-graph.set_entry_point("agent")
-graph.add_edge("agent", END)
+If you configure `image_handling=ImageHandling.FILE_ID` but your model does not support file APIs, the resolver automatically tries URL mode, then inline base64. If a file is too large for inline delivery, it switches to URL or file mode. This keeps your code simple: you write one message structure and trust the system to adapt.
 
-# Pass media_store to compile so the resolver can dereference file_id refs
-app = graph.compile(checkpointer=checkpointer)
+## Trade-offs and design decisions
 
-# Upload a file and invoke
-with open("chart.png", "rb") as f:
-    key = asyncio.run(media_store.store(data=f.read(), mime_type="image/png"))
+**Inline (base64) vs. URL vs. file_id:**
+- Inline is easiest to reason about (everything is in the message) but wastes bandwidth and memory for large or repeated files.
+- URL is fast if media is already hosted and the provider has network access, but introduces an external dependency.
+- file_id decouples the message from storage and enables deduplication, but requires infrastructure (a MediaStore backend).
 
-messages = [
-    Message(
-        role="user",
-        content=[
-            TextBlock(text="Describe this chart."),
-            ImageBlock(media=MediaRef(kind="file_id", file_id=key, mime_type="image/png")),
-        ],
-    )
-]
+**Per-agent config vs. global config:**
+MultimodalConfig is per-agent, so different agents in the same graph can use different strategies. A vision agent might prefer inline base64 for speed, while a document processing agent uses file_id for durability.
 
-result = app.invoke({"messages": messages}, config={"thread_id": "media-demo"})
-```
+**Messages stay lightweight:**
+By never storing raw bytes in messages, 10xGraph keeps state snapshots small, thread history fast to retrieve, and checkpoints cheap to store. Media bytes live in specialized stores where they belong.
 
----
+## Related pages
 
-## File upload via REST API
-
-When running behind the API server, upload a file with multipart form data:
-
-```bash
-curl -X POST http://127.0.0.1:8000/v1/files/upload \
-  -F "file=@photo.jpg"
-```
-
-Response:
-
-```json
-{
-  "file_id": "a1b2c3d4e5f6...",
-  "filename": "photo.jpg",
-  "content_type": "image/jpeg",
-  "size_bytes": 24576,
-  "access_url": "/v1/files/a1b2c3d4e5f6..."
-}
-```
-
-Use the returned `file_id` in subsequent `invoke` or `stream` requests:
-
-```json
-{
-  "messages": [
-    {
-      "role": "user",
-      "content": [
-        {"type": "text", "text": "What is in this image?"},
-        {"type": "image", "media": {"kind": "file_id", "file_id": "a1b2c3d4e5f6...", "mime_type": "image/jpeg"}}
-      ]
-    }
-  ],
-  "config": {"thread_id": "media-demo", "recursion_limit": 10}
-}
-```
-
-## File upload via TypeScript client
-
-```typescript
-import { AgentFlowClient } from "@10xscale/agentflow-client";
-
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
-
-const file = new File([imageBytes], "photo.jpg", { type: "image/jpeg" });
-const upload = await client.uploadFile(file);
-
-const result = await client.invoke(
-  [
-    {
-      role: "user",
-      content: [
-        { type: "text", text: "Describe this image." },
-        { type: "image", media: { kind: "file_id", file_id: upload.file_id, mime_type: "image/jpeg" } },
-      ],
-    },
-  ],
-  { config: { thread_id: "ts-media-demo" } },
-);
-```
-
----
-
-## Provider capability matrix
-
-Not all providers support all media types and transport modes. 10xGraph's internal capability matrix (`tenxgraph.storage.media.capabilities`) determines the best transport for each provider/model combination. The resolver tries transport modes in preference order:
-
-| Transport mode | Description |
-|---|---|
-| `remote_url` | Send a public or signed HTTPS URL directly |
-| `provider_file` | Upload via provider-native file API (e.g. Google File API) |
-| `inline_bytes` | Send raw bytes inline (base64 data URI) |
-| `unsupported` | The provider/model cannot handle this media type |
-
-You do not need to manage this yourself — `MultimodalConfig` and `Agent` handle the fallback chain automatically based on your configured strategy.
-
----
-
-## Related concepts
-
-- [State and messages](/docs/concepts/state-and-messages)
-- [REST API: Files](/docs/reference/rest-api/files)
-
-## Accessing an uploaded file
-
-```bash
-GET /v1/files/{file_id}
-```
-
-This returns the raw file bytes with the correct `Content-Type` header.
-
-## What you learned
-
-- Upload files with `POST /v1/files/upload` and receive a `file_id`.
-- Reference the `file_id` in message content blocks.
-- `AgentFlowClient.uploadFile` handles the multipart upload in TypeScript.
-- File content is stored in the configured `MediaStore`.
-
-## Related concepts
-
-- [REST API: Files](/docs/reference/rest-api/files)
-- [State and messages](/docs/concepts/state-and-messages)
+- [Sending media from Python](/docs/guides/send-media) — task guide with code examples for all reference types.
+- [REST API files endpoint](/docs/server/files-and-multimodal) — how the API server manages file upload and media serving.
+- [TypeScript client files](/docs/client/files-and-multimodal) — using the client SDK for multimodal requests.
+- [State and messages](/docs/concepts/state-and-messages) — the full message structure and block types.

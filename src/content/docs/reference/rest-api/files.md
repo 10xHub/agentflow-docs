@@ -2,8 +2,8 @@
 title: File upload endpoints
 description: "Reference for the 10xGraph REST endpoints that upload files and retrieve them, with request fields, responses, and authentication requirements."
 section: Reference
-group: REST API
-order: 1690
+group: "REST API"
+order: 360
 label: Files
 updated: "2026-07-21"
 ---
@@ -77,7 +77,7 @@ curl -X POST http://127.0.0.1:8000/v1/files/upload \
 
 The uploader is recorded as the file's owner. Every read path checks it, and a file owned by another user returns `404`, not `403`, so the API never confirms that a foreign `file_id` exists.
 
-For how to reference an uploaded file from a message, see [Multimodal and vision](/docs/how-to/production/multimodal-and-vision).
+For how to reference an uploaded file from a message, see [Multimodal and vision](/docs/server/files-and-multimodal).
 
 ---
 

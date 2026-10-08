@@ -1,15 +1,23 @@
 ---
 title: Streaming
-seoTitle: "Streaming agent responses with astream"
-description: How invoke, stream, and astream work; StreamChunk fields; ResponseGranularity; and how to consume SSE in TypeScript.
+seoTitle: "Agent execution modes and streaming"
+description: "Why and how to stream agent responses. Python execution modes, StreamChunk, ResponseGranularity, and transport options."
 section: Concepts
-order: 162
-group: Serving and clients
+order: 90
+group: "Foundations"
 label: Streaming
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-10xGraph gives you three execution modes — **invoke** (sync, wait for finish), **stream** (sync generator), and **astream** (async generator). Streaming is essential for chat UIs where users expect to see words appear as the model produces them.
+10xGraph provides three execution modes for agents: **invoke** to wait for the final result, **stream** (sync generator) for incremental chunks in blocking code, and **astream** (async generator) for incremental chunks in async contexts. Streaming is essential for chat and realtime UIs where users expect to see model output appear token by token and tool results arrive as they complete.
+
+---
+
+## Why stream
+
+Invoking a graph end-to-end blocks the caller until every node finishes. For interactive experiences, streaming reveals progress to the user while the graph is still running. The stream emits structured chunks as the model generates text, tools execute in parallel, and nodes complete. Your UI can show tokens as they arrive, tool calls as they're made, and state updates as they occur, rather than waiting for silence.
+
+Streaming also bounds memory and latency on long-running agents: you don't buffer a 50,000-token context in RAM before handing it back.
 
 ---
 
@@ -33,13 +41,13 @@ sequenceDiagram
   Graph-->>Client: StreamChunk (state)
 ```
 
-Use **invoke** when you need the full result before proceeding. Use **stream** / **astream** when the client should see partial responses immediately.
+Use **invoke** or **ainvoke** when you need the full result before proceeding. Use **stream** or **astream** when the client should see partial responses immediately as they arrive.
 
 ---
 
-## StreamChunk
+## StreamChunk model
 
-Every streaming event is a `StreamChunk` Pydantic model:
+Every streaming event is a `StreamChunk` Pydantic model with a discriminated event type:
 
 ```python
 from tenxgraph.core.state.stream_chunks import StreamChunk, StreamEvent
@@ -55,39 +63,38 @@ class StreamChunk(BaseModel):
     timestamp: float            # UNIX timestamp
 ```
 
-### StreamEvent values
+The `event` field determines which of the four data fields is populated. Match on it to handle each event type:
 
-| `StreamEvent` | Value | When sent | Populated field |
+| `StreamEvent` | Meaning | Populated field | Use |
 |---|---|---|---|
-| `StreamEvent.MESSAGE` | `"message"` | Each model output message | `chunk.message` |
-| `StreamEvent.STATE` | `"state"` | After each node completes | `chunk.state` |
-| `StreamEvent.ERROR` | `"error"` | Execution error | `chunk.data` |
-| `StreamEvent.UPDATES` | `"updates"` | Custom node-level updates | `chunk.data` |
+| `MESSAGE` | Model or tool output | `message` | Render text tokens, display tool calls |
+| `STATE` | Node completed | `state` | Show execution progress, update context |
+| `ERROR` | Execution failed | `data` | Handle errors in the stream |
+| `UPDATES` | Custom node emission | `data` | Receive progress, metrics, or custom data from tools |
 
 ---
 
-## ResponseGranularity
+## Response granularity
 
-Both `stream()` and `astream()` accept a `response_granularity` parameter to control what is included in each `StreamChunk`:
+Both `stream()` and `astream()` accept a `response_granularity` parameter that controls what state is included in each `StreamChunk`. This lets you tune the amount of data streamed: less granularity saves bandwidth and parsing; higher granularity gives the client a complete view of execution state:
 
 ```python
 from tenxgraph.utils import ResponseGranularity
 ```
 
-| Value | Description |
-|---|---|
-| `ResponseGranularity.LOW` | Only the latest messages (default) |
-| `ResponseGranularity.PARTIAL` | Context, context_summary, and latest messages |
-| `ResponseGranularity.FULL` | Complete state and messages |
+| Value | Includes | Use when |
+|---|---|---|
+| `LOW` (default) | Latest messages only | You only need the model's output, not internal state |
+| `PARTIAL` | Messages, context, context summary | You need context to render memory or summaries alongside output |
+| `FULL` | Full state plus all messages | You're rebuilding the complete execution state on the client |
 
 ---
 
 ## Synchronous streaming
 
-`app.stream()` is a synchronous generator. Use it from non-async code:
+Use `stream()` from blocking code (non-async libraries, CLI scripts):
 
 ```python
-import asyncio
 from tenxgraph.core.state import Message
 from tenxgraph.utils import ResponseGranularity
 from tenxgraph.core.state.stream_chunks import StreamEvent
@@ -107,7 +114,7 @@ print()  # trailing newline
 
 ## Asynchronous streaming
 
-`app.astream()` is an async generator. Use it inside async code (e.g., FastAPI, async tests):
+Use `astream()` inside async contexts (FastAPI, async tests, async notebooks):
 
 ```python
 import asyncio
@@ -128,31 +135,31 @@ async def main():
 asyncio.run(main())
 ```
 
-### Inspecting all chunk types
+### Handling all event types
+
+Use pattern matching to process each chunk type without repeated conditionals:
 
 ```python
 async for chunk in app.astream(inp, config):
     match chunk.event:
         case StreamEvent.MESSAGE:
-            # new message from the model or a tool
             print("message:", chunk.message.text())
         case StreamEvent.STATE:
-            # node completed — full or partial state
             print("state step:", chunk.state.execution_meta.step)
         case StreamEvent.ERROR:
             print("error:", chunk.data)
         case StreamEvent.UPDATES:
-            print("updates:", chunk.data)
+            print("custom update:", chunk.data)
 ```
 
 ---
 
-## invoke and ainvoke
+## Non-streaming execution
 
-For non-streaming use, `app.invoke()` and `app.ainvoke()` return a plain dict:
+When you don't need incremental results, use `invoke()` or `ainvoke()` to run the graph to completion and return the final state dict:
 
 ```python
-# Sync
+# Synchronous
 result = app.invoke(
     {"messages": [Message.text_message("Hello!")]},
     config={"thread_id": "t1"},
@@ -160,7 +167,7 @@ result = app.invoke(
 )
 messages = result["messages"]   # list of Message
 
-# Async
+# Asynchronous
 result = await app.ainvoke(
     {"messages": [Message.text_message("Hello!")]},
     config={"thread_id": "t1"},
@@ -169,7 +176,7 @@ result = await app.ainvoke(
 
 The returned dict keys depend on `response_granularity`:
 
-| Granularity | Keys present |
+| Granularity | Keys returned |
 |---|---|
 | `LOW` | `messages` |
 | `PARTIAL` | `messages`, `context`, `context_summary` |
@@ -177,78 +184,59 @@ The returned dict keys depend on `response_granularity`:
 
 ---
 
-## Stopping a running stream
+## Stopping a stream
 
-Call `app.stop()` / `app.astop()` to request cancellation. The graph checks a stop flag after each node and exits cleanly:
+Request graceful cancellation of a running stream with `stop()` or `astop()`. The graph checks the stop flag after each node and exits cleanly, returning a final state dict:
 
 ```python
-# stop from another coroutine / thread
+# Stop from another coroutine or thread
 await app.astop({"thread_id": "stream-1"})
 ```
 
-Via the REST API:
-
-```bash
-POST /v1/graph/stop
-Content-Type: application/json
-
-{"thread_id": "stream-1"}
-```
+The stopped stream does not emit further chunks after the cancellation takes effect.
 
 ---
 
-## Streaming via the REST API
+## Transports
 
-`POST /v1/graph/stream` streams one JSON-encoded `StreamChunk` per line.
+Streaming is available over multiple transport layers. Choose based on your deployment and client type:
 
-The response carries a `text/event-stream` content type, but the body is **not** SSE-framed:
-there are no `data:` prefixes and no blank-line separators. It is newline-delimited JSON
-(NDJSON), so parse it by splitting on newlines rather than with an `EventSource` or an SSE
-client library.
+### REST (NDJSON)
 
-```bash
-curl -N -X POST http://127.0.0.1:8000/v1/graph/stream \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "Tell me a short story."}],
-    "config": {"thread_id": "rest-stream-1"}
-  }'
-```
+The HTTP `/v1/graph/stream` endpoint streams responses as newline-delimited JSON (NDJSON), one `StreamChunk` per line. Use this when you need a simple HTTP transport that works with any HTTP client (curl, fetch, axios) and no bidirectional connection. Not ideal for high-frequency token streams due to HTTP framing overhead.
 
-Response:
+See [Invoke and stream over REST](/docs/server/invoke-and-stream) for details and examples.
 
-```
-{"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": "Once"}]}, ...}
-{"event": "message", "message": {"role": "assistant", "content": [{"type": "text", "text": " upon a time"}]}, ...}
-{"event": "state", "state": {...}, ...}
-```
+### WebSocket (turn-based)
+
+The WebSocket `/v1/graph/ws` endpoint streams individual `StreamChunk` frames over a persistent WebSocket connection. Use this for lower-latency bidirectional communication and tighter control over thread state. Suitable for most chat UIs.
+
+See [WebSocket streaming](/docs/server/websockets) for configuration, authentication, and close codes.
+
+### WebSocket (realtime audio)
+
+The WebSocket `/v1/graph/live` endpoint is optimized for realtime (Anthropic Realtime API and similar) agents that need to stream audio frames bidirectionally with minimal latency. This is a specialized transport; use it only if your agent is built for continuous audio I/O.
+
+See [Realtime audio agent](/docs/guides/use-realtime-audio) for integration details.
+
+### AG-UI
+
+The POST `/v1/ag-ui` endpoint implements the AG-UI (agentic UI) protocol for frameworks like CopilotKit. It streams events and tool results in the AG-UI format, handles browser tool execution, and supports human approval interrupts.
+
+This transport is automatically configured when `ag_ui.enabled` is set in your 10xgraph.json.
 
 ---
 
-## Streaming in TypeScript
+## TypeScript client
 
-`AgentFlowClient.stream` returns an async iterator of `StreamChunk`:
+From TypeScript, the `AgentFlowClient.stream()` method handles all transport details and returns a unified async iterator of `StreamChunk` objects. No need to parse NDJSON or manage WebSocket frames yourself.
 
-```typescript
-import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
-
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
-
-for await (const chunk of client.stream(
-  [Message.text_message("Tell me a short story.")],
-  { config: { thread_id: "ts-stream-1" } },
-)) {
-  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
-    process.stdout.write(chunk.message.text());
-  }
-}
-console.log();
-```
+See [Stream responses in TypeScript](/docs/client/stream-responses) for code examples and React integration patterns.
 
 ---
 
 ## Related concepts
 
-- [StateGraph and nodes](/docs/concepts/state-graph)
-- [State and messages](/docs/concepts/state-and-messages)
-- [Production runtime](/docs/concepts/production-runtime)
+- [State and messages](/docs/concepts/state-and-messages): The data structures carried in `StreamChunk`
+- [Agents and tools](/docs/concepts/agents-and-tools): How agents emit messages during execution
+- [Serving agents](/docs/concepts/serving-agents): Request lifecycle and the API server execution model

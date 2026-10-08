@@ -1,17 +1,15 @@
 ---
 title: State and Messages
 seoTitle: "AgentState and messages in 10xGraph"
-description: AgentState fields, Message structure, all content block types, ToolResult, and the add_messages reducer.
+description: How AgentState holds conversation history, messages carry multimodal content blocks, and reducers control state merging.
 section: Concepts
-order: 143
-group: Graphs and agents
+order: 30
+group: "Foundations"
 label: State and Messages
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-Every node in a graph receives state and returns updates to state. `AgentState` is the default state class. `Message` carries all content — text, multimodal blocks, tool calls, tool results — between nodes and across turns.
-
----
+Every node in a graph receives state and returns updates to state. `AgentState` is the default state class that holds the conversation history. `Message` carries all content between nodes and across turns, from plain text to multimodal blocks, tool calls, and results. Understanding how state flows through your graph and how messages accumulate is essential to building agents that remember context and handle complex interactions.
 
 ## AgentState
 
@@ -30,14 +28,22 @@ class AgentState(BaseModel):
 | `context_summary` | `str \| None` | Optional summary of trimmed-out context when `trim_context=True` |
 | `execution_meta` | `ExecMeta` | Internal runtime metadata (current node, step count, interrupt status, stop request) |
 
+The `context` field is the conversation history. Every message is kept and accumulated, so your agent has full access to previous turns. The `context_summary` field holds a compressed version of messages that were trimmed away (when `trim_context=True`), so the LLM never loses the information entirely. `execution_meta` tracks runtime state internal to 10xGraph — the current node being executed, how many steps have run, whether the graph was interrupted, and whether a stop was requested mid-stream.
+
 ### The `add_messages` reducer
 
-`context` uses the `add_messages` annotated reducer. This means:
+`context` uses the `add_messages` annotated reducer. This controls how state updates merge:
+
 - When a node returns a `Message`, it is **appended** to `context`, not replaced.
-- When a node returns a `dict`, only the keys present in the dict are merged.
+- When a node returns a `dict`, only the keys present in the dict are merged; other state fields unchanged.
+- When a node returns multiple messages, all are appended in order.
 - The runtime never wipes the conversation history between nodes.
 
-### convenience methods on AgentState
+This is why full conversation history is preserved across the entire run, even as many nodes process the state.
+
+### Convenience methods on AgentState
+
+`AgentState` provides methods to read and modify execution state:
 
 ```python
 state.is_running()           # → bool: execution in progress
@@ -49,9 +55,11 @@ state.complete()             # mark execution as completed
 state.error("msg")           # mark execution as errored
 ```
 
+These are useful in custom nodes when you need to inspect or affect the execution state.
+
 ### Custom state
 
-Extend `AgentState` to add application fields:
+Extend `AgentState` to add application-specific fields:
 
 ```python
 from tenxgraph.core.state import AgentState
@@ -67,18 +75,16 @@ Pass the subclass to `StateGraph`:
 ```python
 from tenxgraph.core.graph import StateGraph
 
-graph = StateGraph(MyState)   # or StateGraph(MyState())
+graph = StateGraph(MyState)
 ```
 
-All nodes then receive `MyState` and can read or write any field. The built-in `context`, `context_summary`, and `execution_meta` fields are always available.
-
----
+All nodes then receive `MyState` and can read or write any field. The built-in `context`, `context_summary`, and `execution_meta` fields are always available and carry 10xGraph's internal data.
 
 ## Message
 
-A `Message` represents one turn in a conversation. It holds a `role`, a list of **content blocks**, and optional metadata.
+A `Message` represents one turn in a conversation. It holds a role, a list of content blocks (the actual content), metadata about that turn, and optional token usage information.
 
-### Full Message model
+### Message structure
 
 ```python
 class Message(BaseModel):
@@ -94,31 +100,33 @@ class Message(BaseModel):
     raw: dict | None = None        # provider-native raw response
 ```
 
-### Roles
+`message_id` is auto-generated (a UUID) unless you provide one. `role` indicates who said it: `"user"` for human input, `"assistant"` for the model, `"tool"` for tool results, and `"system"` for instructions (not stored in context history). `content` is a list of blocks — text, images, audio, tool calls, errors, and more. `delta` is true only for partial messages during streaming. `tools_calls` carries the raw tool request dict sent by the model (also appears as `ToolCallBlock` in `content` for convenience). `reasoning` holds chain-of-thought traces from models like o1 or Gemini Thinking. `usages` holds token counts if the provider returned them.
+
+### Message roles
 
 | Role | Description |
 |---|---|
 | `"user"` | Input from the human |
 | `"assistant"` | Response from the model (may contain `tools_calls`) |
 | `"tool"` | Result from a tool execution |
-| `"system"` | System instruction (injected into prompts, not stored in context) |
+| `"system"` | System instruction (injected into model prompts, not stored in context) |
 
 ### Creating messages
 
+Use factory methods for common cases:
+
 ```python
-from tenxgraph.core.state import Message
+from tenxgraph.core.state import Message, TextBlock, ImageBlock, MediaRef
 
 # Plain text user message
 msg = Message.text_message("Hello!")
-msg = Message.text_message("Hello!", role="user", message_id="msg-1")
 
 # Tool result message
 msg = Message.tool_message(
     content=[ToolResultBlock(call_id="call_123", output="Sunny, 22°C", status="completed")],
-    message_id="tr-1",
 )
 
-# Custom multimodal message
+# Multimodal message with custom blocks
 msg = Message(
     role="user",
     content=[
@@ -131,12 +139,12 @@ msg = Message(
 ### Extracting text
 
 ```python
-text = msg.text()   # returns concatenated text from all TextBlocks
+text = msg.text()   # concatenate all TextBlocks
 ```
 
-### Token usages
+### Token usage tracking
 
-When the model returns usage data it is stored in `msg.usages`:
+When the model returns token usage data, it is stored in `msg.usages`:
 
 ```python
 class TokenUsages(BaseModel):
@@ -150,159 +158,31 @@ class TokenUsages(BaseModel):
     audio_tokens: int | None = 0
 ```
 
----
+This helps you track model cost and performance across conversations.
 
-## Content block types
+## Content blocks
 
-All block types are importable from `tenxgraph.core.state`.
+Messages carry content in typed blocks. Each block represents a different kind of content: text, images, audio, tool calls, tool results, errors, and more. For a complete reference of every block type with detailed examples, see the [Message reference](/docs/reference/python/messages).
 
-### TextBlock
+Common blocks include:
 
-```python
-from tenxgraph.core.state import TextBlock, AnnotationRef
+- **TextBlock**: Plain text or citations.
+- **ImageBlock**, **AudioBlock**, **VideoBlock**: Multimodal media with metadata (duration, dimensions, transcripts).
+- **DocumentBlock**: PDFs and other documents with extracted text and page numbers.
+- **ToolCallBlock**: A request from the model to call a specific tool, with arguments.
+- **ToolResultBlock**: The result returned from executing a tool.
+- **ReasoningBlock**: Chain-of-thought traces from models that support extended reasoning.
+- **ErrorBlock**: Signals an error (e.g., tool timeout, tool not found).
 
-block = TextBlock(
-    text="Here is the answer.",
-    annotations=[
-        AnnotationRef(url="https://source.example.com", title="Source"),
-    ],
-)
-```
+All block types are importable from `tenxgraph.core.state`. See the [reference](/docs/reference/python/messages) for the full API, field definitions, and examples for each block type.
 
-### ImageBlock
+## ToolResult: tools that update state
 
-```python
-from tenxgraph.core.state import ImageBlock, MediaRef
-
-block = ImageBlock(
-    media=MediaRef(kind="url", url="https://example.com/photo.png", mime_type="image/png"),
-    alt_text="A landscape photo",
-    bbox=[10.0, 20.0, 300.0, 400.0],  # [x1, y1, x2, y2] if applicable
-)
-```
-
-### AudioBlock
-
-```python
-from tenxgraph.core.state import AudioBlock
-
-block = AudioBlock(
-    media=MediaRef(kind="data", data_base64="<b64>", mime_type="audio/wav"),
-    transcript="Hello, world.",   # optional pre-existing transcript
-    sample_rate=16000,
-    channels=1,
-)
-```
-
-### VideoBlock
-
-```python
-from tenxgraph.core.state import VideoBlock
-
-block = VideoBlock(
-    media=MediaRef(kind="data", data_base64="<b64>", mime_type="video/mp4"),
-    thumbnail=MediaRef(kind="url", url="https://example.com/thumb.jpg", mime_type="image/jpeg"),
-)
-```
-
-### DocumentBlock
-
-```python
-from tenxgraph.core.state import DocumentBlock
-
-block = DocumentBlock(
-    media=MediaRef(kind="file_id", file_id="doc-key", mime_type="application/pdf"),
-    text="Extracted body text (optional).",
-    pages=[1, 2, 3],
-    excerpt="Short preview snippet.",
-)
-```
-
-### DataBlock
-
-Generic binary block for anything not covered by the above:
-
-```python
-from tenxgraph.core.state import DataBlock
-
-block = DataBlock(
-    mime_type="application/octet-stream",
-    data_base64="<b64>",
-    media=MediaRef(kind="file_id", file_id="data-key", mime_type="application/octet-stream"),
-)
-```
-
-### ToolCallBlock
-
-Present in assistant messages when the model requests a tool:
-
-```python
-from tenxgraph.core.state import ToolCallBlock
-
-block = ToolCallBlock(
-    id="call_abc123",
-    name="get_weather",
-    args={"location": "Tokyo"},
-    tool_type=None,    # "web_search" | "file_search" | "computer_use" | None
-)
-```
-
-The same information is also in `message.tools_calls` as a raw dict list (provider-native format).
-
-### ToolResultBlock
-
-Present in `"tool"` role messages returned by `ToolNode`:
-
-```python
-from tenxgraph.core.state import ToolResultBlock
-
-block = ToolResultBlock(
-    call_id="call_abc123",   # matches ToolCallBlock.id
-    output="Sunny, 22°C.",
-    status="completed",      # "completed" | "error"
-)
-```
-
-### ReasoningBlock
-
-Chain-of-thought traces (supported by o1, o3, Gemini Thinking):
-
-```python
-from tenxgraph.core.state.message_block import ReasoningBlock
-
-block = ReasoningBlock(text="Let me think step by step...")
-```
-
-### ErrorBlock
-
-Signals an error that occurred during tool execution or processing:
-
-```python
-from tenxgraph.core.state import ErrorBlock
-
-block = ErrorBlock(error="Tool timed out after 30 s.", tool_call_id="call_abc123")
-```
-
-### AnnotationBlock
-
-Structured citations and references returned by search-enabled models:
-
-```python
-from tenxgraph.core.state.message_block import AnnotationBlock
-
-block = AnnotationBlock(
-    annotation=AnnotationRef(url="https://example.com", title="Source article")
-)
-```
-
----
-
-## ToolResult — tools that update state
-
-When a tool needs to both send a message back to the model **and** mutate state fields simultaneously, return `ToolResult` instead of a plain string:
+Sometimes a tool needs to send a message back to the model and also mutate state fields at the same time. Instead of returning a plain string, return a `ToolResult`:
 
 ```python
 from tenxgraph.core.state.tool_result import ToolResult
+from tenxgraph.core.state import AgentState
 
 class MyState(AgentState):
     selected_city: str = ""
@@ -315,13 +195,11 @@ def select_city(city: str) -> ToolResult:
     )
 ```
 
-Only fields present in `state` dict are updated; all other state fields are left unchanged.
+Only fields present in the `state` dict are updated; all other state fields are left unchanged. This pattern is useful when a tool call should trigger a state change that affects the rest of the graph, like updating a filter or selection.
 
----
+## How context accumulates across turns
 
-## How the context accumulates
-
-After several turns with a checkpointer:
+The context list grows as each turn completes. After several exchanges with checkpointing enabled:
 
 ```python
 [
@@ -334,13 +212,11 @@ After several turns with a checkpointer:
 ]
 ```
 
-The checkpointer saves this entire list per `thread_id` and restores it on the next call.
+The checkpointer persists this entire list under the thread ID, and when the thread is resumed, it is restored intact. This is why a thread-based conversation feels continuous: every prior turn is available to the agent, and the model can reference anything the human or other agents said.
 
----
+## Managing context size: trimming and summarization
 
-## Context trimming and summarization
-
-Set `trim_context=True` on `Agent` to automatically trim oldest messages before each model call. When messages are trimmed, the summarized content is stored in `state.context_summary`:
+As conversations grow, the message list can exceed the model's context window. The `trim_context=True` option on `Agent` automatically removes old messages before sending to the model:
 
 ```python
 agent = Agent(
@@ -349,24 +225,12 @@ agent = Agent(
 )
 ```
 
----
+When messages are trimmed, the removed content is summarized and stored in `state.context_summary`. The model sees the summary instead of the full old messages, so no information is lost — only made more concise. The full history is always preserved in the checkpointer for audit and debugging.
+
+This is one way to keep conversations running without hitting token limits. Another is to use a context manager or memory store to offload long-term facts to a retrieval system, letting short-term context stay focused.
 
 ## Related concepts
 
-- [Agents and tools](/docs/concepts/agents-and-tools)
-- [Media and files](/docs/concepts/media-and-files)
-- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads)
-
-This modifies what is sent to the model, not the stored state. The full history is still preserved in the checkpointer.
-
-## What you learned
-
-- `AgentState.context` holds all messages for the current thread.
-- `Message.text_message` creates a plain-text message; use `.text()` to read it.
-- Extend `AgentState` to add custom fields.
-- `trim_context=True` on `Agent` prevents token limit errors without losing history.
-
-## Related concepts
-
-- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads)
-- [Media and files](/docs/concepts/media-and-files)
+- [Agents and tools](/docs/concepts/agents-and-tools): How agents invoke tools and handle responses.
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads): How conversations are persisted and resumed.
+- [Media and files](/docs/concepts/media-and-files): Storing and referencing large media in your messages.

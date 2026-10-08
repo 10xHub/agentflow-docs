@@ -3,12 +3,12 @@ title: CLI reference
 seoTitle: "10xGraph CLI command reference"
 description: "Every 10xGraph CLI command with its purpose, usage line, options and defaults: init, api, play, dev, build, eval, test, skills, audit, config, demo and version."
 section: Reference
-order: 1730
+order: 410
 updated: 2026-10-03T00:00:00.000Z
 faq:
   - q: What is the difference between api, play and dev?
     a: All three start the same Uvicorn development server. play also opens the hosted playground, dev opens it by default but accepts --no-open, and api never opens it. None of them is meant for production, so use build and Gunicorn there.
-group: CLI and configuration
+group: "CLI and configuration"
 ---
 
 The `10xgraph` command ships with the `10xgraph-api` package. It has twelve subcommands: `init`, `api`, `play`, `dev`, `build`, `eval`, `test`, `skills`, `audit`, `config`, `demo` and `version`. Global options go before the subcommand, and `-h` or `--help` works everywhere.
@@ -112,7 +112,7 @@ Local development server. Like `play`, with the playground opening controlled by
 
 ## build
 
-Generate deployment files. See [Deploy with Docker and Kubernetes](/docs/how-to/api-cli/generate-docker-files).
+Generate deployment files. See [Deploy with Docker and Kubernetes](/docs/server/deploy).
 
 ```bash
 10xgraph build [--docker-compose] [--k8s] [options]

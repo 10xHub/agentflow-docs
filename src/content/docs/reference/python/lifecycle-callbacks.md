@@ -2,8 +2,8 @@
 title: Lifecycle Callbacks
 description: GraphLifecycleHook, GraphLifecycleContext — hook into graph-level events (start, end, error, interrupt, resume, checkpoint, state update).
 section: Reference
-group: Python library
-order: 1600
+group: "Python library"
+order: 150
 updated: "2026-07-21"
 ---
 

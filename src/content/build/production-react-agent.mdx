@@ -405,7 +405,7 @@ def test_refund_twice_moves_money_once() -> None:
 pytest
 ```
 
-All four pass in well under a second, with no network calls. To test how the model behaves, use evaluation sets with real conversations: see [Evaluation](/docs/qa/evaluation).
+All four pass in well under a second, with no network calls. To test how the model behaves, use evaluation sets with real conversations: see [Evaluation](/docs/testing/evaluation).
 
 ## 8. Ship it with Docker
 
@@ -477,7 +477,7 @@ Values under `environment` override the same names from `env_file`, so inside Co
 <CardGrid>
 
 <LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How the tool ledger stops repeated side effects after a crash." eyebrow="Concept" />
-<LinkCard title="Auth and authorization" href="/docs/how-to/production/auth-and-authorization" description="Custom auth backends, role scopes and owner-only threads." eyebrow="How-to" />
-<LinkCard title="Deployment" href="/docs/how-to/production/deployment" description="Workers, Kubernetes and reverse proxies." eyebrow="How-to" />
-<LinkCard title="Evaluation" href="/docs/qa/evaluation" description="Score the agent on real conversations before each release." eyebrow="Testing" />
+<LinkCard title="Auth and authorization" href="/docs/server/auth" description="Custom auth backends, role scopes and owner-only threads." eyebrow="How-to" />
+<LinkCard title="Deployment" href="/docs/server/deploy" description="Workers, Kubernetes and reverse proxies." eyebrow="How-to" />
+<LinkCard title="Evaluation" href="/docs/testing/evaluation" description="Score the agent on real conversations before each release." eyebrow="Testing" />
 </CardGrid>

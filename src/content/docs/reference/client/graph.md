@@ -3,8 +3,8 @@ title: Graph control
 seoTitle: "Graph control methods in the TS client"
 description: "Reference for graph-control methods on the TypeScript client: ping, graph, graphTools, observability, graphStateSchema, stopGraph, fixGraph, and setup."
 section: Reference
-group: TypeScript client
-order: 1810
+group: "TypeScript client"
+order: 470
 label: Graph control
 updated: "2026-09-29"
 ---
@@ -148,7 +148,7 @@ interface GraphToolsResponse {
 
 A graph with no tool nodes returns `nodes: []` and `tool_count: 0`. That is a valid graph, not an error.
 
-See [how-to/client/graph-utilities](/docs/how-to/client/graph-utilities) for worked examples, including verifying that your remote tools registered.
+See [how-to/client/graph-utilities](/docs/client/graph-utilities) for worked examples, including verifying that your remote tools registered.
 
 ---
 
@@ -391,4 +391,4 @@ if (interrupt) {
 
 ## Next step
 
-See [how-to/client/graph-utilities](/docs/how-to/client/graph-utilities) for task-oriented recipes, or [Register remote tools](/docs/how-to/client/register-remote-tools) for registering the client-side tools that `setup()` transmits.
+See [how-to/client/graph-utilities](/docs/client/graph-utilities) for task-oriented recipes, or [Register remote tools](/docs/client/remote-tools) for registering the client-side tools that `setup()` transmits.

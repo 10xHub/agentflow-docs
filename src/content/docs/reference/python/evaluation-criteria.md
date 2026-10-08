@@ -2,8 +2,8 @@
 title: Evaluation criteria
 description: Constructor signatures, defaults and scoring behaviour for every built-in evaluation criterion class in tenxgraph.qa.evaluation.criteria.
 section: Reference
-group: Python library
-order: 1560
+group: "Python library"
+order: 280
 label: Evaluation criteria
 updated: "2026-07-21"
 ---
@@ -17,7 +17,7 @@ criterion objects themselves.
 Two related pages cover the layers above:
 
 - [Evaluation](/docs/reference/python/evaluation) — `AgentEvaluator`, `EvalSet`, `EvalCase`, reports.
-- [Criteria (concepts)](/docs/qa/evaluation/criteria) — choosing thresholds and
+- [Criteria (concepts)](/docs/testing/criteria) — choosing thresholds and
   configuring criteria through `CriterionConfig` factory methods.
 
 You only need the classes directly when you are writing a custom criterion,
@@ -116,7 +116,7 @@ result = await criterion.evaluate(execution_result, eval_case)  # CriterionResul
 
 All criteria are configured with the same `CriterionConfig` model. Its fields and
 factory methods are documented in
-[Criteria (concepts)](/docs/qa/evaluation/criteria#criterionconfig-reference).
+[Criteria (concepts)](/docs/testing/criteria#criterionconfig-reference).
 Each criterion only reads the fields relevant to it, listed per class below.
 
 ---

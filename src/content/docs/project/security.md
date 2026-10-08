@@ -3,7 +3,7 @@ title: Security policy
 seoTitle: "Security policy and vulnerability reports"
 description: How to report a vulnerability in 10xGraph, what response to expect, which versions receive fixes, and which behaviours are by design rather than bugs.
 section: Project
-order: 2640
+order: 40
 label: Security
 updated: "2026-07-21"
 ---
@@ -57,7 +57,7 @@ Reports covering these will be closed with a pointer back here.
 Tools registered with a `ToolNode` run with the privileges of the host process.
 Register only trusted tools, and treat any tool input derived from model output
 as untrusted. See [protect against prompt
-injection](/docs/how-to/python/protect-against-prompt-injection).
+injection](/docs/guides/protect-against-prompt-injection).
 
 ### The model can be persuaded to call a tool
 
@@ -72,8 +72,8 @@ validators](/docs/concepts/security-and-validators).
 `MODE=development` deliberately enables debug output, permissive CORS, and
 unauthenticated access so that a local run works with no setup. That is not a
 production configuration. Production has its own defaults and refuses to start
-in some unsafe combinations. See [deployment](/docs/how-to/production/deployment)
-and [environment variables](/docs/how-to/production/environment-variables).
+in some unsafe combinations. See [deployment](/docs/server/deploy)
+and [environment variables](/docs/server/production-checklist).
 
 ## Hardening checklist
 
@@ -83,9 +83,9 @@ Before exposing an agent to untrusted users:
 2. Set explicit `ORIGINS`. Wildcard CORS with credentials is refused at startup.
 3. Enable authentication (`"auth": "jwt"` or a custom `BaseAuth`) and set a
    `JWT_SECRET_KEY` of at least 32 characters. See
-   [auth and authorization](/docs/how-to/production/auth-and-authorization).
+   [auth and authorization](/docs/server/auth).
 4. Keep `enforce_user_isolation` on so a thread id alone is not an access token.
-5. Configure [rate limiting](/docs/how-to/api-cli/configure-rate-limiting), and
+5. Configure [rate limiting](/docs/server/rate-limiting), and
    make sure your proxy hop count is correct so the limit cannot be bypassed
    with a forged `X-Forwarded-For`.
 6. Restrict per-tool access with an `AuthorizationBackend` if any tool can spend

@@ -3,8 +3,8 @@ title: Rate Limiting
 seoTitle: "rate_limit configuration reference"
 description: "Complete reference for the rate_limit block in 10xgraph.json: the backends, limits, and every option for throttling requests to the 10xGraph API server."
 section: Reference
-group: CLI and configuration
-order: 1760
+group: "CLI and configuration"
+order: 450
 updated: "2026-09-29"
 ---
 
@@ -191,6 +191,6 @@ Set `"backend": "custom"` in `10xgraph.json` and bind the instance through Injec
 
 ## See also
 
-- [Configure Rate Limiting](/docs/how-to/api-cli/configure-rate-limiting) — step-by-step setup guide
+- [Configure Rate Limiting](/docs/server/rate-limiting) — step-by-step setup guide
 - [10xgraph.json configuration](/docs/reference/api-cli/configuration)
 - [Environment variables](/docs/reference/api-cli/environment)

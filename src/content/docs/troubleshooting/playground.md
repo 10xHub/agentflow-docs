@@ -2,7 +2,7 @@
 title: Playground Troubleshooting
 description: Symptoms, causes, and fixes for hosted playground connection issues when using 10xgraph play.
 section: Troubleshooting
-order: 1940
+order: 60
 updated: "2026-09-29"
 ---
 
@@ -119,7 +119,7 @@ Denial is handled, not fatal: the session stays open and the turn is ended clean
 
 **Fix**
 
-- there is no playground workaround. File upload works over the API and the TypeScript client; see [How to send images and documents](/docs/how-to/client/send-images-and-documents)
+- there is no playground workaround. File upload works over the API and the TypeScript client; see [How to send images and documents](/docs/client/files-and-multimodal)
 
 ## Issue: an Inspect page is empty
 
@@ -183,7 +183,7 @@ Denial is handled, not fatal: the session stays open and the turn is ended clean
 
 ## Related docs
 
-- [Open the Playground](/docs/how-to/api-cli/open-playground)
+- [Open the Playground](/docs/server/playground)
 - [API Server Troubleshooting](/docs/troubleshooting/api-server)
 
 ## What you learned

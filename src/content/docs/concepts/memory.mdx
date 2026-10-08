@@ -1,136 +1,196 @@
 ---
-title: "Memory: hot and cold"
-description: How PgCheckpointer keeps thread state in a Redis hot cache and PostgreSQL durable history, what is written when, and how the long-term store fits in.
+title: How PgCheckpointer works
+description: The internal mechanisms of PgCheckpointer's two-layer storage model, the write path, read path, and optimistic concurrency control for thread state.
 section: Concepts
-order: 150
-group: Memory and reliability
-updated: 2026-10-03T00:00:00.000Z
+order: 110
+group: "Memory and reliability"
+updated: 2026-10-08T00:00:00.000Z
 faq:
   - q: What happens when the Redis cache expires or Redis restarts?
     a: Nothing is lost. PostgreSQL holds the authoritative state, so the next read misses the cache, loads the latest version from PostgreSQL and writes it back to Redis. The cache TTL defaults to 86400 seconds (24 hours).
   - q: How much history does PgCheckpointer keep?
     a: It keeps the 20 most recent state snapshots per thread by default and prunes older ones on every durable write. Change this with the state_history_limit argument. Messages are stored in their own table.
-  - q: Do I need Redis if I already use PostgreSQL?
-    a: PgCheckpointer requires both and raises a ValueError at construction if either connection is missing. If you want a single database and no cache, SqliteCheckpointer is a separate option for single-user agents.
+  - q: What happens when two runs write to the same thread at the same time?
+    a: PgCheckpointer uses optimistic concurrency control. Each write performs a version check. If another run committed a new version since this run started, the write fails with StaleStateError and the cache is invalidated to prevent the thread from staying stuck on stale data.
 ---
 
-`PgCheckpointer` stores each thread twice. Redis holds the latest state as a fast cache with a TTL (24 hours by default). PostgreSQL holds the durable, versioned history and the messages. Reads try Redis first and fall back to PostgreSQL. Writes go to PostgreSQL first, then refresh Redis.
+`PgCheckpointer` implements a two-layer storage model: a **durable layer** in PostgreSQL with full versioned history, and a **hot cache layer** in Redis with TTL-controlled entries. Understanding how state flows through these layers is essential for production deployment and debugging concurrency issues.
 
-## What are the memory layers?
+## The two-layer model
 
-| Layer | Backed by | Lifetime | Holds |
+| Layer | Purpose | Lifetime | Guarantees |
 |---|---|---|---|
-| Working state | `AgentState` in the running process | One run | Context messages, summary, your custom fields |
-| Hot cache | Redis | TTL, 86400 s by default | Latest state per thread and user |
-| Durable history | PostgreSQL | Until you delete the thread | Threads, versioned state rows, messages, tool-call records |
-| Long-term store | Qdrant or Mem0 | Until you delete the memory | Semantic memories shared across threads |
+| Hot cache | Fast reads, reduces Postgres load | TTL (default 86400 seconds / 24 hours) | Best-effort; failures are silent |
+| Durable storage | Persistent, versioned history | Until thread is deleted | Atomic, transactional, authoritative |
 
-The first three layers are the checkpointer and are scoped to a thread. The last one is the store and is not.
+PostgreSQL is the source of truth. Redis is expendable: if it crashes or the cache entry expires, the next read simply falls back to Postgres. Conversely, losing the Redis cache does not lose data.
 
-## How do I create a PgCheckpointer?
+## The write path: durable first, then cache
 
-Install the drivers, then pass connection details. Both a PostgreSQL connection and a Redis connection are required.
+When a graph completes a node and needs to checkpoint state, `PgCheckpointer.aput_checkpoint()` executes two sequential operations:
 
-```bash
-pip install asyncpg "redis>=4.2"
+### 1. Durable write to PostgreSQL
+
+State is written in a single database transaction that:
+
+1. Acquires a per-thread row lock to serialize writes (preventing lost updates when multiple workers run the same thread concurrently)
+2. Performs an optimistic version check: reads the current version from the `states` table, compares it to the version the run read at the start, and raises `StaleStateError` if another run committed in the meantime
+3. If the check passes, inserts a new row with `version = current_version + 1` and the serialized state data
+4. Inserts any new messages into the `messages` table
+5. Prunes historical versions older than `state_history_limit` (default 20 rows)
+6. Commits the transaction
+
+If PostgreSQL fails before commit, the transaction is rolled back and no state is persisted. The run's thread is left unchanged.
+
+### 2. Cache refresh to Redis
+
+After PostgreSQL commits, the same state is written to Redis under the key `state_cache:{thread_id}:{user_id}` with the configured TTL. This cache write is atomic via Lua script and includes a version guard: the script compares the incoming version to any existing cached version and only writes if the new version is equal or newer. This prevents a stale run from overwriting a newer cached state with a Lua script atomically.
+
+If the Redis write fails, the failure is logged and ignored. The durable state is safe in PostgreSQL, and the next read will fall back to Postgres and refresh the cache.
+
+### Write sequence guarantees
+
+The PostgreSQL-first ordering ensures the cache never holds state that is not durable. If a crash occurs between the Postgres commit and the Redis write, the Redis cache remains stale (or empty), but the durable state is safe. The next read will detect the cache miss and fetch from Postgres.
+
+## The read path: cache-aware with atomic fallback
+
+At the start of a run, `PgCheckpointer.aget_state_cache()` retrieves the thread's latest state:
+
+1. **Redis hit**: Read `state_cache:{thread_id}:{user_id}` from Redis. Extract the embedded version number (stored as `__checkpoint_version__` in the cached JSON). Restore it into `config['_checkpoint_version']` so a subsequent write can use it for the version check. Return the deserialized state.
+
+2. **Redis miss or error**: Execute a Postgres read:
+   - Query `SELECT version, state_data FROM states WHERE thread_id = ? ORDER BY version DESC LIMIT 1`
+   - Deserialize the state and extract the version
+   - Populate `config['_checkpoint_version']` with this version
+   - Return the state
+
+3. **Thread not found in Postgres**: Return `None`. The graph will initialize a fresh `AgentState` and use the incoming messages (if any) to populate it.
+
+4. **Cache refreshed on miss**: If the Postgres read succeeded, immediately write the result back to the Redis cache (with TTL) so the next call to this thread hits the cache.
+
+This two-stage read minimizes Postgres load in the common case (cache hits) while guaranteeing correctness (the version from either cache or Postgres is used for the next write's compare-and-swap).
+
+## Versions and optimistic concurrency control
+
+Every call to `aput_checkpoint()` or `aput_state()` performs a compare-and-swap:
+
+1. The run reads a thread's state at the start and records its `version` in `config['_checkpoint_version']`
+2. The run executes its graph
+3. At the end, the write checks if `version` still matches the current row's version in Postgres
+4. If another run committed a new version in the meantime, the write raises `StaleStateError` instead of updating
+
+The SQL check is enforced via a WHERE clause in the insert's lock condition. If the check fails:
+
+- The transaction is rolled back (no state is persisted)
+- The cached entry is invalidated (dropped from Redis) to prevent the thread from staying stuck on stale data
+- `StaleStateError` is raised to the caller
+
+This prevents lost updates: each run's writes are serialized by version number, and concurrent runs that started from the same version cannot both commit.
+
+### Example: three concurrent runs
+
+```
+Run A          Run B          Run C
+├─ Read @ v=0
+├─ Read @ v=0
+│  ├─ Read @ v=0
+│  │  ├─ Execute (A)
+│  │  ├─ Write → v=1 ✓
+│  │  └─ Cache v=1
+│  ├─ Execute (B)
+│  ├─ Write expected v=0, found v=1 → StaleStateError
+│  └─ Cache invalidated
+├─ Execute (C)
+└─ Write expected v=0, found v=1 → StaleStateError
+   └─ Cache invalidated
 ```
 
-```python title="graph/agent.py"
-from tenxgraph.storage.checkpointer import PgCheckpointer
+Run A succeeds. Runs B and C both fail because they started from v=0 but A already advanced to v=1. Their cache entries are dropped so they do not poison the next read. The calling code can retry them if needed.
 
-checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql://user:password@localhost:5432/agents",
-    redis_url="redis://localhost:6379/0",
-    cache_ttl=3600,             # seconds, default 86400  # [!code highlight]
-    state_history_limit=20,     # snapshots per thread, default 20
-)
+## History pruning and bounded growth
 
-checkpointer.setup()  # create tables and apply migrations, once at startup
+By default, `PgCheckpointer` keeps 20 state snapshots per thread (`state_history_limit=20`). After each successful write, rows older than this limit are deleted:
 
-app = agent.compile(checkpointer=checkpointer)
+```python
+# Pseudocode from _write_state_row()
+new_version = current_version + 1
+INSERT INTO states (thread_id, user_id, version, state_data) VALUES (...)
+DELETE FROM states 
+  WHERE thread_id = ? AND user_id = ?
+  AND version < (new_version - state_history_limit)
 ```
 
-Constructor arguments:
+This prevents the `states` table from growing indefinitely. The 20-row window is enough for debugging the recent execution history but not an audit log. If you need to preserve all history, export it before it is pruned, or increase `state_history_limit` (at the cost of more Postgres storage).
 
-| Argument | Meaning |
+Messages are stored separately in the `messages` table and are not automatically pruned by version limits (only by explicit deletion or thread cleanup).
+
+## Database schema and table structure
+
+The `PgCheckpointer.asetup()` method creates these tables (in the specified schema, default `public`):
+
+| Table | Purpose |
 |---|---|
-| `postgres_dsn` or `pg_pool` | A DSN, or an existing `asyncpg` pool. One is required. |
-| `redis_url`, `redis` or `redis_pool` | A URL, a client or a pool. One is required. |
-| `pool_config`, `redis_pool_config` | Options for pools the checkpointer creates. |
-| `schema` | PostgreSQL schema, `public` by default. |
-| `cache_ttl` | Redis TTL in seconds. Default 86400. |
-| `state_history_limit` | Snapshots kept per thread. Default 20. |
-| `enforce_user_isolation` | Scope threads to `user_id`. Default `True`. |
-| `user_id_type`, `id_type` | Column types: `string`, `int` or `bigint`. |
+| `threads` | Thread metadata: `thread_id`, `user_id`, `name`, `created_at`, `metadata` |
+| `states` | Versioned state snapshots: `thread_id`, `user_id`, `version` (primary), `state_data` (JSON), `created_at` |
+| `messages` | Message history: `thread_id`, `message_id`, `message_data` (JSON), `created_at` |
+| `tool_executions` | Tool call ledger for replay safety: `thread_id`, `tool_call_id`, `status`, `result` |
+| Schema version table | Tracks migrations |
 
-`setup()` is synchronous, and `await checkpointer.asetup()` is the async form. I found no code path that calls it for you, so run it once before the first request. The tables are `threads`, `states`, `messages`, `tool_executions` and a schema version table.
+The `states` table has a unique index on `(thread_id, user_id, version)` to enforce one version per thread. Writes acquire a row lock on the thread's metadata row in `threads` to serialize concurrent writers.
 
-To let the API server construct it, put the object in a module and point `10xgraph.json` at it with `"checkpointer": "graph.agent:checkpointer"`.
+## User isolation and scoping
 
-## What is written, and when?
+By default, `enforce_user_isolation=True`. Every query to `states` includes a `WHERE user_id = ?` clause scoped to the `user_id` in the config dict. This prevents one user from reading or writing another user's thread, even if they know the `thread_id`.
 
-During a run, the graph writes after every completed node, not only at the end. Each write does two things in order:
+`PgCheckpointer` raises a `ValueError` at construction if `user_id` is missing from the config during a read or write. The API server fills `user_id` from the authenticated request (or sets it to `"anonymous"` if no auth is configured). Turn off isolation only for single-tenant deployments where all threads are logically shared.
 
-1. **Durable write.** In one PostgreSQL transaction, it appends a new row to `states` with the next version number and inserts the messages that are not yet persisted.
-2. **Cache refresh.** It writes the same state to Redis under the key `state_cache:{thread_id}:{user_id}` with the TTL.
+## Cache invalidation on conflict
 
-If the PostgreSQL write fails, the Redis cache is not updated, so the cache never holds state that was never persisted. Redis failures are logged and ignored, because the cache is best effort. A final write also happens when a run completes, errors, is interrupted or is stopped.
+When a write fails the optimistic version check, `PgCheckpointer` immediately calls `_invalidate_state_cache()` to drop the cached entry:
 
-A crash therefore costs at most the node that was running. 10xGraph replays that node on resume, and the tool ledger stops tools that already finished from running twice. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
-
-## How does a read work?
-
-At the start of a run the graph asks the cache first:
-
-1. Read `state_cache:{thread_id}:{user_id}` from Redis. On a hit, use it.
-2. On a miss, read the highest-version row for the thread from PostgreSQL and copy it into Redis.
-3. If Redis itself errors, read from PostgreSQL directly.
-4. If neither has the thread, start from the graph's initial state and merge the incoming messages.
-
-## How are versions and snapshots handled?
-
-Every durable write creates a new version for the thread. The run remembers the version it read, and the write is a compare-and-swap: if another run committed in the meantime, the write raises `StaleStateError` instead of overwriting it. After a conflict the cached entry is dropped so the thread does not stay stuck on stale data. The cache write is guarded the same way and never moves a thread back to an older version.
-
-History is bounded. After each write, rows older than `state_history_limit` versions are deleted, so a thread keeps roughly the last 20 snapshots by default. That is enough to debug recent steps. It is not an archive, so export anything you must keep for audit.
-
-<Callout type="warning" title="Without a checkpointer, nothing survives">
-
-A graph compiled without a checkpointer saves no state, so each call starts empty and a thread cannot be resumed. `InMemoryCheckpointer` is also not durable: its docstring states the data is lost when the process ends, and it is shared with no other worker. Use `PgCheckpointer` for anything that must outlive one process.
-
-</Callout>
-
-## What is a thread?
-
-A thread is one conversation, identified by `thread_id` in the run config. The same id on a later call loads the saved state and continues. A thread also has a record (`ThreadInfo`) with an optional name, an owner `user_id` and metadata.
-
-By default `enforce_user_isolation` is on: queries are scoped to the `user_id` in the config, so knowing another user's `thread_id` is not enough to read it. `PgCheckpointer` raises a `ValueError` if the config has no `user_id` or no `thread_id`. Through the API server, `user_id` comes from your auth backend and is `anonymous` when there is none. Turn isolation off only for single-tenant apps with no real user identity.
-
-Useful thread methods on the checkpointer include `alist_threads`, `aget_thread`, `aput_thread` and `aclean_thread`, which deletes a thread and its data.
-
-## Where does long-term memory fit?
-
-The checkpointer remembers one thread. For facts that should carry across threads, such as a user's preferences, pass a store to `compile()`. The framework ships `QdrantStore` and `Mem0Store`, and an embedding class for QdrantStore.
-
-```python title="graph/agent.py"
-from tenxgraph.storage.store import OpenAIEmbedding, QdrantStore
-
-store = QdrantStore(
-    embedding=OpenAIEmbedding(),   # defaults to text-embedding-3-small
-    path="./qdrant_data",          # local Qdrant; host/port or url + api_key for remote
-)
-
-app = agent.compile(checkpointer=checkpointer, store=store)
+```python
+await self.redis.delete(self._get_thread_key(thread_id, user_id))
 ```
 
-Stores implement `astore`, `asearch`, `aget`, `aupdate` and `adelete`. To let an agent read and write them, give `ReactAgent` or `Agent` a `MemoryConfig(store=store)` through the `memory` argument. It defaults to post-load retrieval, 5 results and a score threshold of 0, with a user-scoped memory tool on and an agent-scoped one off. The `qdrant` and `mem0` extras install the client libraries.
+This prevents a poisoned cache: if Run A loses its race and reads the cached state that Run B wrote (which was built on a newer version), Run A's next write will again fail because it is trying to commit the older version. By dropping the cache, Run A's next read will fetch from Postgres and get the latest version, allowing it to retry successfully.
 
-For the reasoning behind this split, read [Hot and cold agent memory](/blog/hot-and-cold-agent-memory).
+## Storage configuration patterns
+
+### Development: InMemoryCheckpointer
+
+For local development and unit tests, use `InMemoryCheckpointer`. State lives in process memory; no Postgres or Redis required:
+
+```python
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+checkpointer = InMemoryCheckpointer()
+```
+
+### Single-user: SqliteCheckpointer
+
+For client-side agents (desktop apps, CLIs, embedded systems), use `SqliteCheckpointer`. All layers (cache, durable state, messages) live in a single SQLite file:
+
+```python
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
+checkpointer = SqliteCheckpointer("./agent_state.db")
+```
+
+### Production: PgCheckpointer
+
+For multi-worker services, use `PgCheckpointer` with Postgres and Redis. See [Set up checkpointing](/docs/guides/set-up-checkpointing) for detailed configuration.
+
+## Related concepts
+
+- **Durability and concurrency**: For handling StaleStateError, thread isolation, and optimistic concurrency patterns, see [Durability and concurrency](/docs/guides/durability-and-concurrency).
+- **Thread lifecycle**: For the config dict, thread_id, and user_id, see [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
+- **Long-term memory**: The checkpointer is thread-scoped. For memories shared across threads, see [Long-term memory](/docs/concepts/memory-and-store).
+- **Replay-safe tools**: How the tool ledger uses durable writes to prevent tools from running twice on resume, see [Replay-safe tools](/docs/concepts/replay-safe-tools).
 
 ## Related pages
 
 <CardGrid>
 
-<LinkCard title="StateGraph" href="/docs/concepts/state-graph" description="Where the checkpointer plugs in through compile()." eyebrow="Concept" />
-<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="What the durable ledger does on resume." eyebrow="Concept" />
-<LinkCard title="Deploy with Docker" href="/docs/how-to/api-cli/generate-docker-files" description="Run the server with PostgreSQL and Redis." eyebrow="How-to" />
+<LinkCard title="Checkpointing and threads" href="/docs/concepts/checkpointing-and-threads" description="Thread lifecycle, the config dict, and checkpointer API reference." eyebrow="Concept" />
+<LinkCard title="Long-term memory" href="/docs/concepts/memory-and-store" description="Using stores for memories shared across threads." eyebrow="Concept" />
+<LinkCard title="Set up checkpointing" href="/docs/guides/set-up-checkpointing" description="How to configure and deploy PgCheckpointer in production." eyebrow="Guide" />
+<LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How durable writes prevent tool replay on resume." eyebrow="Concept" />
 </CardGrid>

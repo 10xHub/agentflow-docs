@@ -1,7 +1,7 @@
 ---
 // End of page as outgoing edges: the next page in order, plus branches into other sections,
 // labelled like conditional edges ("to understand", "to ship").
-import { DOC_SECTIONS } from '../../lib/site';
+import { DOC_SECTIONS, MAP_HIDDEN } from '../../lib/site';
 import { docHref, type Doc } from '../../lib/content';
 
 interface Props {
@@ -15,22 +15,25 @@ const next = i < docs.length - 1 ? docs[i + 1] : undefined;
 
 const INTENT: Record<string, string> = {
   'Get started': 'to start',
-  'Beginner path': 'to learn step by step',
   Concepts: 'to understand',
-  Prebuilt: 'to reuse',
-  'How-to guides': 'to ship',
-  'Testing and QA': 'to test',
-  Tutorials: 'to build along',
+  'Build agents': 'to build',
+  'API server': 'to serve',
+  'TypeScript client': 'to call it',
+  'Testing and evaluation': 'to test',
+  Integrations: 'to connect',
+  Examples: 'to build along',
   Reference: 'to look up',
   Troubleshooting: 'to fix',
-  'Learn more': 'to explore',
   Glossary: 'to define',
+  Compare: 'to compare',
   Project: 'to contribute',
 };
 // Two branches into the sections that follow this one (wrapping around), each to its first page.
-const at = DOC_SECTIONS.indexOf(current.data.section);
+// Sections hidden from the docs map are never offered as branches.
+const sections = DOC_SECTIONS.filter((s) => !MAP_HIDDEN.includes(s) || s === current.data.section);
+const at = sections.indexOf(current.data.section);
 const branches = [1, 2, 3, 4]
-  .map((k) => DOC_SECTIONS[(at + k) % DOC_SECTIONS.length])
+  .map((k) => sections[(at + k) % sections.length])
   .map((s) => docs.find((d) => d.data.section === s && d.id !== next?.id))
   .filter((d): d is Doc => !!d)
   .slice(0, 2);

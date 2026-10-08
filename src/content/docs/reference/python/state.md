@@ -3,8 +3,8 @@ title: State
 seoTitle: "AgentState API reference (Python)"
 description: AgentState, custom state, reducers, and the add_messages pattern for 10xGraph.
 section: Reference
-group: Python library
-order: 1450
+group: "Python library"
+order: 50
 label: State
 updated: "2026-07-21"
 ---

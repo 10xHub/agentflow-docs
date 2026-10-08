@@ -3,8 +3,8 @@ title: "Message"
 seoTitle: "Message class in the TypeScript client"
 description: Reference for the Message class and all content block types in the 10xGraph TypeScript client.
 section: Reference
-group: TypeScript client
-order: 1820
+group: "TypeScript client"
+order: 480
 label: "Message"
 updated: "2026-07-21"
 ---
@@ -622,4 +622,4 @@ console.log(result.messages);
 
 ## Next step
 
-See [how-to/client/send-images-and-documents](/docs/how-to/client/send-images-and-documents) for the end-to-end upload-and-send flow, or [`reference/client/invoke`](/docs/reference/client/invoke) to learn how to send messages and receive responses.
+See [how-to/client/send-images-and-documents](/docs/client/files-and-multimodal) for the end-to-end upload-and-send flow, or [`reference/client/invoke`](/docs/reference/client/invoke) to learn how to send messages and receive responses.

@@ -3,7 +3,7 @@ title: Getting help
 seoTitle: "Getting help with 10xGraph"
 description: Where to ask questions, how to file a good bug report for 10xGraph, and what information to collect before you do.
 section: Project
-order: 2650
+order: 50
 label: Support
 updated: "2026-07-21"
 ---
@@ -18,7 +18,7 @@ Most problems have a page already:
 | Server will not start, 401/403, CORS, rate limits | [API server troubleshooting](/docs/troubleshooting/api-server) |
 | Streaming stalls, types missing, upload fails | [Client troubleshooting](/docs/troubleshooting/client) |
 | Playground shows nothing, or a page is empty | [Playground troubleshooting](/docs/troubleshooting/playground) |
-| You have an error code like `GRAPH_ROUTING_001` | [Error codes](/docs/troubleshooting/error-codes) |
+| You have an error code like `GRAPH_ROUTING_001` | [Error codes](/docs/reference/error-codes) |
 | Something worked in 0.9 and broke after upgrading | [Upgrade to 1.0](/docs/project/upgrade-to-1.0) |
 
 Search covers every page on this site. Press <kbd>Ctrl</kbd> + <kbd>K</kbd>.

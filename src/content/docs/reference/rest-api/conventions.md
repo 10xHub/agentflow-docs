@@ -2,8 +2,8 @@
 title: Conventions and permissions
 description: "The 10xGraph REST API response envelope, HTTP and WebSocket authentication, the endpoint permission table, and the HTTP status codes the server returns."
 section: Reference
-group: REST API
-order: 1640
+group: "REST API"
+order: 300
 label: Conventions and permissions
 updated: "2026-09-29"
 ---

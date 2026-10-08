@@ -13,7 +13,12 @@ const description = z.string().min(50).max(170);
 // appended, so 49 characters keeps the full title within the ~60 that search results show.
 const seoTitle = z.string().min(15).max(49).optional();
 
-const faq = z.array(z.object({ q: z.string(), a: z.string() })).default([]);
+// Writers sometimes spell the keys out; accept question/answer as aliases of q/a.
+const faqItem = z.preprocess(
+  (v) => (v && typeof v === 'object' ? { q: (v as any).q ?? (v as any).question, a: (v as any).a ?? (v as any).answer } : v),
+  z.object({ q: z.string(), a: z.string() }),
+);
+const faq = z.array(faqItem).default([]);
 
 const docs = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/docs' }),

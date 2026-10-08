@@ -3,7 +3,7 @@ title: Project and releases
 seoTitle: "10xGraph project, releases and maintainers"
 description: "How 10xGraph is run: MIT license, maintained by 10xScale, with a changelog, roadmap, security reporting, support channels and a contributing guide."
 section: Project
-order: 2600
+order: 10
 label: Overview
 updated: "2026-10-06"
 ---

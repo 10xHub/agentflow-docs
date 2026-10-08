@@ -3,8 +3,8 @@ title: Context Manager
 seoTitle: "Context manager API reference (Python)"
 description: BaseContextManager and MessageContextManager — trim and bound the agent's message history before each LLM call.
 section: Reference
-group: Python library
-order: 1580
+group: "Python library"
+order: 70
 label: Context Manager
 updated: "2026-07-21"
 ---

@@ -34,8 +34,8 @@ const jsonLd = [
     description,
     url: absolute(href),
     ...(updated && { dateModified: updated.toISOString() }),
-    // Only the beginner path is written for beginners; other pages make no level claim.
-    ...(section === 'Beginner path' && { proficiencyLevel: 'Beginner' }),
+    // Only the Get started tutorial is written for beginners; other pages make no level claim.
+    ...(group === 'Tutorial' && { proficiencyLevel: 'Beginner' }),
     about: { '@type': 'SoftwareApplication', name: SITE.name, softwareVersion: SITE.version },
     publisher: { '@type': 'Organization', name: SITE.org.name, url: SITE.org.url },
     isPartOf: { '@type': 'WebSite', name: SITE.name, url: SITE.url },

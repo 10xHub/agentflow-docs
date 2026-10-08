@@ -3,7 +3,7 @@ title: API reference
 seoTitle: "10xGraph API reference: Python, REST, CLI, TS"
 description: "Reference for 10xGraph: the Python library, the REST and WebSocket API, the CLI and 10xgraph.json configuration, and the typed TypeScript client."
 section: Reference
-order: 1400
+order: 10
 label: Overview
 updated: "2026-10-06"
 ---
@@ -14,9 +14,9 @@ The 10xGraph reference documents four surfaces of one system: the Python library
 
 Python developers should open [Graph](/docs/reference/python/graph) and [Agent](/docs/reference/python/agent) first: they define `StateGraph`, `CompiledGraph`, `invoke`, `stream` and how a model is wired into a node. [Checkpointers](/docs/reference/python/checkpointers) matters for production, because durable threads and replay-safe tool calls depend on one.
 
-If you run the server, the [CLI commands](/docs/reference/api-cli/commands) and [configuration](/docs/reference/api-cli/configuration) pages cover every `10xgraph.json` key, with [auth](/docs/reference/api-cli/auth) and [rate limiting](/docs/reference/api-cli/rate-limiting) for the production settings. Frontend developers should start with [AgentFlowClient](/docs/reference/client/agentflow-client) and [Stream](/docs/reference/client/stream). The REST contract starts at [conventions](/docs/reference/rest-api/conventions) and the [graph endpoints](/docs/reference/rest-api/graph).
+If you run the server, the [CLI commands](/docs/reference/api-cli/commands) and [configuration](/docs/reference/api-cli/configuration) pages cover every `10xgraph.json` key, with [auth](/docs/reference/api-cli/auth) and [rate limiting](/docs/reference/api-cli/rate-limiting) for the production settings. Frontend developers should start with [AgentFlowClient](/docs/reference/client/client) and [Stream](/docs/reference/client/stream). The REST contract starts at [conventions](/docs/reference/rest-api/conventions) and the [graph endpoints](/docs/reference/rest-api/graph).
 
-If you do not yet know which call you need, the [how-to guides](/docs/how-to) are organized by task.
+If you do not yet know which call you need, the [how-to guides](/docs/guides) are organized by task.
 
 ## Python library
 
@@ -79,7 +79,7 @@ if you do not want it public.
 
 | Page | Covers |
 | --- | --- |
-| [AgentFlowClient](/docs/reference/client/agentflow-client) | Construction and shared options |
+| [AgentFlowClient](/docs/reference/client/client) | Construction and shared options |
 | [Invoke](/docs/reference/client/invoke) and [Stream](/docs/reference/client/stream) | Running an agent |
 | [Realtime](/docs/reference/client/realtime) | Audio sessions |
 | [Threads](/docs/reference/client/threads), [Memory](/docs/reference/client/memory), [Files](/docs/reference/client/files) | Everything else the server exposes |
@@ -94,7 +94,7 @@ if you do not want it public.
   version and a sync wrapper, and the reference names both.
 - Defaults are stated explicitly, including when the default is `None`.
 - Error codes are listed with the condition that raises them. The full index is
-  in [error codes](/docs/troubleshooting/error-codes).
+  in [error codes](/docs/reference/error-codes).
 
 Reference pages describe what things *are*. For task-shaped questions, start from
-the [how-to guides](/docs/how-to/python/build-a-graph).
+the [how-to guides](/docs/guides/build-a-graph).

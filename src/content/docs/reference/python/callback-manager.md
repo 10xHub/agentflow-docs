@@ -3,8 +3,8 @@ title: Callback Manager
 seoTitle: "CallbackManager API reference (Python)"
 description: CallbackManager, BeforeInvokeCallback, AfterInvokeCallback, OnErrorCallback, BaseValidator, PromptInjectionValidator — hook into every LLM, tool, and MCP
 section: Reference
-group: Python library
-order: 1590
+group: "Python library"
+order: 140
 label: Callback Manager
 updated: "2026-09-29"
 ---

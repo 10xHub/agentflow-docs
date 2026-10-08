@@ -3,8 +3,8 @@ title: Threads
 seoTitle: "Thread methods in the TypeScript client"
 description: Reference for all thread, state, and message methods on AgentFlowClient.
 section: Reference
-group: TypeScript client
-order: 1860
+group: "TypeScript client"
+order: 520
 label: Threads
 updated: "2026-09-29"
 ---

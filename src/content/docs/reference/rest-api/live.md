@@ -2,8 +2,8 @@
 title: Live WebSocket endpoints
 description: "Reference for the WS /v1/graph/live WebSocket endpoint that bridges audio to a realtime AudioAgent (Gemini Live): init frame, binary and JSON frames, auth."
 section: Reference
-group: REST API
-order: 1660
+group: "REST API"
+order: 320
 label: Live WebSocket
 updated: "2026-07-21"
 ---
@@ -308,7 +308,7 @@ Codes the bridge itself emits, in addition to any provider code passed through:
 
 This socket carries **binary PCM16 audio frames and JSON control frames**. The upstream pump recognises binary audio plus the `text`, `activity_start`, `activity_end`, and `close` control types, and forwards nothing else. There is no image frame type in the live protocol.
 
-Image and document input belongs on the turn-based run endpoints (`POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WS /v1/graph/ws`), which accept `ImageBlock`/`DocumentBlock` content referencing an uploaded `file_id`. See [Multimodal and vision](/docs/how-to/production/multimodal-and-vision).
+Image and document input belongs on the turn-based run endpoints (`POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WS /v1/graph/ws`), which accept `ImageBlock`/`DocumentBlock` content referencing an uploaded `file_id`. See [Multimodal and vision](/docs/server/files-and-multimodal).
 
 Exactly one `LiveAgent` must be present in the graph; multiple live agents per graph are not supported.
 

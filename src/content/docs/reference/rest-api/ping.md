@@ -2,8 +2,8 @@
 title: Health check endpoint
 description: "GET /ping is the unauthenticated health check of the 10xGraph API server, used for Kubernetes probes, Docker HEALTHCHECK and load balancers."
 section: Reference
-group: REST API
-order: 1720
+group: "REST API"
+order: 400
 label: Ping
 updated: "2026-07-21"
 ---
@@ -74,7 +74,7 @@ livenessProbe:
   failureThreshold: 5
 ```
 
-The port is the one you pass to `build`. For the rest of the manifest (grace period, `preStop` sleep) see [Kubernetes](/docs/how-to/production/kubernetes).
+The port is the one you pass to `build`. For the rest of the manifest (grace period, `preStop` sleep) see [Kubernetes](/docs/server/kubernetes).
 
 ## Docker HEALTHCHECK
 
@@ -103,6 +103,6 @@ healthcheck:
 
 ## Related
 
-- [Kubernetes deployment](/docs/how-to/production/kubernetes)
-- [Deployment](/docs/how-to/production/deployment)
+- [Kubernetes deployment](/docs/server/kubernetes)
+- [Deployment](/docs/server/deploy)
 - [REST API conventions](/docs/reference/rest-api/conventions)

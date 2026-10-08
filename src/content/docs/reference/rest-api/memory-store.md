@@ -2,8 +2,8 @@
 title: Memory store endpoints
 description: Reference for /v1/store — storing, searching, listing, updating, deleting, and forgetting memories through the 10xGraph API server.
 section: Reference
-group: REST API
-order: 1680
+group: "REST API"
+order: 350
 label: Memory store
 updated: "2026-09-29"
 ---

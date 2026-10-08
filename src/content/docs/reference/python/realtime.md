@@ -3,8 +3,8 @@ title: Realtime
 seoTitle: "Realtime audio API reference (Python)"
 description: API reference for realtime audio-to-audio, including LiveInputQueue, RealtimeConfig, VADConfig, ReconnectConfig, AudioAgent, and the WebSocket bridge protocol.
 section: Reference
-group: Python library
-order: 1530
+group: "Python library"
+order: 100
 label: Realtime
 updated: "2026-07-21"
 ---

@@ -3,8 +3,8 @@ title: Graph endpoints
 seoTitle: "Graph REST API reference"
 description: "Reference for the 10xGraph REST endpoints that invoke, stream, stop, and inspect a graph, with request bodies, responses, and auth requirements."
 section: Reference
-group: REST API
-order: 1650
+group: "REST API"
+order: 310
 label: Graph
 updated: "2026-09-29"
 ---
@@ -55,7 +55,7 @@ Run the graph and return the complete result when all nodes finish.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `messages` | array | yes, unless `resume` is set | One or more messages to append to state before invoking. |
-| `resume` | any | no | Answer for a thread paused by [`interrupt()`](/docs/how-to/python/add-human-approval). The paused node runs again and `interrupt()` returns this value; `null` means cancelled. Send it only to resume a paused thread. |
+| `resume` | any | no | Answer for a thread paused by [`interrupt()`](/docs/guides/add-human-approval). The paused node runs again and `interrupt()` returns this value; `null` means cancelled. Send it only to resume a paused thread. |
 | `initial_state` | object | no | Initial state for the run |
 | `config` | object | no | Run configuration |
 | `config.thread_id` | string | no | Conversation identifier. When absent or blank, the server generates one and persists the thread; the id comes back in `data.meta.thread_id`. |
@@ -63,7 +63,7 @@ Run the graph and return the complete result when all nodes finish.
 | `recursion_limit` | integer | no | Maximum graph iterations. Default `25`, range `1`-`100`. |
 | `response_granularity` | string | no | `full`, `partial`, or `low`. Default `low`. |
 
-Messages may carry image and document content blocks referencing an uploaded `file_id`. Those references are resolved before the graph runs; see [Multimodal and vision](/docs/how-to/production/multimodal-and-vision).
+Messages may carry image and document content blocks referencing an uploaded `file_id`. Those references are resolved before the graph runs; see [Multimodal and vision](/docs/server/files-and-multimodal).
 
 **Response:**
 

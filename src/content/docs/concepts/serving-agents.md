@@ -3,57 +3,14 @@ title: Serving Agents
 seoTitle: "Serving agents with 10xgraph.json"
 description: How 10xgraph.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
 section: Concepts
+group: "Serving"
 order: 160
-group: Serving and clients
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-This page covers how the API/CLI layer exposes your compiled graph over HTTP, how authentication and authorization protect it, how publishers route execution events to external systems, and what a production deployment looks like.
+The 10xGraph API server transforms a compiled graph into a production-ready HTTP service. This page explains how the server loads and runs your agent, how authentication and authorization protect it, how publishers stream execution events to external systems, and what configuration controls each piece.
 
----
-
-## `10xgraph.json` — the project config
-
-`10xgraph.json` is the single file that wires everything together. The CLI and API server read it at startup.
-
-Import paths are **dotted module paths** (`module.path:attribute`), resolved with `importlib` —
-not file paths.
-
-```json
-{
-  "agent": "graph.agent:get_compiled_graph",
-  "auth": { "method": "custom", "path": "auth.agent_auth:MyAuth" },
-  "injectq": "graph.agent:container",
-  "evaluation": {
-    "directory": "evals",
-    "threshold": 0.8
-  }
-}
-```
-
-| Key | Purpose |
-|---|---|
-| `agent` | `module:callable` that returns a `CompiledGraph` |
-| `auth` | `null`, `"jwt"`, or `{"method": "custom", "path": "module:attr"}` for a `BaseAuth` subclass |
-| `injectq` | Services registered in the DI container |
-| `evaluation` | Eval directory and pass threshold |
-
----
-
-## Starting the server
-
-```bash
-10xgraph api                                    # starts with auto-reload (development default)
-10xgraph api --host 0.0.0.0 --port 8000        # bind address
-10xgraph api --config 10xgraph.json            # explicit config path
-10xgraph play                                   # API + hosted playground in browser
-```
-
-The server loads the compiled graph once at startup and keeps it in memory. All requests share the same graph instance; per-request isolation comes from `thread_id`. In development `--reload` is on by default — any change to your source files restarts the server automatically. In production, run with multiple workers (see [Production deployment](#production-deployment)) and omit `--reload`.
-
----
-
-## REST endpoints
+## How the server loads and runs your graph
 
 ```mermaid
 flowchart TB
@@ -77,63 +34,121 @@ flowchart TB
   GRAPH -->|EventModel| PUB_C & PUB_R & PUB_K & PUB_Q & PUB_O
 ```
 
-| Router | Prefix | Key endpoints |
-|---|---|---|
-| Graph | `/v1/graph` | `POST /invoke`, `POST /stream`, `WebSocket /ws`, `POST /stop`, `GET /` |
-| Checkpointer | `/v1/threads` | Thread state CRUD, message CRUD |
-| Store | `/v1/store` | Memory store, search, get, update, delete, list, forget |
-| Media | `/v1/media` | File upload / download |
-| Health | `/ping` | Health check |
+The API server is a Uvicorn ASGI process that loads your compiled graph **once at startup** and reuses it for every request. This avoids module-loading overhead. The graph itself is stateless; per-request isolation comes from the `thread_id` in the request. In development, `10xgraph api --reload` auto-restarts on file changes. In production, run multiple workers behind a load balancer and use `PgCheckpointer` to share state across them.
 
-There is no Agent-to-Agent (A2A) endpoint. The unmounted `a2a` routers were
-removed from the CLI package; agents compose in-process through handoffs, or
-across processes over the normal REST API. See the
-[roadmap](/docs/project/roadmap).
+## Configuration: `10xgraph.json`
 
----
+`10xgraph.json` is the single file that wires everything together. The CLI and API server read it at startup to determine which graph to load, which auth to use, and how to configure every service.
 
-## Authentication
+Import paths are **dotted module paths** (`module:attribute`), resolved with `importlib` — not file paths.
 
-Authentication is pluggable via `BaseAuth`. The framework ships with `JwtAuth`; you can replace it with any backend.
-
-```mermaid
-flowchart LR
-  REQ[HTTP Request] --> AUTH[BaseAuth\nauthenticate]
-  AUTH -->|returns None| R401[401 Unauthorized]
-  AUTH -->|returns user context| AUTHZ[AuthorizationBackend\ncheck permission]
-  AUTHZ -->|denied| R403[403 Forbidden]
-  AUTHZ -->|allowed| ROUTE[Route handler]
-```
-
-**Built-in: `JwtAuth`**
-
-Point to the built-in class in `10xgraph.json` using its importable path:
+**Minimal example:**
 
 ```json
 {
-  "auth": "tenxgraph_api.src.app.core.auth.jwt_auth:JwtAuth"
+  "agent": "graph.agent:get_compiled_graph",
+  "auth": "jwt",
+  "rate_limit": {
+    "backend": "memory",
+    "requests": 100,
+    "window": 60
+  }
+}
+```
+
+**Full example with all extensible pieces:**
+
+```json
+{
+  "agent": "graph.agent:get_compiled_graph",
+  "env": ".env",
+  "auth": "jwt",
+  "authorization": "auth.agent_auth:MyAuthorizationBackend",
+  "checkpointer": "services.checkpointer:my_pg_checkpointer",
+  "injectq": "graph.agent:container",
+  "store": "services.store:my_store",
+  "redis": "redis://localhost:6379",
+  "thread_name_generator": "services.naming:MyNameGenerator",
+  "rate_limit": {
+    "backend": "redis",
+    "requests": 1000,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": true,
+    "exclude_paths": ["/ping", "/docs"]
+  }
+}
+```
+
+| Key | Type | Purpose |
+|---|---|---|
+| `agent` | module:callable | Returns a `CompiledGraph`. Required. |
+| `env` | file path | Path to a `.env` file, loaded at startup. |
+| `auth` | `"jwt"` \| module:path | `"jwt"` enables built-in JWT auth; a module path loads your `BaseAuth` subclass. |
+| `authorization` | module:path | Loads your `AuthorizationBackend` for per-tool / per-thread access control. |
+| `checkpointer` | module:path | Loads your `BaseCheckpointer`. Default is in-memory. |
+| `injectq` | module:path | Points to an `InjectQ` container instance. |
+| `store` | module:path | Loads your `BaseStore` for long-term memory. |
+| `redis` | URL string | Redis connection for `PgCheckpointer` cache and pub/sub. |
+| `thread_name_generator` | module:path | Loads your `ThreadNameGenerator`. Default generates adjective-noun pairs (e.g., `thoughtful-dialogue`). |
+| `rate_limit` | object | Rate limiting config (see below). |
+
+**Starting the server:**
+
+```bash
+10xgraph api                                    # development, auto-reload
+10xgraph api --config custom.json              # explicit config path
+10xgraph api --host 0.0.0.0 --port 8000        # bind address
+10xgraph play                                   # API + playground in browser
+```
+
+## REST endpoints and request flow
+
+The API exposes these routers under `/v1`:
+
+| Router | Endpoints | Purpose |
+|---|---|---|
+| Graph | `POST /invoke`, `POST /stream`, `WebSocket /ws`, `POST /stop`, `POST /fix`, `GET /` | Invoke or stream the agent, stop a run, fix interrupted state, get graph info. |
+| Threads | `GET /threads`, `POST /threads`, `GET /threads/{id}/state`, `GET /threads/{id}/messages` | Manage thread state and message history. |
+| Store | `POST /store/memories`, `GET /store/memories/{id}`, `POST /store/search` | Long-term memory operations. |
+| Files | `POST /files/upload`, `GET /files/{id}`, `GET /files/{id}/info`, `GET /files/{id}/url` | Upload, retrieve, and get signed URLs for media. |
+| Config | `GET /config/multimodal` | Get multimodal settings. |
+| Ping | `/ping` | Health check. |
+
+Every routable request (except `/ping`) passes through authentication (`BaseAuth.authenticate`), then authorization (`AuthorizationBackend.authorize`), then rate limiting, before reaching the route handler.
+
+## Authentication
+
+Authentication is pluggable via `BaseAuth`. The framework ships with `JwtAuth`; you can subclass `BaseAuth` to add any other backend.
+
+**Built-in: JWT**
+
+Point `10xgraph.json` to the built-in class by setting `auth` to `"jwt"`:
+
+```json
+{
+  "auth": "jwt"
 }
 ```
 
 Then set the required environment variables:
 
 ```bash
-export JWT_SECRET_KEY="your-secret"
-export JWT_ALGORITHM="HS256"      # default; optional
+export JWT_SECRET_KEY="your-secret"        # required; use at least 32 random chars
+export JWT_ALGORITHM="HS256"               # optional; default is HS256
 ```
 
-**Custom auth** — subclass `BaseAuth` and point `10xgraph.json` to your class:
+Clients send credentials as `Authorization: Bearer <token>`.
 
-`authenticate` is **synchronous** and takes `(request, response, credential)`; the bearer token
-arrives as `credential`. Declaring it `async def` returns an un-awaited coroutine and breaks auth.
+**Custom authentication**
+
+Subclass `BaseAuth` and point `10xgraph.json` to your class:
 
 ```python
-# auth/agent_auth.py
+# auth/firebase_auth.py
 from typing import Any
-
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
-
 from tenxgraph_api import BaseAuth
 
 class FirebaseAuth(BaseAuth):
@@ -142,30 +157,29 @@ class FirebaseAuth(BaseAuth):
         credential: HTTPAuthorizationCredentials | None,
     ) -> dict[str, Any] | None:
         if credential is None:
-            return None   # → 401
+            return None  # → 401
         try:
             claims = firebase_admin.auth.verify_id_token(credential.credentials)
             return {"user_id": claims["uid"], **claims}
         except Exception:
-            return None   # returning None → 401
+            return None  # → 401
 ```
+
+Important: `authenticate` is **synchronous**. Declaring it `async def` returns an un-awaited coroutine and breaks auth.
 
 ```json
 {
-  "auth": { "method": "custom", "path": "auth.agent_auth:FirebaseAuth" }
+  "auth": "auth.firebase_auth:FirebaseAuth"
 }
 ```
 
----
-
 ## Authorization
 
-Authorization is a separate extension point from authentication. After a user is identified, `AuthorizationBackend` decides whether they can perform a specific operation on a specific resource.
+Authorization is separate from authentication. After the user is identified, `AuthorizationBackend` decides whether they can perform a specific operation on a specific resource.
 
 ```python
-# auth/agent_auth.py
+# auth/multi_tenant.py
 from typing import Any
-
 from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
 class TenantAuthorizationBackend(AuthorizationBackend):
@@ -174,33 +188,66 @@ class TenantAuthorizationBackend(AuthorizationBackend):
         resource_id: str | None = None, **context: Any,
     ) -> bool:
         # resource: "graph" | "checkpointer" | "store" | "files" | "config"
-        # action:   "invoke" | "stream" | "read" | "write" | "delete" | ...
-        # resource_id: thread_id / memory_id when the path carries one
-        return user.get("tenant_id") == context.get("tenant")
+        # action: "invoke" | "stream" | "read" | "write" | "delete"
+        # resource_id: thread_id or memory_id when applicable
+        return user.get("tenant_id") == context.get("tenant_id")
 ```
 
 ```json
 {
-  "authorization": "auth.agent_auth:TenantAuthorizationBackend"
+  "authorization": "auth.multi_tenant:TenantAuthorizationBackend"
 }
 ```
 
-Without an `authorization` key the default is mode-based: `"ownership"` (owner-only threads) in
-production, `"allow_all"` in development. Set `"ownership"` explicitly, an RBAC config block
-(`{"backend": "rbac", "roles": {...}}`), or your own backend to override. See the
-[Authentication reference](/docs/reference/api-cli/auth) for scopes and the isolation policy.
+If no `authorization` key is set, the default depends on `MODE`:
+- **production**: `"ownership"` (each user owns their own threads, read-only)
+- **development**: `"allow_all"` (all users can access all threads)
 
----
+Override by setting `authorization` to a module path, a built-in name (`"ownership"`, `"allow_all"`, `"default"`), `null`, or an RBAC config object.
 
 ## Rate limiting
 
-Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in; swap or extend via dependency injection.
+Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in; you can subclass for custom logic.
 
-| Backend | When to use |
-|---|---|
-| In-memory | Single-process development |
-| Redis | Multi-worker production — set `REDIS_URL` |
-| Custom | Subclass `BaseRateLimitBackend` and register via `injectq` |
+```json
+{
+  "rate_limit": {
+    "backend": "memory",
+    "requests": 100,
+    "window": 60,
+    "by": "ip",
+    "trusted_proxy_headers": true,
+    "fail_open": false,
+    "exclude_paths": ["/ping"]
+  }
+}
+```
+
+| Config key | Default | Purpose |
+|---|---|---|
+| `backend` | `memory` | `memory` (single-worker dev), `redis` (multi-worker), or custom via InjectQ. |
+| `requests` | 100 | Requests allowed per window. |
+| `window` | 60 | Time window in seconds. |
+| `by` | `global` | `global` (all users share one limit) or `ip` (per IP). |
+| `trusted_proxy_headers` | false | Honor `X-Forwarded-For` when true. |
+| `fail_open` | true | Allow requests if the backend is unreachable. |
+| `exclude_paths` | `[]` | Paths exempt from rate limiting. |
+
+For the `redis` backend, add a `redis` key with the connection URL:
+
+```json
+{
+  "rate_limit": {
+    "backend": "redis",
+    "redis": {
+      "url": "redis://localhost:6379",
+      "prefix": "ratelimit:"
+    }
+  }
+}
+```
+
+**Custom backend:**
 
 ```python
 # services/rate_limit.py
@@ -215,27 +262,35 @@ class CustomRateLimitBackend(BaseRateLimitBackend):
         ...
 ```
 
+Register in `10xgraph.json` via dependency injection:
+
 ```json
 {
-  "injectq": {
-    "BaseRateLimitBackend": "services/rate_limit.py:CustomRateLimitBackend"
-  }
+  "injectq": "graph.agent:container"
 }
 ```
 
----
+Then in your graph module:
+
+```python
+from injectq import InjectQ
+from services.rate_limit import CustomRateLimitBackend
+
+container = InjectQ.get_instance()
+container.bind_instance(BaseRateLimitBackend, CustomRateLimitBackend())
+```
 
 ## Publishers
 
-`BasePublisher` emits an `EventModel` on every execution event — node start/end, tool calls, state updates, errors. Wire one or more publishers at `StateGraph` initialization; they compose automatically.
+Publishers emit `EventModel` on every execution event — node start/end, tool calls, state updates, errors. Wire them at `StateGraph` initialization, not at compile:
 
 ```python
-from tenxgraph.runtime.publisher import RedisPublisher, KafkaPublisher, CompositePublisher
+from tenxgraph.runtime.publisher import CompositePublisher, RedisPublisher, KafkaPublisher
 from tenxgraph.core.graph import StateGraph
 
 publisher = CompositePublisher([
-    RedisPublisher(url="redis://localhost:6379", channel="tenxgraph.events"),
-    KafkaPublisher(bootstrap_servers="kafka:9092", topic="agentflow"),
+    RedisPublisher(url="redis://localhost:6379", channel="agent.events"),
+    KafkaPublisher(bootstrap_servers="kafka:9092", topic="agent-events"),
 ])
 
 graph = StateGraph(publisher=publisher)
@@ -245,13 +300,13 @@ compiled = graph.compile()
 
 | Publisher | Transport | Use case |
 |---|---|---|
-| `ConsolePublisher` | stdout | Development / debugging |
+| `ConsolePublisher` | stdout | Development, debugging |
 | `RedisPublisher` | Redis pub/sub | Real-time dashboards, fan-out |
 | `KafkaPublisher` | Kafka topic | High-throughput event pipelines |
 | `RabbitMQPublisher` | RabbitMQ exchange | Queue-based workflows, notifications |
-| `OtelPublisher` | OpenTelemetry | Distributed tracing (Jaeger, Honeycomb, Langfuse) |
+| `OtelPublisher` | OpenTelemetry | Distributed tracing, observability |
 
-Custom publisher — subclass `BasePublisher`:
+**Custom publisher:**
 
 ```python
 from tenxgraph.runtime.publisher.base_publisher import BasePublisher
@@ -265,13 +320,13 @@ class DatadogPublisher(BasePublisher):
         pass
 ```
 
----
+Composers (like `CompositePublisher`) automatically coordinate multiple publishers, so they work seamlessly with the API server.
 
 ## Dependency injection
 
-`InjectQ` is the DI container shipped with `10xgraph`. Register service instances into it once, pass it to `StateGraph`, and node functions receive their dependencies automatically.
+`InjectQ` is the DI container shipped with 10xGraph. Create a container, register service instances, pass it to `StateGraph`, and node functions receive their dependencies automatically.
 
-### Registering services
+**Setting up a container:**
 
 ```python
 # graph/agent.py
@@ -280,57 +335,15 @@ from services.db import DatabaseService
 
 container = InjectQ.get_instance()
 container.bind_instance(DatabaseService, DatabaseService())
+container["api_version"] = "v2"  # named scalar values
 
-# Named scalar values (retrieved by key, not by type)
-container["api_version"] = "v2"
-```
-
-Pass the container to `StateGraph` at init time:
-
-```python
 graph = StateGraph(container=container)
+# ... add nodes and edges ...
 ```
 
-### Consuming injected dependencies in nodes
+**Using the container in the API:**
 
-Declare dependencies as default parameters using `Inject[T]`:
-
-```python
-from injectq import Inject
-from services.db import DatabaseService
-
-async def my_node(
-    state: AgentState,
-    config: dict,
-    db: DatabaseService = Inject[DatabaseService],
-) -> Message:
-    result = await db.query("SELECT ...")
-    return Message.text_message(str(result), role="assistant")
-```
-
-To read named scalar values inside a node:
-
-```python
-from injectq import InjectQ
-
-async def my_node(state: AgentState, config: dict) -> Message:
-    inq = InjectQ.get_instance()
-    api_version = inq.get("api_version")                    # raises if missing
-    request_id = inq.try_get("request_id", "default-id")   # returns default if missing
-    ...
-```
-
-Always-injected parameters — no annotation needed:
-
-| Parameter name | Value |
-|---|---|
-| `state` | Current `AgentState` |
-| `config` | Run config dict (`thread_id`, `user_id`, etc.) |
-| `tool_call_id` | ID of the tool call (inside `ToolNode` only) |
-
-### Wiring the container via `10xgraph.json`
-
-When using `10xgraph api`, point `injectq` to the exported `InjectQ` instance in your graph module. The server loads that object and activates it as the global singleton.
+Point `injectq` in `10xgraph.json` to the exported container:
 
 ```json
 {
@@ -338,187 +351,113 @@ When using `10xgraph api`, point `injectq` to the exported `InjectQ` instance in
 }
 ```
 
-The value is a dotted `module:attribute` path that resolves to an `InjectQ` instance — not a class, not a dict.
+The value is a dotted `module:attribute` path that resolves to an `InjectQ` instance — not a class, not a dict. The server loads that object and activates it as the global singleton at startup.
 
----
+**Consuming in nodes:**
 
-## Thread name generator
+```python
+from injectq import Inject
+from services.db import DatabaseService
 
-By default the API generates an AI-powered name for each new thread. Override it by subclassing `ThreadNameGenerator` and registering it via `injectq`:
+async def my_node(
+    state: AgentState,
+    config: dict,  # run config dict (thread_id, user_id, etc.)
+    db: DatabaseService = Inject[DatabaseService],
+) -> Message:
+    result = await db.query("SELECT ...")
+    return Message.text_message(str(result), role="assistant")
+```
+
+## Thread naming
+
+By default, each new thread gets a random adjective-noun name (e.g., `"thoughtful-dialogue"`, `"creative-insight"`) generated by `AIThreadNameGenerator`. Override it by subclassing `ThreadNameGenerator`:
 
 ```python
 # services/naming.py
-from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
+from tenxgraph_api import ThreadNameGenerator
 
 class SlugThreadNameGenerator(ThreadNameGenerator):
-    async def generate_name(self, messages: list) -> str:
-        return slugify(messages[0].text[:40])
+    async def generate_name(self, messages: list[str]) -> str:
+        first = next((m for m in messages if m and m.strip()), "")
+        first = " ".join(first.split())
+        return (first[:50] + "…") if len(first) > 50 else first or "new-thread"
 ```
 
 ```json
 {
-  "thread_name_generator": "graph.thread_name_generator:SlugThreadNameGenerator"
+  "thread_name_generator": "services.naming:SlugThreadNameGenerator"
 }
 ```
 
----
-
 ## Production deployment
 
-```mermaid
-flowchart LR
-  LB[Load Balancer] --> W1[Worker 1]
-  LB --> W2[Worker 2]
-  LB --> W3[Worker 3]
-  W1 & W2 & W3 --> REDIS[(Redis\nhot cache + event bus)]
-  W1 & W2 & W3 --> PG[(Postgres\ndurable state)]
-  W1 & W2 & W3 --> QD[(Qdrant\nlong-term memory)]
-```
-
-`10xgraph build` generates a production-ready `Dockerfile` (and optional `docker-compose.yml`):
+For production scale, run multiple worker processes behind a load balancer. Because state is stored in the checkpointer (and optionally in the memory store), any worker can handle any request as long as they share the same storage backend.
 
 ```bash
-10xgraph build                          # Dockerfile only
+10xgraph build                          # Generate Dockerfile
 10xgraph build --docker-compose         # + docker-compose.yml
-10xgraph build --python-version 3.13
 ```
 
-Key environment variables — set them in a `.env` file, via `export`, or as Docker `ENV` / `--env-file`:
+Key environment variables (set in `.env`, as Docker `ENV`, or via `--env-file`):
 
 ```bash
-# .env  (or export VAR=value, or Docker ENV in Dockerfile)
-MODE=production           # enables production guards (warns on ORIGINS=*, etc.)
+MODE=production              # enables security guards
 REDIS_URL=redis://redis:6379
-JWT_SECRET_KEY=your-secret-here
+JWT_SECRET_KEY=your-secret-32-chars
 SENTRY_DSN=https://...@sentry.io/123
 OTEL_ENABLED=true
 OTEL_SERVICE_NAME=my-agent
 OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
-OTEL_LEVEL=standard
+ORIGINS=https://example.com,https://app.example.com
 ```
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MODE` | `development` | Set to `production` to enable security guards |
-| `REDIS_URL` | `None` | Redis for state cache, rate limiter, pub/sub |
-| `JWT_SECRET_KEY` | `None` | Required for `JwtAuth` |
-| `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
-| `SENTRY_DSN` | `None` | Sentry error tracking |
-| `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing (see [OpenTelemetry](#opentelemetry)) |
-| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name reported in all traces |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `None` | OTLP collector URL — omit to print spans to console |
-| `OTEL_LEVEL` | `standard` | Span detail level: `spans` \| `standard` \| `full` |
-| `ORIGINS` | `*` | CORS allowed origins — restrict in production |
-
----
+| `MODE` | `development` | Set to `production` to enable security checks |
+| `REDIS_URL` | none | Redis connection for state cache and pub/sub |
+| `JWT_SECRET_KEY` | none | Required for JWT auth; use 32+ random chars |
+| `SENTRY_DSN` | none | Sentry error tracking |
+| `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing |
+| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name in traces |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | none | OTLP collector URL; omit to log spans to console |
+| `ORIGINS` | `*` | CORS allowed origins; restrict in production |
 
 ## OpenTelemetry
 
-10xGraph has first-class OpenTelemetry support at two independent layers. You can use either or both.
+10xGraph has built-in OpenTelemetry support at two layers: the API (HTTP spans) and the graph (execution spans).
 
-```mermaid
-flowchart TB
-  subgraph "API layer  (FastAPI + HTTP)"
-    FI[FastAPIInstrumentor\nHTTP spans — latency, status, route]
-  end
-  subgraph "Graph layer  (OtelPublisher)"
-    GS[tenxgraph.graph span]
-    NS[tenxgraph.node span]
-    LS[tenxgraph.llm span\ntoken counts, model, finish reason]
-    TS[tenxgraph.tool span\ntool name, type]
-    GS --> NS --> LS
-    NS --> TS
-  end
-  FI -.->|parent| GS
-```
-
-### API layer — automatic when `OTEL_ENABLED=true`
-
-Setting `OTEL_ENABLED=true` in your environment is all that's required. The API server automatically:
-
-- Creates a `TracerProvider` with your `OTEL_SERVICE_NAME`
-- Instruments the FastAPI app with `FastAPIInstrumentor` (HTTP-level spans)
-- Wires `OtelPublisher` into the graph so every LLM call, tool call, and node transition becomes a child span
-- Exports via OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; falls back to console output in non-production
+**Enable automatically:**
 
 ```bash
 OTEL_ENABLED=true
 OTEL_SERVICE_NAME=my-agent
-OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317   # omit to print spans to console
-OTEL_LEVEL=standard                                  # spans | standard | full
+OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+OTEL_LEVEL=standard    # spans | standard | full
 ```
 
-No code changes are needed. The SDK does not need to be configured separately — the API configures `OtelPublisher` automatically and merges it with any existing publisher (such as `RedisPublisher`) without replacing it.
+No code changes needed. The API server automatically:
+- Instruments the FastAPI app (HTTP-level spans)
+- Wires `OtelPublisher` into the graph
+- Exports via OTLP when configured; falls back to console output in dev
 
-### Graph layer — `OtelPublisher` and `ObservabilityLevel`
-
-When running the graph directly (without `10xgraph api`), pass `OtelPublisher` to `StateGraph` at init time:
-
-```python
-from tenxgraph.core.graph import StateGraph
-from tenxgraph.runtime.publisher import OtelPublisher
-from tenxgraph.runtime.publisher.otel_publisher import ObservabilityLevel
-
-graph = StateGraph(publisher=OtelPublisher(level=ObservabilityLevel.STANDARD))
-# ... add nodes and edges ...
-compiled = graph.compile()
-```
-
-`ObservabilityLevel` controls how much data is emitted as span attributes:
-
-| Level | What it includes |
-|---|---|
-| `STANDARD` | Token counts, model name, request params, finish reason *(default)* |
-| `FULL` | All of STANDARD + prompt messages, completions, tool I/O — may contain PII |
-
-With an explicit `TracerProvider` (e.g. to export to Jaeger or Honeycomb):
-
-```python
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry import trace
-
-from tenxgraph.core.graph import StateGraph
-from tenxgraph.runtime.publisher import OtelPublisher
-from tenxgraph.runtime.publisher.otel_publisher import ObservabilityLevel
-
-provider = TracerProvider()
-provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint="http://collector:4317")))
-trace.set_tracer_provider(provider)
-
-graph = StateGraph(publisher=OtelPublisher(level=ObservabilityLevel.FULL))
-# ... add nodes and edges ...
-compiled = graph.compile()
-```
-
-### Span hierarchy
-
-Every graph run produces a consistent span tree:
+The span tree is:
 
 ```
-tenxgraph.graph          ← one per ainvoke / astream call
-  tenxgraph.node         ← one per node execution (e.g. "MAIN", "TOOL")
-    tenxgraph.llm        ← one per LLM call (tokens, model, finish reason)
-    tenxgraph.tool       ← one per tool call (name, type: local | mcp)
+tenxgraph.graph      ← one per invoke/stream
+  tenxgraph.node     ← one per node (e.g. MAIN, TOOL)
+    tenxgraph.llm    ← one per LLM call (tokens, model, finish)
+    tenxgraph.tool   ← one per tool call (name, type)
 ```
 
-The `tenxgraph.graph` span carries `thread_id` as `session.id` so tools like Langfuse automatically group multi-turn conversations.
+The `tenxgraph.graph` span carries `thread_id` as `session.id`, so tools like Langfuse group multi-turn conversations automatically.
 
 **Install:**
 
 ```bash
-pip install "10xgraph[otel]"           # graph-level spans (OtelPublisher)
-pip install "10xgraph-api[otel]"       # API layer (FastAPIInstrumentor + OTLP exporter)
+pip install "10xgraph[otel]"        # graph-level spans
+pip install "10xgraph-api[otel]"    # API layer spans + OTLP exporter
 ```
-
----
 
 ## What's next
 
-| Page | What it covers |
-|---|---|
-| [Connecting Clients](/docs/concepts/connecting-clients) | TypeScript SDK, streaming, remote tools |
-| [Memory](/docs/concepts/memory) | `PgCheckpointer`, Redis cache, long-term vector store |
-| [Extensibility](/docs/concepts/extensibility) | `BaseAuth`, `AuthorizationBackend`, `BasePublisher` and all other ABCs |
-| [Quality & Observability](/docs/qa) | `GraphLifecycleHook` with OpenTelemetry, evaluation, testing |
+Read the [API server guide](/docs/server) for tasks like configuring auth, setting up multi-worker deployments, and monitoring production systems. See the [Memory](/docs/concepts/memory) page to understand checkpointing and the long-term store. The [Extensibility](/docs/concepts/extensibility) page covers all extension points: `BaseAuth`, `AuthorizationBackend`, `BasePublisher`, `BaseCheckpointer`, and `BaseStore`.

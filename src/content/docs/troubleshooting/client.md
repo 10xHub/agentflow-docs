@@ -2,7 +2,7 @@
 title: Client Troubleshooting
 description: Symptoms, causes, and fixes for common 10xGraph TypeScript and HTTP client integration issues.
 section: Troubleshooting
-order: 1930
+order: 50
 label: Client Troubleshooting
 updated: "2026-09-29"
 ---
@@ -141,17 +141,17 @@ flowchart TD
 | Transient failure | `STORAGE_TRANSIENT_000` | Retry request |
 | Validation error | `VALIDATION_000` | Check request format |
 
-See [Error Codes Reference](/docs/troubleshooting/error-codes) for full documentation.
+See [Error Codes Reference](/docs/reference/error-codes) for full documentation.
 
 ---
 
 ## Related docs
 
 - [Quickstart](/docs/get-started/first-agent)
-- [TypeScript Client Reference](/docs/reference/client/agentflow-client)
+- [TypeScript Client Reference](/docs/reference/client/client)
 - [API Server Troubleshooting](/docs/troubleshooting/api-server)
 - [`realtime()` reference](/docs/reference/client/realtime)
-- [Error Codes Reference](/docs/troubleshooting/error-codes)
+- [Error Codes Reference](/docs/reference/error-codes)
 
 ## What you learned
 

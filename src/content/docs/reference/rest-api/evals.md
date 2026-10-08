@@ -3,8 +3,8 @@ title: Eval endpoints
 seoTitle: "Eval endpoints REST API reference"
 description: Reference for the eval run listing and detail endpoints that serve 10xgraph eval reports over HTTP, including their public, unauthenticated status.
 section: Reference
-group: REST API
-order: 1710
+group: "REST API"
+order: 390
 label: Evals
 updated: "2026-07-21"
 ---
@@ -160,4 +160,4 @@ Cases that exist in only one of the two runs are omitted from `rows`.
 ## See also
 
 - [`10xgraph eval`](/docs/reference/api-cli/commands#eval)
-- [Run evals](/docs/how-to/api-cli/run-evals)
+- [Run evals](/docs/testing/run-evals)
