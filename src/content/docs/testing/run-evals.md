@@ -176,7 +176,7 @@ These defaults are intentionally strict on tool correctness (1.0) but lenient on
 
 An eval file is any module matching `*_eval.py` or `eval_*.py`. The CLI auto-detects which protocol you are using. Each protocol suits different evaluation needs.
 
-### `get_eval_set()` — standard fixed cases
+### `get_eval_set()`, standard fixed cases
 
 The simplest protocol: define your test cases once, the CLI runs them repeatedly. You only provide the cases; the CLI loads the agent from `10xgraph.json`, applies criteria, and produces results.
 
@@ -207,7 +207,7 @@ def get_eval_set() -> EvalSet:
 
 **When to use:** Regression suites with fixed inputs and known good outputs. Best for deterministic behavior like tool selection, API behavior, or structured data extraction.
 
-### `get_eval_config()` or `EVAL_CONFIG` — per-file criteria
+### `get_eval_config()` or `EVAL_CONFIG`, per-file criteria
 
 Override the criteria and thresholds for a specific file. The recommended approach is to use one of the preset configurations, which cover common patterns:
 
@@ -263,7 +263,7 @@ def get_eval_config():
     )
 ```
 
-### `confeval.py` — global evaluation config
+### `confeval.py`, global evaluation config
 
 Place a file named exactly `confeval.py` in your project root (next to `10xgraph.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence.
 
@@ -299,7 +299,7 @@ def get_eval_config() -> EvalConfig:
 
 This is useful for enforcing consistent evaluation standards across many eval files without repeating the config in each one.
 
-### Annotated functions `-> EvalSet` — multiple eval sets per file
+### Annotated functions `-> EvalSet`, multiple eval sets per file
 
 Any module-level function with return type annotation `-> EvalSet` is auto-discovered as an eval set. This lets you organize multiple related eval sets in one file:
 
@@ -319,7 +319,7 @@ def booking_cases() -> EvalSet:
 
 Both `weather_cases` and `booking_cases` are discovered and run. Their results appear as separate eval sets in the report, grouped by their names.
 
-### `get_scenarios()` or `SCENARIOS` — user simulator (dynamic conversations)
+### `get_scenarios()` or `SCENARIOS`, user simulator (dynamic conversations)
 
 Use this protocol when you want the LLM to drive a multi-turn conversation against your agent, rather than using fixed prompt/response pairs. The simulator generates contextual follow-up messages after each agent response, letting you test realistic conversation flows.
 

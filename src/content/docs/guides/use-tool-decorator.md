@@ -40,7 +40,7 @@ def search_web(
     return f"Top {limit} results for {query}"
 ```
 
-To access the request context inside the tool—for example, to know which user called it—ask for injected parameters:
+To access the request context inside the tool, for example, to know which user called it, ask for injected parameters:
 
 ```python
 @tool(description="Search the web as the authenticated user.")

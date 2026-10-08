@@ -9,7 +9,7 @@ label: SwarmAgent
 updated: "2026-10-08"
 ---
 
-SwarmAgent implements a peer-to-peer multi-agent pattern where any agent can hand off control directly to any other agent. Unlike supervisor-based architectures with a single coordinator routing all work, swarms distribute decision-making across members. This produces flexible, decentralized workflows with no central bottleneck — each member acts independently and delegates when it determines another member is better suited for the task.
+SwarmAgent implements a peer-to-peer multi-agent pattern where any agent can hand off control directly to any other agent. Unlike supervisor-based architectures with a single coordinator routing all work, swarms distribute decision-making across members. This produces flexible, decentralized workflows with no central bottleneck, each member acts independently and delegates when it determines another member is better suited for the task.
 
 **Import path:** `tenxgraph.prebuilt.agent`
 
@@ -26,15 +26,15 @@ SwarmAgent shines when agents must coordinate flexibly without a predetermined r
 
 Avoid SwarmAgent when:
 
-- **One agent always coordinates.** If a triage agent always makes routing decisions, use `SupervisorTeamAgent` instead — it is more explicit about the hierarchy and easier to reason about.
+- **One agent always coordinates.** If a triage agent always makes routing decisions, use `SupervisorTeamAgent` instead, it is more explicit about the hierarchy and easier to reason about.
 - **Fixed stage pipeline.** If workflow stages are: research → analysis → writing, with no variation, a custom graph with explicit edges is simpler and more maintainable.
 - **LLM token overhead.** Every member's system prompt must list handoff targets. For very large teams (20+ members), this scales poorly.
 
 ## How SwarmAgent works
 
-Each member is a fully independent agent — a pre-built `Agent` instance with its own model, tools, memory, and skills. SwarmAgent wires them together with automatic handoff tools (`transfer_to_MEMBER_NAME`) that any member can call.
+Each member is a fully independent agent, a pre-built `Agent` instance with its own model, tools, memory, and skills. SwarmAgent wires them together with automatic handoff tools (`transfer_to_MEMBER_NAME`) that any member can call.
 
-### Full graph — three-member example
+### Full graph, three-member example
 
 ```mermaid
 flowchart TD
@@ -87,7 +87,7 @@ This ensures:
 
 ### Handoff tools injected automatically
 
-SwarmAgent generates `transfer_to_MEMBER_NAME` tools for each member's allowed targets and injects them into the member's `ToolNode`. These are not executed as tools; when the LLM calls one, the routing logic intercepts the call and navigates the graph directly to the target member. This prevents spurious `tool` role messages in the conversation history — the handoff is clean, and the next member sees a natural continuation of the conversation.
+SwarmAgent generates `transfer_to_MEMBER_NAME` tools for each member's allowed targets and injects them into the member's `ToolNode`. These are not executed as tools; when the LLM calls one, the routing logic intercepts the call and navigates the graph directly to the target member. This prevents spurious `tool` role messages in the conversation history, the handoff is clean, and the next member sees a natural continuation of the conversation.
 
 Each handoff tool's docstring includes the target member's `description` field, so the LLM understands when and why to route there. For example, if RESEARCHER has `description="Gathers facts from the web"`, the handoff tool becomes `transfer_to_researcher(description="Gathers facts from the web")`.
 
@@ -103,7 +103,7 @@ A member without tools (pure LLM decision-making) skips the tool node and routes
 |---|---|
 | `None` (default) | Member can hand off to all other members |
 | `["A", "B"]` | Member can hand off only to A and B (case-insensitive; normalized to uppercase) |
-| `[]` | Terminal member — no handoffs allowed; always routes to END after tools |
+| `[]` | Terminal member, no handoffs allowed; always routes to END after tools |
 
 Setting `can_handoff_to=[]` creates a terminal member that always ends the swarm, useful for a final writer or decision-maker that should not pass control further.
 
@@ -117,7 +117,7 @@ Every member is a fully independent `Agent` instance. Members can use different:
 - Retry policies, multimodal settings, reasoning configs
 - System prompts and tone
 
-SwarmAgent only wires the graph and injects handoff tools. It enforces no configuration constraints on members — each is as customizable as a standalone agent.
+SwarmAgent only wires the graph and injects handoff tools. It enforces no configuration constraints on members, each is as customizable as a standalone agent.
 
 ---
 
@@ -226,7 +226,7 @@ swarm = SwarmAgent(
         ),
         "WRITER": SwarmMemberConfig(
             agent=writer_agent,
-            can_handoff_to=[],  # terminal — no handoffs out
+            can_handoff_to=[],  # terminal, no handoffs out
             description="Writes the final document.",
         ),
     },

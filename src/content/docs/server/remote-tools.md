@@ -18,7 +18,7 @@ Remote tools are trusted tool schemas configured on the server that the model ca
 
 ## Why remote tools
 
-A remote tool runs client-side code—browser APIs, local databases, user-specific resources—that the server must not execute. The model calls them by name as if they were server tools; the framework routes the call to the client, the client runs the handler, and returns the result to the graph.
+A remote tool runs client-side code, browser APIs, local databases, user-specific resources, that the server must not execute. The model calls them by name as if they were server tools; the framework routes the call to the client, the client runs the handler, and returns the result to the graph.
 
 Use remote tools when your task needs:
 
@@ -302,7 +302,7 @@ Check that:
 
 ## Related pages
 
-- [Concepts: Remote tools](/docs/concepts/remote-tools) — the conceptual model and use cases.
-- [Client: Remote tools](/docs/client/remote-tools) — how the TypeScript client executes them.
-- [Guide: Send media](/docs/guides/send-media) — if your remote tools transfer files or media.
-- [Reference: Configuration](/docs/reference/api-cli/configuration) — full 10xgraph.json schema.
+- [Concepts: Remote tools](/docs/concepts/remote-tools): the conceptual model and use cases.
+- [Client: Remote tools](/docs/client/remote-tools): how the TypeScript client executes them.
+- [Guide: Send media](/docs/guides/send-media): if your remote tools transfer files or media.
+- [Reference: Configuration](/docs/reference/api-cli/configuration): full 10xgraph.json schema.

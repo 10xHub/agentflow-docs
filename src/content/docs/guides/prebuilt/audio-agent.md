@@ -50,7 +50,7 @@ AudioAgent builds a single-node graph with a `LiveAgent` root, connected to an e
 
 ### Tool execution
 
-Tools are advertised to the model at connect time. When the model requests a tool call, the agent executes it through the same `ToolNode` used by ReactAgent — in **parallel** if the model requests multiple tools at once. The tool result is fed back over the WebSocket without breaking the audio stream.
+Tools are advertised to the model at connect time. When the model requests a tool call, the agent executes it through the same `ToolNode` used by ReactAgent, in **parallel** if the model requests multiple tools at once. The tool result is fed back over the WebSocket without breaking the audio stream.
 
 ### Transcripts and checkpointing
 
@@ -118,7 +118,7 @@ Call `.compile()` on the AudioAgent to produce a `CompiledGraph`:
 | `callback_manager` | `CallbackManager \| None` | default | Lifecycle hooks: `on_graph_start`, `on_graph_end`, `on_turn_start`, `on_turn_end`. |
 | `shutdown_timeout` | `float` | `30.0` | Seconds to wait before forcing shutdown if the WebSocket is stuck. |
 
-AudioAgent does **not** accept `media_store`, `interrupt_before`, or `interrupt_after`. Realtime media (images, video frames) is sent frame-by-frame directly to the model via `LiveInputQueue.send_image()` — there is no media store involvement. Interrupt hooks do not apply to the realtime execution model; use events instead (e.g. listen for `interrupted` or `error` types).
+AudioAgent does **not** accept `media_store`, `interrupt_before`, or `interrupt_after`. Realtime media (images, video frames) is sent frame-by-frame directly to the model via `LiveInputQueue.send_image()`, there is no media store involvement. Interrupt hooks do not apply to the realtime execution model; use events instead (e.g. listen for `interrupted` or `error` types).
 
 
 ---
@@ -393,10 +393,10 @@ The `arealtime()` generator yields events as they occur during the session. List
 | `output_transcript` | `text: str`, `finished: bool` | Model speech is transcribed. `finished=True` = complete turn. | Log or display agent output in real-time; `finished=True` = final turn. |
 | `tool_call` | `name: str`, `args: dict` | Model requested a tool. | Observability only; the agent executes it automatically. |
 | `tool_result` | `result: str \| dict` | Tool execution finished. | Observability; result was sent back to the model. |
-| `turn_complete` | — | Model finished a turn. | Safe point to close queue or prompt for next input. |
-| `interrupted` | — | User spoke over model (barge-in). | Flush audio playback buffer; resume listening for new user input. |
+| `turn_complete` | - | Model finished a turn. | Safe point to close queue or prompt for next input. |
+| `interrupted` | - | User spoke over model (barge-in). | Flush audio playback buffer; resume listening for new user input. |
 | `session_update` | `resumption_handle: str` | Provider issued a resumption handle. | Save it if you want to reconnect later (use a checkpointer). |
-| `go_away` | — | Provider closing socket (rotation or error). | Reconnect is triggered automatically; no action needed. |
+| `go_away` | - | Provider closing socket (rotation or error). | Reconnect is triggered automatically; no action needed. |
 | `error` | `message: str`, `fatal: bool` | Transient or fatal error. | Log it; if `fatal=True`, the session ended. |
 
 ---

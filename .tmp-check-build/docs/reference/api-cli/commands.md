@@ -1,0 +1,240 @@
+# CLI reference
+
+> Every 10xGraph CLI command with its purpose, usage line, options and defaults: init, api, play, dev, build, eval, test, skills, audit, config, demo and version.
+
+Source: https://10xgraph.com/docs/reference/api-cli/commands
+Last updated: 2026-10-08
+
+The `10xgraph` command ships with the `10xgraph-api` package. It has twelve subcommands: `init`, `api`, `play`, `dev`, `build`, `eval`, `test`, `skills`, `audit`, `config`, `demo` and `version`. Global options go before the subcommand, and `-h` or `--help` works everywhere.
+
+> **Coming from agentflow**
+>
+> The `agentflow` command still works as a deprecated alias of `10xgraph` and prints a notice when it runs. It is removed in 2.0, so switch scripts and CI to `10xgraph`. The package was `10xscale-agentflow-cli` before 0.7.0.
+
+## Global options
+
+Placed before the subcommand, for example `10xgraph --no-color build`.
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--format` | `human` | Output format: `human`, `plain`, `json` or `jsonl` |
+| `--json` | off | Shorthand for `--format json` |
+| `--color` | `auto` | Color policy: `auto`, `always` or `never` |
+| `--no-color` | off | Shorthand for `--color never` |
+| `--progress` | `auto` | Progress mode: `auto`, `tty`, `plain`, `json` or `quiet` |
+| `--animation / --no-animation` | on for an interactive terminal | Play the command intro. `--no-animation` prints a static header instead |
+| `--fullscreen / --no-fullscreen` | off | Pin a header and footer on a full-screen surface. `TENXGRAPH_FULLSCREEN=1` turns it on |
+| `--cwd` | current directory | Run as if started in this directory (must exist) |
+| `--verbose`, `-v` | 0 | Increase diagnostics, repeatable |
+| `--quiet`, `-q` | off | Suppress informational and success output |
+| `--debug` | off | Enable debug diagnostics |
+| `--yes`, `-y` | off | Accept recommended defaults |
+| `--non-interactive` | off | Never prompt |
+| `--version`, `-V` | | Print the CLI version and exit |
+
+`--json` cannot be combined with a different `--format`, and `--no-color` cannot be combined with a different `--color`.
+
+On an interactive terminal each command opens with a short intro, under a second, that shows the CLI, core and Python versions and then leaves a one-line header in your scrollback. Press any key to skip it, or Ctrl+C to quit at once. Nothing waits for Enter unless you opted into `--fullscreen`.
+
+Wherever a command takes `--config` with the default `10xgraph.json`, it uses `agentflow.json` from the same directory when `10xgraph.json` is missing. `10xgraph api` flags the old name in its startup output.
+
+## init
+
+Scaffold a new agent project.
+
+```bash
+10xgraph init [--path DIR] [--template quick-start|production] [options]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--path`, `-p` | `.` | Directory to initialize |
+| `--force`, `-f` | off | Overwrite existing files |
+| `--name` | inferred | Agent name, required only when it cannot be inferred |
+| `--template` | `quick-start` | `quick-start` or `production` |
+| `--auth` | prompt | Production only: `none`, `jwt` or `custom` |
+| `--rate-limit` | prompt | Production only: `none`, `memory` or `redis` |
+| `--yes`, `-y` | off | Accept recommended defaults |
+| `--non-interactive` | off | Fail instead of prompting |
+| `--dry-run` | off | Preview without writing files |
+
+`--auth` and `--rate-limit` require `--template production`.
+
+## api
+
+Start the development API server (Uvicorn).
+
+```bash
+10xgraph api [--config FILE] [--host HOST] [--port PORT]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--config`, `-c` | `10xgraph.json` | Config file |
+| `--host`, `-H` | `127.0.0.1` | Bind address. Use `0.0.0.0` for all interfaces |
+| `--port`, `-p` | `8000` | Port |
+| `--reload / --no-reload` | on | Auto-reload on file changes |
+| `--verbose`, `-v` | off | Verbose logging |
+| `--quiet`, `-q` | off | Errors only |
+
+## play
+
+Start the same server and open the hosted playground. Takes the same options as `api`.
+
+```bash
+10xgraph play [--config FILE] [--host HOST] [--port PORT] [--reload | --no-reload]
+```
+
+## dev
+
+Local development server. Like `play`, with the playground opening controlled by a flag.
+
+```bash
+10xgraph dev [--config FILE] [--host HOST] [--port PORT] [--open | --no-open]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--config`, `-c` | `10xgraph.json` | Config file |
+| `--host`, `-H` | `127.0.0.1` | Bind address |
+| `--port`, `-p` | `8000` | Port |
+| `--reload / --no-reload` | on | Reload on file changes |
+| `--open / --no-open` | on | Open the hosted playground when the API is ready |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
+
+## build
+
+Generate deployment files. See [Deploy with Docker and Kubernetes](/docs/server/deploy).
+
+```bash
+10xgraph build [--docker-compose] [--k8s] [options]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--output`, `-o` | `Dockerfile` | Dockerfile path |
+| `--force`, `-f` | off | Overwrite existing files |
+| `--python-version` | `3.13` | Python version of the base image |
+| `--port`, `-p` | `8000` | Port to expose |
+| `--docker-compose / --no-docker-compose` | off | Also write `docker-compose.yml`, omit `CMD` from the Dockerfile |
+| `--k8s / --no-k8s` | off | Also write `k8s.yaml` |
+| `--service-name` | `10xgraph-api` | Service name in generated files |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
+
+## eval
+
+Run agent evaluations. Discovers `*_eval.py` and `eval_*.py` files in the target directory (default `evals/`) and runs their cases.
+
+```bash
+10xgraph eval [TARGET] [--threshold 0.8] [--parallel]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `TARGET` | `evals/` | File or directory to evaluate |
+| `--output`, `-o` | `eval_reports` | Report directory |
+| `--no-report` | off | Console summary only |
+| `--threshold`, `-t` | unset | Fail if the overall pass rate is below this value (0.0 to 1.0) |
+| `--open` | off | Open the HTML report afterwards |
+| `--parallel`, `-p` | off | Run all cases from all files concurrently |
+| `--max-concurrency`, `-c` | `4` | Concurrent cases when `--parallel` is set |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Output level |
+
+Reports are HTML and JSON unless `--no-report` is set. When an option is left at its default, the `evaluation` block of `10xgraph.json` can supply `directory`, `output_dir`, `threshold`, `parallel` and `max_concurrency`.
+
+## test
+
+Run the project tests with pytest.
+
+```bash
+10xgraph test [PATH] [--coverage] [-k EXPR] [-- PYTEST_ARGS]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `PATH` | pytest discovery | Test file or directory |
+| `--coverage`, `-C` | off | Run with coverage (`--cov=.`, terminal and HTML reports) |
+| `--html` | off | Open the HTML coverage report (needs `--coverage`) |
+| `-k` | unset | Only run tests matching this expression |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Output level |
+
+Extra arguments are forwarded to pytest. The `test` block of `10xgraph.json` can set `path`, `coverage` and `coverage_threshold`. An explicit `PATH` wins over the config.
+
+## skills
+
+Install the bundled coding-agent skill, or validate skills.
+
+```bash
+10xgraph skills [--agent codex|claude|github] [--all] [--list]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--agent`, `-a` | prompt | Target: `codex`, `claude`, `github`, or menu number `1`, `2`, `3` |
+| `--all` | off | Install for every supported agent |
+| `--list`, `-l` | off | List supported agents and exit |
+| `--path`, `-p` | `.` | Project directory to install into |
+| `--force`, `-f` | off | Overwrite an existing installed skill |
+| `--validate` | unset | Validate a skill directory or folder of them against the Agent Skills spec. Repeatable |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
+
+Install locations: `.agents/skills/10xgraph` (Codex), `.claude/skills/10xgraph` (Claude), and `.github/skills/10xgraph` plus `.github/instructions/10xgraph.instructions.md` (GitHub).
+
+## audit
+
+Read-only environment check: Python version, installed packages, core evaluation API, `10xgraph.json` validity and whether the default port is free. Exits 1 if any check fails, so it works as a CI gate.
+
+```bash
+10xgraph audit [--config FILE]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--config`, `-c` | `10xgraph.json` | Config file to validate |
+| `--verbose`, `-v` / `--quiet`, `-q` | off | Logging level |
+
+## config
+
+Edit and validate `10xgraph.json` in a browser UI. The file is created on first save. If only `agentflow.json` exists, the editor starts from its contents and saving writes them to `10xgraph.json`, leaving `agentflow.json` untouched.
+
+```bash
+10xgraph config [--config FILE] [--port PORT] [--no-open]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--config`, `-c` | `10xgraph.json` | File to edit |
+| `--port`, `-p` | `0` (any free port) | Editor port |
+| `--open / --no-open` | on | Open the default browser |
+
+## demo
+
+Preview terminal animations without touching the project.
+
+```bash
+10xgraph demo [--style all|typing|network|init|build|eval]
+```
+
+| Option | Default | Purpose |
+|---|---|---|
+| `--style` | `all` | Animation theme |
+
+## version
+
+Print the CLI and core framework versions.
+
+```bash
+10xgraph version
+```
+
+Accepts `--verbose` and `--quiet`.
+
+## Exit codes
+
+Commands exit `0` on success and non-zero on failure. `Ctrl+C` exits `130`. `10xgraph test` returns the pytest exit code.
+
+## Frequently asked questions
+
+### What is the difference between api, play and dev?
+
+All three start the same Uvicorn development server. play also opens the hosted playground, dev opens it by default but accepts --no-open, and api never opens it. None of them is meant for production, so use build and Gunicorn there.

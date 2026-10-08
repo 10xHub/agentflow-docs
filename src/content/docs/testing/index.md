@@ -82,12 +82,12 @@ See [evaluation](/docs/testing/evaluation) for a quick start, [criteria](/docs/t
 
 If you are new to testing agents, start here:
 
-1. [Unit tests](/docs/testing/unit-tests) — write your first test with `TestAgent`
-2. [Run tests](/docs/testing/run-tests) — wire unit tests into CI
-3. [Evaluation](/docs/testing/evaluation) — run your agent against real cases
-4. [Eval sets](/docs/testing/eval-sets) — define test cases
-5. [Criteria](/docs/testing/criteria) — understand scoring
-6. [Run evaluations](/docs/testing/run-evals) — automate evaluations in CI
+1. [Unit tests](/docs/testing/unit-tests): write your first test with `TestAgent`
+2. [Run tests](/docs/testing/run-tests): wire unit tests into CI
+3. [Evaluation](/docs/testing/evaluation): run your agent against real cases
+4. [Eval sets](/docs/testing/eval-sets): define test cases
+5. [Criteria](/docs/testing/criteria): understand scoring
+6. [Run evaluations](/docs/testing/run-evals): automate evaluations in CI
 
 Then explore deeper topics like [presets](/docs/testing/presets), [user simulation](/docs/testing/user-simulation), and [evals in pytest](/docs/testing/evals-in-pytest) as your needs grow.
 

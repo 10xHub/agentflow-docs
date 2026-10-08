@@ -9,7 +9,7 @@ updated: "2026-10-08"
 
 Remote tools let your agent call functions that run in the browser or on the client machine. Use them for capabilities that only the client owns: geolocation, clipboard access, DOM manipulation, local file system access, or device sensors. Keep database, secrets, and backend work in server-side tools defined in your Python graph.
 
-When the agent asks for a remote tool, 10xGraph automatically detects it, runs your registered handler on the client, collects the result, and feeds it back to the agent—all without you managing the handoff.
+When the agent asks for a remote tool, 10xGraph automatically detects it, runs your registered handler on the client, collects the result, and feeds it back to the agent, all without you managing the handoff.
 
 ## How it works
 
@@ -112,7 +112,7 @@ client.registerToolHandler('read_clipboard', async () => {
 
 Handler requirements:
 
-- **Signature:** `async (args: any) => Promise<any>` — the async function receives the tool arguments as a single object and must return a JSON-serializable value.
+- **Signature:** `async (args: any) => Promise<any>`: the async function receives the tool arguments as a single object and must return a JSON-serializable value.
 - **Arguments:** The model generates arguments based on the schema you declared in `10xgraph.json`. Destructure them as shown, or access them as properties: `args.high_accuracy`.
 - **Return value:** Must be serializable to JSON (objects, arrays, strings, numbers, booleans, null). If your result is not serializable, the tool fails.
 - **Errors:** If the handler throws, the error is caught and converted to a failed tool result. The agent sees the error message and can retry or handle it.

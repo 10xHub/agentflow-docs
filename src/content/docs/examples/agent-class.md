@@ -318,7 +318,7 @@ if __name__ == "__main__":
 
 ## See also
 
-- [Agent class reference](/docs/reference/python/agent) — all constructor options and methods.
-- [ToolNode and tool decorator](/docs/guides/use-tool-decorator) — write custom tools, injectable parameters, error handling.
-- [Conditional edges and routing](/docs/guides/build-a-graph) — routing patterns and control flow.
-- [Checkpoint and persist state](/docs/guides/set-up-checkpointing) — keep conversation memory across runs.
+- [Agent class reference](/docs/reference/python/agent): all constructor options and methods.
+- [ToolNode and tool decorator](/docs/guides/use-tool-decorator): write custom tools, injectable parameters, error handling.
+- [Conditional edges and routing](/docs/guides/build-a-graph): routing patterns and control flow.
+- [Checkpoint and persist state](/docs/guides/set-up-checkpointing): keep conversation memory across runs.

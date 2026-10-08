@@ -205,7 +205,7 @@ await client.updateMemory(
 
 The memory API supports multiple retrieval strategies and distance metrics. Most use cases work well with the defaults (similarity and cosine distance), but for specialized scenarios, you have options.
 
-For detailed tables of retrieval strategies and distance metrics, see [memory reference](/docs/reference/client/memory#retrieval-strategy) and [distance metric reference](/docs/reference/client/memory#distance-metric).
+For detailed tables of retrieval strategies and distance metrics, see [memory reference](/docs/reference/client/memory#retrievalstrategy) and [distance metric reference](/docs/reference/client/memory#distancemetric).
 
 Common advanced patterns:
 

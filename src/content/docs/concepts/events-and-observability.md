@@ -9,7 +9,7 @@ faq:
   - q: "How do I export events to LangSmith or Logfire?"
     a: "Use `setup_langsmith()` or `setup_logfire()` in your `10xgraph.json` observability config, or call the functions directly at startup from Python. These wrap the OTEL tracer and export spans to their backend."
   - q: "What is the difference between metrics and tracing?"
-    a: "Metrics are aggregated counters and histograms (message count, latency percentiles) — dimensioned, dashboarded data. Tracing captures individual request flows as spans with attributes and hierarchy, useful for debugging. 10xGraph emits both."
+    a: "Metrics are aggregated counters and histograms (message count, latency percentiles), dimensioned, dashboarded data. Tracing captures individual request flows as spans with attributes and hierarchy, useful for debugging. 10xGraph emits both."
   - q: "Can I publish events to multiple backends at once?"
     a: "Yes. Use `CompositePublisher` to fan out to Console, Redis, Kafka, RabbitMQ, and OTEL simultaneously. Wire them together in `10xgraph.json` or Python."
 ---

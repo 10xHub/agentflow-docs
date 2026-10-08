@@ -1,0 +1,1 @@
+import{t as e}from"./search.DHAQBGXx.js";var{input:t,run:n}=e(document.querySelector(`.search-page`)),r=new URLSearchParams(location.search).get(`q`)??``;t.value=r,n(r),t.addEventListener(`input`,()=>history.replaceState(null,``,t.value?`?q=${encodeURIComponent(t.value)}`:location.pathname));

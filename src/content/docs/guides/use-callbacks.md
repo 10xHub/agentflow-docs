@@ -351,8 +351,8 @@ app = graph.compile(callback_manager=cbm)
 
 ## Related pages
 
-- [Concepts: Callbacks and Command](/docs/concepts/callbacks-and-command) — understand when to use callbacks vs conditional edges
-- [Reference: Callback Manager](/docs/reference/python/callback-manager) — full API
-- [Reference: Lifecycle Callbacks](/docs/reference/python/lifecycle-callbacks) — all hook signatures and patterns
-- [Guides: Add human approval](/docs/guides/add-human-approval) — use lifecycle hooks for interrupt/resume workflows
-- [Guides: Protect against prompt injection](/docs/guides/protect-against-prompt-injection) — validate input with callbacks
+- [Concepts: Callbacks and Command](/docs/concepts/callbacks-and-command): understand when to use callbacks vs conditional edges
+- [Reference: Callback Manager](/docs/reference/python/callback-manager): full API
+- [Reference: Lifecycle Callbacks](/docs/reference/python/lifecycle-callbacks): all hook signatures and patterns
+- [Guides: Add human approval](/docs/guides/add-human-approval): use lifecycle hooks for interrupt/resume workflows
+- [Guides: Protect against prompt injection](/docs/guides/protect-against-prompt-injection): validate input with callbacks

@@ -40,7 +40,7 @@ The API server is a Uvicorn ASGI process that loads your compiled graph **once a
 
 `10xgraph.json` is the single file that wires everything together. The CLI and API server read it at startup to determine which graph to load, which auth to use, and how to configure every service.
 
-Import paths are **dotted module paths** (`module:attribute`), resolved with `importlib` — not file paths.
+Import paths are **dotted module paths** (`module:attribute`), resolved with `importlib`, not file paths.
 
 **Minimal example:**
 
@@ -282,7 +282,7 @@ container.bind_instance(BaseRateLimitBackend, CustomRateLimitBackend())
 
 ## Publishers
 
-Publishers emit `EventModel` on every execution event — node start/end, tool calls, state updates, errors. Wire them at `StateGraph` initialization, not at compile:
+Publishers emit `EventModel` on every execution event, node start/end, tool calls, state updates, errors. Wire them at `StateGraph` initialization, not at compile:
 
 ```python
 from tenxgraph.runtime.publisher import CompositePublisher, RedisPublisher, KafkaPublisher
@@ -351,7 +351,7 @@ Point `injectq` in `10xgraph.json` to the exported container:
 }
 ```
 
-The value is a dotted `module:attribute` path that resolves to an `InjectQ` instance — not a class, not a dict. The server loads that object and activates it as the global singleton at startup.
+The value is a dotted `module:attribute` path that resolves to an `InjectQ` instance, not a class, not a dict. The server loads that object and activates it as the global singleton at startup.
 
 **Consuming in nodes:**
 

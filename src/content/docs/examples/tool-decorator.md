@@ -9,7 +9,7 @@ label: Tool Decorator
 updated: '2026-10-08'
 ---
 
-This example demonstrates how to use the `@tool` decorator to enrich tool functions with runtime-queryable metadata: names, descriptions, tags for filtering, capabilities, and arbitrary application data. You'll build a set of decorated tools — sync, async, stateful — and learn to filter them by tag and introspect their metadata from your graph code.
+This example demonstrates how to use the `@tool` decorator to enrich tool functions with runtime-queryable metadata: names, descriptions, tags for filtering, capabilities, and arbitrary application data. You'll build a set of decorated tools, sync, async, stateful, and learn to filter them by tag and introspect their metadata from your graph code.
 
 **Source example:** [`agentflow/examples/tool-decorator/basic_decorator_usage.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/tool-decorator/basic_decorator_usage.py)
 
@@ -32,7 +32,7 @@ You should see output demonstrating all six examples, tag filtering, and metadat
 
 ## Why use `@tool`?
 
-Without the decorator, a function registered in a `ToolNode` exposes only its name, docstring, and parameter types to the LLM. The `@tool` decorator lets you attach rich metadata — explicit names, descriptions, tags for runtime filtering, provider hints, capabilities, and arbitrary key-value metadata — that your application code can query at runtime for tool selection, routing, auditing, or access control.
+Without the decorator, a function registered in a `ToolNode` exposes only its name, docstring, and parameter types to the LLM. The `@tool` decorator lets you attach rich metadata, explicit names, descriptions, tags for runtime filtering, provider hints, capabilities, and arbitrary key-value metadata, that your application code can query at runtime for tool selection, routing, auditing, or access control.
 
 ```mermaid
 flowchart LR
@@ -60,7 +60,7 @@ from tenxgraph.core.graph.tool_node import ToolNode
 from tenxgraph.core.state import AgentState
 ```
 
-## Example 1 — Basic tool with explicit name
+## Example 1, Basic tool with explicit name
 
 ```python
 @tool(name="add_numbers")
@@ -71,7 +71,7 @@ def add(a: int, b: int) -> int:
 
 The `name` parameter overrides the Python function name in the LLM schema. Everything else (description, parameter types) is derived from the docstring and annotations.
 
-## Example 2 — Decorator with no arguments (uses function name)
+## Example 2, Decorator with no arguments (uses function name)
 
 ```python
 @tool
@@ -82,7 +82,7 @@ def multiply(x: int, y: int) -> int:
 
 When no arguments are provided, `@tool` uses the function name (`multiply`) and docstring as-is.
 
-## Example 3 — Full metadata
+## Example 3, Full metadata
 
 ```python
 @tool(
@@ -109,7 +109,7 @@ def search_web(query: str, max_results: int = 10) -> list[str]:
 | `capabilities` | `list[str]` | Capability strings (e.g. `"network_access"`, `"database_write"`) |
 | `metadata` | `dict` | Arbitrary key-value data for application use |
 
-## Example 4 — Async tool
+## Example 4, Async tool
 
 ```python
 import asyncio
@@ -127,7 +127,7 @@ async def fetch_data_async(endpoint: str, timeout: int = 5) -> dict:
 
 `ToolNode` handles async functions automatically. You do not need to change any other part of your graph.
 
-## Example 5 — Injectable parameters
+## Example 5, Injectable parameters
 
 Parameters annotated with 10xGraph types (like `AgentState`) are **injected automatically** by the framework and do **not** appear in the LLM schema. This lets tools access conversation state without the LLM needing to pass it.
 
@@ -138,7 +138,7 @@ Parameters annotated with 10xGraph types (like `AgentState`) are **injected auto
     tags=["calculator", "stateful"],
 )
 def stateful_add(a: int, b: int, state: AgentState | None = None) -> int:
-    """The 'state' parameter is injected — it won't appear in the LLM's tool schema."""
+    """The 'state' parameter is injected, it won't appear in the LLM's tool schema."""
     result = a + b
     if state:
         # Access conversation history, custom fields, etc.
@@ -262,7 +262,7 @@ if __name__ == "__main__":
 |---|---|
 | `@tool` | Decorator that attaches metadata to a Python function for use in `ToolNode` |
 | `tags` | Arbitrary string labels; filter with `get_local_tool(tags={...})` |
-| Injectable params | `AgentState`, `tool_call_id` — supplied by the runtime, hidden from LLM schema |
+| Injectable params | `AgentState`, `tool_call_id`, supplied by the runtime, hidden from LLM schema |
 | `has_tool_decorator` | Returns `True` if a function was wrapped with `@tool` |
 | `get_tool_metadata` | Returns the full metadata dict from a decorated function |
 
@@ -276,4 +276,4 @@ if __name__ == "__main__":
 
 ## Next step
 
-→ [ReAct Agent](/docs/examples/react-agent) — build a full ReAct loop with a checkpointer for persistent conversation history.
+→ [ReAct Agent](/docs/examples/react-agent), build a full ReAct loop with a checkpointer for persistent conversation history.

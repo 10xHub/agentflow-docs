@@ -154,7 +154,7 @@ Create a state instance and populate fields, then pass it to `create_app`:
 
 ```python
 custom_state = MyState()
-custom_state.candidate_cv = "John Doe — Senior Python Engineer, 5 years experience"
+custom_state.candidate_cv = "John Doe, Senior Python Engineer, 5 years experience"
 custom_state.jd = "Looking for Senior Python Developer with 3+ years experience"
 custom_state.match_score = 0.85
 custom_state.analysis_results = {"skills_match": True, "experience_match": True}

@@ -8,7 +8,7 @@ label: Logfire & LangSmith tracing
 updated: "2026-10-08"
 ---
 
-[Pydantic Logfire](https://pydantic.dev/logfire) and [LangSmith](https://docs.langchain.com/langsmith/) are production-grade observability platforms for monitoring AI applications. Both implement OpenTelemetry, the industry-standard protocol for distributed tracing. 10xGraph automatically instruments your graphs with spans at every layer—graph execution, node transitions, LLM invocations, token usage, and tool execution—including GenAI semantic conventions (`gen_ai.usage.input_tokens`, `gen_ai.request.model`, `session.id`, and more). The `OtelPublisher` routes these spans through an OpenTelemetry `TracerProvider` to your chosen backend. You need only configure which exporter to use; no vendor-specific instrumentation is required.
+[Pydantic Logfire](https://pydantic.dev/logfire) and [LangSmith](https://docs.langchain.com/langsmith/) are production-grade observability platforms for monitoring AI applications. Both implement OpenTelemetry, the industry-standard protocol for distributed tracing. 10xGraph automatically instruments your graphs with spans at every layer, graph execution, node transitions, LLM invocations, token usage, and tool execution, including GenAI semantic conventions (`gen_ai.usage.input_tokens`, `gen_ai.request.model`, `session.id`, and more). The `OtelPublisher` routes these spans through an OpenTelemetry `TracerProvider` to your chosen backend. You need only configure which exporter to use; no vendor-specific instrumentation is required.
 
 ## Prerequisites and installation
 
@@ -68,7 +68,7 @@ app = graph.compile()
 | `send_to_logfire` | bool | `True` | Set `False` to emit to console only (for local testing). |
 | `console` | bool or ConsoleOptions | None | Control local console output. Pass `False` to silence it. |
 | `level` | ObservabilityLevel | `STANDARD` | Verbosity: `SPANS` (timing only), `STANDARD` (tokens, model, params), or `FULL` (prompt/completion text). See details below. |
-| `**configure_kwargs` | dict | — | Extra keyword arguments passed to `logfire.configure()` (e.g., `environment="staging"`). |
+| `**configure_kwargs` | dict | - | Extra keyword arguments passed to `logfire.configure()` (e.g., `environment="staging"`). |
 
 ## Option 2: Configure LangSmith with a Python helper
 
@@ -109,7 +109,7 @@ setup_langsmith(
 
 ## Option 3: Use a publisher object
 
-If you prefer to work with publisher objects—for example, to compose multiple publishers with `CompositePublisher`—instantiate `LogfirePublisher` or `LangsmithPublisher` and pass it to your graph:
+If you prefer to work with publisher objects, for example, to compose multiple publishers with `CompositePublisher`, instantiate `LogfirePublisher` or `LangsmithPublisher` and pass it to your graph:
 
 ```python
 from tenxgraph.runtime.publisher import LangsmithPublisher, ObservabilityLevel
@@ -261,6 +261,6 @@ setup_langsmith(graph, api_key="your-api-key", project="my-agent")
 
 ## See also
 
-- [How to use publishers](/docs/guides/use-publishers) — full catalog of publishers, including raw `OtelPublisher`.
-- [Configure 10xgraph.json](/docs/server/configure) — all top-level config keys and their meanings.
-- [Server observability](/docs/server/observability) — logging, metrics, OTEL tracing, and Sentry integration on the API server.
+- [How to use publishers](/docs/guides/use-publishers): full catalog of publishers, including raw `OtelPublisher`.
+- [Configure 10xgraph.json](/docs/server/configure): all top-level config keys and their meanings.
+- [Server observability](/docs/server/observability): logging, metrics, OTEL tracing, and Sentry integration on the API server.

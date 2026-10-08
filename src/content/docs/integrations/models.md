@@ -155,7 +155,7 @@ The table below shows which provider supports each capability. A check mark mean
 | **Reasoning models** | Yes (o1, o3, o4) | Experimental (gemini-3-thinking) | Yes (Claude with thinking) |
 | **Prompt caching** | Yes | Yes (cache_control) | Yes (cache_control) |
 | **Multimodal input** | Image, audio | Image, video, audio, file | Image, PDF |
-| **Batch API** | Yes (OpenAI Batch) | — | Yes (Anthropic Batch) |
+| **Batch API** | Yes (OpenAI Batch) | - | Yes (Anthropic Batch) |
 
 ### Tools
 
@@ -276,8 +276,8 @@ agent = Agent(
 
 ## Related pages
 
-- [OpenAI integration](/docs/integrations/openai) — model list, pricing, keys, and options.
-- [Google integration](/docs/integrations/google) — Gemini and Vertex AI setup.
-- [Anthropic integration](/docs/integrations/anthropic) — Claude, Vertex, and Bedrock setup.
-- [Agents and tools](/docs/concepts/agents-and-tools) — how Agent works with tool calling.
-- [LLM utilities reference](/docs/reference/python/llm) — `detect_provider`, `create_llm_client`, and batch classes.
+- [OpenAI integration](/docs/integrations/openai): model list, pricing, keys, and options.
+- [Google integration](/docs/integrations/google): Gemini and Vertex AI setup.
+- [Anthropic integration](/docs/integrations/anthropic): Claude, Vertex, and Bedrock setup.
+- [Agents and tools](/docs/concepts/agents-and-tools): how Agent works with tool calling.
+- [LLM utilities reference](/docs/reference/python/llm): `detect_provider`, `create_llm_client`, and batch classes.

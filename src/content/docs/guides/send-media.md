@@ -333,7 +333,7 @@ asyncio.run(main())
 
 10xGraph provides three storage backends. Choose based on your deployment model:
 
-**InMemoryMediaStore** — Development and testing. Data is lost on process restart.
+**InMemoryMediaStore**, Development and testing. Data is lost on process restart.
 
 ```python
 from tenxgraph.storage.media import InMemoryMediaStore
@@ -343,7 +343,7 @@ key = await store.store(data=image_bytes, mime_type="image/png")
 bytes_back, mime = await store.retrieve(key)
 ```
 
-**LocalFileMediaStore** — Single-server deployments. Stores files on disk with sharding.
+**LocalFileMediaStore**, Single-server deployments. Stores files on disk with sharding.
 
 ```python
 from tenxgraph.storage.media.storage import LocalFileMediaStore
@@ -354,7 +354,7 @@ key = await store.store(data=pdf_bytes, mime_type="application/pdf")
 
 Files are sharded as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with a `.meta.json` sidecar for metadata.
 
-**CloudMediaStore** — Multi-worker and cloud deployments. Stores in S3 or GCS.
+**CloudMediaStore**, Multi-worker and cloud deployments. Stores in S3 or GCS.
 
 ```bash
 pip install "10xgraph[cloud-storage]"
@@ -401,7 +401,7 @@ All stores expose the same async interface: `store()`, `retrieve()`, `delete()`,
 
 ## Related pages
 
-- [Concepts: Media and files](/docs/concepts/media-and-files) — The reference concept for media types and provider capabilities.
-- [Concepts: State and messages](/docs/concepts/state-and-messages) — Content block details and message structure.
-- [Server: Files and multimodal](/docs/server/files-and-multimodal) — File upload via the REST API and media configuration.
-- [Reference: Media](/docs/reference/python/media) — Full API for media stores and configuration classes.
+- [Concepts: Media and files](/docs/concepts/media-and-files): The reference concept for media types and provider capabilities.
+- [Concepts: State and messages](/docs/concepts/state-and-messages): Content block details and message structure.
+- [Server: Files and multimodal](/docs/server/files-and-multimodal): File upload via the REST API and media configuration.
+- [Reference: Media](/docs/reference/python/media): Full API for media stores and configuration classes.

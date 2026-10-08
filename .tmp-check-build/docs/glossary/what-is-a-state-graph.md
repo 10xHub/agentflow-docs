@@ -1,0 +1,152 @@
+# What Is a State Graph? AI Agent Architecture Guide
+
+> A state graph models AI agent workflows as nodes (processing steps) and edges that move state between them. See how it works with Python examples.
+
+Source: https://10xgraph.com/docs/glossary/what-is-a-state-graph
+Last updated: 2026-07-01
+
+**A state graph is a graph-based model for AI agent workflows where nodes represent discrete processing steps (an LLM call, a tool execution, a validation step) and edges define how typed state moves between them.** State flows into a node, is transformed, and the updated state continues to the next node as determined by conditional routing logic.
+
+State graphs make agent control flow explicit and inspectable. Unlike free-form "while" loops or opaque role-based systems, every transition is a named node or edge you can test on its own.
+
+## Why graphs for agents?
+
+Agent logic has three structural needs that graphs address well:
+
+1. **Cycles**: the Reason-Act loop needs to return to the "Reason" node after every tool call
+2. **Conditional branching**: route to different nodes based on what the LLM decided to do
+3. **State management**: pass structured data through the workflow without global variables
+
+A state graph encodes all three: cycles via back-edges, branching via conditional edges, state via typed state objects passed from node to node.
+
+## Anatomy of a state graph
+
+```
+     ┌──────────────┐
+     │  AGENT node  │◄─────────────┐
+     │ (LLM call)   │              │
+     └──────┬───────┘              │
+            │                      │
+     conditional edge              │
+      (has tool calls?)            │
+            │                      │
+     ┌──────▼───────┐              │
+     │  TOOLS node  ├──────────────┘
+     │ (run tools)  │   back-edge
+     └──────────────┘
+            │
+           END (when no tool calls)
+```
+
+Three components:
+- **Nodes**: functions that take state and return updated state
+- **Edges**: direct connections between nodes
+- **Conditional edges**: routing functions that inspect state and return the name of the next node
+
+## Building a state graph with 10xGraph
+
+```python
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
+
+# Define tools
+def search(query: str) -> str:
+    """Search the web."""
+    return f"Results for: {query}"
+
+def calculate(expr: str) -> str:
+    """Evaluate a math expression."""
+    allowed = set("0123456789+-*/(). ")
+    if not expr or not set(expr) <= allowed:
+        return "Unsupported expression"
+    return str(eval(expr, {"__builtins__": {}}, {}))
+
+# Create nodes
+tool_node = ToolNode([search, calculate])
+agent_node = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Helpful assistant. Use tools when needed."}],
+    tool_node="TOOLS",
+)
+
+# Define routing logic
+def route(state: AgentState) -> str:
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOLS"
+    return END
+
+# Build the graph
+graph = StateGraph(AgentState)
+graph.add_node("AGENT", agent_node)
+graph.add_node("TOOLS", tool_node)
+graph.add_conditional_edges("AGENT", route, {"TOOLS": "TOOLS", END: END})
+graph.add_edge("TOOLS", "AGENT")   # back-edge creates the cycle
+graph.set_entry_point("AGENT")
+
+app = graph.compile()
+```
+
+The `add_edge("TOOLS", "AGENT")` line creates the ReAct cycle. After every tool call, control returns to the agent for another reasoning step.
+
+## State
+
+State is a typed Python class that carries all data through the graph:
+
+```python
+from tenxgraph.core.state import AgentState, Message
+
+# AgentState is the built-in state class
+# It includes: context (the list of Message objects) and context_summary
+# You can extend it with custom fields:
+
+from tenxgraph.core.state import AgentState
+from pydantic import Field
+
+class MyState(AgentState):
+    user_id: str = ""
+    search_results: list[str] = Field(default_factory=list)
+```
+
+Each node receives the state and returns updates to it. The context list uses a reducer that appends new messages instead of overwriting them, so a node only returns what it adds.
+
+## State graphs vs alternatives
+
+| Approach | Control flow | Debuggability | Flexibility |
+|----------|-------------|---------------|-------------|
+| **State graph** (10xGraph, LangGraph) | Explicit nodes + edges | High: trace every transition | High |
+| **Role-based** (CrewAI) | Declared crews + processes | Medium: process hides routing | Medium |
+| **Conversation-driven** (AutoGen) | LLM selects next speaker | Low: routing is opaque | High |
+| **Raw while loop** | Custom Python | Low: custom code | High |
+
+State graphs trade some flexibility for debuggability: you can always see exactly which node ran, what state it received, and what state it produced.
+
+## Next steps
+
+- [StateGraph concepts](https://10xgraph.com/docs/concepts/state-graph): Deep dive into nodes, edges, conditional routing, and sub-graphs.
+- [Build a graph](https://10xgraph.com/docs/guides/build-a-graph): Step-by-step guide to constructing a StateGraph from scratch.
+- [Use custom state](https://10xgraph.com/docs/guides/use-custom-state): Extend AgentState with your own typed fields.
+- [10xGraph vs LangGraph](https://10xgraph.com/docs/compare/10xgraph-vs-langgraph): How 10xGraph's StateGraph compares to LangGraph's.
+
+## Frequently asked questions
+
+### Is 10xGraph's StateGraph the same as LangGraph's StateGraph?
+
+They share the same design pattern and mental model; both are graph-based agent runtimes with typed state, nodes, and conditional edges. 10xGraph's StateGraph is an independent implementation with its own Message and AgentState types, no LangChain dependency, and a built-in production API server included.
+
+### Can a state graph have cycles?
+
+Yes. Cycles are essential for agent loops. The ReAct pattern requires a cycle from the AGENT node back through the TOOLS node. 10xGraph's StateGraph is a cyclic graph engine; it supports arbitrary cycles with a configurable recursion limit to prevent infinite loops.
+
+### What is the difference between a node and an edge in a state graph?
+
+A node is a function that receives state and returns updated state; it does the work (LLM call, tool execution, data transformation). An edge is a connection between nodes that determines execution order. A conditional edge is a routing function that inspects state and returns the name of the next node to run.
+
+### Can I add custom nodes to a state graph?
+
+Yes. Any Python function that takes state and returns state (or a partial state dict) can be a node. This lets you add validation nodes, logging nodes, human-in-the-loop approval nodes, or any custom processing step anywhere in the graph.
+
+### How do I debug a state graph?
+
+10xGraph's state graph execution is fully traceable: each step produces a checkpoint in Redis/Postgres that records the input state, node name, and output state. You can replay any step, inspect the state at any point, and the playground UI visualizes the graph traversal in real time.

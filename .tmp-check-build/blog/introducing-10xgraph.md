@@ -1,0 +1,67 @@
+# Agentflow is now 10xGraph
+
+> Agentflow is now 10xGraph. Why we renamed it, what the framework is, what stays the same in your code, what changes in package names, and the honest gaps.
+
+Source: https://10xgraph.com/blog/introducing-10xgraph
+Last updated: 2026-10-06
+
+Agentflow is now **10xGraph**. The framework, the MIT license and the maintainers stay the same. The name changes because it was hard to find: many unrelated projects share the Agentflow name, and a search for it returns a Stanford research project, a Flowise feature and several other repositories before it returns ours. A name people cannot search for is a real cost for an open-source project, so we changed it.
+
+## What 10xGraph is
+
+Other frameworks give you the graph. 10xGraph gives you the graph and the production server around it, open source.
+
+You write a Python agent as a graph of nodes and tools. From the same install you get the server that runs it: REST, streaming and WebSocket endpoints, JWT or custom auth, scoped authorization on every endpoint, thread ownership, rate limiting, and Docker Compose and Kubernetes files. The tagline is "10xGraph by 10xScale: graph engineering for production AI agents."
+
+## The five pillars
+
+1. **The production server ships in the box.** The API server, auth, rate limits and deployment files come with the framework under the MIT license, not as a separate product. See [Serving agents](/docs/concepts/serving-agents) and [Production runtime](/docs/concepts/serving-agents).
+2. **Correct under failure.** Tool calls are replay-safe: if a process dies mid-run, a tool that already finished is not executed again, so a resumed run does not charge a card twice. Durable writes are versioned, and nodes and tools have real timeouts. Read [Replay-safe tools](/docs/concepts/replay-safe-tools) and the engineering post [Your agent charged the card twice](/blog/your-agent-charged-the-card-twice).
+3. **Built to scale.** Active thread state is cached in Redis for fast reads, while full history lives in PostgreSQL. Events can be published to Kafka, Redis Pub/Sub, RabbitMQ or OpenTelemetry. See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) and [Memory and store](/docs/concepts/memory-and-store).
+4. **One stack, from backend to frontend.** A typed TypeScript client covers invoke, stream, threads, memory and files, and tools can run in the user's browser. See [Connecting clients](/docs/client) and [Remote tools](/docs/concepts/remote-tools).
+5. **You own it.** MIT licensed, self-hosted, and not tied to one model vendor. It works with OpenAI, Google Gemini, Anthropic and any OpenAI-compatible endpoint. See [Providers](/docs/integrations/models).
+
+Graph orchestration, tool-calling loops, MCP and streaming are in there too, but every serious framework has those. The pillars above are why you would pick this one.
+
+## What stays the same
+
+- **The project and the people.** Same code base, same maintainers, same [license](https://github.com/10xGraph/10xGraph/blob/main/LICENSE): MIT, made by 10xScale.
+- **Configuration keys.** The keys in the configuration file stay the same. Only the file name changes, from `agentflow.json` to `10xgraph.json`, and `agentflow.json` is still read until 2.0.
+- **Your server setup keeps running.** In `10xgraph-api` the `agentflow` command, `from agentflow_cli import BaseAuth` and the `AGENTFLOW_*` CLI variables still work as deprecated aliases until 2.0.
+- **Your existing code keeps running.** `from agentflow import StateGraph` still works: `agentflow` stays importable as a deprecated alias until 2.0. New code should import from `tenxgraph`, as in `from tenxgraph import StateGraph`.
+
+## What changes
+
+| Before | After |
+|---|---|
+| `pip install 10xscale-agentflow` | `pip install 10xgraph` |
+| `from agentflow import StateGraph` | `from tenxgraph import StateGraph` |
+| `pip install 10xscale-agentflow-cli` | `pip install 10xgraph-api` |
+| `npm install @10xscale/agentflow-client` | `npm install 10xgraph-client` |
+| CLI command `agentflow` | CLI command `10xgraph` |
+| Config file `agentflow.json` | Config file `10xgraph.json` |
+| GitHub organization 10xHub | GitHub organization 10xGraph |
+
+Version `0.10.0` is the final release of `10xscale-agentflow` on PyPI. New releases and fixes go to the new package names.
+
+> **Note**
+> Pin your versions and read the [changelog](/changelog) before you switch package names. The project is pre-1.0, so minor versions can change behavior.
+
+## Honest weak spots
+
+You should know where we are behind before you choose us.
+
+- **Pre-1.0.** The API can still change between minor releases. Pin versions and read the changelog.
+- **A smaller community.** There are fewer integrations, tutorials and answered questions than for LangGraph or CrewAI.
+- **The rename resets recognition.** 10xGraph has no search history yet, so existing blog posts and answers still say Agentflow.
+- **Visual tooling is lighter.** LangGraph has a stronger visual studio and hosted tracing. We have a React playground and OpenTelemetry, Logfire and LangSmith publishers.
+- **Python 3.12 or newer, and code-first.** This is not a no-code builder.
+
+The [roadmap](/docs/project/roadmap) lists what is missing or partial.
+
+## Next steps
+
+- New to the project: follow [Get started](/docs/get-started) or the [beginner path](/docs/get-started/tutorial/mental-model).
+- Moving an existing install: read [Installation](/docs/get-started/installation) and the [changelog](/changelog).
+- Choosing between frameworks: see the [comparisons](/docs/compare).
+- Questions or bugs: see [Support](/docs/project/support), or the [maintainers page](/maintainers) for who to contact.

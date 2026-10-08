@@ -73,7 +73,7 @@ result = await app.ainvoke(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `expression` | `str` | required | Arithmetic expression, e.g. `"(3 + 4) * 2"` |
-| `precision` | `int \| None` | `None` | Round float results to this many decimal places (0–12) |
+| `precision` | `int \| None` | `None` | Round float results to this many decimal places (0-12) |
 
 ### Return value
 
@@ -524,8 +524,8 @@ export GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
 
 ## Related pages
 
-- [Web tools guide](/docs/guides/prebuilt/web-tools) — In-depth coverage of `fetch_url`, `google_web_search`, and `vertex_ai_search`.
-- [File tools guide](/docs/guides/prebuilt/file-tools) — Details on `file_read`, `file_write`, and `file_search`.
-- [Memory tools guide](/docs/guides/prebuilt/memory-tools) — Using memory for long-term user and agent facts.
-- [Handoff between agents](/docs/guides/handoff-between-agents) — Multi-agent patterns with `create_handoff_tool`.
-- [Build custom tools](/docs/guides/use-tool-decorator) — Writing your own tools with the `@tool` decorator.
+- [Web tools guide](/docs/guides/prebuilt/web-tools): In-depth coverage of `fetch_url`, `google_web_search`, and `vertex_ai_search`.
+- [File tools guide](/docs/guides/prebuilt/file-tools): Details on `file_read`, `file_write`, and `file_search`.
+- [Memory tools guide](/docs/guides/prebuilt/memory-tools): Using memory for long-term user and agent facts.
+- [Handoff between agents](/docs/guides/handoff-between-agents): Multi-agent patterns with `create_handoff_tool`.
+- [Build custom tools](/docs/guides/use-tool-decorator): Writing your own tools with the `@tool` decorator.

@@ -208,7 +208,7 @@ The template also sets up `10xgraph.json` with JWT authentication enabled (if `-
 
 ## Related concepts and guides
 
-- [Callbacks and Command](/docs/concepts/callbacks-and-command) — Inspect and transform messages at other execution points.
-- [Validate input and guard prompts](/docs/guides/protect-against-prompt-injection) — Practical guide to using validators and callbacks.
-- [Read the caller's identity and scopes](/docs/guides/authorization-scopes) — How to check scopes and isolation inside nodes and tools.
-- [Server authentication and authorization](/docs/server/auth) — API server setup for JWT, custom auth, and authorization backends.
+- [Callbacks and Command](/docs/concepts/callbacks-and-command): Inspect and transform messages at other execution points.
+- [Validate input and guard prompts](/docs/guides/protect-against-prompt-injection): Practical guide to using validators and callbacks.
+- [Read the caller's identity and scopes](/docs/guides/authorization-scopes): How to check scopes and isolation inside nodes and tools.
+- [Server authentication and authorization](/docs/server/auth): API server setup for JWT, custom auth, and authorization backends.

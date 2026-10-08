@@ -17,7 +17,7 @@ faq:
 
 When your 10xGraph application runs over the API server, the caller's identity and scopes are automatically added to the request. Inside your nodes and tools, you can read this information to enforce fine-grained permissions: restrict certain operations to authorized users, log who performed actions, or apply policies like "only the thread owner can read this."
 
-This guide covers the three authorization functions — `get_authz`, `has_scope`, and `isolation_scope` — and how to use them in your agent code.
+This guide covers the three authorization functions, `get_authz`, `has_scope`, and `isolation_scope`, and how to use them in your agent code.
 
 ## How authorization reaches your code
 
@@ -30,7 +30,7 @@ from tenxgraph.core.authz import get_authz, has_scope
 def sensitive_operation(*, config):
     authz = get_authz(config)
     if authz is None:
-        # No authz context — either direct SDK call with no authz,
+        # No authz context, either direct SDK call with no authz,
         # or auth is not configured on the server.
         print("No authorization context")
         return "Allowed (no policy)"
@@ -58,7 +58,7 @@ from tenxgraph.core.authz import has_scope
 
 @tool
 def create_memory(text: str, *, config):
-    """Store long-term memory — only for users with store:write scope."""
+    """Store long-term memory, only for users with store:write scope."""
     if not has_scope(config, "store:write"):
         raise PermissionError("You do not have permission to write to memory")
     
@@ -74,7 +74,7 @@ The scope string is always `"resource:action"`. The full list of scopes is:
 - Media and files: `files:read`, `files:upload`
 - Configuration: `config:read`
 
-`has_scope()` is permissive by default: if no authorization context is present (auth not configured, or a direct SDK call without an authz block), it returns `True`. This ensures backward compatibility — existing graphs work unchanged.
+`has_scope()` is permissive by default: if no authorization context is present (auth not configured, or a direct SDK call without an authz block), it returns `True`. This ensures backward compatibility, existing graphs work unchanged.
 
 ## Read caller identity inside tools and nodes
 
@@ -153,7 +153,7 @@ def list_notes(*, config) -> str:
 
 @tool
 def create_note(text: str, *, config) -> str:
-    """Create a note — restricted to users with store:write scope."""
+    """Create a note, restricted to users with store:write scope."""
     if not has_scope(config, "store:write"):
         raise PermissionError("Missing scope: store:write")
     
@@ -166,7 +166,7 @@ def create_note(text: str, *, config) -> str:
 
 @tool
 def export_data(format: str, *, config) -> str:
-    """Export all user data — admin-only."""
+    """Export all user data, admin-only."""
     if not has_scope(config, "config:read"):
         raise PermissionError("Missing scope: config:read")
     
@@ -225,7 +225,7 @@ When a request reaches the API server, the `RequirePermission` dependency (in th
 1. **Authenticate**: Extract and verify the bearer token (JWT or custom `BaseAuth`). Decode claims to get `user_id`, `roles`, `scopes`, etc.
 2. **Check scopes**: Call the authorization backend's `scopes_for(user)` to map roles to scopes. Verify that the required scope (e.g., `"graph:invoke"` for a POST to `/v1/graph/invoke`) is granted.
 3. **Check object access**: Call `authorize(user, resource, action, resource_id)` to enforce object-level rules (e.g., ownership checks).
-4. **Build and stamp authz**: Call `build_authz(user_id, scope=isolation_policy, scopes=granted_scopes)` and place it in `user["authz"]`. This overwrites anything the client sent — it is non-hijackable.
+4. **Build and stamp authz**: Call `build_authz(user_id, scope=isolation_policy, scopes=granted_scopes)` and place it in `user["authz"]`. This overwrites anything the client sent, it is non-hijackable.
 5. **Place in config**: Every service (graph execution, checkpointer, store) copies `user` into `config["user"]`, so the authz block reaches your code.
 
 This flow is defined in `/tenxgraph_api/src/app/core/auth/permissions.py`. For details on configuring backends, see `/docs/server/auth`.
@@ -244,7 +244,7 @@ Fix: Check your `authorization` setting in `10xgraph.json` and your role-scope m
 
 **get_authz() returns None inside a tool**
 
-This is not an error — it means either:
+This is not an error, it means either:
 
 - Auth is not configured on the API server (`"auth": null` in `10xgraph.json`).
 - You're calling the graph directly in Python without passing an authz block.

@@ -25,7 +25,7 @@ You have already installed 10xGraph and pytest:
 pip install pytest pytest-asyncio 10xgraph
 ```
 
-`tenxgraph.qa.evaluation` is built into 10xgraph — no extra package needed.
+`tenxgraph.qa.evaluation` is built into 10xgraph, no extra package needed.
 
 You have eval cases defined in an evalset file (`.evalset.json`) or as Python code. See [Building eval sets](/docs/testing/eval-sets) for how to structure cases and [Criteria reference](/docs/testing/criteria) for scoring rules. You also have a compiled graph ready for evaluation (see [Quick start](/docs/testing/evaluation) for setup examples).
 
@@ -165,11 +165,11 @@ async def test_agent_with_custom_checks(weather_agent_app):
 
 This approach gives you the full `EvalReport` object, so you can inspect and assert on:
 
-- `report.summary.pass_rate` — overall pass rate (0.0 to 1.0)
-- `report.summary.total_cases` — how many cases ran
-- `report.passed_cases` — list of cases that passed
-- `report.failed_cases` — list of cases that failed with error details
-- `report.summary.criterion_stats` — per-criterion score breakdowns
+- `report.summary.pass_rate`: overall pass rate (0.0 to 1.0)
+- `report.summary.total_cases`: how many cases ran
+- `report.passed_cases`: list of cases that passed
+- `report.failed_cases`: list of cases that failed with error details
+- `report.summary.criterion_stats`: per-criterion score breakdowns
 
 ## Assert on specific criteria
 
@@ -349,7 +349,7 @@ report = await run_eval(
 
 ## Next steps
 
-- [Building eval sets](/docs/testing/eval-sets) — structure eval cases, multi-turn scenarios, and custom expectations
-- [Criteria reference](/docs/testing/criteria) — scoring rules and thresholds for each criterion
-- [How to run evaluations](/docs/testing/run-evals) — CLI commands, parallel runs, and CI integration
-- [Reports](/docs/testing/reports) — HTML dashboards and JSON export for evals
+- [Building eval sets](/docs/testing/eval-sets): structure eval cases, multi-turn scenarios, and custom expectations
+- [Criteria reference](/docs/testing/criteria): scoring rules and thresholds for each criterion
+- [How to run evaluations](/docs/testing/run-evals): CLI commands, parallel runs, and CI integration
+- [Reports](/docs/testing/reports): HTML dashboards and JSON export for evals

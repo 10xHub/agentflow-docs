@@ -80,8 +80,8 @@ flowchart LR
 
 After the LLM responds, the agent validates the output in two stages:
 
-1. **Native structured output** — If the LLM SDK populated `message.parsed_content` (when you use native structured-output mode), the agent validates it directly as a Python object.
-2. **JSON text parsing** — If no parsed content is available, the agent parses the response text as JSON (stripping markdown code fences if present), then validates with `pydantic.TypeAdapter`.
+1. **Native structured output**: If the LLM SDK populated `message.parsed_content` (when you use native structured-output mode), the agent validates it directly as a Python object.
+2. **JSON text parsing**: If no parsed content is available, the agent parses the response text as JSON (stripping markdown code fences if present), then validates with `pydantic.TypeAdapter`.
 
 If validation succeeds, the agent returns the output. Otherwise, it moves to repair.
 
@@ -103,7 +103,7 @@ Target JSON Schema:
 <full JSON Schema>
 
 Please produce a response that is **valid JSON** and strictly matches the schema above.
-Output only the JSON object — no extra text or code fences.
+Output only the JSON object, no extra text or code fences.
 ```
 
 The agent re-calls the LLM and validates again. If validation succeeds or `max_attempts` is reached, it returns the best response.
@@ -301,7 +301,7 @@ agent = StructuredOutputAgent(
         "role": "system",
         "content": (
             "You are a JSON repair expert. Your job is to fix broken or incomplete JSON "
-            "to strictly match the provided schema. Output only valid JSON — no explanation, "
+            "to strictly match the provided schema. Output only valid JSON, no explanation, "
             "no code fences, no markdown. Just the JSON object."
         ),
     }],
@@ -377,7 +377,7 @@ Each event carries state updates, node execution details, and final output. See 
 
 The 10xGraph playground lets you test your agent interactively without writing a client. Create three files:
 
-**`graph.py`** — Your agent definition:
+**`graph.py`**, Your agent definition:
 
 ```python
 from pydantic import BaseModel
@@ -401,7 +401,7 @@ agent = StructuredOutputAgent(
 app = agent.compile()
 ```
 
-**`10xgraph.json`** — Configuration:
+**`10xgraph.json`**, Configuration:
 
 ```json
 {
@@ -416,7 +416,7 @@ app = agent.compile()
 }
 ```
 
-**`.env`** — API credentials:
+**`.env`**, API credentials:
 
 ```
 OPENAI_API_KEY=sk-...

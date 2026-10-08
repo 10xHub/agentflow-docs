@@ -80,9 +80,9 @@ Every extension follows three steps. You create a subclass, pass an instance to 
 
 ```mermaid
 flowchart LR
-  SUB["1 — Subclass the ABC\nimplement abstract methods"] -->
-  CFG["2 — Configure\npass instance or 10xgraph.json path"] -->
-  RUN["3 — Framework picks it up\nno other changes needed"]
+  SUB["1, Subclass the ABC\nimplement abstract methods"] -->
+  CFG["2, Configure\npass instance or 10xgraph.json path"] -->
+  RUN["3, Framework picks it up\nno other changes needed"]
 ```
 
 1. Subclass the ABC and implement its abstract methods.

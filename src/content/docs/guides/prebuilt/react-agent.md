@@ -80,10 +80,10 @@ Use ReactAgent when your task fits this pattern:
 
 Do NOT use ReactAgent for:
 
-- **Multi-step planning with an explicit plan node** — use `/docs/guides/prebuilt/plan-act-reflect-agent` instead.
-- **Handing off between multiple specialized agents** — use `/docs/guides/prebuilt/swarm-agent` or `/docs/guides/prebuilt/supervisor-team-agent`.
-- **Retrieval-augmented generation with explicit retrieval steps** — use `/docs/guides/prebuilt/rag-agent` (which wraps ReactAgent with retrieval).
-- **Complex custom routing logic** — build a custom graph with `/docs/guides/build-a-graph`.
+- **Multi-step planning with an explicit plan node**: use `/docs/guides/prebuilt/plan-act-reflect-agent` instead.
+- **Handing off between multiple specialized agents**: use `/docs/guides/prebuilt/swarm-agent` or `/docs/guides/prebuilt/supervisor-team-agent`.
+- **Retrieval-augmented generation with explicit retrieval steps**: use `/docs/guides/prebuilt/rag-agent` (which wraps ReactAgent with retrieval).
+- **Complex custom routing logic**: build a custom graph with `/docs/guides/build-a-graph`.
 
 ---
 

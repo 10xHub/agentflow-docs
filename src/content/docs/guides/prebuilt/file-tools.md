@@ -417,6 +417,6 @@ For example, if the root is `/home/user/project/`, the paths `"src/main.py"`, `"
 
 ## Related pages
 
-- `/docs/guides/use-tool-decorator` — Define custom tools alongside the prebuilt ones
-- `/docs/guides/prebuilt-tools` — Overview of all prebuilt tools (calculator, fetch, memory, handoff, web)
-- `/docs/concepts/agents-and-tools` — How ToolNode dispatches tools and handles errors
+- `/docs/guides/use-tool-decorator`: Define custom tools alongside the prebuilt ones
+- `/docs/guides/prebuilt-tools`: Overview of all prebuilt tools (calculator, fetch, memory, handoff, web)
+- `/docs/concepts/agents-and-tools`: How ToolNode dispatches tools and handles errors

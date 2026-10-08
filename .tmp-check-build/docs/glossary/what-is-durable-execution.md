@@ -1,0 +1,102 @@
+# What Is Durable Execution for AI Agents?
+
+> Durable execution saves a run's progress so it resumes after a crash instead of restarting. See what it covers for AI agents and how 10xGraph implements it.
+
+Source: https://10xgraph.com/docs/glossary/what-is-durable-execution
+Last updated: 2026-10-08
+
+**Durable execution is a way of running a program so that its progress is saved as it goes, letting it resume after a crash, restart or deploy instead of starting over.** For an AI agent, that means a conversation or task survives a killed process and continues from its last saved step, without losing state or repeating completed side effects.
+
+## Why does it matter for agents?
+
+An agent run is a long chain of slow, costly steps: model calls, tool calls, waits for a human. A run can take minutes, and the process hosting it can disappear at any point (a deploy, an out-of-memory kill, a node failure). Two things go wrong without durability.
+
+- **Lost progress.** The run restarts from the first step, repeats paid model calls and loses conversation state.
+- **Repeated side effects.** If the agent had already called a tool that moved money or sent a message, starting over can do it again.
+
+The second problem is the dangerous one. A model call can be repeated at the cost of some tokens. A refund repeated is a customer incident.
+
+## How does durable execution work in general?
+
+Most implementations share the same building blocks.
+
+1. **Persist state at step boundaries.** After each step, the system writes the run's state to storage that outlives the process.
+2. **Record the position.** The saved state includes where the run is, so a restart knows which step to resume from.
+3. **Resume by replay.** On restart, the system loads the saved state and continues. In practice it re-runs the step that was in flight, because it cannot know how far that step got.
+4. **Handle side effects explicitly.** Re-running a step is only safe if the effects of steps that already completed are not repeated. Systems do this by recording the results of finished effects and returning them on replay, or by requiring effects to be idempotent. See [what an idempotent tool call is](/docs/glossary/what-is-an-idempotent-tool-call).
+5. **Guard concurrent writers.** If two workers can resume the same run, writes need a version check so one cannot overwrite the other.
+
+General-purpose workflow engines such as Temporal and AWS Step Functions offer this as a platform for any long-running process. Agent frameworks add a narrower version focused on agent state and tool calls. Both rely on the same ideas: durable storage, replay, and recorded effects.
+
+## At-least-once, at-most-once and exactly-once
+
+When a step is interrupted, the system cannot tell whether its effect happened. It has to choose.
+
+| Behavior | What it means | Risk |
+|---|---|---|
+| At-least-once | Re-run the step on resume | Duplicate effects |
+| At-most-once | Never re-run a step that may have started | A step may be lost |
+| Effectively-once | Re-run, but make repeated effects harmless through recording or idempotency keys | Needs care at the boundaries |
+
+True exactly-once delivery across a process and an external service is not generally possible. What systems offer is effectively-once results, built from at-least-once execution plus deduplication.
+
+## How does 10xGraph implement it?
+
+10xGraph covers the agent-specific parts of durable execution with four pieces:
+
+- **A checkpointer.** `PgCheckpointer` keeps hot state in Redis and durable history in PostgreSQL, so a thread survives restarts. The run loop saves the current node before it runs.
+- **Replay-safe tools.** A ledger in the checkpointer records each finished tool call, keyed by the issuing assistant message id plus the tool call id. On replay, a recorded call returns its saved result and the tool is not executed again. Details and limits are on [Replay-safe tools](/docs/concepts/replay-safe-tools).
+- **Versioned state writes.** Durable writes use an optimistic compare-and-swap on a per-thread version, so two runs on one thread cannot overwrite each other.
+- **Timeouts.** `node_timeout` and `tool_timeout` stop a hung call from holding a worker forever.
+
+This is not a general workflow engine. It does not orchestrate work outside the agent graph. It also does not claim exactly-once: a crash before a tool returns, or inside the short gap before its record is written, can still run the tool again, so keep sending idempotency keys to external services. The ledger needs a checkpointer that implements it, which `PgCheckpointer` and `InMemoryCheckpointer` do. The in-memory one lasts only as long as the process.
+
+## Example
+
+```python title="durable_agent.py"
+# pip install "10xgraph[google-genai,pg_checkpoint]"
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.checkpointer import PgCheckpointer
+
+def refund_order(order_id: str, amount: float) -> str:
+    """Refund an order."""
+    return f"Refunded {amount:.2f} for order {order_id}"
+
+app = ReactAgent(
+    model="google/gemini-2.5-flash",
+    provider="google",
+    tools=[refund_order],
+).compile(
+    checkpointer=PgCheckpointer(
+        postgres_dsn="postgresql://user:password@db/mydb",
+        redis_url="redis://redis:6379/0",
+    )
+)
+```
+
+If the process dies after `refund_order` returns, resuming the same `thread_id` re-runs the node, finds the recorded call and skips the refund.
+
+## Next steps
+
+- [Replay-safe tools](https://10xgraph.com/docs/concepts/replay-safe-tools): How the tool ledger works and what it does not guarantee.
+- [Idempotent tool calls](https://10xgraph.com/docs/glossary/what-is-an-idempotent-tool-call): Why repeating a call must be harmless, and how to design for it.
+- [Checkpointing](https://10xgraph.com/docs/server/production-checklist): Choose and configure a checkpointer for production.
+- [How PgCheckpointer works](https://10xgraph.com/docs/concepts/memory): How Redis and PostgreSQL share the work.
+
+## Frequently asked questions
+
+### Is durable execution the same as checkpointing?
+
+Checkpointing is one part of it. A checkpoint saves state so a run can resume. Durable execution also has to decide what happens to work that was in flight when the process died, which is why side effects such as tool calls need their own record of what already ran.
+
+### Does durable execution make a run exactly-once?
+
+Not by itself. Most systems resume by re-running the interrupted step, which gives at-least-once behavior. To get effectively-once results, side effects must be recorded or made idempotent, ideally both.
+
+### Do I need a workflow engine to get durable execution for an agent?
+
+Not always. Workflow engines such as Temporal provide it as a general platform. An agent framework can provide a narrower form itself by persisting state per step and recording tool calls, as 10xGraph does with a checkpointer. Which fits depends on how much of your system is outside the agent.
+
+### Which 10xGraph features make an agent durable?
+
+A durable checkpointer such as PgCheckpointer, replay-safe tools (a ledger of finished tool calls), versioned state writes so concurrent runs cannot overwrite each other, and node and tool timeouts.

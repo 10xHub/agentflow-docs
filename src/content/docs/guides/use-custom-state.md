@@ -8,7 +8,7 @@ label: Custom state
 updated: "2026-10-08"
 ---
 
-Every 10xGraph agent runs within an `AgentState` instance that persists data across all nodes in the graph. By default, `AgentState` holds the message conversation history and execution metadata. You extend it by subclassing to add typed, persistent application fields—like user IDs, ticket numbers, sentiment scores, or any domain-specific data your agent needs. The graph automatically threads the state and applies reducer logic when fields are updated.
+Every 10xGraph agent runs within an `AgentState` instance that persists data across all nodes in the graph. By default, `AgentState` holds the message conversation history and execution metadata. You extend it by subclassing to add typed, persistent application fields, like user IDs, ticket numbers, sentiment scores, or any domain-specific data your agent needs. The graph automatically threads the state and applies reducer logic when fields are updated.
 
 ## Why custom state
 
@@ -123,7 +123,7 @@ def resolve_ticket(state: SupportTicketState, config: dict, **deps) -> dict:
     }
 ```
 
-When you return `{"context": [...]}`, the list appends to the existing context via the `add_messages` reducer. When you return `{"sentiment": "positive"}`, only the `sentiment` field updates—you never copy the whole state. This is the core benefit of reducers: controlled, predictable merging.
+When you return `{"context": [...]}`, the list appends to the existing context via the `add_messages` reducer. When you return `{"sentiment": "positive"}`, only the `sentiment` field updates, you never copy the whole state. This is the core benefit of reducers: controlled, predictable merging.
 
 ---
 

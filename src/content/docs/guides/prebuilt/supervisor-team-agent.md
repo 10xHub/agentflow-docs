@@ -54,7 +54,7 @@ The pattern consists of five node types:
 flowchart TD
     START([START]) --> SUPERVISOR
 
-    SUPERVISOR["SUPERVISOR\n(LLM — outputs one word)"]
+    SUPERVISOR["SUPERVISOR\n(LLM, outputs one word)"]
     PRE_SUPERVISOR["PRE_SUPERVISOR\n(increment rounds)"]
     RESEARCHER["RESEARCHER\n(LLM + tools)"]
     RESEARCHER_TOOL["RESEARCHER_TOOL\n(ToolNode)"]
@@ -105,7 +105,7 @@ Available workers:
 Based on the conversation so far, respond with **only** the name of the next worker to invoke, or FINISH if the task is complete.
 
 Rules:
-- Respond with a single word — exactly one worker name or FINISH.
+- Respond with a single word, exactly one worker name or FINISH.
 - Do NOT explain your choice.
 - Do NOT include any other text.
 ```
@@ -126,7 +126,7 @@ Each worker's description comes from the `description` field in its `WorkerConfi
 | `context_manager` | `BaseContextManager \| None` | `None` | Optional custom context manager (e.g. trimming, summarization) |
 | `publisher` | `BasePublisher \| None` | `None` | Event publisher for streaming events to external systems |
 | `container` | `InjectQ \| None` | `None` | Dependency injection container for tool and node execution |
-| `**supervisor_kwargs` | `Any` | — | Extra arguments forwarded to the supervisor Agent only (e.g. `provider="openai"`, `temperature=0.7`) |
+| `**supervisor_kwargs` | `Any` | - | Extra arguments forwarded to the supervisor Agent only (e.g. `provider="openai"`, `temperature=0.7`) |
 
 ## `compile()` parameters
 
@@ -311,7 +311,7 @@ async def main():
     )
     print("Result:", result["context"][-1].text())
     
-    # Second invocation on same thread — state is restored
+    # Second invocation on same thread, state is restored
     result2 = await app.ainvoke(
         {"messages": [Message.text_message(
             "Now calculate the difference if the rate was 8% instead."

@@ -1,0 +1,299 @@
+# 10xGraph
+
+> 10xGraph is an open-source Python framework for production multi-agent AI. You write the agent, and 10xGraph generates the production server around it: authentication, scoped access control, owner-only threads, rate limits, and Docker and Kubernetes deployment. Memory has two tiers, with hot data in a Redis cache and cold data in PostgreSQL. MIT licensed, made by 10xScale. Formerly named Agentflow.
+
+Current version: 0.9.2. Install: `pip install 10xgraph 10xgraph-api`. Source: https://github.com/10xGraph/10xGraph
+
+## Build guides
+
+- [Build a production-grade ReAct agent in Python](https://10xgraph.com/build/production-react-agent.md): A support agent that looks up and refunds orders, served as an API with JWT auth, per-user rate limits, Postgres memory, tests and Docker files.
+
+## Get started
+
+- [Introduction](https://10xgraph.com/docs/index.md): 10xGraph is an open-source Python framework for production multi-agent AI: a core library, an API server and CLI, and a TypeScript client.
+- [Get Started](https://10xgraph.com/docs/get-started.md): 10xGraph is a production-grade Python framework for multi-agent AI systems. Install the library, build an agent, deploy the API server, and call it from TypeScript.
+- [Installation](https://10xgraph.com/docs/get-started/installation.md): Install 10xGraph and the API server with pip on Python 3.12 or newer, add provider extras and a checkpointer, verify the CLI, and install the TypeScript client.
+- [Quickstart](https://10xgraph.com/docs/get-started/first-agent.md): Install 10xGraph, build a support agent in Python, serve it with the API server, then call it with curl and the TypeScript client.
+- [Mental Model](https://10xgraph.com/docs/get-started/tutorial/mental-model.md): Learn the seven ideas behind every 10xGraph agent (message, state, node, edge, graph, agent, thread) and the seven tutorial steps that build on them.
+- [Build a graph by hand](https://10xgraph.com/docs/get-started/tutorial/build-a-graph.md): Build a 10xGraph agent with a tool by hand, route between the agent and tool nodes, then compare it with ReactAgent.
+- [Add Memory with Threads](https://10xgraph.com/docs/get-started/tutorial/threads-and-memory.md): Give your agent conversation memory with thread IDs and checkpointers, persist state across calls, and tell thread memory apart from long-term memory.
+- [Serve and inspect](https://10xgraph.com/docs/get-started/tutorial/serve-and-inspect.md): Start the 10xGraph API server, test with curl, and use the playground to inspect your agent's behavior.
+- [Call from your app](https://10xgraph.com/docs/get-started/tutorial/call-from-your-app.md): Call your running 10xGraph agent server from a TypeScript app with @10xgraph/client: invoke, stream, keep a thread and send an auth token.
+- [Stream and approve](https://10xgraph.com/docs/get-started/tutorial/stream-and-approve.md): Stream an agent run in Python with astream(), pause it for human approval with interrupt(), then resume the same thread with a decision.
+- [Test and evaluate](https://10xgraph.com/docs/get-started/tutorial/test-and-evaluate.md): Write a unit test with a mocked model, then run a small evaluation set against your weather agent with the 10xgraph eval command.
+- [Project structure](https://10xgraph.com/docs/get-started/project-structure.md): The files that 10xgraph init --template production generates, what each one does, and which 10xgraph.json keys init writes for you.
+- [Coming from agentflow](https://10xgraph.com/docs/get-started/coming-from-agentflow.md): Migrate from the old Agentflow package, import, command, config and environment variable names to 10xGraph, step by step.
+
+## Concepts
+
+- [Concepts](https://10xgraph.com/docs/concepts.md): Understand how 10xGraph works, from its three-layer architecture to request flow, the execution model, and production patterns.
+- [StateGraph](https://10xgraph.com/docs/concepts/state-graph.md): How StateGraph models an agent as nodes, edges and shared state, compiling and executing a graph, and handling recursion limits.
+- [State and Messages](https://10xgraph.com/docs/concepts/state-and-messages.md): How AgentState holds conversation history, how Message carries multimodal content blocks, and how reducers and ToolResult update state.
+- [Agents and Tools](https://10xgraph.com/docs/concepts/agents-and-tools.md): How Agent wraps a model, why ToolNode is needed, parallel tool dispatch, and error handling.
+- [Choosing a building block](https://10xgraph.com/docs/concepts/choosing-a-building-block.md): Decide between a prebuilt agent, the Agent node in a StateGraph, and a plain function node, based on your pattern and how much control you need.
+- [Routing, Command and callbacks](https://10xgraph.com/docs/concepts/callbacks-and-command.md): Route execution with conditional edges, Command, or callbacks. Validate and transform invocations. Monitor and coordinate your graph.
+- [Interrupts: human-in-the-loop](https://10xgraph.com/docs/concepts/interrupts.md): Pause graph execution from inside a node or tool to request human input, then resume with an answer.
+- [Dependency Injection](https://10xgraph.com/docs/concepts/dependency-injection.md): How dependency injection decouples your code from the framework and manages service lifecycles in nodes and tools.
+- [Streaming](https://10xgraph.com/docs/concepts/streaming.md): Why and how to stream agent responses. Python execution modes, StreamChunk, ResponseGranularity, and transport options.
+- [Checkpointing and Threads](https://10xgraph.com/docs/concepts/checkpointing-and-threads.md): How checkpointers save and restore conversation state across calls using thread IDs.
+- [How PgCheckpointer works](https://10xgraph.com/docs/concepts/memory.md): The internal mechanisms of PgCheckpointer's two-layer storage model, the write path, read path, and optimistic concurrency control for thread state.
+- [Long-term Memory](https://10xgraph.com/docs/concepts/memory-and-store.md): How to build agents that learn and remember across conversations using semantic memory storage and retrieval.
+- [Context management](https://10xgraph.com/docs/concepts/context-management.md): Manage model context window by trimming or summarizing message history as conversations grow.
+- [Replay-safe tools](https://10xgraph.com/docs/concepts/replay-safe-tools.md): Replay-safe tools let a resumed 10xGraph run skip tool calls that already finished, so a crash does not charge a card or send an email twice.
+- [Errors and limits](https://10xgraph.com/docs/concepts/errors-and-limits.md): Exception taxonomy, execution limits, retry behavior, and error recovery in graph execution.
+- [Serving Agents](https://10xgraph.com/docs/concepts/serving-agents.md): How 10xgraph.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
+- [Security and Validators](https://10xgraph.com/docs/concepts/security-and-validators.md): How input validators and PromptInjectionValidator work, the authorization model, and what the production template enables against injection and misuse.
+- [Events and observability](https://10xgraph.com/docs/concepts/events-and-observability.md): How 10xGraph emits structured events, publishes them to external systems, and exposes metrics and tracing for production monitoring.
+- [Remote Tools](https://10xgraph.com/docs/concepts/remote-tools.md): How 10xGraph lets a Python graph request tools that execute in a TypeScript client or browser.
+- [Media and Files](https://10xgraph.com/docs/concepts/media-and-files.md): How 10xGraph handles media in multimodal messages: MediaRef decouples location from structure, storage backends serve files, and providers adapt automatically.
+- [Extension points](https://10xgraph.com/docs/concepts/extensibility.md): Abstract base classes in 10xGraph let you customize storage, auth, LLM integration, and event publishing without changing graph logic.
+
+## Build agents
+
+- [Build agents](https://10xgraph.com/docs/guides.md): Task-oriented guides for building, deploying and monitoring production agents. Step-by-step instructions, complete code examples and best practices for real applications.
+- [Build a graph](https://10xgraph.com/docs/guides/build-a-graph.md): Create a StateGraph with nodes and routing, compile it, and run it with invoke.
+- [How to configure Agent](https://10xgraph.com/docs/guides/configure-agent.md): Reference for the Agent constructor, including model, provider, system_prompt, tool_node, reasoning_config, retry_config, fallback_models, and output_schema.
+- [Use custom state](https://10xgraph.com/docs/guides/use-custom-state.md): Extend AgentState with application-specific fields and understand state reducers for controlled field updates.
+- [Write custom nodes](https://10xgraph.com/docs/guides/use-custom-nodes.md): Build nodes as plain Python functions with auto-injected state, config, and framework services. Route dynamically with Command.
+- [Structured output](https://10xgraph.com/docs/guides/structured-output.md): Get typed output from LLMs with automatic validation and repair. Use output_schema with Agent or StructuredOutputAgent.
+- [Visualize a graph](https://10xgraph.com/docs/guides/visualize-a-graph.md): Inspect and visualize your compiled graph structure to understand agent flow and debug routing.
+- [Choose and use prebuilt agents](https://10xgraph.com/docs/guides/prebuilt-agents.md): Overview of ReactAgent, PlanActReflectAgent, StructuredOutputAgent, SupervisorTeamAgent, SwarmAgent, RAGAgent, and AudioAgent with quick comparison and code snippets.
+- [ReactAgent](https://10xgraph.com/docs/guides/prebuilt/react-agent.md): ReactAgent implements the ReAct pattern, a simple LLM loop that reasons about what to do and acts by calling tools until it reaches a final answer.
+- [PlanActReflectAgent](https://10xgraph.com/docs/guides/prebuilt/plan-act-reflect-agent.md): Plan-act-reflect loops add an evaluation phase to prevent incomplete answers, making agents iterate until they finish the task.
+- [SwarmAgent](https://10xgraph.com/docs/guides/prebuilt/swarm-agent.md): SwarmAgent enables peer-to-peer multi-agent coordination where any member can hand off to any other member, with no bottleneck at a central supervisor.
+- [SupervisorTeamAgent](https://10xgraph.com/docs/guides/prebuilt/supervisor-team-agent.md): Route tasks from a supervisor LLM to specialized worker agents, each independently configured with their own model and tools.
+- [RAGAgent](https://10xgraph.com/docs/guides/prebuilt/rag-agent.md): RAGAgent retrieves relevant documents from a knowledge base, optionally reranks them, then answers questions grounded in that context.
+- [StructuredOutputAgent](https://10xgraph.com/docs/guides/prebuilt/structured-output-agent.md): StructuredOutputAgent validates LLM output against a Pydantic schema and auto-repairs invalid JSON through a GENERATE/REPAIR loop.
+- [AudioAgent](https://10xgraph.com/docs/guides/prebuilt/audio-agent.md): Build realtime audio-to-audio agents with Gemini Live, driven by duplex WebSocket sessions with optional tools, memory and skills.
+- [How to use the @tool decorator](https://10xgraph.com/docs/guides/use-tool-decorator.md): Mark Python functions as agent tools with metadata, parameter schemas, error handling, and dependency injection using the @tool decorator.
+- [Use prebuilt tools](https://10xgraph.com/docs/guides/prebuilt-tools.md): Ready-made production tools: fetch URLs, calculate safely, read and search files, search the web, manage memory, and transfer between agents.
+- [Web Tools](https://10xgraph.com/docs/guides/prebuilt/web-tools.md): Fetch web pages and search the public web with SSRF protection, grounding sources, and datastore support.
+- [File Tools](https://10xgraph.com/docs/guides/prebuilt/file-tools.md): Safe, workspace-scoped file tools for agents to read, write, and search text files within a configured root directory.
+- [Memory Tools](https://10xgraph.com/docs/guides/prebuilt/memory-tools.md): memory_tool, user_memory_tool, and agent_memory_tool give agents long-term memory to store, search, update, and delete facts across conversations.
+- [Use MCP tools in agents](https://10xgraph.com/docs/guides/use-mcp.md): Connect 10xGraph agents to MCP servers and mix local Python tools with remote MCP tools in a single graph.
+- [Emit Tool Progress Updates](https://10xgraph.com/docs/guides/emit-tool-progress.md): Learn how to send live progress, errors, and status updates from tools during streaming execution.
+- [Set up checkpointing](https://10xgraph.com/docs/guides/set-up-checkpointing.md): Choose and configure a checkpointer for state persistence: InMemoryCheckpointer for development, SqliteCheckpointer for client agents, or PgCheckpointer for production.
+- [Durability and concurrency](https://10xgraph.com/docs/guides/durability-and-concurrency.md): Ensure reliable execution: thread isolation, state history, optimistic concurrency, and idempotent tool calls.
+- [How to use the memory store](https://10xgraph.com/docs/guides/use-memory-store.md): Guide to using QdrantStore and Mem0Store for long-term vector memory, factory helpers, and enabling agent-level memory with MemoryConfig.
+- [Manage conversation context](https://10xgraph.com/docs/guides/use-context-manager.md): Keep message history within your LLM's context window using trimming and summarization.
+- [How to use dependency injection](https://10xgraph.com/docs/guides/use-dependency-injection.md): Guide to using InjectQ for binding services and injecting them into node functions, tool functions, and agents via Inject[T] parameter defaults.
+- [Route between agents with handoff](https://10xgraph.com/docs/guides/handoff-between-agents.md): Transfer control between agents in a multi-agent graph using handoff tools and Command routing.
+- [Add human approval with interrupt()](https://10xgraph.com/docs/guides/add-human-approval.md): Pause a graph mid-execution for human approval, correction, or choice from inside a node or tool. Resume when the decision is made.
+- [Run work in the background](https://10xgraph.com/docs/guides/run-background-tasks.md): Launch fire-and-forget async tasks from a node without blocking the response using BackgroundTaskManager.
+- [Stream graph responses](https://10xgraph.com/docs/guides/stream-graph.md): Stream token-by-token output using astream(), handle StreamChunk events, and pause with interrupts
+- [Send media to models](https://10xgraph.com/docs/guides/send-media.md): Send images, audio, and documents to your models from Python using content blocks, MediaRef, and storage backends.
+- [How to build a realtime audio agent](https://10xgraph.com/docs/guides/use-realtime-audio.md): Build a live audio-to-audio agent with AudioAgent and Gemini Live: arealtime sessions, LiveInputQueue, image input, reconnection, and the WebSocket bridge.
+- [Batch LLM calls](https://10xgraph.com/docs/guides/batch-llm-calls.md): Use OpenAI and Anthropic batch APIs for cost-effective processing of large request volumes.
+- [Validate input and guard prompts](https://10xgraph.com/docs/guides/protect-against-prompt-injection.md): How to validate and sanitize user input before it reaches your agent's LLM, protecting against prompt injection, jailbreaks, and other OWASP LLM01:2025 attacks.
+- [Use Callbacks and Hooks](https://10xgraph.com/docs/guides/use-callbacks.md): Hook into graph execution to log, validate, trace, and respond to events at two levels
+- [Authorization scopes](https://10xgraph.com/docs/guides/authorization-scopes.md): Read caller identity and enforce scopes inside graph nodes and tools using get_authz, has_scope, and isolation_scope.
+- [Emit events from your graph](https://10xgraph.com/docs/guides/use-publishers.md): Forward structured events to observability systems using Redis, Kafka, RabbitMQ and more.
+- [Send traces to Logfire and LangSmith](https://10xgraph.com/docs/guides/send-traces-to-logfire-langsmith.md): Send 10xGraph spans to Pydantic Logfire or LangSmith over OpenTelemetry using helpers, publishers, or configuration.
+- [Configure ID generators](https://10xgraph.com/docs/guides/configure-id-generator.md): Control the format of thread IDs and run IDs using built-in or custom generators to match your storage backend and observability requirements.
+- [Graceful shutdown](https://10xgraph.com/docs/guides/graceful-shutdown.md): Handle agent shutdown cleanly with signal handlers, timeout coordination, and protected cleanup sections.
+- [Give an agent Agent Skills](https://10xgraph.com/docs/guides/use-skills.md): Add Agent Skills (SKILL.md folders with scripts, references and assets) to a 10xGraph Agent, validate them, and observe when the model uses them.
+
+## API server
+
+- [API server overview](https://10xgraph.com/docs/server.md): The 10xGraph API server handles FastAPI endpoints for graph invocation, streaming, threading, memory, media, and observability with auth, rate limiting, and WebSocket.
+- [Run the API Server](https://10xgraph.com/docs/server/run-the-server.md): Start the 10xGraph API server with 10xgraph api, play, or dev commands for development and production deployment.
+- [Configure 10xgraph.json](https://10xgraph.com/docs/server/configure.md): Task guide for setting the common 10xgraph.json keys, wiring a checkpointer, store and auth, and keeping separate configs per environment.
+- [Initialize a Project](https://10xgraph.com/docs/server/project-setup.md): Scaffold a 10xGraph project with interactive prompts or CLI flags, and understand what each template generates.
+- [CLI Overview](https://10xgraph.com/docs/server/cli.md): Quick reference for 10xGraph CLI commands: scaffold, serve, test, and deploy agents.
+- [Set up API authentication and authorization](https://10xgraph.com/docs/server/auth.md): Enable JWT or custom auth, enforce thread ownership, and protect your API with role-based access control in 10xGraph.
+- [Configure Rate Limiting](https://10xgraph.com/docs/server/rate-limiting.md): How to enable and configure the built-in sliding-window rate limiter in the 10xGraph API.
+- [CORS and security headers](https://10xgraph.com/docs/server/cors-and-security-headers.md): Configure cross-origin requests, security headers, request size limits, and trusted proxies.
+- [Invoke and stream over REST](https://10xgraph.com/docs/server/invoke-and-stream.md): Call your graph over HTTP: synchronous invoke, streaming with NDJSON, thread management, stop and fix operations.
+- [WebSocket streaming and realtime](https://10xgraph.com/docs/server/websockets.md): Bidirectional WebSocket endpoints for turn-based agent streaming and realtime audio.
+- [Serve your agent over AG-UI](https://10xgraph.com/docs/server/ag-ui.md): Enable AG-UI support in 10xGraph to connect chat frontends like CopilotKit, test the endpoint, configure for production.
+- [Handle files and multimodal input](https://10xgraph.com/docs/server/files-and-multimodal.md): Enable clients to upload images, audio, and documents to your agent via the file API.
+- [Remote tools](https://10xgraph.com/docs/server/remote-tools.md): Configure client-executed tools on the server: define them in 10xgraph.json, attach them to graph nodes, and let clients run them.
+- [Observability](https://10xgraph.com/docs/server/observability.md): Set up structured logging, metrics collection, error tracking with Sentry, and inspect runs via the observability API.
+- [Deploy with Docker and Kubernetes](https://10xgraph.com/docs/server/deploy.md): Generate a Dockerfile, docker-compose.yml and Kubernetes manifest with 10xgraph build, then ship them with a production environment checklist.
+- [Deploy on Kubernetes](https://10xgraph.com/docs/server/kubernetes.md): Generate a Kubernetes Deployment and Service with 10xgraph build --k8s, tuned for long-running agent operations.
+- [Production Deployment Checklist](https://10xgraph.com/docs/server/production-checklist.md): Security, persistence, scaling, and monitoring checklist before shipping your 10xGraph API to production.
+- [Backup and restore](https://10xgraph.com/docs/server/backup-and-restore.md): What 10xGraph persists, how to back up the Postgres tables that hold threads and state, and how to restore or roll back a running deployment safely.
+- [Playground](https://10xgraph.com/docs/server/playground.md): Test your agent with the 10xGraph playground, a hosted UI for interactive development and debugging.
+
+## TypeScript client
+
+- [TypeScript client](https://10xgraph.com/docs/client.md): Connect browser and Node.js apps to 10xGraph over REST, streaming, and WebSockets with the typed SDK.
+- [Create and configure the client](https://10xgraph.com/docs/client/create-client.md): Install the TypeScript client and configure authentication to communicate with a 10xGraph API server securely.
+- [Invoke the agent](https://10xgraph.com/docs/client/invoke-agent.md): Call client.invoke() to send messages to your agent and get back responses with full control over threading, error handling, and response structure.
+- [Stream responses](https://10xgraph.com/docs/client/stream-responses.md): Process agent responses token-by-token with client.stream() and client.wsStream().
+- [Manage threads](https://10xgraph.com/docs/client/manage-threads.md): List, inspect, update, and delete conversation threads and messages from the TypeScript client.
+- [Remote tools](https://10xgraph.com/docs/client/remote-tools.md): Execute client-side tools from the agent graph, handling geolocation, clipboard, and other browser capabilities.
+- [Work with files and multimodal messages](https://10xgraph.com/docs/client/files-and-multimodal.md): Upload images, documents, and audio; reference them in messages with file_id for secure, efficient multimodal input.
+- [Use the memory API](https://10xgraph.com/docs/client/use-memory-api.md): Store, search, and manage long-term memories across agent conversations with the 10xGraph TypeScript client.
+- [Graph utilities and human-in-the-loop](https://10xgraph.com/docs/client/graph-utilities.md): Inspect graph topology and state, stop execution, repair broken threads, view execution traces, and handle interrupts for human approval workflows.
+- [Build a realtime audio conversation](https://10xgraph.com/docs/client/realtime-audio.md): Capture microphone input, stream it to a live agent with client.realtime(), receive PCM16 audio output, and play it back in the browser.
+- [Error handling](https://10xgraph.com/docs/client/error-handling.md): Catch, classify, and recover from errors in the TypeScript client. Error classes, retrying transient failures, and streaming error events.
+- [Call 10xGraph from Next.js and React](https://10xgraph.com/docs/client/nextjs-and-react.md): Integrate a 10xGraph Python agent backend with Next.js using route handlers for secure streaming and Server Actions for non-streaming calls.
+
+## Testing and evaluation
+
+- [Testing and evaluation](https://10xgraph.com/docs/testing.md): Build confidence in agent behavior: unit test graph logic with TestAgent and mocks, then evaluate response quality and tool use with criteria and LLM-as-judge scoring.
+- [Unit Testing](https://10xgraph.com/docs/testing/unit-tests.md): Write fast, deterministic tests for agents using TestAgent, QuickTest, MockToolRegistry, and mock storage without making real LLM API calls.
+- [Run Tests](https://10xgraph.com/docs/testing/run-tests.md): Run your 10xGraph project's test suite with 10xgraph test. Configure coverage thresholds and CI gates via 10xgraph.json.
+- [Evaluation](https://10xgraph.com/docs/testing/evaluation.md): Run evaluations to measure agent quality: correct tool usage, accurate responses, and safety.
+- [Building Eval Sets](https://10xgraph.com/docs/testing/eval-sets.md): How to build evaluation datasets with EvalSetBuilder, single-turn cases, multi-turn conversations, tool call assertions, and loading from files.
+- [Evaluation Criteria](https://10xgraph.com/docs/testing/criteria.md): Score agent outputs with deterministic criteria or LLM judges: tools, nodes, ROUGE, accuracy, safety.
+- [Evaluation Presets and Configuration](https://10xgraph.com/docs/testing/presets.md): Ready-made evaluation presets for common scenarios and how to build custom EvalConfig for specific needs.
+- [User Simulation](https://10xgraph.com/docs/testing/user-simulation.md): Test agents with the 10xGraph user simulator and goal-driven conversations using get_scenarios(), UserSimulator, BatchSimulator, and SimulationGoalsCriterion.
+- [Evaluation Reports](https://10xgraph.com/docs/testing/reports.md): How 10xGraph evaluation reports work, HTML dashboard, JSON output, JUnit XML for CI, ReporterConfig, and how to interpret results.
+- [Run Evaluations](https://10xgraph.com/docs/testing/run-evals.md): Run agent evaluations with 10xgraph eval: covers parallel execution, eval file protocols, EvalPresets, and CI integration.
+- [Running Evaluations in pytest](https://10xgraph.com/docs/testing/evals-in-pytest.md): Integrate agent evaluations into pytest to measure quality alongside unit tests. Use decorators and assertion helpers to verify agents meet quality thresholds.
+
+## Integrations
+
+- [Integrations](https://10xgraph.com/docs/integrations.md): Connect 10xGraph agents to your existing stack. Guides for LLM providers, frameworks, storage, and observability backends.
+- [Model providers](https://10xgraph.com/docs/integrations/models.md): 10xGraph supports OpenAI, Google Gemini, and Anthropic Claude through a single Agent interface. Choose your model independently of your graph.
+- [OpenAI](https://10xgraph.com/docs/integrations/openai.md): Configure the OpenAI provider in 10xGraph to run GPT and reasoning models, including the install extra, API key, and model settings.
+- [Google](https://10xgraph.com/docs/integrations/google.md): Configure the Google provider to run Gemini models via Google AI Studio or Vertex AI.
+- [Anthropic](https://10xgraph.com/docs/integrations/anthropic.md): Configure the Anthropic provider to run Claude models via the Claude API, Google Cloud Vertex AI, or Amazon Bedrock.
+- [Embed a graph in FastAPI](https://10xgraph.com/docs/integrations/fastapi.md): Run a 10xGraph agent directly in your FastAPI service with shared auth, streaming, and dependency injection.
+- [Build a chat frontend with CopilotKit and 10xGraph](https://10xgraph.com/docs/integrations/copilotkit.md): Connect a CopilotKit chat frontend to your 10xGraph agent over the AG-UI protocol, with streaming responses, tool calls, browser tools, and shared state.
+- [Postgres and Redis checkpointing](https://10xgraph.com/docs/integrations/postgres-and-redis.md): Set up PgCheckpointer for durable, resumable agent threads: Postgres as the source of truth, Redis as a cache, plus schema, pooling and operations.
+- [Coding assistants](https://10xgraph.com/docs/integrations/coding-assistants.md): Install the bundled 10xGraph skill for Codex, Claude, or GitHub Copilot so they understand the framework and write correct code.
+
+## Examples
+
+- [Examples](https://10xgraph.com/docs/examples.md): Runnable examples and reference architectures demonstrating 10xGraph agents, tools, streaming, MCP, memory, and multi-agent patterns.
+- [Agent Class Pattern](https://10xgraph.com/docs/examples/agent-class.md): Build a weather assistant using the Agent class with tools and conditional routing.
+- [Custom State](https://10xgraph.com/docs/examples/custom-state.md): Extend AgentState with typed domain fields and use partial state updates to build context-aware agents.
+- [Tool Decorator](https://10xgraph.com/docs/examples/tool-decorator.md): Learn how to use the @tool decorator to attach metadata, tags, and capabilities to Python tool functions, plus filter and inspect tools at runtime.
+- [ReAct Agent](https://10xgraph.com/docs/examples/react-agent.md): Walk through a ReAct agent that calls a weather tool, injects tool_call_id and state, and keeps history per thread with a checkpointer.
+- [ReAct Agent with Validation](https://10xgraph.com/docs/examples/react-agent-validation.md): Reject unsafe or off-policy user messages before they reach the model by registering input validators on a CallbackManager for a ReAct agent.
+- [Google GenAI Adapter](https://10xgraph.com/docs/examples/google-genai.md): Convert google-genai SDK responses to 10xGraph Message format with GoogleGenAIConverter
+- [React Streaming](https://10xgraph.com/docs/examples/react-streaming.md): Stream graph responses token-by-token using astream with ResponseGranularity, and understand the difference between invoke and stream.
+- [Stop Stream](https://10xgraph.com/docs/examples/stop-stream.md): Gracefully stop a running 10xGraph stream from the caller by using app.stop(config).
+- [MCP Server](https://10xgraph.com/docs/examples/mcp-server.md): Expose Python tools over Model Context Protocol using FastMCP so 10xGraph and other MCP clients can call them remotely.
+- [MCP Client](https://10xgraph.com/docs/examples/mcp-client.md): Connect to MCP servers, discover remote tools, and invoke them directly using FastMCP.
+- [MCP ReAct Agent](https://10xgraph.com/docs/examples/mcp-react-agent.md): Build a ReAct agent graph whose tools live on a remote MCP server: configure the client, wire a ToolNode, route tool calls, and run it.
+- [GitHub MCP](https://10xgraph.com/docs/examples/github-mcp.md): Connect an agent to a remote GitHub MCP server to list commits and download files from repositories through MCP tools.
+- [Dependency Injection](https://10xgraph.com/docs/examples/dependency-injection.md): Use InjectQ with 10xGraph to inject shared services such as checkpointers, stores, callbacks, and app-specific dependencies into graph nodes and tools.
+- [Multiagent](https://10xgraph.com/docs/examples/multiagent.md): Route work between specialist nodes in one 10xGraph graph with a coordinator node and conditional edges, using a deterministic, runnable example.
+- [Handoff](https://10xgraph.com/docs/examples/handoff.md): Build a multi-agent 10xGraph system where agents transfer work to each other using handoff tools.
+- [Memory](https://10xgraph.com/docs/examples/memory.md): Build a chatbot that remembers user preferences across conversations, using Mem0 and Qdrant for long-term memory inside custom graph nodes.
+- [Multimodal](https://10xgraph.com/docs/examples/multimodal.md): Send images, audio, video, and documents to a 10xGraph agent with content blocks, MediaRef (url, base64, file_id), MultimodalConfig, and a media store.
+- [Skills](https://10xgraph.com/docs/examples/skills.md): Run an example graph that loads Agent Skills (SKILL.md files) on demand and combines them with normal Python tools.
+- [Testing](https://10xgraph.com/docs/examples/testing.md): Use QuickTest to write low-boilerplate, deterministic tests for 10xGraph graphs without hitting a live model.
+- [Evaluation example](https://10xgraph.com/docs/examples/evaluation.md): Walk through the weather-agent evaluation example: eval cases, QuickEval, trajectory criteria, user simulation and CI reports.
+- [Graceful Shutdown](https://10xgraph.com/docs/examples/graceful-shutdown.md): Run a tool-calling 10xGraph agent as a long-running service that handles SIGINT and SIGTERM, protects startup and cleanup, and calls aclose().
+- [Build a Customer Support AI Agent in Python](https://10xgraph.com/docs/examples/customer-support-agent.md): Reference architecture for a production customer support AI agent in Python. Intent routing, ticket lookup, refund tools, and human handoff with 10xGraph.
+- [Build a Data Extraction AI Agent in Python](https://10xgraph.com/docs/examples/data-extraction-agent.md): Build a data extraction agent in Python that turns unstructured text into validated Pydantic records and retries when validation fails, with 10xGraph.
+- [Build a Coding AI Agent in Python](https://10xgraph.com/docs/examples/coding-agent.md): Build a plan-first coding agent with read, search, test and diff-proposing tools, so every file change is reviewed by a human before it lands.
+- [Build a Research AI Agent in Python](https://10xgraph.com/docs/examples/research-agent.md): Build a research agent that searches the web, reads full pages and writes answers with [source-N] citations, plus a check for uncited claims.
+- [RAG agent example walkthrough](https://10xgraph.com/docs/examples/rag-agent.md): Build a knowledge-base Q&A agent with RAGAgent, from a runnable keyword-search demo to Qdrant retrieval and optional reranking.
+
+## Reference
+
+- [API reference](https://10xgraph.com/docs/reference.md): Reference for 10xGraph: the Python library, the REST and WebSocket API, the CLI and 10xgraph.json configuration, and the typed TypeScript client.
+- [Graph](https://10xgraph.com/docs/reference/python/graph.md): Reference for StateGraph, CompiledGraph, Node, Edge, BaseAgent and RemoteToolConfig: signatures, parameters, returns, config keys and errors.
+- [Agent](https://10xgraph.com/docs/reference/python/agent.md): Reference for the Agent class: constructor parameters, providers, retry and fallback, reasoning, memory, multimodal limits, and common errors.
+- [Tools](https://10xgraph.com/docs/reference/python/tools.md): ToolNode, ToolResult, and utilities for tool registration and execution.
+- [State](https://10xgraph.com/docs/reference/python/state.md): Reference for AgentState, ExecutionState, ExecutionStatus and the reducer functions in tenxgraph.core.state, with signatures, fields and examples.
+- [Messages](https://10xgraph.com/docs/reference/python/messages.md): Reference for Message, the twelve content block types, MediaRef, AnnotationRef and TokenUsages, the typed format for all agent communication.
+- [Context Manager](https://10xgraph.com/docs/reference/python/context-manager.md): Reference for MessageContextManager, SummaryContextManager and BaseContextManager, which trim or summarize message history before each LLM call.
+- [LLM Utilities](https://10xgraph.com/docs/reference/python/llm.md): Provider detection, LLM client creation, batch processing, and timeout controls from tenxgraph.core.llm.
+- [Skills](https://10xgraph.com/docs/reference/python/skills.md): SkillConfig, SkillMeta, SkillDiagnostic, SkillResourceError and SkillsRegistry. Load Agent Skills into agents.
+- [Realtime audio](https://10xgraph.com/docs/reference/python/realtime.md): Python API reference for live audio-to-audio agent sessions with Gemini Live, including AudioAgent, RealtimeConfig, LiveInputQueue and RealtimeEvent.
+- [StreamEmitter](https://10xgraph.com/docs/reference/python/stream-emitter.md): Reference for StreamEmitter, the object injected into tools during streaming that sends live progress, error and message chunks to the caller.
+- [Exceptions](https://10xgraph.com/docs/reference/python/exceptions.md): Exception hierarchy for graph execution, storage, timeouts, and media validation errors.
+- [Control flow](https://10xgraph.com/docs/reference/python/control-flow.md): Reference for Command, interrupt(), Interrupt, GraphInterrupt, pending_interrupt, create_handoff_tool and is_handoff_tool in 10xGraph.
+- [Callback Manager](https://10xgraph.com/docs/reference/python/callback-manager.md): Reference for CallbackManager, InvocationType, CallbackContext, the three callback base classes, and the prompt injection and message validators.
+- [Lifecycle Callbacks](https://10xgraph.com/docs/reference/python/lifecycle-callbacks.md): GraphLifecycleHook, GraphLifecycleContext - hook into graph-level events (start, end, error, interrupt, resume, checkpoint, state update).
+- [Background Task Manager](https://10xgraph.com/docs/reference/python/background-tasks.md): Reference for BackgroundTaskManager: create, track, wait for, cancel and shut down fire-and-forget asyncio tasks from node functions.
+- [ID Generator](https://10xgraph.com/docs/reference/python/id-generator.md): BaseIDGenerator, IDType and the built-in generators: control the format of the thread IDs, run IDs and message IDs that 10xGraph creates.
+- [Runtime utilities](https://10xgraph.com/docs/reference/python/runtime-utilities.md): Shutdown, logging, async helpers, message conversion, tool metadata, and metrics instrumentation.
+- [Publishers](https://10xgraph.com/docs/reference/python/publishers.md): Reference for EventModel, BasePublisher, the Console, Redis, Kafka, RabbitMQ, OTEL, Logfire and LangSmith publishers, and publish_event.
+- [Response adapters](https://10xgraph.com/docs/reference/python/adapters.md): Convert LLM responses from OpenAI, Google GenAI, and Anthropic to 10xGraph Message format.
+- [Checkpointers](https://10xgraph.com/docs/reference/python/checkpointers.md): Checkpointer implementations for state persistence. BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer.
+- [Memory stores](https://10xgraph.com/docs/reference/python/memory-stores.md): Reference for BaseStore, QdrantStore, Mem0Store, embedding classes, MemoryConfig, MemoryIntegration, preload helpers and store factories.
+- [Media](https://10xgraph.com/docs/reference/python/media.md): Handle images, audio, video, and documents in agent messages. Offload large blobs, validate content, process images, cache uploads.
+- [Prebuilt agents](https://10xgraph.com/docs/reference/python/prebuilt-agents.md): API reference for built-in agent patterns: ReactAgent, RAGAgent, PlanActReflectAgent, StructuredOutputAgent, SupervisorTeamAgent, SwarmAgent, and AudioAgent.
+- [Prebuilt tools](https://10xgraph.com/docs/reference/python/prebuilt-tools.md): Reference for 10xGraph prebuilt tools: web fetch, file operations, web and semantic search, safe calculator, and long-term memory tools.
+- [Testing](https://10xgraph.com/docs/reference/python/testing.md): TestAgent, QuickTest, TestContext, QuickEval, and mocks for unit tests and evaluations without LLM API calls.
+- [Evaluation](https://10xgraph.com/docs/reference/python/evaluation.md): The evaluation API: classes for datasets, criteria, execution and results.
+- [Evaluation criteria](https://10xgraph.com/docs/reference/python/evaluation-criteria.md): Signatures, parameters, and behaviour of every evaluation criterion class
+- [Evaluation harness](https://10xgraph.com/docs/reference/python/evaluation-harness.md): Pytest helpers, data models, batch runners and reporters for evaluating 10xGraph agents.
+- [Conventions and permissions](https://10xgraph.com/docs/reference/rest-api/conventions.md): The 10xGraph REST API response envelope, HTTP and WebSocket authentication, the endpoint permission table, WebSocket close codes and HTTP status codes.
+- [Graph endpoints](https://10xgraph.com/docs/reference/rest-api/graph.md): Reference for the 10xGraph REST endpoints that invoke, stream, stop, and inspect a graph, with request bodies, responses, and auth requirements.
+- [Live WebSocket endpoint](https://10xgraph.com/docs/reference/rest-api/live.md): Reference for WS /v1/graph/live: real-time audio WebSocket bridge for LiveAgent graphs. Init frame, binary and JSON frames, authentication, close codes.
+- [AG-UI endpoint](https://10xgraph.com/docs/reference/rest-api/ag-ui.md): POST /v1/ag-ui runs a 10xGraph graph over the AG-UI protocol: the RunAgentInput request, the server-sent event stream, interrupts, client tools, auth and error codes.
+- [Thread endpoints](https://10xgraph.com/docs/reference/rest-api/threads.md): Reference for the 10xGraph REST endpoints that read and write thread state and messages, with request fields, responses, and auth requirements.
+- [Memory store endpoints](https://10xgraph.com/docs/reference/rest-api/memory-store.md): Reference for /v1/store endpoints: storing, searching, listing, updating, deleting, and forgetting memories through the 10xGraph API server.
+- [File upload endpoints](https://10xgraph.com/docs/reference/rest-api/files.md): Reference for the 10xGraph REST endpoints that upload files and retrieve them, with request fields, responses, and authentication requirements.
+- [Configuration endpoints](https://10xgraph.com/docs/reference/rest-api/config.md): Reference for the 10xGraph REST config endpoint GET /v1/config/multimodal: permission, response fields, defaults, errors and a curl example.
+- [Observability endpoints](https://10xgraph.com/docs/reference/rest-api/observability.md): Reference for the GET /v1/observability/{thread_id} endpoint that reconstructs a run trace with spans, events, and token usage.
+- [Eval endpoints](https://10xgraph.com/docs/reference/rest-api/evals.md): Reference for the eval run listing and detail endpoints that serve 10xgraph eval reports over HTTP, including their public, unauthenticated status.
+- [Health check endpoint](https://10xgraph.com/docs/reference/rest-api/ping.md): GET /ping is the unauthenticated health check of the 10xGraph API server, used for Kubernetes probes, Docker HEALTHCHECK and load balancers.
+- [CLI reference](https://10xgraph.com/docs/reference/api-cli/commands.md): Every 10xGraph CLI command with its purpose, usage line, options and defaults: init, api, play, dev, build, eval, test, skills, audit, config, demo and version.
+- [10xgraph.json configuration reference](https://10xgraph.com/docs/reference/api-cli/configuration.md): Every key the 10xgraph.json config file accepts, with defaults, types, purposes, and complete examples for rate limiting, auth, and servers.
+- [Authentication](https://10xgraph.com/docs/reference/api-cli/auth.md): Configure JWT, custom auth backends, and authorization for the 10xGraph API server.
+- [Rate Limiting](https://10xgraph.com/docs/reference/api-cli/rate-limiting.md): Complete reference for the rate_limit block in 10xgraph.json: the backends, limits, and every option for throttling requests to the 10xGraph API server.
+- [AgentFlowClient](https://10xgraph.com/docs/reference/client/client.md): Complete reference for the AgentFlowClient class, constructor config, method list, and exports.
+- [Graph control](https://10xgraph.com/docs/reference/client/graph.md): Reference for graph-control methods on the TypeScript client: ping, graph, graphTools, observability, graphStateSchema, stopGraph, and fixGraph.
+- [Message](https://10xgraph.com/docs/reference/client/message.md): Reference for the Message class, its factory methods and all 12 content block types in the 10xGraph TypeScript client.
+- [invoke()](https://10xgraph.com/docs/reference/client/invoke.md): Reference for AgentFlowClient.invoke(): send messages to the agent graph, run remote tools automatically, and get the final result.
+- [stream()](https://10xgraph.com/docs/reference/client/stream.md): Reference for AgentFlowClient.stream(): send messages and receive StreamChunk objects in real time, with options, event types and examples.
+- [realtime()](https://10xgraph.com/docs/reference/client/realtime.md): Reference for AgentFlowClient.realtime() and RealtimeSession, the transport-only audio-to-audio client for the /v1/graph/live WebSocket.
+- [Threads](https://10xgraph.com/docs/reference/client/threads.md): Reference for listing, inspecting, updating and deleting conversation threads, state and messages with the 10xGraph TypeScript client.
+- [Memory](https://10xgraph.com/docs/reference/client/memory.md): Reference for memory store methods in the 10xGraph TypeScript client: store, search, retrieve, update and delete memories with type-based filtering and vector similarity.
+- [Files](https://10xgraph.com/docs/reference/client/files.md): Upload, retrieve, and manage multimodal files with the 10xGraph TypeScript client.
+- [Client authentication](https://10xgraph.com/docs/reference/client/auth.md): Bearer, Basic, and header authentication options for the 10xGraph TypeScript client, with WebSocket auth details.
+- [Error handling](https://10xgraph.com/docs/reference/client/errors.md): Every error class exported by the TypeScript client, its status and error code, when it is thrown, and how to handle it.
+- [Error Codes Reference](https://10xgraph.com/docs/reference/error-codes.md): Every 10xGraph exception, its error code, whether it is retryable, the HTTP status the API server returns, and how to handle it in code.
+- [Environment Variables](https://10xgraph.com/docs/reference/api-cli/environment.md): Reference for every environment variable the 10xGraph API server recognizes, grouped by area such as auth, CORS, logging, and Snowflake ID settings.
+
+## Troubleshooting
+
+- [Troubleshooting](https://10xgraph.com/docs/troubleshooting.md): Find the right 10xGraph troubleshooting page by symptom: install failures, provider keys, server startup, client connections, playground and error codes.
+- [Installation troubleshooting](https://10xgraph.com/docs/troubleshooting/installation.md): Fix 10xGraph install and environment problems, from failed pip installs and a missing 10xgraph command to import errors, missing extras and ignored .env files.
+- [Provider errors](https://10xgraph.com/docs/troubleshooting/providers.md): Fix LLM provider errors: missing SDK extras, API keys, model names, rate limits, Vertex AI and Bedrock setup, and timeouts.
+- [API Server Troubleshooting](https://10xgraph.com/docs/troubleshooting/api-server.md): Symptoms, causes, and fixes for 10xGraph API server problems at startup, at request time, and in production deployments.
+- [Client Troubleshooting](https://10xgraph.com/docs/troubleshooting/client.md): Symptoms, causes, and fixes for common 10xGraph TypeScript client problems: failed requests, CORS, lost threads, streaming and WebSocket errors.
+- [Playground Troubleshooting](https://10xgraph.com/docs/troubleshooting/playground.md): Symptoms, causes, and fixes for hosted playground connection issues when using 10xgraph play.
+
+## Glossary
+
+- [AI Agent Glossary](https://10xgraph.com/docs/glossary.md): Plain definitions of AI agent terms, from ReAct agents and state graphs to MCP, RAG, durable execution and idempotent tool calls, with Python examples.
+- [What Is an AI Agent? Definition and Python Guide (2026)](https://10xgraph.com/docs/glossary/what-is-an-ai-agent.md): An AI agent is a program that uses an LLM to perceive input, reason, and act in a loop until a goal is met. Learn the patterns and build one in Python.
+- [What Is a ReAct Agent? Python Guide with Code Examples](https://10xgraph.com/docs/glossary/what-is-a-react-agent.md): A ReAct agent alternates reasoning and acting: it calls tools, observes the results, and reasons again. Learn how it works and build one in Python.
+- [What Is Multi-Agent Orchestration? Python Guide](https://10xgraph.com/docs/glossary/what-is-multi-agent-orchestration.md): Multi-agent orchestration coordinates several AI agents toward one goal using explicit handoffs and control flow. See the patterns with Python examples.
+- [What Is a State Graph? AI Agent Architecture Guide](https://10xgraph.com/docs/glossary/what-is-a-state-graph.md): A state graph models AI agent workflows as nodes (processing steps) and edges that move state between them. See how it works with Python examples.
+- [What Is Agent Memory? Types and Python Implementation](https://10xgraph.com/docs/glossary/what-is-agent-memory.md): Agent memory is how an AI agent stores and retrieves information across turns, sessions, and restarts. See the three memory types and Python code.
+- [What Is the Model Context Protocol (MCP)? Guide for AI Agents](https://10xgraph.com/docs/glossary/what-is-model-context-protocol.md): The Model Context Protocol (MCP) is an open standard that connects AI agents to external tools and data through one interface. Learn how to use it in Python.
+- [What Is RAG (Retrieval-Augmented Generation)? Python Guide](https://10xgraph.com/docs/glossary/what-is-retrieval-augmented-generation.md): RAG (Retrieval-Augmented Generation) has an agent retrieve relevant documents before it answers. Learn how it works and build a RAG agent in Python.
+- [What Is AI Agent Streaming? SSE Guide for Python](https://10xgraph.com/docs/glossary/what-is-agent-streaming.md): AI agent streaming sends responses token-by-token to a frontend over SSE instead of waiting for the full reply. Learn how it works in Python.
+- [What Is Durable Execution for AI Agents?](https://10xgraph.com/docs/glossary/what-is-durable-execution.md): Durable execution saves a run's progress so it resumes after a crash instead of restarting. See what it covers for AI agents and how 10xGraph implements it.
+- [What Is an Idempotent Tool Call?](https://10xgraph.com/docs/glossary/what-is-an-idempotent-tool-call.md): An idempotent tool call has the same effect whether it runs once or many times. See why agents need it, how idempotency keys work and how 10xGraph helps.
+
+## Compare
+
+- [10xGraph vs LangGraph, CrewAI, AutoGen: Compared](https://10xgraph.com/docs/compare.md): Sourced comparisons of 10xGraph with LangGraph, CrewAI, AutoGen, LlamaIndex Agents and Google ADK, led by the production layer each framework includes.
+- [10xGraph vs LangGraph: Production Python Alternative](https://10xgraph.com/docs/compare/10xgraph-vs-langgraph.md): 10xGraph vs LangGraph compared on the production layer, with sources. Auth, thread isolation, replay-safe tools, versioned writes, timeouts, and deploy files.
+- [10xGraph vs CrewAI: Graphs vs Role-Based Crews](https://10xgraph.com/docs/compare/10xgraph-vs-crewai.md): 10xGraph vs CrewAI compared with sources. Production server, auth, thread isolation, replay-safe tools and timeouts, plus where CrewAI is the better pick.
+- [10xGraph vs Microsoft AutoGen: Python Compared](https://10xgraph.com/docs/compare/10xgraph-vs-autogen.md): 10xGraph vs Microsoft AutoGen compared with sources. AutoGen is in maintenance mode, so this covers the production layer and what Microsoft recommends instead.
+- [10xGraph vs LlamaIndex Agents: Runtime vs RAG](https://10xgraph.com/docs/compare/10xgraph-vs-llamaindex-agents.md): 10xGraph vs LlamaIndex Agents compared with sources: server, auth, thread isolation, replay-safe tools, and using LlamaIndex retrieval inside 10xGraph.
+- [10xGraph vs Google ADK: Open-Source Alternative](https://10xgraph.com/docs/compare/10xgraph-vs-google-adk.md): 10xGraph vs Google ADK compared with sources: API server, auth, thread isolation, replay-safe tools, sessions, and where ADK is the better pick.
+
+## Project
+
+- [Project and releases](https://10xgraph.com/docs/project.md): How 10xGraph is run: MIT license, maintained by 10xScale, with a changelog, roadmap, security reporting, support channels and a contributing guide.
+- [Upgrade to 1.0](https://10xgraph.com/docs/project/upgrade-to-1.0.md): Migration guide from 10xGraph 0.8 and 0.9 to 1.0, covering the four breaking changes and the new defaults that change runtime behaviour.
+- [Roadmap and known gaps](https://10xgraph.com/docs/project/roadmap.md): What 10xGraph does not do yet, which surfaces are incomplete, and where dated release planning actually lives.
+- [Security policy](https://10xgraph.com/docs/project/security.md): How to report a vulnerability in 10xGraph, what response to expect, which versions receive fixes, and which behaviours are by design rather than bugs.
+- [Getting help](https://10xgraph.com/docs/project/support.md): Where to ask questions, how to file a good bug report for 10xGraph, and what information to collect before you do.
+- [Contributing](https://10xgraph.com/docs/project/contributing.md): How to contribute to 10xGraph and to these docs, including the local setup, the writing conventions, and the checks that must pass before a pull request merges.
+
+## Blog
+
+- [Agentflow is now 10xGraph](https://10xgraph.com/blog/introducing-10xgraph.md): Agentflow is now 10xGraph. Why we renamed it, what the framework is, what stays the same in your code, what changes in package names, and the honest gaps.
+- [Your agent charged the card twice: making tool calls replay-safe](https://10xgraph.com/blog/your-agent-charged-the-card-twice.md): Why a crash mid-node re-runs tools that already fired, why the usual fixes fall short, and how 10xGraph's tool ledger and versioned writes close the gap.
+- [Hot and cold agent memory: why 10xGraph puts Redis in front of Postgres](https://10xgraph.com/blog/hot-and-cold-agent-memory.md): How PgCheckpointer splits agent state between a Redis hot cache and versioned Postgres history, keeps them consistent, and behaves when either one fails.
+
+## Optional
+
+- [Full content](https://10xgraph.com/llms-full.txt): every doc and post in one file
+- [Changelog](https://10xgraph.com/changelog): release notes for every published version

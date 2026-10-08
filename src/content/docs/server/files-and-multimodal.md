@@ -32,7 +32,7 @@ This rewrite happens in the same input-preparation step for all three endpoints,
 
 The rewrite is a no-op when no media service is configured, so development without file uploads requires no extra setup.
 
-**Note:** WebSocket live streaming (`WS /v1/graph/live`) is audio-only and does not use the file upload API; see [its documentation](/docs/server/websockets#scope-audio-and-text-only).
+**Note:** WebSocket live streaming (`WS /v1/graph/live`) is audio-only and does not use the file upload API; see [its documentation](/docs/server/websockets#realtime-audio-v1graphlive).
 
 ## Upload a file
 
@@ -64,7 +64,7 @@ The server responds with metadata and a unique `file_id`:
 
 ### Permissions and ownership
 
-The uploading user is automatically recorded as the file's owner. Every read operation—including retrieval, metadata queries, and message rewriting—checks ownership and rejects requests from other users with `404`. This owner recording is immutable and survives as long as the file does.
+The uploading user is automatically recorded as the file's owner. Every read operation, including retrieval, metadata queries, and message rewriting, checks ownership and rejects requests from other users with `404`. This owner recording is immutable and survives as long as the file does.
 
 The server reads uploads in 1 MiB chunks, so oversized files are rejected before the entire body is buffered in memory. Two HTTP status codes signal problems:
 

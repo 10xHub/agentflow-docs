@@ -423,6 +423,6 @@ Ensure you pass the `resume` key in the next invocation. The value must match th
 
 ## See also
 
-- [Concepts: Interrupts](/docs/concepts/interrupts) — detailed explanation of interrupt mechanisms
-- [Guide: Stream a graph](/docs/guides/stream-graph) — streaming graph execution
-- [Integration: CopilotKit](/docs/integrations/copilotkit) — building UIs with pause/resume
+- [Concepts: Interrupts](/docs/concepts/interrupts): detailed explanation of interrupt mechanisms
+- [Guide: Stream a graph](/docs/guides/stream-graph): streaming graph execution
+- [Integration: CopilotKit](/docs/integrations/copilotkit): building UIs with pause/resume

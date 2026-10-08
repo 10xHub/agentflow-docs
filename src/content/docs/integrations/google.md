@@ -15,8 +15,8 @@ Run Gemini models through Google GenAI. The same models and features work throug
 
 Gemini models (`gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`, and experimental `gemini-3-*` models) run on two backends:
 
-- **Gemini API** (Google AI Studio) — fastest path to get started; authentication is a single API key.
-- **Vertex AI** — same models routed through Google Cloud; includes IAM-scoped access, audit logs, regional data residency, and VPC Service Controls.
+- **Gemini API** (Google AI Studio): fastest path to get started; authentication is a single API key.
+- **Vertex AI**: same models routed through Google Cloud; includes IAM-scoped access, audit logs, regional data residency, and VPC Service Controls.
 
 Both backends support the same advanced features: context caching, extended thinking, and structured output. Switch between them with a single flag: `use_vertex_ai=True` on the `Agent`, or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment. If both are set, the explicit argument on `Agent` wins.
 
@@ -114,7 +114,7 @@ Cache hit counts are read from `usage_metadata.cached_content_token_count` and l
 ```python
 from tenxgraph.core.graph import Agent
 
-# Implicit caching fires automatically — nothing to configure
+# Implicit caching fires automatically, nothing to configure
 agent = Agent(
     model="gemini-2.5-flash",
     system_prompt=[{"role": "system", "content": long_system_prompt}],
@@ -133,7 +133,7 @@ For guaranteed savings on very large static content (multi-page PDFs, long codeb
 reference documents), create a cache explicitly using the Google SDK and pass the cache
 name to the Agent via `cached_content`.
 
-**Step 1 — create the cache outside the Agent:**
+**Step 1, create the cache outside the Agent:**
 
 ```python
 import asyncio
@@ -162,7 +162,7 @@ async def create_cache():
 cache_name = asyncio.run(create_cache())
 ```
 
-**Step 2 — pass the cache name to the Agent:**
+**Step 2, pass the cache name to the Agent:**
 
 ```python
 agent = Agent(
@@ -185,25 +185,25 @@ GCS URIs). The cache is stored server-side; you reference it by name.
 
 **Cache lifecycle:** TTL defaults to 1 hour. Only TTL and expiration time can be updated
 after creation. Deletion is manual or automatic on expiry. 10xGraph does not manage
-cache lifecycle — create, refresh, and delete caches via the Google SDK directly.
+cache lifecycle, create, refresh, and delete caches via the Google SDK directly.
 
 ### Mixing Static and Dynamic System Instructions
 
 When using explicit caching, the Google SDK does not allow sending `system_instruction`
-in `GenerateContentConfig` alongside `cached_content` — the static instruction already
+in `GenerateContentConfig` alongside `cached_content`, the static instruction already
 lives inside the cache.
 
 10xGraph handles this automatically:
 
 - If `cached_content` is set, `system_instruction` is **excluded** from the config.
-- Any dynamic additions to the system prompt — from memory injections, skill prompts, or
-  per-request state — are **preserved** by prepending them as a leading user message in
+- Any dynamic additions to the system prompt, from memory injections, skill prompts, or
+  per-request state, are **preserved** by prepending them as a leading user message in
   `contents` before the conversation history.
 
 The recommended pattern:
 
 ```python
-# Static instruction — goes into the cache at creation time
+# Static instruction, goes into the cache at creation time
 static_instruction = "You are a legal analyst. Reference the attached documents..."
 
 agent = Agent(
@@ -324,11 +324,11 @@ All other configuration options (caching, thinking, structured output) work iden
     export GOOGLE_APPLICATION_CREDENTIALS="./service_account.json"
     ```
 
-   On GCP runtimes (Cloud Run, GKE, Compute Engine, etc.) the attached service account is picked up automatically — you only need `GOOGLE_CLOUD_PROJECT`.
+   On GCP runtimes (Cloud Run, GKE, Compute Engine, etc.) the attached service account is picked up automatically, you only need `GOOGLE_CLOUD_PROJECT`.
 
 ### 2. Enable Vertex AI
 
-**Option A — pass `use_vertex_ai=True` on the agent:**
+**Option A, pass `use_vertex_ai=True` on the agent:**
 
 ```python
 agent = Agent(
@@ -340,7 +340,7 @@ agent = Agent(
 )
 ```
 
-**Option B — set `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment:**
+**Option B, set `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment:**
 
 ```bash
 export GOOGLE_GENAI_USE_VERTEXAI=true
@@ -381,7 +381,7 @@ are forwarded to `GenerateContentConfig` (after provider-level extraction).
 
 | kwarg | Type | Notes |
 |---|---|---|
-| `cached_content` | `str` | Name of an explicit Gemini cache (e.g. `"cachedContents/abc123"`). Mutually exclusive with `system_instruction` in the config — 10xGraph handles this automatically. |
+| `cached_content` | `str` | Name of an explicit Gemini cache (e.g. `"cachedContents/abc123"`). Mutually exclusive with `system_instruction` in the config, 10xGraph handles this automatically. |
 | `temperature` | `float` | Sampling temperature. |
 | `max_tokens` / `max_output_tokens` | `int` | Maximum output tokens. Both aliases are accepted. |
 | `top_p` | `float` | Nucleus sampling. |
@@ -394,11 +394,11 @@ are forwarded to `GenerateContentConfig` (after provider-level extraction).
 | Variable | Required | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | yes (Gemini API) | API key from Google AI Studio (preferred name) |
-| `GOOGLE_API_KEY` | — | Fallback name for the Gemini API key |
-| `GOOGLE_GENAI_USE_VERTEXAI` | — | Set to `true` to route the Google provider through Vertex AI |
+| `GOOGLE_API_KEY` | - | Fallback name for the Gemini API key |
+| `GOOGLE_GENAI_USE_VERTEXAI` | - | Set to `true` to route the Google provider through Vertex AI |
 | `GOOGLE_CLOUD_PROJECT` | yes (Vertex AI) | GCP project ID with the Vertex AI API enabled |
-| `GOOGLE_CLOUD_LOCATION` | — | Region for Vertex AI calls (default `us-central1`) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to a service-account JSON key. Not required on GCP workloads with an attached service account |
+| `GOOGLE_CLOUD_LOCATION` | - | Region for Vertex AI calls (default `us-central1`) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | - | Path to a service-account JSON key. Not required on GCP workloads with an attached service account |
 
 ## Common Errors
 
@@ -406,7 +406,7 @@ are forwarded to `GenerateContentConfig` (after provider-level extraction).
 |---|---|
 | `ImportError: google-genai SDK is required` | `pip install google-genai` |
 | `AuthenticationError` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` missing or invalid |
-| `Model not found` | Double-check the model name — Gemini model names are case-sensitive |
+| `Model not found` | Double-check the model name, Gemini model names are case-sensitive |
 | `ValueError: GOOGLE_CLOUD_PROJECT environment variable must be set` | Export `GOOGLE_CLOUD_PROJECT` before creating the agent (Vertex AI only) |
 | `PermissionDenied: Vertex AI API has not been used` | Enable the Vertex AI API on your GCP project |
 | `403: caller does not have permission` | Grant the service account the `roles/aiplatform.user` role |

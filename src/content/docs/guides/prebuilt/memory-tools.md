@@ -9,7 +9,7 @@ label: Memory Tools
 updated: "2026-10-08"
 ---
 
-10xGraph memory tools give agents the ability to build long-term memory — facts and preferences that persist across conversations and threads. Your agent can search what it has learned about users, store new observations, and reason about patterns over time. All three tools use semantic search, so the agent finds relevant information by meaning, not by keyword.
+10xGraph memory tools give agents the ability to build long-term memory, facts and preferences that persist across conversations and threads. Your agent can search what it has learned about users, store new observations, and reason about patterns over time. All three tools use semantic search, so the agent finds relevant information by meaning, not by keyword.
 
 **Import path:** `tenxgraph.prebuilt.tools`
 
@@ -33,7 +33,7 @@ The `memory_key` field on `memory_tool` enables automatic deduplication. If you 
 
 ---
 
-## `memory_tool` — full control
+## `memory_tool`, full control
 
 Use `memory_tool` when you want to manage memory in your own graph logic, or when the Agent-level memory config is too restrictive. You call it from a custom node or let the LLM use it as a tool.
 
@@ -116,7 +116,7 @@ print(result["messages"][-1]["content"])
 
 ---
 
-## `user_memory_tool` — user-scoped memory via Agent config
+## `user_memory_tool`, user-scoped memory via Agent config
 
 When you enable user memory in an Agent, the `user_memory_tool` is registered automatically. You do not need to instantiate it yourself. This tool is simpler than `memory_tool` because it enforces a specific scope (one user) and permission model (the LLM can search and write, but not delete).
 
@@ -183,7 +183,7 @@ result = await app.ainvoke(
 
 ---
 
-## `agent_memory_tool` — read-only application-wide memory
+## `agent_memory_tool`, read-only application-wide memory
 
 Agent memory is read-only and scoped to the agent or the entire application. Use it for policies, knowledge bases, or shared context that many users should be able to read but not modify.
 
@@ -296,6 +296,6 @@ Choose the embedding model based on your provider and token budget. `text-embedd
 
 ## Related pages
 
-- **Concept:** Long-term memory and how it complements thread checkpoints — see `/docs/concepts/memory-and-store`
-- **Setup guide:** Choose and configure a vector store — see `/docs/guides/use-memory-store`
-- **Reference:** Full API for `MemoryConfig` and store classes — see `/docs/reference/python/memory-stores`
+- **Concept:** Long-term memory and how it complements thread checkpoints, see `/docs/concepts/memory-and-store`
+- **Setup guide:** Choose and configure a vector store, see `/docs/guides/use-memory-store`
+- **Reference:** Full API for `MemoryConfig` and store classes, see `/docs/reference/python/memory-stores`

@@ -58,7 +58,7 @@ result = app.invoke({"messages": [{"role": "user", "content": "Hello"}]})
 # Example run ID: 1712576400000000001
 ```
 
-Every thread and run created will now use the new ID format. The generator does not affect how you invoke the graph—only the ID format changes.
+Every thread and run created will now use the new ID format. The generator does not affect how you invoke the graph, only the ID format changes.
 
 ## Choosing the right generator
 

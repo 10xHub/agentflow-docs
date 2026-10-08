@@ -9,7 +9,7 @@ label: User Simulation
 updated: "2026-10-08"
 ---
 
-Standard evaluation tests agents with fixed test cases: you define the query and the expected response. User simulation flips this — an LLM **plays the role of a user** and drives a real conversation with your agent, checking whether the agent achieves a set of stated goals. This approach tests multi-turn behavior, handles unpredictable conversation paths, and verifies goals without manually writing each edge case.
+Standard evaluation tests agents with fixed test cases: you define the query and the expected response. User simulation flips this, an LLM **plays the role of a user** and drives a real conversation with your agent, checking whether the agent achieves a set of stated goals. This approach tests multi-turn behavior, handles unpredictable conversation paths, and verifies goals without manually writing each edge case.
 
 User simulation is the right tool when:
 
@@ -44,7 +44,7 @@ The flow in detail:
 4. If all goals are met, the simulation ends with `completed=True`.
 5. If not all goals are achieved, it generates the next user message to advance toward remaining goals.
 6. This repeats until all goals are achieved or `max_turns` is reached.
-7. `SimulationGoalsCriterion` scores the full conversation transcript against the stated goals, producing a 0.0–1.0 score.
+7. `SimulationGoalsCriterion` scores the full conversation transcript against the stated goals, producing a 0.0-1.0 score.
 
 Each scenario gets its own `thread_id`, so checkpointer state never bleeds between runs even when simulations run in parallel.
 
@@ -52,7 +52,7 @@ Each scenario gets its own `thread_id`, so checkpointer state never bleeds betwe
 
 ## Quick start with the CLI
 
-The simplest path is the `10xgraph eval` CLI. You write the scenarios, the CLI handles running the simulator, scoring, and generating the report — identical to regular eval cases.
+The simplest path is the `10xgraph eval` CLI. You write the scenarios, the CLI handles running the simulator, scoring, and generating the report, identical to regular eval cases.
 
 Create an eval file with a `get_scenarios()` function:
 
@@ -152,7 +152,7 @@ scenario = ConversationScenario(
 
 **Writing effective goals:**
 - Be specific: `"User gets the weather temperature for London"` rather than `"User learns about weather"`
-- One idea per goal — the LLM judge checks each independently
+- One idea per goal, the LLM judge checks each independently
 - Goals must be verifiable from the conversation transcript alone, not from external state
 
 ---
@@ -178,7 +178,7 @@ result = await simulator.run(graph, scenario)
 | Parameter | Default | Description |
 |---|---|---|
 | `model` | `gemini/gemini-2.5-flash` | LLM used to generate user messages and check goal achievement |
-| `temperature` | `0.7` | Generation temperature — higher values produce more varied user messages |
+| `temperature` | `0.7` | Generation temperature, higher values produce more varied user messages |
 | `max_turns` | `10` | Default turn limit (overridden by `scenario.max_turns`) |
 | `config` | `None` | Pass a `UserSimulatorConfig` instead of individual parameters. When given, overrides `model`, `temperature`, and `max_turns` (from `max_invocations`) |
 | `criteria` | `[]` | List of `BaseCriterion` to run against the completed conversation |
@@ -197,7 +197,7 @@ The provider is inferred from the model name:
 | `claude-opus-5` | Anthropic |
 | `anthropic/claude-sonnet-5` | Anthropic |
 
-There is no cross-provider fallback — one model name binds to one provider. If an LLM call fails or returns nothing, the simulator substitutes a neutral message (`"I have a follow-up question."`) and continues, so a misconfigured API key appears as a bland transcript rather than an exception.
+There is no cross-provider fallback, one model name binds to one provider. If an LLM call fails or returns nothing, the simulator substitutes a neutral message (`"I have a follow-up question."`) and continues, so a misconfigured API key appears as a bland transcript rather than an exception.
 
 ### Using UserSimulatorConfig
 
@@ -256,7 +256,7 @@ print(result.criterion_details)   # {"simulation_goals": {"achieved_goals": [...
 | `goals_achieved` | `list[str]` | Goals confirmed achieved by the LLM goal-checker |
 | `completed` | `bool` | `True` when all goals achieved before `max_turns` |
 | `error` | `str \| None` | Error message if simulation failed mid-way |
-| `criterion_scores` | `dict[str, float]` | Score per criterion (0.0–1.0) |
+| `criterion_scores` | `dict[str, float]` | Score per criterion (0.0-1.0) |
 | `criterion_details` | `dict[str, Any]` | Full criterion output including reasoning and details |
 | `criterion_results` | `list[CriterionResult]` | Full result objects with per-criterion token usage |
 | `simulator_token_usage` | `TokenUsage` | Tokens consumed by simulator LLM calls (user-turn generation only) |
@@ -265,7 +265,7 @@ print(result.criterion_details)   # {"simulation_goals": {"achieved_goals": [...
 
 ## SimulationGoalsCriterion
 
-`SimulationGoalsCriterion` is a specialized LLM-judge criterion for `UserSimulator`. It receives the **full conversation transcript** and checks whether each goal was addressed at any point — not just in the final message.
+`SimulationGoalsCriterion` is a specialized LLM-judge criterion for `UserSimulator`. It receives the **full conversation transcript** and checks whether each goal was addressed at any point, not just in the final message.
 
 The CLI attaches this criterion automatically when it detects `get_scenarios()`. For programmatic use:
 
@@ -292,14 +292,14 @@ result = await simulator.run(graph, scenario)
 # result.criterion_scores["simulation_goals"] → 0.67 (2 of 3 goals met)
 ```
 
-**Score calculation:** `achieved_goals / total_goals` (0.0–1.0)
+**Score calculation:** `achieved_goals / total_goals` (0.0-1.0)
 
 The criterion details include:
-- `achieved_goals` — list of goals confirmed as addressed in the transcript
-- `unachieved_goals` — list of goals not found
-- `reasoning` — the judge's explanation covering each goal
+- `achieved_goals`: list of goals confirmed as addressed in the transcript
+- `unachieved_goals`: list of goals not found
+- `reasoning`: the judge's explanation covering each goal
 
-> **Important:** `SimulationGoalsCriterion` is designed **exclusively for `UserSimulator`**. Do not add it to a regular `EvalConfig` with `AgentEvaluator` — in the standard flow, `actual_response` contains only the agent's final response, not the full multi-turn transcript, so the goal check would not see prior turns.
+> **Important:** `SimulationGoalsCriterion` is designed **exclusively for `UserSimulator`**. Do not add it to a regular `EvalConfig` with `AgentEvaluator`, in the standard flow, `actual_response` contains only the agent's final response, not the full multi-turn transcript, so the goal check would not see prior turns.
 
 ---
 
@@ -335,7 +335,7 @@ print(f"Errors: {summary['errors']}")
 |---|---|---|
 | `simulator` | auto-created | Pre-configured `UserSimulator`; pass your own to include criteria |
 | `max_concurrency` | `5` | Maximum scenarios running in parallel |
-| `**kwargs` | — | Forwarded to `UserSimulator` if no `simulator` is given |
+| `**kwargs` | - | Forwarded to `UserSimulator` if no `simulator` is given |
 
 ### Batch summary fields
 
@@ -449,7 +449,7 @@ asyncio.run(run_simulation())
 | Turn count | Single turn (or explicit multi-turn) | Dynamic, up to `max_turns` |
 | Best for | Regression testing known inputs | Open-ended dialogue and goal achievement |
 | CLI protocol | `get_eval_set()` | `get_scenarios()` |
-| Scoring | Per-criterion scores | Goal achievement rate (0.0–1.0) |
+| Scoring | Per-criterion scores | Goal achievement rate (0.0-1.0) |
 
 Run both in CI to get full coverage:
 
@@ -462,7 +462,7 @@ Run both in CI to get full coverage:
 
 ## Next steps
 
-- [How to run evaluations](/docs/testing/run-evals) — full CLI reference including `get_scenarios()` protocol and CI integration
-- [Criteria reference](/docs/testing/criteria) — understand `SimulationGoalsCriterion` alongside other evaluation criteria
-- [Eval sets](/docs/testing/eval-sets) — fixed test cases for regression testing
-- [Reports](/docs/testing/reports) — how to read and interpret eval results
+- [How to run evaluations](/docs/testing/run-evals): full CLI reference including `get_scenarios()` protocol and CI integration
+- [Criteria reference](/docs/testing/criteria): understand `SimulationGoalsCriterion` alongside other evaluation criteria
+- [Eval sets](/docs/testing/eval-sets): fixed test cases for regression testing
+- [Reports](/docs/testing/reports): how to read and interpret eval results

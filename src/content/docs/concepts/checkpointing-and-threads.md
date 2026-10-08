@@ -21,8 +21,8 @@ A **thread** is a persistent conversation identified by a unique `thread_id`. Ev
 
 ```python
 config = {
-    "thread_id": "conv-abc123",   # required — identifies the conversation
-    "user_id": "user-42",         # optional — used by PgCheckpointer for row scoping
+    "thread_id": "conv-abc123",   # required, identifies the conversation
+    "user_id": "user-42",         # optional, used by PgCheckpointer for row scoping
 }
 ```
 
@@ -43,7 +43,7 @@ flowchart LR
   SaveState --> Return["Return result to caller"]
 ```
 
-On the first invoke for a thread, a fresh `AgentState` is created. On subsequent invokes with the same `thread_id`, the prior state is loaded and the new input (e.g., a new user message) is merged in. After the graph finishes, the updated state is persisted. This happens automatically — you only pass the `thread_id` in the config.
+On the first invoke for a thread, a fresh `AgentState` is created. On subsequent invokes with the same `thread_id`, the prior state is loaded and the new input (e.g., a new user message) is merged in. After the graph finishes, the updated state is persisted. This happens automatically, you only pass the `thread_id` in the config.
 
 ## Attaching a checkpointer
 
@@ -68,7 +68,7 @@ res = app.invoke(
     config=config,
 )
 
-# Turn 2 — same thread_id, resumes from saved state
+# Turn 2, same thread_id, resumes from saved state
 res = app.invoke(
     {"messages": [Message.text_message("Now multiply that by 3.")]},
     config=config,
@@ -92,7 +92,7 @@ checkpointer = InMemoryCheckpointer()
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-All data is lost when the process exits. There is no user scoping — all threads are visible regardless of `user_id`.
+All data is lost when the process exits. There is no user scoping, all threads are visible regardless of `user_id`.
 
 **Pros:** Zero setup, no external dependencies, fast for development.
 
@@ -112,7 +112,7 @@ checkpointer = SqliteCheckpointer("agent_state.db")
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-Data survives process restarts because it is written to disk. However, SQLite serializes writes — only one writer can be active at a time — so it does not scale to multiple workers or servers.
+Data survives process restarts because it is written to disk. However, SQLite serializes writes, only one writer can be active at a time, so it does not scale to multiple workers or servers.
 
 **Pros:** Durable, zero external dependencies (just a file), simple to deploy with a Python sidecar.
 
@@ -200,8 +200,8 @@ The server will use this checkpointer for all requests. Specify your checkpointe
 
 ## Related concepts
 
-- [Interrupts](/docs/concepts/interrupts) — pause a run for human review, saved in a checkpoint
-- [Memory and store](/docs/concepts/memory-and-store) — long-term memory vs. short-term thread state
-- [State and messages](/docs/concepts/state-and-messages) — what is stored in a checkpoint
-- [Durability and concurrency](/docs/guides/durability-and-concurrency) — thread isolation and optimistic locking
-- [Reference: checkpointers](/docs/reference/python/checkpointers) — full API reference for all methods
+- [Interrupts](/docs/concepts/interrupts): pause a run for human review, saved in a checkpoint
+- [Memory and store](/docs/concepts/memory-and-store): long-term memory vs. short-term thread state
+- [State and messages](/docs/concepts/state-and-messages): what is stored in a checkpoint
+- [Durability and concurrency](/docs/guides/durability-and-concurrency): thread isolation and optimistic locking
+- [Reference: checkpointers](/docs/reference/python/checkpointers): full API reference for all methods

@@ -197,10 +197,10 @@ The browser opens automatically (if not, copy the URL from the terminal). The pl
 
 In the playground, you can:
 
-1. **Send messages** — type naturally. Each message calls `POST /v1/graph/invoke` on your API.
-2. **See tool calls** — if the agent uses tools, you see what was called and the result.
-3. **Inspect raw state** — expand the debug panel to see the full message array.
-4. **Test multiple threads** — create a new conversation to start a fresh thread.
+1. **Send messages**: type naturally. Each message calls `POST /v1/graph/invoke` on your API.
+2. **See tool calls**: if the agent uses tools, you see what was called and the result.
+3. **Inspect raw state**: expand the debug panel to see the full message array.
+4. **Test multiple threads**: create a new conversation to start a fresh thread.
 
 Try the same questions:
 
@@ -263,4 +263,4 @@ Full details are in the [API reference](/docs/reference/rest-api/graph).
 
 ## Next step
 
-Call the server from a TypeScript application using the 10xGraph client — [Call from your app](/docs/get-started/tutorial/call-from-your-app).
+Call the server from a TypeScript application using the 10xGraph client, [Call from your app](/docs/get-started/tutorial/call-from-your-app).

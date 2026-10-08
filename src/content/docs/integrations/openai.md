@@ -139,7 +139,7 @@ OpenAI exposes two distinct APIs for text generation. 10xGraph supports both.
 ```python
 from tenxgraph.core.graph import Agent
 
-# Default — Chat Completions
+# Default, Chat Completions
 agent = Agent(model="gpt-4o", system_prompt=[...])
 
 # Opt into the Responses API
@@ -184,7 +184,7 @@ config = EvalConfig(
 
 ## Prompt Caching
 
-OpenAI caches the prompt prefix automatically — no code changes required. Cache hits are
+OpenAI caches the prompt prefix automatically, no code changes required. Cache hits are
 reported back in `usage.input_tokens_details.cached_tokens` and logged at `DEBUG` level
 by 10xGraph. You only need to act if you want to improve hit rates.
 
@@ -230,7 +230,7 @@ agent = Agent(
 ### SummaryContextManager with caching
 
 `SummaryContextManager` uses `call_llm` internally. Pass `prompt_cache_key` via
-`**llm_kwargs` — it is threaded through to the underlying OpenAI call.
+`**llm_kwargs`, it is threaded through to the underlying OpenAI call.
 
 > `SummaryContextManager` does not currently accept `**llm_kwargs` directly.
 > If you need cache keys on the summariser, subclass it or open an issue.
@@ -285,7 +285,7 @@ agent = Agent(
 )
 ```
 
-Caching still applies to the `beta.chat.completions.parse` path — cache hits are logged
+Caching still applies to the `beta.chat.completions.parse` path, cache hits are logged
 the same way.
 
 ---
@@ -320,7 +320,7 @@ are forwarded to the underlying API call.
 |---|---|---|---|
 | `prompt_cache_key` | `str` | Chat + Responses | Improves cross-request cache hit rate |
 | `prompt_cache_retention` | `"in_memory"` / `"24h"` | Chat + Responses | 24h only on gpt-5.5+ |
-| `temperature` | `float` | Chat + Responses | Sampling temperature (0.0–2.0) |
+| `temperature` | `float` | Chat + Responses | Sampling temperature (0.0-2.0) |
 | `max_tokens` | `int` | Chat | Max output tokens |
 | `max_output_tokens` | `int` | Responses | Max output tokens (Responses API name) |
 | `reasoning_effort` | `str` | Reasoning models | `"low"` / `"medium"` / `"high"` |
@@ -345,7 +345,7 @@ before the request is sent and must be passed to the client constructor instead.
 | Error | Fix |
 |---|---|
 | `AuthenticationError` | `OPENAI_API_KEY` missing or invalid |
-| `RateLimitError` | You hit a rate limit — enable retries via `retry_config=True` |
+| `RateLimitError` | You hit a rate limit, enable retries via `retry_config=True` |
 | `Model not found` | Check the model name; some models require tier-gated access |
 
 ## Next steps

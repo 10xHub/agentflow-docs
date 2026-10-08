@@ -40,7 +40,7 @@ All block types live in `tenxgraph.core.state`. Multimodal blocks (Image, Audio,
 | `AnnotationBlock` | Citations and structured references |
 | `ErrorBlock` | Error information from failed operations |
 
-## MediaRef — how to reference media
+## MediaRef, how to reference media
 
 `MediaRef` tells a block where to fetch the binary data. It has three `kind` values, each with different trade-offs:
 
@@ -84,7 +84,7 @@ class MediaRef(BaseModel):
 
 **kind="file_id"** is production best practice: upload once, reference forever. The file lives in a backend store (in-memory for tests, local filesystem or cloud storage for real systems). Ideal for multi-step flows or when the same document is analyzed by multiple agents.
 
-## MediaStore — persistent storage backends
+## MediaStore, persistent storage backends
 
 A `MediaStore` holds media bytes outside the message system. Each backend is a class implementing `BaseMediaStore`:
 
@@ -113,7 +113,7 @@ All methods are async; they are safe to call from agent nodes and tools via norm
 
 **CloudMediaStore** offloads to S3 or GCS via the cloud-storage-manager SDK. Requires the `[cloud-storage]` extra. Generates signed URLs so providers can fetch media directly without re-downloading to your server. The right choice for distributed systems and production deployments.
 
-## MultimodalConfig — how agents adapt media for providers
+## MultimodalConfig, how agents adapt media for providers
 
 Not every LLM provider handles every media type or transport mode the same way. `MultimodalConfig` lets you specify per-agent strategies, and the runtime adapts messages automatically.
 
@@ -183,7 +183,7 @@ By never storing raw bytes in messages, 10xGraph keeps state snapshots small, th
 
 ## Related pages
 
-- [Sending media from Python](/docs/guides/send-media) — task guide with code examples for all reference types.
-- [REST API files endpoint](/docs/server/files-and-multimodal) — how the API server manages file upload and media serving.
-- [TypeScript client files](/docs/client/files-and-multimodal) — using the client SDK for multimodal requests.
-- [State and messages](/docs/concepts/state-and-messages) — the full message structure and block types.
+- [Sending media from Python](/docs/guides/send-media): task guide with code examples for all reference types.
+- [REST API files endpoint](/docs/server/files-and-multimodal): how the API server manages file upload and media serving.
+- [TypeScript client files](/docs/client/files-and-multimodal): using the client SDK for multimodal requests.
+- [State and messages](/docs/concepts/state-and-messages): the full message structure and block types.

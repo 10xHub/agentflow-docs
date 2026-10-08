@@ -65,22 +65,22 @@ Three separate `Agent` instances execute inside the graph, each with its own sys
 **At PLAN:** If the planner emits tool calls, the graph routes to ACT; otherwise it routes directly to REFLECT. This branch lets the agent skip unnecessary tool execution when it can reason toward progress without external data.
 
 **At REFLECT:** Two exit conditions:
-1. The reflector's output contains `[DONE]` (case-insensitive) — signals successful completion.
-2. The iteration counter reaches `max_iterations` — hard cap to prevent runaway loops.
+1. The reflector's output contains `[DONE]` (case-insensitive): signals successful completion.
+2. The iteration counter reaches `max_iterations`: hard cap to prevent runaway loops.
 
 If neither condition is met, the counter increments and the graph loops back to PLAN.
 
 ### The reflect filter
 
-To prevent long tool outputs from overflowing context, tool result messages (messages with `role="tool"`) are hidden from the reflector. The planner still sees the full context on the next iteration, so information is not lost — only filtered from the critic's view.
+To prevent long tool outputs from overflowing context, tool result messages (messages with `role="tool"`) are hidden from the reflector. The planner still sees the full context on the next iteration, so information is not lost, only filtered from the critic's view.
 
 ### Default system prompts
 
 Each phase has a built-in prompt that can be overridden:
 
-**PLAN** — "You are a strategic planner. Break the user's task into clear, actionable steps and make progress toward it. When a step requires external information, call the appropriate tools. When you can make progress without tools, provide your analysis. Be concise."
+**PLAN**, "You are a strategic planner. Break the user's task into clear, actionable steps and make progress toward it. When a step requires external information, call the appropriate tools. When you can make progress without tools, provide your analysis. Be concise."
 
-**REFLECT** — "You are a critical evaluator. Review all work done so far and decide whether the task is fully complete. If complete, provide a concise summary and end with [DONE]. If not complete, identify gaps and give clear guidance for the next planning step."
+**REFLECT**, "You are a critical evaluator. Review all work done so far and decide whether the task is fully complete. If complete, provide a concise summary and end with [DONE]. If not complete, identify gaps and give clear guidance for the next planning step."
 
 Both are fully overridable via `plan_system_prompt` and `reflect_system_prompt` parameters.
 
@@ -133,7 +133,7 @@ app = agent.compile()
 | `tools_tags` | `set[str]` | `None` | Filter tools by tags; only tools matching these tags are offered. |
 | `skills` | `SkillConfig` | `None` | Agent Skills configuration; enables dynamic skill discovery and activation. |
 | `multimodal_config` | `MultimodalConfig` | `None` | Multimodal settings for image, audio, and document handling. |
-| `**agent_kwargs` | `dict` | — | Extra keyword arguments passed to all inner Agent instances (e.g., `temperature=0.7`, `top_p=0.9`, `provider="anthropic"`). |
+| `**agent_kwargs` | `dict` | - | Extra keyword arguments passed to all inner Agent instances (e.g., `temperature=0.7`, `top_p=0.9`, `provider="anthropic"`). |
 
 ---
 
@@ -339,7 +339,7 @@ asyncio.run(main())
 
 To test your agent interactively or deploy it as a REST API, use the `10xgraph` CLI.
 
-**`graph.py`** — Define your agent:
+**`graph.py`**, Define your agent:
 
 ```python
 from tenxgraph.prebuilt.agent import PlanActReflectAgent
@@ -355,7 +355,7 @@ agent = PlanActReflectAgent(
 app = agent.compile()
 ```
 
-**`10xgraph.json`** — Point the CLI to your agent:
+**`10xgraph.json`**, Point the CLI to your agent:
 
 ```json
 {
@@ -370,7 +370,7 @@ app = agent.compile()
 }
 ```
 
-**`.env`** — Provide API keys:
+**`.env`**, Provide API keys:
 
 ```
 OPENAI_API_KEY=sk-...
@@ -458,8 +458,8 @@ result = await app.ainvoke(
 
 ## See also
 
-- **Full reference:** `/docs/reference/python/prebuilt-agents` — comprehensive parameter tables.
-- **Other prebuilt agents:** `/docs/guides/prebuilt-agents` — ReactAgent, RAGAgent, SwarmAgent, and more.
-- **Checkpointing:** `/docs/guides/set-up-checkpointing` — persist state and resume conversations.
-- **Tools:** `/docs/guides/use-tool-decorator` — define custom tools for your agent.
-- **Streaming:** `/docs/guides/stream-graph` — handle partial results and token-by-token output.
+- **Full reference:** `/docs/reference/python/prebuilt-agents`: comprehensive parameter tables.
+- **Other prebuilt agents:** `/docs/guides/prebuilt-agents`: ReactAgent, RAGAgent, SwarmAgent, and more.
+- **Checkpointing:** `/docs/guides/set-up-checkpointing`: persist state and resume conversations.
+- **Tools:** `/docs/guides/use-tool-decorator`: define custom tools for your agent.
+- **Streaming:** `/docs/guides/stream-graph`: handle partial results and token-by-token output.

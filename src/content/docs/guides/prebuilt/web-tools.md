@@ -38,20 +38,20 @@ Use `fetch_url` when you need the full content of a specific URL. It is synchron
 
 `fetch_url` performs several steps to make raw web content usable:
 
-1. **Validates the URL** — accepts only HTTP and HTTPS schemes.
-2. **Blocks private addresses** — prevents Server-Side Request Forgery (SSRF) attacks by resolving the hostname and rejecting private, loopback, link-local, multicast, reserved, or unspecified IP ranges (RFC 1918, 127.0.0.0/8, fe80::/10, etc.).
-3. **Fetches with timeout** — requests data with a 10-second timeout by default, clamped between 1 and 30 seconds.
-4. **Extracts text** — if the content is HTML, parses it and strips tags, scripts, and style blocks, preserving semantic line breaks for readability.
-5. **Truncates** — limits output to 20,000 characters by default to avoid overwhelming the LLM context.
-6. **Returns metadata** — includes the final URL (after redirects), HTTP status code, content type, and a `truncated` flag indicating overflow.
+1. **Validates the URL**: accepts only HTTP and HTTPS schemes.
+2. **Blocks private addresses**: prevents Server-Side Request Forgery (SSRF) attacks by resolving the hostname and rejecting private, loopback, link-local, multicast, reserved, or unspecified IP ranges (RFC 1918, 127.0.0.0/8, fe80::/10, etc.).
+3. **Fetches with timeout**: requests data with a 10-second timeout by default, clamped between 1 and 30 seconds.
+4. **Extracts text**: if the content is HTML, parses it and strips tags, scripts, and style blocks, preserving semantic line breaks for readability.
+5. **Truncates**: limits output to 20,000 characters by default to avoid overwhelming the LLM context.
+6. **Returns metadata**: includes the final URL (after redirects), HTTP status code, content type, and a `truncated` flag indicating overflow.
 
 ### Parameters
 
 | Parameter | Type | Default | Constraints | Description |
 |---|---|---|---|---|
 | `url` | `str` | required | HTTP or HTTPS only | Public URL to fetch |
-| `timeout` | `float` | `10.0` | 1–30 seconds | Request timeout; values outside the range are clamped |
-| `max_chars` | `int` | `20000` | 1–20000 | Maximum characters in response; enforces a hard ceiling |
+| `timeout` | `float` | `10.0` | 1-30 seconds | Request timeout; values outside the range are clamped |
+| `max_chars` | `int` | `20000` | 1-20000 | Maximum characters in response; enforces a hard ceiling |
 
 ### Response structure
 
@@ -371,7 +371,7 @@ In production agents, implement retry logic at the graph level (using `RetryConf
 
 ## See also
 
-- `/docs/guides/prebuilt-tools` — overview of all prebuilt tools and how to choose.
-- `/docs/guides/use-tool-decorator` — how to write and integrate your own tools alongside prebuilt ones.
-- `/docs/integrations/models` — verify that your chosen Gemini model supports the required features.
-- `/docs/server/files-and-multimodal` — if you need to send web content (images, PDFs) to the model.
+- `/docs/guides/prebuilt-tools`: overview of all prebuilt tools and how to choose.
+- `/docs/guides/use-tool-decorator`: how to write and integrate your own tools alongside prebuilt ones.
+- `/docs/integrations/models`: verify that your chosen Gemini model supports the required features.
+- `/docs/server/files-and-multimodal`: if you need to send web content (images, PDFs) to the model.

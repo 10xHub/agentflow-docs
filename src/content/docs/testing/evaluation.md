@@ -194,9 +194,9 @@ For quick local evaluation, use `AgentEvaluator` or `QuickEval` as shown above. 
 
 ## Next steps
 
-- [Building eval sets](/docs/testing/eval-sets) — define test cases and multi-turn scenarios
-- [Criteria reference](/docs/testing/criteria) — all 12 criteria explained
-- [Presets and configuration](/docs/testing/presets) — ready-made configs and custom thresholds
-- [User simulation](/docs/testing/user-simulation) — LLM-driven multi-turn testing
-- [Reports](/docs/testing/reports) — HTML, JSON, JUnit XML output formats
-- [How to run evaluations](/docs/testing/run-evals) — CLI commands, parallel runs, CI integration
+- [Building eval sets](/docs/testing/eval-sets): define test cases and multi-turn scenarios
+- [Criteria reference](/docs/testing/criteria): all 12 criteria explained
+- [Presets and configuration](/docs/testing/presets): ready-made configs and custom thresholds
+- [User simulation](/docs/testing/user-simulation): LLM-driven multi-turn testing
+- [Reports](/docs/testing/reports): HTML, JSON, JUnit XML output formats
+- [How to run evaluations](/docs/testing/run-evals): CLI commands, parallel runs, CI integration

@@ -261,9 +261,9 @@ export function StatusBar() {
 
   return (
     <div style={{ padding: 16, background: "#f5f5f5" }}>
-      <p>Task: {state.current_task || "—"}</p>
+      <p>Task: {state.current_task || "-"}</p>
       <p>Progress: {Math.round((state.progress ?? 0) * 100)}%</p>
-      <p>File: {state.selected_file || "—"}</p>
+      <p>File: {state.selected_file || "-"}</p>
     </div>
   );
 }

@@ -264,7 +264,7 @@ The `BaseStore` dependency is injected automatically; no manual wiring needed.
 
 ## Agent-level memory with MemoryConfig
 
-For the most common case—automatically retrieving and writing user-specific memories during LLM calls—use `MemoryConfig` on the `Agent` node.
+For the most common case, automatically retrieving and writing user-specific memories during LLM calls, use `MemoryConfig` on the `Agent` node.
 
 ### Minimal setup
 
@@ -304,7 +304,7 @@ memory = MemoryConfig(
     store=store,                              # required: BaseStore instance
     retrieval_mode=ReadMode.POSTLOAD,         # POSTLOAD (default) | PRELOAD
     limit=5,                                  # max memories to retrieve per search
-    score_threshold=0.0,                      # minimum similarity score (0.0–1.0)
+    score_threshold=0.0,                      # minimum similarity score (0.0-1.0)
     max_tokens=None,                          # cap total tokens across all memories
     inject_system_prompt=True,                # prepend memories to system prompt
 
@@ -536,11 +536,11 @@ result = await app.ainvoke(
 
 Map your use case to a memory type:
 
-- **EPISODIC:** "Customer mentioned they work in finance" — a specific event or conversation fact.
-- **SEMANTIC:** "Customer prefers email over phone" — a persistent fact about preferences.
-- **PROCEDURAL:** "Steps to reset a password" — domain processes.
-- **ENTITY:** "John Smith, VP of Engineering at Acme Corp" — structured facts about people/organizations.
-- **DECLARATIVE:** "Our return policy is 30 days" — company policies or rules.
+- **EPISODIC:** "Customer mentioned they work in finance", a specific event or conversation fact.
+- **SEMANTIC:** "Customer prefers email over phone", a persistent fact about preferences.
+- **PROCEDURAL:** "Steps to reset a password", domain processes.
+- **ENTITY:** "John Smith, VP of Engineering at Acme Corp", structured facts about people/organizations.
+- **DECLARATIVE:** "Our return policy is 30 days", company policies or rules.
 
 ---
 

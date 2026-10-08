@@ -1,0 +1,171 @@
+# What Is a ReAct Agent? Python Guide with Code Examples
+
+> A ReAct agent alternates reasoning and acting: it calls tools, observes the results, and reasons again. Learn how it works and build one in Python.
+
+Source: https://10xgraph.com/docs/glossary/what-is-a-react-agent
+Last updated: 2026-10-08
+
+**A ReAct agent (Reason + Act) is an AI agent that alternates between reasoning and acting: it calls tools, observes the results, and reasons again until it reaches a final answer.** ReAct was introduced in the paper "ReAct: Synergizing Reasoning and Acting in Language Models" by Yao et al. (2022, arXiv:2210.03629) and is now the default architecture for most tool-calling AI agents.
+
+The name combines **Re**asoning and **Act**ing. The key insight: LLMs are better at completing tasks when they can interleave reasoning ("I need to find the current weather") with actions ("call get_weather('Tokyo')") rather than planning everything upfront.
+
+## How the ReAct loop works
+
+```
+User input
+    ↓
+[Reason] LLM thinks: "I need the weather in Tokyo. I'll call get_weather."
+    ↓
+[Act]    Agent calls: get_weather(city="Tokyo")
+    ↓
+[Observe] Result: "22°C, sunny"
+    ↓
+[Reason] LLM thinks: "I have the answer. I can now respond."
+    ↓
+Final answer to user
+```
+
+Each cycle is a "thought → action → observation" triplet. The loop continues until the LLM decides it has enough information to respond, or the recursion limit is exceeded, which raises `GraphRecursionError`.
+
+## ReAct vs plain LLM call
+
+| | Plain LLM call | ReAct agent |
+|--|---------------|------------|
+| Steps | 1 | Multiple (until done) |
+| Tool calls | No | Yes |
+| Can look things up | No | Yes |
+| Can write and run code | No | Yes |
+| Handles multi-step tasks | No | Yes |
+| Stops when? | After one response | When goal is met (limit exceeded raises an error) |
+
+## Build a ReAct agent in Python
+
+10xGraph ships a prebuilt `ReactAgent` that implements the full Reason-Act loop. You only supply the tools.
+
+```python
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import AgentState, Message
+
+def get_stock_price(ticker: str) -> str:
+    """Get the current stock price for a ticker symbol."""
+    # Replace with a real API call
+    prices = {"AAPL": "182.50", "GOOG": "175.30", "MSFT": "420.10"}
+    return f"${prices.get(ticker.upper(), 'not found')}"
+
+def calculate(expression: str) -> str:
+    """Evaluate a mathematical expression. E.g. '182.50 * 100'."""
+    try:
+        return str(eval(expression, {"__builtins__": {}}, {}))
+    except Exception as e:
+        return f"Error: {e}"
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a financial assistant. Use tools to look up real data."}],
+    tools=[get_stock_price, calculate],
+)
+
+app = agent.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is 100 shares of AAPL worth?")]},
+    config={"thread_id": "finance-1", "recursion_limit": 10},
+)
+print(result["messages"][-1].text())
+# Agent will: call get_stock_price("AAPL") → get $182.50
+# Then call: calculate("182.50 * 100") → get 18250.0
+# Then respond: "100 shares of AAPL are worth $18,250."
+```
+
+## Building a ReAct agent with a custom graph
+
+For full control over routing logic, build the graph manually:
+
+```python
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
+
+tools = [get_stock_price, calculate]
+tool_node = ToolNode(tools)
+
+agent_node = Agent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "Financial assistant."}],
+    tool_node="TOOLS",
+)
+
+def route(state: AgentState) -> str:
+    last = state.context[-1] if state.context else None
+    if last and getattr(last, "tools_calls", None) and last.role == "assistant":
+        return "TOOLS"
+    return END
+
+graph = StateGraph(AgentState)
+graph.add_node("AGENT", agent_node)
+graph.add_node("TOOLS", tool_node)
+graph.add_conditional_edges("AGENT", route, {"TOOLS": "TOOLS", END: END})
+graph.add_edge("TOOLS", "AGENT")
+graph.set_entry_point("AGENT")
+
+app = graph.compile()
+```
+
+The conditional edge `route` is the heart of the ReAct loop: if the LLM returned tool calls, route to the tool node; otherwise, the agent is done.
+
+## Serving a ReAct agent
+
+Point `10xgraph.json` at your compiled app and start the server:
+
+```json title="10xgraph.json"
+{
+  "agent": "graph.agent:app",
+  "env": ".env"
+}
+```
+
+```bash
+10xgraph api
+```
+
+You now have a production REST + SSE API for your ReAct agent with no extra code.
+
+## When to use a ReAct agent
+
+ReAct is the right pattern when:
+- The task requires looking up information from external tools
+- The number of tool calls is not known in advance
+- The agent needs to adapt its plan based on intermediate results
+
+ReAct is **not** the right pattern when:
+- You need a guaranteed sequence of steps (use a fixed graph instead)
+- You need structured output in a specific schema (use `StructuredOutputAgent`)
+- You are orchestrating multiple specialized agents (use `SupervisorTeamAgent` or `SwarmAgent`)
+
+## Next steps
+
+- [ReactAgent reference](https://10xgraph.com/docs/guides/prebuilt/react-agent): All parameters and configuration options for 10xGraph's prebuilt ReactAgent.
+- [Build your first agent](https://10xgraph.com/docs/get-started/first-agent): Step-by-step guide to building and serving a ReAct agent with 10xGraph.
+- [What is multi-agent orchestration?](https://10xgraph.com/docs/glossary/what-is-multi-agent-orchestration): Coordinate multiple ReAct agents with a supervisor or swarm pattern.
+
+## Frequently asked questions
+
+### Where does the name ReAct come from?
+
+ReAct stands for Reasoning and Acting. It was introduced in the paper 'ReAct: Synergizing Reasoning and Acting in Language Models' by Shunyu Yao et al., published in 2022 (arXiv:2210.03629). The paper showed that combining chain-of-thought reasoning with tool-use actions significantly outperforms either approach alone.
+
+### How is a ReAct agent different from chain-of-thought prompting?
+
+Chain-of-thought prompting lets an LLM reason step-by-step but only in text. It cannot take actions or look up external information. A ReAct agent can call real tools (APIs, databases, code execution) between reasoning steps and incorporate the real results into its next reasoning step.
+
+### What happens if a ReAct agent calls too many tools?
+
+Agent loops are bounded by a recursion limit, the maximum number of graph steps (each node execution counts as one, so one Reason-Act cycle uses two). Set it with config={'recursion_limit': 10} in the invoke call. The default is 25. When the limit is exceeded, 10xGraph raises GraphRecursionError.
+
+### Can a ReAct agent call multiple tools in parallel?
+
+Yes. When the LLM returns multiple tool calls in a single response, 10xGraph executes them concurrently using asyncio.gather. The results come back in the original call order. This significantly speeds up tasks that require multiple lookups.
+
+### Is ReactAgent in 10xGraph the same as create_react_agent in LangGraph?
+
+They implement the same ReAct loop pattern. 10xGraph's ReactAgent uses 10xGraph's own AgentState and Message types. The prebuilt is simple to configure, and the API server and TypeScript client work with it without extra setup.

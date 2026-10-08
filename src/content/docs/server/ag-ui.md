@@ -172,4 +172,4 @@ The endpoint streams responses as server-sent events. Disable buffering on any r
 
 - [AG-UI endpoint reference](/docs/reference/rest-api/ag-ui): complete request schema, event types, interrupts, and error codes
 - [10xGraph with CopilotKit](/docs/integrations/copilotkit): frontend integration example with tools and human approval
-- [AG-UI configuration](/docs/reference/api-cli/configuration#ag_ui): full `ag_ui` key documentation
+- [AG-UI configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability): full `ag_ui` key documentation

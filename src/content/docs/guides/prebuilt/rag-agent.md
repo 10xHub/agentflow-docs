@@ -49,11 +49,11 @@ flowchart LR
     SYNTHESIZE --> END_NODE([END])
 ```
 
-**RETRIEVE** — The agent extracts the user's latest question from the conversation and searches the vector store for the top `k` most similar documents. These are stored internally so subsequent nodes can access them.
+**RETRIEVE**, The agent extracts the user's latest question from the conversation and searches the vector store for the top `k` most similar documents. These are stored internally so subsequent nodes can access them.
 
-**RERANK** (optional) — If you provide a reranker, it re-scores the candidates using a cross-encoder or other ranking function. This filters out false positives from vector similarity and returns only the top `n` most relevant results. Skipped if no reranker is configured.
+**RERANK** (optional), If you provide a reranker, it re-scores the candidates using a cross-encoder or other ranking function. This filters out false positives from vector similarity and returns only the top `n` most relevant results. Skipped if no reranker is configured.
 
-**SYNTHESIZE** — The agent formats the retrieved documents into a `<context>` block and prepends it to the user's question. This augmented message is then passed to the underlying LLM (typically a faster or cheaper model), which generates the answer. The agent's own system prompt remains untouched.
+**SYNTHESIZE**, The agent formats the retrieved documents into a `<context>` block and prepends it to the user's question. This augmented message is then passed to the underlying LLM (typically a faster or cheaper model), which generates the answer. The agent's own system prompt remains untouched.
 
 The retrieved documents are always available in `state.execution_meta.internal_data["rag_docs"]` if you need to inspect or post-process them.
 
@@ -332,7 +332,7 @@ async def main():
     )
     print("First answer:", result1["context"][-1].text())
     
-    # Second turn in the same thread — the agent remembers the first exchange.
+    # Second turn in the same thread, the agent remembers the first exchange.
     result2 = await app.ainvoke(
         {"messages": [Message.text_message("Does it apply to digital products?")]},
         config={"thread_id": "customer-session-1"},
@@ -529,8 +529,8 @@ Use evaluation sets to measure retrieval and generation quality. Link to `/docs/
 
 ## Related pages
 
-- `/docs/guides/prebuilt-agents` — Overview of all prebuilt agents and when to use each.
-- `/docs/concepts/choosing-a-building-block` — Decision guide: RAGAgent vs ReactAgent vs custom graph.
-- `/docs/guides/use-memory-store` — Add long-term memory (separate from the retrieval store).
-- `/docs/guides/set-up-checkpointing` — Configure persistence for multi-turn conversations.
-- `/docs/reference/python/prebuilt-agents` — Full API reference for RAGAgent and all constructor/compile parameters.
+- `/docs/guides/prebuilt-agents`: Overview of all prebuilt agents and when to use each.
+- `/docs/concepts/choosing-a-building-block`: Decision guide: RAGAgent vs ReactAgent vs custom graph.
+- `/docs/guides/use-memory-store`: Add long-term memory (separate from the retrieval store).
+- `/docs/guides/set-up-checkpointing`: Configure persistence for multi-turn conversations.
+- `/docs/reference/python/prebuilt-agents`: Full API reference for RAGAgent and all constructor/compile parameters.

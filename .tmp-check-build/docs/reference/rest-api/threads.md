@@ -1,0 +1,260 @@
+# Thread endpoints
+
+> Reference for the 10xGraph REST endpoints that read and write thread state and messages, with request fields, responses, and auth requirements.
+
+Source: https://10xgraph.com/docs/reference/rest-api/threads
+Last updated: 2026-10-08
+
+The thread endpoints read and manage what the checkpointer stores for a conversation: the thread record, its saved state and its messages. Every route lives under `/v1/threads` and is addressed by `thread_id`. Each route needs a `checkpointer` permission when auth is configured.
+
+## Route summary
+
+The server exposes ten thread routes. Reads need `checkpointer:read`, writes need `checkpointer:write`, and deletes need `checkpointer:delete`.
+
+| Method | Path | Permission |
+| --- | --- | --- |
+| `GET` | `/v1/threads` | `checkpointer:read` |
+| `GET` | `/v1/threads/{thread_id}` | `checkpointer:read` |
+| `DELETE` | `/v1/threads/{thread_id}` | `checkpointer:delete` |
+| `GET` | `/v1/threads/{thread_id}/state` | `checkpointer:read` |
+| `PUT` | `/v1/threads/{thread_id}/state` | `checkpointer:write` |
+| `DELETE` | `/v1/threads/{thread_id}/state` | `checkpointer:delete` |
+| `GET` | `/v1/threads/{thread_id}/messages` | `checkpointer:read` |
+| `POST` | `/v1/threads/{thread_id}/messages` | `checkpointer:write` |
+| `GET` | `/v1/threads/{thread_id}/messages/{message_id}` | `checkpointer:read` |
+| `DELETE` | `/v1/threads/{thread_id}/messages/{message_id}` | `checkpointer:delete` |
+
+There is no create-thread endpoint. A thread is created implicitly by the first `POST /v1/graph/invoke` or `POST /v1/graph/stream` that uses its `thread_id`, or by the server generating one when the request omits it. See [Graph endpoints](/docs/reference/rest-api/graph).
+
+## Response envelope and shared rules
+
+Every successful response is a JSON object with a `data` field holding the result and a `metadata` object with `request_id`, `timestamp` and `message`. The examples below show only the `data` value. If no checkpointer is configured, the routes return `503` with `Checkpointer is not configured`. See [REST API conventions](/docs/reference/rest-api/conventions) for the full envelope and error format.
+
+| Rule | Behavior |
+| --- | --- |
+| `thread_id` type | String or integer. An empty or whitespace-only string, or an integer below `1`, returns `422`. |
+| `limit` | Default `100`, clamped to a maximum of `1000`. A value of `0` or less returns `422`. |
+| `offset` | Must be `>= 0`, otherwise `422`. |
+| `config` in a request body | Client keys are merged into the checkpointer config. The path `thread_id` always wins, and the server-owned keys `authz`, `user`, `user_id`, `remote_tools` and any key starting with `_` are dropped. |
+
+The curl examples in this page assume a local server on port 8000 and a token in `$TOKEN`. Omit the `Authorization` header if auth is not configured.
+
+## List threads
+
+`GET /v1/threads` returns the threads stored in the checkpointer. The listing is scoped to the calling user by the service layer.
+
+| Query parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `search` | string | none | Free-text filter over thread records |
+| `offset` | integer | none | Number of threads to skip |
+| `limit` | integer | `100` | Page size, maximum `1000` |
+
+```bash
+# List the first 20 threads whose records match "weather"
+curl "http://localhost:8000/v1/threads?search=weather&limit=20" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Each item is a thread record with `thread_id`, `thread_name`, `user_id`, `metadata`, `updated_at` and `run_id` (the full field set of `ThreadInfo`; unset fields are `null`).
+
+```json
+{
+  "threads": [
+    {"thread_id": "t1", "thread_name": "Weather in Paris", "user_id": "user-123", "metadata": null, "updated_at": "2026-04-01T10:00:00", "run_id": null}
+  ]
+}
+```
+
+## Get a thread
+
+`GET /v1/threads/{thread_id}` returns the record for one thread: its metadata, not its messages or state. The record is nested under `thread_data.thread`, and `thread` is `null` when the checkpointer has no record.
+
+```bash
+# Fetch the record for thread t1
+curl http://localhost:8000/v1/threads/t1 -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "thread_data": {
+    "thread": {"thread_id": "t1", "thread_name": "Weather in Paris", "user_id": "user-123", "metadata": null, "updated_at": "2026-04-01T10:00:00", "run_id": null}
+  }
+}
+```
+
+## Delete a thread
+
+`DELETE /v1/threads/{thread_id}` removes a thread and its checkpointed data. The request body is required: send `{}` or `{"config": {}}`.
+
+```bash
+# Delete thread t1 (the body is required, even when empty)
+curl -X DELETE http://localhost:8000/v1/threads/t1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"config": {}}'
+```
+
+```json
+{"success": true, "message": "Thread deleted successfully", "data": null}
+```
+
+The inner `data` is whatever the checkpointer returns from its clean-up. The server also deletes the thread's telemetry traces when a telemetry store is bound, and evicts the thread's cached ownership entry, so the `thread_id` can be reused by a different user afterwards.
+
+## Get thread state
+
+`GET /v1/threads/{thread_id}/state` returns the saved state for a thread. If the checkpointer has no persisted state, the server falls back to the state cache.
+
+```bash
+# Read the saved state of thread t1
+curl http://localhost:8000/v1/threads/t1/state -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "state": {
+    "context": [
+      {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
+      {"role": "assistant", "content": [{"type": "text", "text": "Hi there!"}]}
+    ]
+  }
+}
+```
+
+The exact fields depend on your `AgentState` subclass. `state` is `null` when nothing is stored.
+
+## Update thread state
+
+`PUT /v1/threads/{thread_id}/state` merges the fields you send into the existing state, writes the result to the checkpointer and the cache, and returns the merged state.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `state` | object | yes | State fields to merge into the current state |
+| `config` | object | no | Extra keys merged into the checkpointer config |
+
+The merge rules are fixed. `context` is appended to the existing list, not replaced. Nested dictionaries are deep-merged, other values overwrite, `null` values are ignored, and `execution_meta` is always kept from the existing state. Messages in `context` that carry a tool call return `422`, because only the model may request tools.
+
+```bash
+# Add a custom field to the state before the first invoke
+curl -X PUT http://localhost:8000/v1/threads/t1/state \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"state": {"user_id": "user-456"}, "config": {}}'
+```
+
+The response `data` has the same shape as the get-state response: `{"state": {...}}` with the merged state. Use this endpoint to seed custom fields before the first invoke call or to repair inconsistent state. A custom field must exist on your state class to survive validation.
+
+## Clear thread state
+
+`DELETE /v1/threads/{thread_id}/state` clears the saved state for a thread, so the next invoke call with this `thread_id` starts fresh. It takes no body.
+
+```bash
+# Clear the saved state of thread t1
+curl -X DELETE http://localhost:8000/v1/threads/t1/state -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{"success": true, "message": "State cleared successfully", "data": null}
+```
+
+Here too, the inner `data` is the checkpointer's return value.
+
+## List messages
+
+`GET /v1/threads/{thread_id}/messages` returns the conversation messages stored for a thread.
+
+| Query parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `search` | string | none | Free-text filter over message content |
+| `offset` | integer | none | Number of messages to skip |
+| `limit` | integer | `100` | Page size, maximum `1000` |
+
+```bash
+# Read up to 50 messages from thread t1
+curl "http://localhost:8000/v1/threads/t1/messages?limit=50" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "messages": [
+    {"message_id": "m1", "role": "user", "content": [{"type": "text", "text": "Hello"}]},
+    {"message_id": "m2", "role": "assistant", "content": [{"type": "text", "text": "Hi there!"}]}
+  ]
+}
+```
+
+Each item is a `Message` object. Fields such as `timestamp`, `metadata` and `usages` are also included; they are omitted above for brevity.
+
+## Store messages
+
+`POST /v1/threads/{thread_id}/messages` writes messages to a thread, for example to import a conversation.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `messages` | array of `Message` | yes | Messages to store. An empty array returns `422`. |
+| `metadata` | object | no | Arbitrary metadata stored with the write |
+| `config` | object | no | Extra keys merged into the checkpointer config |
+
+`content` is a list of content blocks, so send `[{"type": "text", "text": "..."}]` rather than a plain string. Messages that carry a tool call return `422`, and any media files they reference must belong to the caller.
+
+```bash
+# Import one user message into thread t1
+curl -X POST http://localhost:8000/v1/threads/t1/messages \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Injected message"}]}],
+    "metadata": {"source": "import"}
+  }'
+```
+
+```json
+{"success": true, "message": "Messages put successfully", "data": null}
+```
+
+## Get a message
+
+`GET /v1/threads/{thread_id}/messages/{message_id}` returns a single `Message` object as `data`. An empty or whitespace-only `message_id` returns `422`.
+
+```bash
+# Fetch message m1 from thread t1
+curl http://localhost:8000/v1/threads/t1/messages/m1 -H "Authorization: Bearer $TOKEN"
+```
+
+## Delete a message
+
+`DELETE /v1/threads/{thread_id}/messages/{message_id}` removes one message. The body is required and takes the same `config` object as the other write routes.
+
+```bash
+# Delete message m1 from thread t1
+curl -X DELETE http://localhost:8000/v1/threads/t1/messages/m1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"config": {}}'
+```
+
+```json
+{"success": true, "message": "Message deleted successfully"}
+```
+
+## Authentication and ownership
+
+When auth is configured, every thread route requires a bearer token and the scope shown in the [route summary](#route-summary). A failed login returns `401`. A missing scope or a thread owned by someone else returns `403`. When auth is not configured, these checks are skipped entirely.
+
+Thread ownership is enforced by the ownership authorization backend. It is the default when `MODE=production` and no `authorization` is configured, and it can be selected explicitly with `"authorization": "ownership"`. In development, the default backend allows every authenticated user. With ownership active, a request for a thread owned by another user is rejected with `403` before it reaches the checkpointer, for every action. A `thread_id` that does not exist yet is allowed through, since it represents a new session. Ownership checks need a checkpointer that can report a thread's owner, such as the Postgres checkpointer; otherwise the check is inactive and the server logs a warning.
+
+See [Authentication](/docs/reference/api-cli/auth) for the backends and how to write your own.
+
+## Frequently asked questions
+
+### How do I create a thread over the REST API?
+
+There is no create-thread endpoint. A thread comes into existence the first time you call the invoke or stream endpoint with its thread_id, or when the server generates an id because the request omitted one.
+
+### Why do I get 403 on a thread I know exists?
+
+With the ownership authorization backend active, a thread can only be used by the user who owns it, for every action. A missing scope also returns 403, with the message Missing required scope.
+
+### Is the limit parameter capped?
+
+Yes. The list endpoints default to 100 items and clamp any larger limit to 1000. A limit of 0 or less returns 422.

@@ -10,7 +10,7 @@ updated: "2026-10-08"
 
 Each `EvalCase` is scored against one or more criteria. A criterion receives the agent's execution trajectory and final response, then returns a score between `0.0` (fail) and `1.0` (pass). A case passes when every enabled criterion meets its threshold. Choose from deterministic criteria (free, instant) that check tool sequences and token overlap, or LLM-judge criteria (cost API calls) that assess semantic quality, factual accuracy, safety, and custom requirements.
 
-The built-in criteria split into two groups: **no-LLM** (deterministic, free, instant) and **LLM-judge** (semantic, costs API calls). Each heading below is the criterion's reported name — the key you will see in the report and in `EvalSummary.criterion_stats`.
+The built-in criteria split into two groups: **no-LLM** (deterministic, free, instant) and **LLM-judge** (semantic, costs API calls). Each heading below is the criterion's reported name, the key you will see in the report and in `EvalSummary.criterion_stats`.
 
 For constructor signatures and how to write your own criterion, see the [criteria API reference](/docs/reference/python/evaluation-criteria).
 
@@ -20,7 +20,7 @@ For constructor signatures and how to write your own criterion, see the [criteri
 
 These criteria do not call any LLM. They are deterministic, free, and run in milliseconds. Use them as a first line of defence.
 
-### tool_name_match_score — Tool name matching
+### tool_name_match_score, Tool name matching
 
 Checks that the tool names called by the agent cover the expected ones. Order and arguments are ignored; only presence and count matter.
 
@@ -30,9 +30,9 @@ from tenxgraph.qa.evaluation import CriterionConfig
 CriterionConfig.tool_name_match(threshold=1.0)
 ```
 
-- Score `1.0` — every expected tool name was called
-- Score `0.0` — none of the expected tools were called
-- Partial scores — the fraction of expected names matched
+- Score `1.0`: every expected tool name was called
+- Score `0.0`: none of the expected tools were called
+- Partial scores, the fraction of expected names matched
 
 Extra tools the agent called on top of the expected ones do **not** reduce the score. The one exception: when the case expects no tools at all, calling any tool scores `0.5` and calling none scores `1.0`.
 
@@ -40,7 +40,7 @@ Extra tools the agent called on top of the expected ones do **not** reduce the s
 
 ---
 
-### tool_trajectory_avg_score — Tool sequence matching
+### tool_trajectory_avg_score, Tool sequence matching
 
 Checks that the sequence of tool calls matches the expected sequence. Supports three match modes controlled by `MatchType`.
 
@@ -74,7 +74,7 @@ CriterionConfig.trajectory(
 
 ---
 
-### node_order_score — Node visit order
+### node_order_score, Node visit order
 
 Checks that the graph visited nodes in the expected sequence. Useful for verifying that routing logic is correct (e.g., `MAIN → TOOL → MAIN → END`).
 
@@ -89,9 +89,9 @@ The same `MatchType` values apply as for trajectory matching.
 
 ---
 
-### rouge_match — ROUGE-1 token overlap
+### rouge_match, ROUGE-1 token overlap
 
-Measures textual similarity between the actual and expected response using ROUGE-1 F1 (token overlap). No API calls — instant and free.
+Measures textual similarity between the actual and expected response using ROUGE-1 F1 (token overlap). No API calls, instant and free.
 
 ```python
 CriterionConfig.rouge_match(threshold=0.5)
@@ -103,13 +103,13 @@ ROUGE-1 counts shared unigrams. A score of `0.5` means roughly half the words ov
 
 | Scenario | Threshold |
 |---|---|
-| Loose sanity check | 0.3 – 0.5 |
-| Moderate similarity | 0.5 – 0.7 |
+| Loose sanity check | 0.3-0.5 |
+| Moderate similarity | 0.5-0.7 |
 | Near-verbatim | 0.7+ |
 
 ---
 
-### contains_keywords — Keyword presence {#contains_keywords}
+### contains_keywords, Keyword presence {#contains_keywords}
 
 Checks that a list of required keywords appear in the actual response.
 
@@ -120,8 +120,8 @@ CriterionConfig.contains_keywords(
 )
 ```
 
-- `threshold=1.0` — all keywords must be present
-- `threshold=0.8` — 80% of keywords must be present
+- `threshold=1.0`: all keywords must be present
+- `threshold=0.8`: 80% of keywords must be present
 
 This criterion is not included in any preset because keywords are domain-specific. Add it manually to `EvalConfig.criteria`:
 
@@ -148,7 +148,7 @@ The default judge model is `gemini-2.5-flash`. Override per criterion with `judg
 
 ---
 
-### response_match_score — Semantic response matching
+### response_match_score, Semantic response matching
 
 Uses an LLM to judge whether the actual response is semantically equivalent to the expected response. Handles paraphrasing and differently-worded but correct answers.
 
@@ -160,15 +160,15 @@ CriterionConfig.response_match(
 )
 ```
 
-- `num_samples` — the judge is called this many times; the final score is the average. This reduces noise from non-deterministic LLM responses.
+- `num_samples`: the judge is called this many times; the final score is the average. This reduces noise from non-deterministic LLM responses.
 
 **When to use:** when you want to verify the agent answered correctly without requiring an exact match. For example, "The capital of France is Paris" and "Paris is France's capital" should both pass.
 
 ---
 
-### final_response_match_v2 — LLM judge
+### final_response_match_v2, LLM judge
 
-Configured as `llm_judge`, reported as `final_response_match_v2`. It runs the **same** semantic-equivalence check as `response_match_score` — the two differ only in the name they report under, so you can run both a stricter and a looser threshold over the same question in one report.
+Configured as `llm_judge`, reported as `final_response_match_v2`. It runs the **same** semantic-equivalence check as `response_match_score`, the two differ only in the name they report under, so you can run both a stricter and a looser threshold over the same question in one report.
 
 ```python
 CriterionConfig.llm_judge(
@@ -184,9 +184,9 @@ Its `details` include `individual_scores` (one per sample), `reasonings`, and `j
 
 ---
 
-### factual_accuracy_v1 — Factual correctness
+### factual_accuracy_v1, Factual correctness
 
-Checks whether all stated facts in the response are correct — numbers, dates, names, and verifiable claims.
+Checks whether all stated facts in the response are correct, numbers, dates, names, and verifiable claims.
 
 ```python
 CriterionConfig.factual_accuracy(
@@ -202,7 +202,7 @@ The judge compares the response against reference material: the case's expected 
 
 ---
 
-### hallucinations_v1 — Groundedness detection
+### hallucinations_v1, Groundedness detection
 
 Checks whether the response is grounded in information the agent actually retrieved (tool results, provided context). A score of `1.0` means fully grounded; `0.0` means the agent invented information.
 
@@ -220,7 +220,7 @@ The evaluator builds the grounding context from the tool results collected durin
 
 ---
 
-### safety_v1 — Safety scoring
+### safety_v1, Safety scoring
 
 The judge assesses the response across five safety dimensions:
 
@@ -246,7 +246,7 @@ CriterionConfig.safety(
 
 ---
 
-### rubric_based — Custom rubric scoring
+### rubric_based, Custom rubric scoring
 
 Define your own evaluation criteria as free-text rubrics. The LLM scores the response against each rubric and returns a weighted average.
 
@@ -273,7 +273,7 @@ CriterionConfig.rubric_based(
 
 All rubrics go into a single judge prompt as `"- {rubric_id}: {content}"` lines, and the judge returns one overall score for the response. That score is averaged across `num_samples` calls.
 
-`weight` is stored on the `Rubric` model but is **not** used by this criterion — it does not produce a weighted average. To weight criteria against each other, combine them with `WeightedCriterion` (see the [criteria API reference](/docs/reference/python/evaluation-criteria#weightedcriterion)). To make one rubric matter more, say so in its `content`.
+`weight` is stored on the `Rubric` model but is **not** used by this criterion, it does not produce a weighted average. To weight criteria against each other, combine them with `WeightedCriterion` (see the [criteria API reference](/docs/reference/python/evaluation-criteria#weightedcriterion)). To make one rubric matter more, say so in its `content`.
 
 With no rubrics configured the criterion returns `1.0` and skips the judge call.
 
@@ -303,7 +303,7 @@ config = CriterionConfig(
 
 | Field | Default | Description |
 |---|---|---|
-| `threshold` | `0.8` | Minimum score to pass (0.0 – 1.0) |
+| `threshold` | `0.8` | Minimum score to pass (0.0-1.0) |
 | `match_type` | `EXACT` | Match type for trajectory and node-order criteria |
 | `judge_model` | `gemini-2.5-flash` | LLM used for judge-based criteria |
 | `num_samples` | `3` | Number of judge calls (average reduces noise) |
@@ -315,9 +315,9 @@ config = CriterionConfig(
 
 ---
 
-## EvalConfig — combining criteria
+## EvalConfig, combining criteria
 
-Wrap criteria in an `EvalConfig` to run them together. `EvalConfig.criteria` is a typed `CriteriaConfig` model with one named field per criterion — not a free-form dict. Unknown field names raise a validation error.
+Wrap criteria in an `EvalConfig` to run them together. `EvalConfig.criteria` is a typed `CriteriaConfig` model with one named field per criterion, not a free-form dict. Unknown field names raise a validation error.
 
 ```python
 from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig, MatchType
@@ -374,7 +374,7 @@ Passing a name that is not a `CriteriaConfig` field raises `ValueError`.
 
 ## Next steps
 
-- [Presets](/docs/testing/presets) — ready-made configs for common scenarios
-- [Reports](/docs/testing/reports) — how scores are reported
-- [Eval sets](/docs/testing/eval-sets) — building test cases
-- [Criteria API reference](/docs/reference/python/evaluation-criteria) — constructors, composition, custom criteria
+- [Presets](/docs/testing/presets): ready-made configs for common scenarios
+- [Reports](/docs/testing/reports): how scores are reported
+- [Eval sets](/docs/testing/eval-sets): building test cases
+- [Criteria API reference](/docs/reference/python/evaluation-criteria): constructors, composition, custom criteria

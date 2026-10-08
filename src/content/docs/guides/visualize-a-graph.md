@@ -300,5 +300,5 @@ Then run the agent and check the logs to see which branch was taken.
 ## Next steps
 
 - Learn more about [graph structure and state](/docs/concepts/state-graph) to understand the nodes and edges you are visualizing.
-- Configure [routing and conditional edges](/docs/guides/build-a-graph#add-routing) in your graph.
+- Configure [routing and conditional edges](/docs/guides/build-a-graph#conditional-routing-patterns) in your graph.
 - Set up [human-in-the-loop interrupts](/docs/guides/add-human-approval) to pause execution at specific nodes.

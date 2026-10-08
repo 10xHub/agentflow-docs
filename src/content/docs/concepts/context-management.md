@@ -181,7 +181,7 @@ This means:
 
 ## Related pages
 
-- `/docs/guides/use-context-manager` — How to implement and troubleshoot context managers.
-- `/docs/guides/use-memory-store` — Long-term memory stores for facts that outlive the conversation.
-- `/docs/concepts/checkpointing-and-threads` — How threads and checkpoints preserve state.
-- `/docs/reference/python/context-manager` — Full API for `MessageContextManager` and `SummaryContextManager`.
+- `/docs/guides/use-context-manager`: How to implement and troubleshoot context managers.
+- `/docs/guides/use-memory-store`: Long-term memory stores for facts that outlive the conversation.
+- `/docs/concepts/checkpointing-and-threads`: How threads and checkpoints preserve state.
+- `/docs/reference/python/context-manager`: Full API for `MessageContextManager` and `SummaryContextManager`.

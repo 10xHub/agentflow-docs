@@ -21,7 +21,7 @@ The `tenxgraph.qa.testing` module provides six core utilities: `TestAgent` (mock
 pip install pytest pytest-asyncio
 ```
 
-`tenxgraph.qa.testing` is built into `10xgraph` — no extra install needed.
+`tenxgraph.qa.testing` is built into `10xgraph`, no extra install needed.
 
 ---
 
@@ -112,7 +112,7 @@ agent.reset()
 
 ## QuickTest
 
-`QuickTest` removes boilerplate by building, compiling, and invoking a graph in one call. Every method returns a `TestResult` for assertions. All `QuickTest` methods are async — use `pytest-asyncio` or `asyncio.run()`.
+`QuickTest` removes boilerplate by building, compiling, and invoking a graph in one call. Every method returns a `TestResult` for assertions. All `QuickTest` methods are async, use `pytest-asyncio` or `asyncio.run()`.
 
 ### Single-turn test
 
@@ -533,5 +533,5 @@ async def test_with_context_helper():
 
 ## Further reading
 
-- [Run tests with 10xgraph test](/docs/testing/run-tests) — executing tests and coverage configuration
-- [Evaluation guide](/docs/testing/evaluation) — scoring agent behavior with evals
+- [Run tests with 10xgraph test](/docs/testing/run-tests): executing tests and coverage configuration
+- [Evaluation guide](/docs/testing/evaluation): scoring agent behavior with evals

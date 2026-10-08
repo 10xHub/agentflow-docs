@@ -28,12 +28,12 @@ sequenceDiagram
   participant Client
   participant Graph
 
-  Note over Client,Graph: invoke — wait for the full response
+  Note over Client,Graph: invoke, wait for the full response
   Client->>Graph: invoke(input, config)
   Graph->>Graph: run all nodes
   Graph-->>Client: final result dict
 
-  Note over Client,Graph: stream / astream — incremental chunks
+  Note over Client,Graph: stream / astream, incremental chunks
   Client->>Graph: stream(input, config)
   Graph-->>Client: StreamChunk (message)
   Graph-->>Client: StreamChunk (message)

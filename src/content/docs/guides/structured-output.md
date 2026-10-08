@@ -290,7 +290,7 @@ agent = StructuredOutputAgent(
             "role": "system",
             "content": (
                 "Extract data and respond with **valid JSON only**. "
-                "Output only the JSON object—no explanation, no markdown, no extra text."
+                "Output only the JSON object, no explanation, no markdown, no extra text."
             )
         }
     ],
@@ -395,7 +395,7 @@ agent = StructuredOutputAgent(
 
 ## What's next
 
-- [Build a graph](/docs/guides/build-a-graph) — Combine multiple nodes including agents with structured output
-- [Use StructuredOutputAgent](/docs/guides/prebuilt/structured-output-agent) — Full parameter reference for the prebuilt agent
-- [Configure Agent](/docs/guides/configure-agent) — Provider and model configuration options
-- [Use dependency injection](/docs/guides/use-dependency-injection) — Inject config and services into nodes
+- [Build a graph](/docs/guides/build-a-graph): Combine multiple nodes including agents with structured output
+- [Use StructuredOutputAgent](/docs/guides/prebuilt/structured-output-agent): Full parameter reference for the prebuilt agent
+- [Configure Agent](/docs/guides/configure-agent): Provider and model configuration options
+- [Use dependency injection](/docs/guides/use-dependency-injection): Inject config and services into nodes

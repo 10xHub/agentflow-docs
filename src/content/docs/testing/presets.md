@@ -26,7 +26,7 @@ If you are evaluating:
 
 All `EvalPresets` methods are class methods that return an `EvalConfig` instance. Every preset that uses an LLM accepts an optional `judge_model` parameter (defaults to `"gemini-2.5-flash"`).
 
-### quick_check — Fastest, no cost
+### quick_check, Fastest, no cost
 
 Evaluates response text using ROUGE-1 token overlap. No LLM API calls, instant results. Ideal for smoke tests during active development and continuous integration pipelines where latency matters.
 
@@ -46,7 +46,7 @@ result = evaluator.evaluate(eval_set, config)
 
 ---
 
-### tool_usage — Verify tool correctness
+### tool_usage, Verify tool correctness
 
 Ensures the agent calls the right tools in the right order with correct arguments. No LLM required; this is the fastest semantic check. Ideal for agents with deterministic tool requirements.
 
@@ -73,7 +73,7 @@ config = EvalPresets.tool_usage(
 
 ---
 
-### response_quality — Check semantic accuracy
+### response_quality, Check semantic accuracy
 
 Uses an LLM judge to evaluate whether the agent's response is semantically correct and relevant, independent of exact wording. Ideal for Q&A, FAQ, and retrieval agents where responses have legitimate variation.
 
@@ -100,7 +100,7 @@ config = EvalPresets.response_quality(
 
 ---
 
-### conversation_flow — Multi-turn dialogue validation
+### conversation_flow, Multi-turn dialogue validation
 
 Validates both response quality and tool sequencing in conversation scenarios where the agent must maintain context across multiple turns and call tools in a logical sequence.
 
@@ -125,7 +125,7 @@ config = EvalPresets.conversation_flow(
 
 ---
 
-### safety_check — Production safety gate
+### safety_check, Production safety gate
 
 Focuses on what the agent outputs, not whether it answers correctly. Detects hallucinations, unsafe content, and guardrail violations. Essential before shipping to production.
 
@@ -150,7 +150,7 @@ config = EvalPresets.safety_check(
 
 ---
 
-### comprehensive — All criteria
+### comprehensive, All criteria
 
 Runs all available criteria including no-LLM checks and full LLM-based evaluation. Use before major releases or for thorough regression testing.
 
@@ -184,7 +184,7 @@ config = EvalPresets.comprehensive(
 
 ---
 
-### custom — Build from individual parameters
+### custom, Build from individual parameters
 
 Fine-tune evaluation by enabling exactly the criteria you need. Any threshold set to `None` excludes that criterion.
 
@@ -219,7 +219,7 @@ config = EvalPresets.custom(
 
 ---
 
-### combine — Merge multiple presets
+### combine, Merge multiple presets
 
 Combine multiple preset configurations. Later arguments override earlier ones when criteria conflict.
 
@@ -419,7 +419,7 @@ Controls how tool trajectories are compared:
 
 ## Next steps
 
-- [Run evaluations](/docs/testing/run-evals) — execute configs with `10xgraph eval` or inside pytest
-- [Criteria reference](/docs/testing/criteria) — detailed explanation of each criterion and how scores are calculated
-- [Eval sets](/docs/testing/eval-sets) — structure test cases for your agent
-- [Reports](/docs/testing/reports) — view and share evaluation results in HTML, JSON, or JUnit format
+- [Run evaluations](/docs/testing/run-evals): execute configs with `10xgraph eval` or inside pytest
+- [Criteria reference](/docs/testing/criteria): detailed explanation of each criterion and how scores are calculated
+- [Eval sets](/docs/testing/eval-sets): structure test cases for your agent
+- [Reports](/docs/testing/reports): view and share evaluation results in HTML, JSON, or JUnit format

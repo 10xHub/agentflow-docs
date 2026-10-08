@@ -1,7 +1,7 @@
 ---
 title: Building Eval Sets
 seoTitle: "Build eval sets with EvalSetBuilder"
-description: How to build evaluation datasets with EvalSetBuilder — single-turn cases, multi-turn conversations, tool call assertions, and loading from files.
+description: How to build evaluation datasets with EvalSetBuilder, single-turn cases, multi-turn conversations, tool call assertions, and loading from files.
 section: "Testing and evaluation"
 group: "Evaluation"
 order: 50
@@ -338,7 +338,7 @@ The evaluator will initialize the agent's state with these values before running
 
 ## Next steps
 
-- [Criteria reference](/docs/testing/criteria) — the scoring criteria available and how to use them
-- [Presets](/docs/testing/presets) — ready-made evaluation configurations for common patterns
-- [Running evaluations](/docs/testing/run-evals) — how to execute eval sets with `10xgraph eval` and the API
-- [Evaluation overview](/docs/testing/evaluation) — conceptual background on evaluation as a testing methodology
+- [Criteria reference](/docs/testing/criteria): the scoring criteria available and how to use them
+- [Presets](/docs/testing/presets): ready-made evaluation configurations for common patterns
+- [Running evaluations](/docs/testing/run-evals): how to execute eval sets with `10xgraph eval` and the API
+- [Evaluation overview](/docs/testing/evaluation): conceptual background on evaluation as a testing methodology

@@ -1,0 +1,132 @@
+# What Is an AI Agent? Definition and Python Guide (2026)
+
+> An AI agent is a program that uses an LLM to perceive input, reason, and act in a loop until a goal is met. Learn the patterns and build one in Python.
+
+Source: https://10xgraph.com/docs/glossary/what-is-an-ai-agent
+Last updated: 2026-10-08
+
+**An AI agent is a program that uses a large language model (LLM) to perceive input, reason about it, and take actions, such as calling tools or querying databases, in a loop until a goal is met.** Unlike a single LLM call, an agent completes multi-step tasks by choosing each next action from intermediate results.
+
+The term "agent" has been used broadly in AI research since the 1990s, but in 2024 to 2026 it has come to specifically mean LLM-powered programs that can use tools and maintain state across multiple steps.
+
+## The core loop
+
+Every AI agent runs some version of this loop:
+
+1. **Perceive**: receive a user message or environment observation
+2. **Reason**: the LLM decides what to do next
+3. **Act**: call a tool, write a file, query a database, or respond
+4. **Observe**: get the result of the action
+5. **Repeat**: or stop if the goal is met
+
+The most widely used implementation of this loop is the **ReAct pattern** (Reason + Act), introduced by Yao et al. (2022). See [What is a ReAct agent?](/docs/glossary/what-is-a-react-agent) for details.
+
+## What makes something an "agent" vs a chatbot
+
+| Characteristic | Chatbot | AI agent |
+|---------------|---------|---------|
+| Can call tools | No | Yes |
+| Runs in a loop | No, single LLM call | Yes, until goal is met |
+| Maintains task state | No | Yes |
+| Takes actions in the world | No | Yes |
+| Can spawn sub-tasks | No | Yes (multi-agent) |
+
+A chatbot responds to one message with one LLM call. An agent may make dozens of LLM calls and tool calls before returning an answer.
+
+## How to build an AI agent in Python
+
+10xGraph provides a prebuilt `ReactAgent` that implements the full agent loop. You supply the tools; the framework handles routing, tool execution, and state.
+
+```python
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
+
+def search_web(query: str) -> str:
+    """Search the web and return a summary of results."""
+    # Replace with a real search API call
+    return f"Top results for '{query}': [result 1], [result 2]"
+
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    return f"Weather in {city}: 22°C, sunny"
+
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant. Use tools when they help."}],
+    tools=[search_web, get_weather],
+)
+
+app = agent.compile()
+
+result = app.invoke(
+    {"messages": [Message.text_message("What is the weather in Tokyo and latest AI news?")]},
+    config={"thread_id": "demo-1"},
+)
+print(result["messages"][-1].text())
+```
+
+The agent will call `get_weather` for Tokyo, call `search_web` for the news query, then compose a final answer, all automatically.
+
+## Serving an AI agent as an API
+
+Once you have a compiled agent, one command starts a production HTTP server:
+
+```bash
+pip install "10xgraph[google-genai]" 10xgraph-api
+10xgraph init
+10xgraph api
+```
+
+This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (NDJSON), and `GET /v1/threads/{thread_id}/state` endpoints with no extra FastAPI code required.
+
+## Types of AI agents
+
+| Agent type | Description | 10xGraph prebuilt |
+|-----------|-------------|-------------------|
+| **ReAct agent** | Reason and Act in a loop with tools | `ReactAgent` |
+| **RAG agent** | Retrieves documents before answering | `RAGAgent` |
+| **Supervisor agent** | Routes tasks to specialist sub-agents | `SupervisorTeamAgent` |
+| **Swarm agent** | Peer agents hand off to each other | `SwarmAgent` |
+| **Plan-act-reflect** | Plans, executes, reflects, revises | `PlanActReflectAgent` |
+| **Structured output** | Returns typed, validated responses | `StructuredOutputAgent` |
+
+## Why agents need more than a raw LLM call
+
+A raw LLM call returns text. For production AI agents, you also need:
+
+- **Persistent threads**: conversations that survive server restarts
+- **Tool execution**: call functions, APIs, databases in parallel
+- **Streaming**: send tokens to a frontend as they generate
+- **Auth and rate limiting**: control who can call the agent and how often
+- **Observability**: traces, metrics, error tracking
+
+10xGraph ships all of these as part of the framework. See [Get Started](/docs/get-started) for the full stack.
+
+## Next steps
+
+- [Build your first agent](https://10xgraph.com/docs/get-started/first-agent): A step-by-step guide to building and serving a Python AI agent with 10xGraph.
+- [What is a ReAct agent?](https://10xgraph.com/docs/glossary/what-is-a-react-agent): The Reason + Act pattern, the most common single-agent architecture.
+- [Agents and tools](https://10xgraph.com/docs/concepts/agents-and-tools): How agents and tools work together in 10xGraph.
+- [Compare frameworks](https://10xgraph.com/docs/compare): 10xGraph vs LangGraph, CrewAI, AutoGen, and Google ADK.
+
+## Frequently asked questions
+
+### What is the difference between an AI agent and an LLM?
+
+An LLM is a model that generates text given a prompt. An AI agent is a program built on top of an LLM that can also call tools, maintain state across multiple steps, and take actions in a loop until it completes a goal. An LLM is a component inside an AI agent, not the agent itself.
+
+### What programming language is best for building AI agents?
+
+Python is the dominant language for AI agent development because all major LLM provider SDKs (OpenAI, Anthropic, Google) have first-class Python support and most agent frameworks (10xGraph, LangGraph, CrewAI, AutoGen) are Python-native. TypeScript is used for frontend agent clients and increasingly for Node.js agent runtimes.
+
+### How do AI agents use tools?
+
+The LLM inside an agent can request tool calls by returning a structured response that names the tool and provides the arguments. The agent runtime executes the tool (a Python function), sends the result back to the LLM, and the LLM continues reasoning. 10xGraph's ToolNode runs multiple tool calls from one model response in parallel.
+
+### What is the difference between an AI agent and a workflow?
+
+A workflow has fixed, pre-determined steps. An AI agent decides dynamically which steps to take based on the LLM's reasoning. In practice, most production systems use both: deterministic graph structure (workflow) with LLM-powered decision points (agent) at nodes where human-like reasoning is needed.
+
+### Can AI agents remember previous conversations?
+
+Yes, with the right persistence layer. 10xGraph uses a thread ID system. Each conversation gets a thread ID, and the full message history is stored by the checkpointer you configure (in memory, SQLite, or Redis plus Postgres). When you invoke the agent again with the same thread ID, it has access to the full conversation history.

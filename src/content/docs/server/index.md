@@ -65,31 +65,31 @@ Together with `JWT_SECRET_KEY` (a strong, randomly generated secret in productio
 This section is organized by task and layer:
 
 **Basics** (how to run and configure):
-1. [Run the server](/docs/server/run-the-server) — start the server in dev and production, set the port, enable hot-reload
-2. [Configure](/docs/server/configure) — write your `10xgraph.json` file with your graph path, auth, checkpointer, and rate limiting
-3. [Project setup](/docs/server/project-setup) — use `10xgraph init` to scaffold a project with templates
-4. [CLI reference](/docs/server/cli) — overview of all `10xgraph` commands
+1. [Run the server](/docs/server/run-the-server): start the server in dev and production, set the port, enable hot-reload
+2. [Configure](/docs/server/configure): write your `10xgraph.json` file with your graph path, auth, checkpointer, and rate limiting
+3. [Project setup](/docs/server/project-setup): use `10xgraph init` to scaffold a project with templates
+4. [CLI reference](/docs/server/cli): overview of all `10xgraph` commands
 
 **Security** (auth, rate limits, headers):
-1. [Authentication and authorization](/docs/server/auth) — set up JWT or custom auth, define who can access what
-2. [Rate limiting](/docs/server/rate-limiting) — prevent abuse and manage resource usage
-3. [CORS and security headers](/docs/server/cors-and-security-headers) — restrict domains, set strict headers, trust proxies
+1. [Authentication and authorization](/docs/server/auth): set up JWT or custom auth, define who can access what
+2. [Rate limiting](/docs/server/rate-limiting): prevent abuse and manage resource usage
+3. [CORS and security headers](/docs/server/cors-and-security-headers): restrict domains, set strict headers, trust proxies
 
 **Interfaces** (how to call the server):
-1. [Invoke and stream](/docs/server/invoke-and-stream) — make REST calls with curl and code; invoke for single requests, stream for real-time event responses
-2. [WebSocket](/docs/server/websockets) — use `ws://` and `wss://` for streaming and realtime audio; when to choose `/ws` vs `/live`
-3. [AG-UI](/docs/server/ag-ui) — integrate with CopilotKit and other AG-UI frameworks
-4. [Files and multimodal](/docs/server/files-and-multimodal) — upload and manage images, audio, and documents
-5. [Remote tools](/docs/server/remote-tools) — let clients define tools that run on the server
+1. [Invoke and stream](/docs/server/invoke-and-stream): make REST calls with curl and code; invoke for single requests, stream for real-time event responses
+2. [WebSocket](/docs/server/websockets): use `ws://` and `wss://` for streaming and realtime audio; when to choose `/ws` vs `/live`
+3. [AG-UI](/docs/server/ag-ui): integrate with CopilotKit and other AG-UI frameworks
+4. [Files and multimodal](/docs/server/files-and-multimodal): upload and manage images, audio, and documents
+5. [Remote tools](/docs/server/remote-tools): let clients define tools that run on the server
 
 **Operations** (deploy, monitor, maintain):
-1. [Observability](/docs/server/observability) — enable logging, metrics, and tracing; forward traces to Logfire or Sentry
-2. [Deploy](/docs/server/deploy) — generate Docker images with `10xgraph build`; deploy to Docker Compose, Kubernetes, or reverse-proxy setups
-3. [Kubernetes](/docs/server/kubernetes) — production checklist for Kubernetes deployments
-4. [Production checklist](/docs/server/production-checklist) — hardening steps before you go live (secrets, CORS, auth, persistence, rate limits)
-5. [Backup and restore](/docs/server/backup-and-restore) — back up thread state and restore from backups
+1. [Observability](/docs/server/observability): enable logging, metrics, and tracing; forward traces to Logfire or Sentry
+2. [Deploy](/docs/server/deploy): generate Docker images with `10xgraph build`; deploy to Docker Compose, Kubernetes, or reverse-proxy setups
+3. [Kubernetes](/docs/server/kubernetes): production checklist for Kubernetes deployments
+4. [Production checklist](/docs/server/production-checklist): hardening steps before you go live (secrets, CORS, auth, persistence, rate limits)
+5. [Backup and restore](/docs/server/backup-and-restore): back up thread state and restore from backups
 
 **Tools** (playground and debugging):
-1. [Playground](/docs/server/playground) — test your graph interactively with the web UI
+1. [Playground](/docs/server/playground): test your graph interactively with the web UI
 
 If you are new to 10xGraph, start with [Basics](#reading-order-for-this-section). If you are running in production or planning to, read [Security](#security-auth-rate-limits-headers) and [Operations](#operations-deploy-monitor-maintain) top-to-bottom. If you are integrating 10xGraph into an existing app, the [Interfaces](#interfaces-how-to-call-the-server) pages show you how to make requests from your code.
