@@ -28,7 +28,7 @@ The memory API handles the storage and retrieval; you control what to remember a
 
 ## Prerequisites
 
-- A configured `AgentFlowClient`. See [create the client](/docs/client/create-client).
+- A configured `TenxGraphClient`. See [create the client](/docs/client/create-client).
 - The API server running with a memory store configured in `10xgraph.json`.
 
 ---
@@ -85,9 +85,9 @@ The `score` ranges from 0 to 1; higher means more similar. The `score_threshold`
 The full pattern is: search for relevant memories, build a system prompt with them, then invoke the agent. This way, the agent always has context.
 
 ```ts
-import { AgentFlowClient, Message, MemoryType, RetrievalStrategy } from '10xgraph-client';
+import { TenxGraphClient, Message, MemoryType, RetrievalStrategy } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const THREAD_ID = 'user-session-123';
 
 async function respondWithMemory(userQuestion: string) {
@@ -276,8 +276,8 @@ await client.forgetMemories({
 
 | Problem | Cause | Solution |
 |---------|-------|----------|
-| `AgentFlowError` status 404 on `getMemory()` | Memory ID not found or deleted. | Verify the ID is correct. Use `listMemories()` to check what exists. |
-| `AgentFlowError` status 503 | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and ensure the store backend is running. |
+| `TenxGraphError` status 404 on `getMemory()` | Memory ID not found or deleted. | Verify the ID is correct. Use `listMemories()` to check what exists. |
+| `TenxGraphError` status 503 | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and ensure the store backend is running. |
 | Empty search results | Score threshold too high, or no memories match the type/category. | Lower `score_threshold`, remove the type filter, or store more memories. |
 | Irrelevant search results | Query is too vague, or memories are poorly written. | Use specific queries. Store memories with clear, descriptive content. |
 

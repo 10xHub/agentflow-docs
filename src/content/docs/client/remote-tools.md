@@ -79,9 +79,9 @@ This command checks your `10xgraph.json` for remote tool errors and other config
 On the client, register a handler function for each declared tool. Do this before calling `invoke()`, `stream()`, or `wsStream()`:
 
 ```ts
-import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: 'your-bearer-token', // if auth is enabled
 });

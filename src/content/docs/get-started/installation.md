@@ -190,10 +190,10 @@ Never commit `.env` or API keys to version control. Use `.gitignore` to exclude 
 If you are building a JavaScript or TypeScript application that calls the 10xGraph API server, install the client SDK:
 
 ```bash
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
-Until the renamed package is published, install it as `@10xscale/agentflow-client`. It requires Node.js 18 or newer. The main class is `AgentFlowClient`; see the [client documentation](/docs/client) for usage.
+The main class is `TenxGraphClient`, and the package requires Node.js 18 or newer. Until `10xgraph-client` is published, install `@10xscale/agentflow-client`, which exports the same client as `AgentFlowClient`. See the [client documentation](/docs/client) for usage.
 
 The client talks to a running `10xgraph api` server over HTTP, and you pass a thread ID to keep conversation history across runs. See the [Quickstart](/docs/get-started/first-agent) for a complete example.
 

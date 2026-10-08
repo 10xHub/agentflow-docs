@@ -30,7 +30,7 @@ When the agent finishes in one node, you choose the next node. 10xGraph gives yo
 |---|---|---|---|---|
 | Conditional edge | After node completes | No; only reads state | Yes | Stateless routing logic |
 | Command | Inside node (on return) | Yes | No; internal detail | Routing depends on side effects |
-| Callback (on_error) | When invocation fails | Conditional | No; internal detail | Recover from LLM or tool errors |
+| Callback (on_error) | When invocation fails | No; may return a recovery `Message` | No; internal detail | Recover from LLM or tool errors |
 
 ## Routing decisions with conditional edges
 
@@ -41,7 +41,7 @@ from tenxgraph import StateGraph, END
 
 def route_by_topic(state):
     """Return the next node name based on the last message."""
-    last_message = state.messages[-1].text() if state.messages else ""
+    last_message = state.context[-1].text() if state.context else ""
     
     if "billing" in last_message.lower():
         return "billing_agent"
@@ -71,27 +71,22 @@ Use conditional edges when the routing choice depends only on state that already
 ```python
 from tenxgraph.utils import Command, END
 
-def billing_handler(state, config):
+def billing_handler(state: BillingState, config: dict) -> Command:
     """Handle a billing inquiry and decide next steps."""
     user_id = config.get("user_id")
-    
+
     # Make API call or database query inside the node
-    account_status = fetch_account_status(user_id)
-    
+    state.account_status = fetch_account_status(user_id)
+
     # Update state and route based on the result
-    if account_status == "suspended":
-        return Command(
-            update={"account_status": "suspended"},
-            goto="reactivation_node"
-        )
-    else:
-        return Command(
-            update={"account_status": "active"},
-            goto=END
-        )
+    if state.account_status == "suspended":
+        return Command(update=state, goto="reactivation_node")
+    return Command(update=state, goto=END)
 ```
 
-`Command` is returned from a node, not attached to an edge. No edge from this node appears in the graph diagram because the next node is chosen at runtime by the code. The update can be a dict (merged into state) or a state object.
+Here `BillingState` is an `AgentState` subclass with an `account_status` field, and `fetch_account_status` is your own function.
+
+`Command` is returned from a node, not attached to an edge. No edge from this node appears in the graph diagram because the next node is chosen at runtime by the code. The `update` argument accepts an `AgentState`, a `Message`, a `str` (stored as an assistant message), or a list of messages. A plain `dict` is not supported, so change custom fields on the state object and pass it as `update`.
 
 Use Command when:
 - The routing decision depends on a side effect (API call, database query, file read).
@@ -115,69 +110,64 @@ callback_manager = CallbackManager()
 app = graph.compile(callback_manager=callback_manager)
 ```
 
-Register callbacks for four kinds of events:
+Register callbacks for four kinds of events. The three invocation hooks take the `InvocationType` they apply to as their first argument:
 
 | Hook | When it fires | What you get | Returns |
 |---|---|---|---|
 | `before_invoke` | Before LLM, tool, MCP, or skill call | Input data | Transformed input or original |
 | `after_invoke` | After the call succeeds | Input and output | Transformed output or original |
-| `on_error` | When the call fails | Input and exception | Recovery value or None to re-raise |
+| `on_error` | When the call fails | Input and exception | A recovery `Message`, or `None` to let the error propagate |
 | `input_validator` | Before message validation | List of messages | Raises ValidationError or passes |
 
-Invocation types are `AI` (LLM), `TOOL`, `MCP`, `INPUT_VALIDATION`, and `SKILL`.
+Invocation types are `AI`, `TOOL`, `MCP`, `INPUT_VALIDATION`, and `SKILL`. `AI` fires for `Agent` nodes and plain function nodes; its input is a dict with `state` and `config`. For `TOOL` and `MCP` the input is the tool's argument dict. Every callback receives a `CallbackContext` with `invocation_type`, `node_name`, `function_name` and `metadata`.
 
 ### Before and after hooks
 
 Use `before_invoke` to validate, redact, or enrich the input before it reaches the LLM or tool.
 
 ```python
-from tenxgraph.utils import CallbackManager, InvocationType, CallbackContext
+from tenxgraph.utils import CallbackContext, CallbackManager, InvocationType
 
 callback_manager = CallbackManager()
 
-async def redact_secrets_before_llm(context: CallbackContext, input_data: dict) -> dict:
-    """Remove secrets from the prompt before calling the LLM."""
-    if context.invocation_type == InvocationType.AI:
-        # Modify input_data in place or return a new dict
-        messages = input_data.get("messages", [])
-        for msg in messages:
-            msg_text = msg.text()
-            if msg_text and "API_KEY=" in msg_text:
-                msg_text = msg_text.replace(r"API_KEY=\w+", "API_KEY=***")
-        return input_data
+async def clamp_search_query(context: CallbackContext, input_data: dict) -> dict:
+    """Cap the length of the model-supplied query before the tool runs."""
+    if context.function_name == "search_docs" and "query" in input_data:
+        input_data["query"] = str(input_data["query"])[:200]
     return input_data
 
-callback_manager.register_before_invoke(redact_secrets_before_llm)
+callback_manager.register_before_invoke(InvocationType.TOOL, clamp_search_query)
 ```
 
 Use `after_invoke` to log, cache, or transform the output before it is stored in state.
 
 ```python
-async def log_tool_results(context: CallbackContext, input_data: dict, output_data: str) -> str:
+async def log_tool_results(context: CallbackContext, input_data: dict, output_data):
     """Log every tool result."""
-    if context.invocation_type == InvocationType.TOOL:
-        print(f"Tool {context.function_name} returned: {output_data[:100]}")
+    print(f"Tool {context.function_name} returned: {str(output_data)[:100]}")
     return output_data
 
-callback_manager.register_after_invoke(log_tool_results)
+callback_manager.register_after_invoke(InvocationType.TOOL, log_tool_results)
 ```
 
 ### Error recovery with on_error
 
-Use `on_error` to catch failures in LLM or tool calls and recover with a fallback value.
+Use `on_error` to catch failures in LLM or tool calls and recover with a fallback `Message`. Any other return value is ignored with a warning.
 
 ```python
+from tenxgraph.core.state import Message
+
 async def recover_from_tool_failure(
     context: CallbackContext, input_data: dict, error: Exception
-) -> str | None:
+) -> Message | None:
     """Recover from a tool timeout with a cached value."""
-    if context.invocation_type == InvocationType.TOOL and isinstance(error, TimeoutError):
+    if isinstance(error, TimeoutError):
         print(f"Tool {context.function_name} timed out; using cached result")
-        return get_cached_result(context.function_name)
-    # Return None to re-raise the original error
+        return Message.text_message(get_cached_result(context.function_name), role="tool")
+    # Return None when there is no recovery
     return None
 
-callback_manager.register_on_error(recover_from_tool_failure)
+callback_manager.register_on_error(InvocationType.TOOL, recover_from_tool_failure)
 ```
 
 ### Input validators
@@ -185,6 +175,7 @@ callback_manager.register_on_error(recover_from_tool_failure)
 Validators are a simpler callback type focused on message validation. Use them for content policy, prompt-injection defense, or business rules.
 
 ```python
+from tenxgraph.utils import CallbackManager
 from tenxgraph.utils.validators import PromptInjectionValidator
 
 callback_manager = CallbackManager()
@@ -193,9 +184,10 @@ callback_manager.register_input_validator(PromptInjectionValidator(strict_mode=T
 
 ## Monitoring and coordinating with graph lifecycle hooks
 
-Lifecycle hooks observe graph-level events: when the graph starts, ends, pauses, or checkpoints. They fire once per event, not once per invocation. Use them for observability, human-in-the-loop coordination, compliance logging, and notifications.
+Lifecycle hooks observe graph-level events: when the graph starts, ends, errors, pauses, resumes, updates state, or checkpoints. They fire once per event, not once per invocation. Use them for observability, human-in-the-loop coordination, compliance logging, and notifications.
 
 ```python
+from tenxgraph.utils import CallbackManager
 from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
 from tenxgraph.core.state import AgentState, Message
 
@@ -237,7 +229,9 @@ class MyHook(GraphLifecycleHook):
         """Redact PII or replicate to cache before state is persisted."""
         return None
 
-app = graph.compile(lifecycle_hook=MyHook())
+callback_manager = CallbackManager()
+callback_manager.register_lifecycle_hook(MyHook())
+app = graph.compile(callback_manager=callback_manager)
 ```
 
 ### Lifecycle hook use cases
@@ -267,7 +261,7 @@ Return the expected shape from transforming callbacks. If `before_invoke` return
 
 Validate `Command` routes in tests. Missing node names or recursion loops are runtime failures.
 
-Use `on_error` in callbacks to recover from errors; do not suppress errors in lifecycle hooks. `on_graph_error` alerts but cannot recover. For error recovery, use `on_error` callbacks or handle exceptions inside nodes.
+Use `on_error` in callbacks to recover from errors; do not suppress errors in lifecycle hooks. `on_graph_error` can change the persisted error snapshot, but the exception is always re-raised. For error recovery, use `on_error` callbacks or handle exceptions inside nodes.
 
 ## Next steps
 

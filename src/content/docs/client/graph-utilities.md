@@ -8,7 +8,7 @@ label: Graph utilities
 updated: "2026-10-08"
 ---
 
-The `@10xgraph/client` TypeScript client exposes utility methods for inspecting graph metadata, controlling execution, repairing state, and handling human-in-the-loop workflows. Use these methods to build observability dashboards, debugging tools, and approval interfaces.
+The `10xgraph-client` TypeScript client exposes utility methods for inspecting graph metadata, controlling execution, repairing state, and handling human-in-the-loop workflows. Use these methods to build observability dashboards, debugging tools, and approval interfaces.
 
 | Method | Purpose |
 |---|---|
@@ -21,7 +21,7 @@ The `@10xgraph/client` TypeScript client exposes utility methods for inspecting 
 
 ## Prerequisites
 
-- A configured `AgentFlowClient`. See [how-to/client/create-client](/docs/client/create-client).
+- A configured `TenxGraphClient`. See [how-to/client/create-client](/docs/client/create-client).
 - The 10xGraph API server running.
 
 ---
@@ -477,7 +477,7 @@ async function invokeWithRecovery(threadId: string, message: string) {
       { config: { thread_id: threadId } }
     );
   } catch (err) {
-    if (err instanceof AgentFlowError && err.errorCode.startsWith('GRAPH')) {
+    if (err instanceof TenxGraphError && err.errorCode.startsWith('GRAPH')) {
       console.warn('Graph error, attempting state repair...');
       const fix = await client.fixGraph(threadId);
       console.log(`Removed ${fix.data.removed_count} broken message(s). Retrying.`);
@@ -572,9 +572,9 @@ if (state.data.execution_meta?.interrupt) {
 This example brings together graph inspection, execution monitoring, and interrupt handling:
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 async function runWithApprovalGate(threadId: string, userMessage: string) {
   // 1. Inspect the graph capabilities

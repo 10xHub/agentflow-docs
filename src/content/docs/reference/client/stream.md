@@ -1,7 +1,7 @@
 ---
 title: stream()
 seoTitle: stream() in the TypeScript client
-description: "Reference for AgentFlowClient.stream(): send messages and receive StreamChunk objects in real time, with options, event types and examples."
+description: "Reference for TenxGraphClient.stream(): send messages and receive StreamChunk objects in real time, with options, event types and examples."
 section: Reference
 group: TypeScript client
 order: 500
@@ -15,7 +15,7 @@ updated: '2026-10-08'
 **Source:** `src/endpoints/stream.ts`
 
 ```ts
-import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
+import { TenxGraphClient, Message, StreamEventType } from '10xgraph-client';
 ```
 
 ---
@@ -95,9 +95,9 @@ The `event` field on a `StreamChunk` is a string matching one of these values (e
 ### Basic streaming
 
 ```ts
-import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
+import { TenxGraphClient, Message, StreamEventType } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 const stream = client.stream([
   Message.text_message('Write me a short poem about the ocean.'),
@@ -156,9 +156,9 @@ for await (const chunk of stream) {
 
 ```tsx
 import { useState } from 'react';
-import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
+import { TenxGraphClient, Message, StreamEventType } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 function ChatBox() {
   const [output, setOutput] = useState('');
@@ -302,7 +302,7 @@ curl --no-buffer -X POST http://localhost:8000/v1/graph/stream \
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `401` | Missing or invalid auth. | Set `auth` in the client config. See [auth](/docs/reference/client/auth). |
+| `TenxGraphError` status `401` | Missing or invalid auth. | Set `auth` in the client config. See [auth](/docs/reference/client/auth). |
 | `Request timeout after Nms` | The connection exceeded the client `timeout`. | Raise `timeout` in the client config or retry. |
 | Stream stops mid-response | Server timeout or network issue. | Wrap the `for await` loop in try/catch and retry. |
 | `event: 'error'` chunks | Graph execution error. | Read `chunk.data` for the error message and check server logs. |

@@ -38,12 +38,12 @@ You'll also need Pydantic (installed with 10xgraph):
 
 ```python
 from pydantic import BaseModel, Field
-from typing import TypedDict  # or use TypedDict for Python 3.8+
+from typing import TypedDict  # alternative to a Pydantic model
 ```
 
 ## Approach 1: Agent with output_schema
 
-Use `output_schema` on a plain `Agent` when you want the LLM's native structured-output feature (OpenAI and Google providers) but don't need validation or repair. The LLM produces `parsed_content` directly.
+Use `output_schema` on a plain `Agent` when you want the LLM's native structured-output feature (OpenAI, Google and Anthropic providers) but don't need validation or repair. The LLM produces `parsed_content` directly.
 
 ### Step 1: Define your schema
 
@@ -82,17 +82,20 @@ agent = Agent(
 ### Step 3: Use it in a graph
 
 ```python
+from tenxgraph import END
 from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import Message
 
 graph = StateGraph()
 graph.add_node("AGENT", agent)
+graph.add_edge("AGENT", END)
 graph.set_entry_point("AGENT")
 
 compiled = graph.compile()
 
 # Invoke
 result = await compiled.ainvoke(
-    {"message": "Review The Matrix (1999)."},
+    {"messages": [Message.text_message("Review The Matrix (1999).")]},
     config={"thread_id": "movie-1"}
 )
 ```
@@ -102,7 +105,7 @@ result = await compiled.ainvoke(
 The LLM's response lands in `parsed_content` when the provider supports structured output:
 
 ```python
-last_message = result["context"][-1]
+last_message = result["messages"][-1]
 
 # OpenAI's gpt-4o-mini sends parsed_content as a Pydantic instance
 if isinstance(last_message.parsed_content, MovieReview):
@@ -136,6 +139,7 @@ class PersonInfo(BaseModel):
 ### Step 2: Create the StructuredOutputAgent
 
 ```python
+from tenxgraph.core.state import Message
 from tenxgraph.prebuilt.agent import StructuredOutputAgent
 
 agent = StructuredOutputAgent(
@@ -156,7 +160,7 @@ compiled = agent.compile()
 
 # Invoke
 result = await compiled.ainvoke(
-    {"message": "Alice is a 30-year-old software engineer."},
+    {"messages": [Message.text_message("Alice is a 30-year-old software engineer.")]},
     config={"thread_id": "person-1"}
 )
 ```
@@ -166,7 +170,7 @@ result = await compiled.ainvoke(
 ```python
 import json
 
-last_message = result["context"][-1]
+last_message = result["messages"][-1]
 
 # StructuredOutputAgent validates against the schema.
 # Prefer parsed_content if available (provider native parse).
@@ -187,10 +191,16 @@ print(f"Occupation: {person.occupation}")
 Tools work transparently: the agent calls tools if the LLM requests them, then validates the final structured output.
 
 ```python
+import json
+
+from pydantic import BaseModel
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import StructuredOutputAgent
+
+
 def get_current_weather(city: str) -> str:
     """Fetch current weather for a city."""
     # Simulated response
-    import json
     return json.dumps({
         "city": city,
         "temp_c": 22.5,
@@ -224,7 +234,7 @@ agent = StructuredOutputAgent(
 
 compiled = agent.compile()
 result = await compiled.ainvoke(
-    {"message": "What's the weather in Paris?"},
+    {"messages": [Message.text_message("What's the weather in Paris?")]},
     config={"thread_id": "weather-1"}
 )
 ```
@@ -265,12 +275,6 @@ agent = StructuredOutputAgent(
 The validation strips optional markdown code fences (`\`\`\`json ... \`\`\``) so responses wrapped in backticks still parse.
 
 ## Common errors and fixes
-
-<aside class="callout callout-warning" role="note"><p class="callout-title">ImportError: output_schema requires Pydantic</p>
-
-Pydantic is installed with 10xgraph. If you see this error, reinstall: `pip install --force-reinstall 10xgraph`.
-
-</aside>
 
 <aside class="callout callout-warning" role="note"><p class="callout-title">Validation fails with "Response is not valid JSON"</p>
 
@@ -320,15 +324,24 @@ else:
 After invoking a `StructuredOutputAgent`:
 
 ```python
+import json
+
 # Check the last message
-last_message = result["context"][-1]
+last_message = result["messages"][-1]
 
 # Verify it's valid
 assert last_message.parsed_content is not None or json.loads(last_message.text())
 
-# Check the attempt count (stored internally)
-attempts = result.get("execution_meta", {}).get("internal_data", {}).get("soa_attempts", 0)
-print(f"Validation succeeded after {attempts + 1} attempt(s)")
+# Check the repair count (stored internally; needs FULL granularity to see the state)
+from tenxgraph.utils import ResponseGranularity
+
+result = await compiled.ainvoke(
+    {"messages": [Message.text_message("Alice is a 30-year-old software engineer.")]},
+    config={"thread_id": "person-2"},
+    response_granularity=ResponseGranularity.FULL,
+)
+repairs = result["state"].execution_meta.internal_data.get("soa_attempts", 0)
+print(f"Repair attempts used: {repairs}")
 ```
 
 For a plain `Agent` with `output_schema`:
@@ -365,7 +378,7 @@ agent = StructuredOutputAgent(
 
 ### Custom context manager
 
-Both approaches support a `context_manager` to trim or summarize long message history:
+`StructuredOutputAgent` accepts a `context_manager` to trim or summarize long message history:
 
 ```python
 from tenxgraph.core.state import MessageContextManager
@@ -373,7 +386,7 @@ from tenxgraph.core.state import MessageContextManager
 agent = StructuredOutputAgent(
     model="gpt-4o-mini",
     output_schema=MySchema,
-    context_manager=MessageContextManager(max_tokens=4000),
+    context_manager=MessageContextManager(max_messages=10),
 )
 ```
 
@@ -381,15 +394,15 @@ See [Use context manager](/docs/guides/use-context-manager) for details.
 
 ### Custom ID generator
 
-Control how thread and run IDs are generated:
+Control how message and run IDs are generated:
 
 ```python
-from tenxgraph.utils.id_generator import SnowflakeIDGenerator
+from tenxgraph.utils import UUIDGenerator
 
 agent = StructuredOutputAgent(
     model="gpt-4o-mini",
     output_schema=MySchema,
-    id_generator=SnowflakeIDGenerator(worker_id=1),
+    id_generator=UUIDGenerator(),
 )
 ```
 

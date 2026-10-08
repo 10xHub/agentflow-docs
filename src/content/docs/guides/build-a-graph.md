@@ -81,7 +81,7 @@ agent = Agent(
 Other key options:
 - `provider`: explicit provider choice (`"google"`, `"openai"`, `"anthropic"`). Usually inferred from the model name.
 - `temperature`, `max_tokens`, `top_p`: model parameters.
-- `output_schema`: Pydantic model for structured output (use `StructuredOutputAgent` for complex schemas).
+- `output_schema`: Pydantic model for structured output.
 
 ## Build and wire the graph
 
@@ -128,13 +128,13 @@ Once the graph is wired, compile it to get a runnable `CompiledGraph`:
 app = graph.compile()
 ```
 
-Compilation validates the graph structure and prepares it for execution. Without a `checkpointer`, the graph uses in-memory state (resets between runs). For conversation memory across invocations, pass a checkpointer:
+Compilation validates the graph structure and prepares it for execution. Without a `checkpointer`, the graph uses an `InMemoryCheckpointer`: threads keep their state while the process runs, and everything is lost on restart. For state that survives restarts, pass a durable checkpointer (the SQLite one needs `pip install "10xgraph[sqlite_checkpoint]"`):
 
 ```python
-from tenxgraph.storage.checkpointer import SQLiteCheckpointer
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
 app = graph.compile(
-    checkpointer=SQLiteCheckpointer(db_path="./db.sqlite"),
+    checkpointer=SqliteCheckpointer(db_path="./db.sqlite"),
 )
 ```
 
@@ -146,12 +146,12 @@ Call `invoke()` to run the graph synchronously:
 
 ```python
 result = app.invoke(
-    input={"messages": [Message.text_message("What is the weather in Paris?")]},
+    {"messages": [Message.text_message("What is the weather in Paris?")]},
     config={"thread_id": "session-1", "user_id": "user-42"},
 )
 
 for msg in result["messages"]:
-    print(f"{msg.role}: {msg.content}")
+    print(f"{msg.role}: {msg.text()}")
 ```
 
 Or use `ainvoke()` for async execution:
@@ -161,11 +161,11 @@ import asyncio
 
 async def main():
     result = await app.ainvoke(
-        input={"messages": [Message.text_message("Calculate 123 * 456")]},
+        {"messages": [Message.text_message("Calculate 123 * 456")]},
         config={"thread_id": "session-2"},
     )
     for msg in result["messages"]:
-        print(f"{msg.role}: {msg.content}")
+        print(f"{msg.role}: {msg.text()}")
 
 asyncio.run(main())
 ```
@@ -176,7 +176,7 @@ The `config` dict controls runtime behavior. Most keys are optional:
 
 | Key | Default | Purpose |
 |---|---|---|
-| `thread_id` | UUID (auto-generated) | Conversation thread ID. Used by the checkpointer to save and load state. |
+| `thread_id` | UUID (auto-generated, with a logged warning) | Conversation thread ID. Used by the checkpointer to save and load state. Pass one explicitly for any run you may resume or stop. |
 | `user_id` | `"anonymous"` | User identifier. Passed to tools and event publishers. |
 | `recursion_limit` | 25 | Max node execution steps. Prevents infinite loops; raises `GraphRecursionError` if exceeded. |
 
@@ -191,14 +191,16 @@ If you enable JWT auth on the API server, two additional keys are injected:
 - `user_id`: authenticated user.
 - `user`: the auth object or claims.
 
-You can add custom keys beyond the reserved ones:
+Extra keys in `config` are kept and are readable by nodes that take `config`:
 
 ```python
 result = app.invoke(
-    input={"messages": [Message.text_message("What is the weather in Paris?")], "data": {"location": "Paris"}},
+    {"messages": [Message.text_message("What is the weather in Paris?")]},
     config={"thread_id": "session-1", "user_id": "user-42", "metadata": {"source": "api"}},
 )
 ```
+
+To set fields on a custom state at invoke time, pass them under a `"state"` key in the input, for example `{"messages": [...], "state": {"priority": "high"}}`. See [use custom state](/docs/guides/use-custom-state).
 
 ## Handle tool errors
 
@@ -221,8 +223,12 @@ When the agent calls `divide(10, 0)`, the error is turned into a tool result and
 The condition function returns the node name directly:
 
 ```python
-def route_to_next(state: AgentState) -> str:
-    priority = state.data.get("priority", "normal")
+class TicketState(AgentState):
+    priority: str = "normal"
+    category: str = "default"
+
+def route_to_next(state: TicketState) -> str:
+    priority = state.priority
     return "urgent_queue" if priority == "high" else "normal_queue"
 
 graph.add_conditional_edges("classifier", route_to_next)
@@ -233,9 +239,8 @@ graph.add_conditional_edges("classifier", route_to_next)
 The condition returns a key, and a map translates it to a node name:
 
 ```python
-def get_category(state: AgentState) -> str:
-    category = state.data.get("category", "default")
-    return category
+def get_category(state: TicketState) -> str:
+    return state.category
 
 category_map = {
     "finance": "finance_processor",
@@ -266,7 +271,7 @@ Here is a working agent that can check weather and do math:
 ```python
 from tenxgraph.core.graph import StateGraph, Agent, ToolNode
 from tenxgraph.core.state import AgentState, Message
-from tenxgraph.utils import START, END
+from tenxgraph.utils import END
 
 def get_weather(city: str) -> str:
     """Get the weather for a city."""
@@ -304,22 +309,15 @@ graph.set_entry_point("MAIN")
 app = graph.compile()
 
 result = app.invoke(
-    input={"messages": [Message.text_message("What is the weather in Tokyo and what is 100 * 50?")]},
+    {"messages": [Message.text_message("What is the weather in Tokyo and what is 100 * 50?")]},
     config={"thread_id": "demo-1", "user_id": "user-1"},
 )
 
 for msg in result["messages"]:
-    print(f"{msg.role}: {msg.content}")
+    print(f"{msg.role}: {msg.text()}")
 ```
 
-Expected output:
-```
-user: What is the weather in Tokyo and what is 100 * 50?
-assistant: I'll check the weather in Tokyo and calculate 100 * 50 for you.
-tool: Weather in Tokyo: 22°C, sunny.
-tool: 5000
-assistant: The weather in Tokyo is 22°C and sunny. The result of 100 * 50 is 5000.
-```
+The output includes the assistant's tool call turn, the tool results (`Weather in Tokyo: 22°C, sunny.` and `5000`) and a final assistant answer. Exact wording depends on the model.
 
 ## Next steps
 

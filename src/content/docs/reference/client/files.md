@@ -9,10 +9,10 @@ label: Files
 updated: "2026-10-08"
 ---
 
-The file methods on `AgentFlowClient` upload binary files to the server, then fetch the file, its metadata or a usable access URL. An upload returns a `file_id` and a `url` that you place in a `MediaRef` inside an `ImageBlock`, `AudioBlock` or `DocumentBlock`. For the task-oriented walkthrough, see [Files and multimodal](/docs/client/files-and-multimodal).
+The file methods on `TenxGraphClient` upload binary files to the server, then fetch the file, its metadata or a usable access URL. An upload returns a `file_id` and a `url` that you place in a `MediaRef` inside an `ImageBlock`, `AudioBlock` or `DocumentBlock`. For the task-oriented walkthrough, see [Files and multimodal](/docs/client/files-and-multimodal).
 
-**Package:** `@10xgraph/client`  
-**Import:** `import { AgentFlowClient } from '@10xgraph/client';`
+**Package:** `10xgraph-client`  
+**Import:** `import { TenxGraphClient } from '10xgraph-client';`
 
 ---
 
@@ -232,14 +232,14 @@ Call `getMultimodalConfig()` to confirm the active storage settings and size lim
 
 ```ts
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   Message,
   ImageBlock,
   TextBlock,
   MediaRef,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 async function askAboutImage(imageFile: File, question: string) {
   // 1. Upload the image
@@ -273,8 +273,8 @@ async function askAboutImage(imageFile: File, question: string) {
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` with `statusCode` `413` | File exceeds `media_max_size_mb`. | Check `getMultimodalConfig()` and reduce file size. |
-| `AgentFlowError` with `statusCode` `415` | The server restricts content types and yours is not allowed. | Upload an allowed type, or ask the operator to adjust `MEDIA_ALLOWED_CONTENT_TYPES`. |
+| `TenxGraphError` with `statusCode` `413` | File exceeds `media_max_size_mb`. | Check `getMultimodalConfig()` and reduce file size. |
+| `TenxGraphError` with `statusCode` `415` | The server restricts content types and yours is not allowed. | Upload an allowed type, or ask the operator to adjust `MEDIA_ALLOWED_CONTENT_TYPES`. |
 | `NotFoundError` (`statusCode` `404`) | `file_id` not found, or not visible to the current user. | Re-upload the file or check the ID. |
 | Signed URL expired | `expires_at` is in the past. | Call `getFileAccessUrl()` to refresh the URL. |
 

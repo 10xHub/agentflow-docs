@@ -9,7 +9,7 @@ label: Memory
 updated: '2026-10-08'
 ---
 
-The memory methods on `AgentFlowClient` store, search, read, update, delete and bulk-forget long-term memories on the server's configured store. Each memory has a type, a category and optional metadata, and you retrieve memories by similarity, time, relevance or a hybrid strategy. For a task-oriented walkthrough, see [Use the memory API](/docs/client/use-memory-api).
+The memory methods on `TenxGraphClient` store, search, read, update, delete and bulk-forget long-term memories on the server's configured store. Each memory has a type, a category and optional metadata, and you retrieve memories by similarity, time, relevance or a hybrid strategy. For a task-oriented walkthrough, see [Use the memory API](/docs/client/use-memory-api).
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
@@ -28,7 +28,7 @@ import {
   MemoryType,
   RetrievalStrategy,
   DistanceMetric,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 ```
 
 ### `MemoryType`
@@ -339,13 +339,13 @@ This example searches memory before each call, passes the hits to the agent as a
 
 ```ts title="memory-agent.ts"
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   Message,
   MemoryType,
   RetrievalStrategy,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 // Before invoking the agent, retrieve relevant past memories
 async function invokeWithMemory(userInput: string) {
@@ -392,7 +392,7 @@ console.log(result.messages);
 
 ## Common errors
 
-Failed requests from every method except `forgetMemories()` throw `AgentFlowError` with a `statusCode`. `forgetMemories()` throws a plain `Error` with the message `Forget memories failed: <status> <statusText>`. See [Client errors](/docs/reference/client/errors) for the full error class.
+Failed requests from every method except `forgetMemories()` throw `TenxGraphError` with a `statusCode`. `forgetMemories()` throws a plain `Error` with the message `Forget memories failed: <status> <statusText>`. See [Client errors](/docs/reference/client/errors) for the full error class.
 
 | Error | Cause | Fix |
 |---|---|---|

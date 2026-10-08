@@ -14,7 +14,7 @@ faq:
     answer: "Yes. Create the client once at module level and import it wherever needed. Sharing a single instance reduces memory overhead and enables consistent request handling."
 ---
 
-The `@10xgraph/client` TypeScript package lets you invoke agents and manage threads from Node.js, browsers, and frameworks like React and Next.js. This guide shows how to install, configure, and authenticate the client for your 10xGraph API server.
+The `10xgraph-client` TypeScript package lets you invoke agents and manage threads from Node.js, browsers, and frameworks like React and Next.js. This guide shows how to install, configure, and authenticate the client for your 10xGraph API server.
 
 ## Prerequisites
 
@@ -27,27 +27,27 @@ The `@10xgraph/client` TypeScript package lets you invoke agents and manage thre
 The client ships as a single ESM module with no dependencies. Install it alongside your existing packages:
 
 ```bash
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
-The package exports a single class, `AgentFlowClient`, plus helpers and types. Verify the installation:
+The package exports a single class, `TenxGraphClient`, plus helpers and types. Verify the installation:
 
 ```ts
-import { AgentFlowClient, bearerAuth } from '@10xgraph/client';
+import { TenxGraphClient, bearerAuth } from '10xgraph-client';
 
 // Ready to create a client
 ```
 
-If you are using an older version of the package from before the rename, the name was `@10xscale/agentflow-client`. Both names work until 2.0; migrate to `@10xgraph/client` when you have time.
+Before the rename the package was published as `@10xscale/agentflow-client`, with classes named `AgentFlowClient`, `AgentFlowError` and so on. `10xgraph-client` keeps those class names as deprecated aliases until 2.0, so existing code keeps working after you change the package name.
 
 ## Create your first client instance
 
 A minimal client needs only the API server URL:
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
 });
 
@@ -67,9 +67,9 @@ If your server requires authentication, configure one of three strategies in the
 The most common strategy for REST APIs. The client sends `Authorization: Bearer <token>` on every request.
 
 ```ts
-import { AgentFlowClient, bearerAuth } from '@10xgraph/client';
+import { TenxGraphClient, bearerAuth } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: bearerAuth(process.env.API_TOKEN!),
 });
@@ -78,7 +78,7 @@ const client = new AgentFlowClient({
 You can also pass the object literal directly if you prefer not to import the helper:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: process.env.API_TOKEN! },
 });
@@ -89,9 +89,9 @@ const client = new AgentFlowClient({
 Encodes a username and password as `Authorization: Basic <base64>`. Useful when the server is behind a corporate gateway or requires digest auth.
 
 ```ts
-import { AgentFlowClient, basicAuth } from '@10xgraph/client';
+import { TenxGraphClient, basicAuth } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: basicAuth('admin', process.env.ADMIN_PASSWORD!),
 });
@@ -108,9 +108,9 @@ auth: { type: 'basic', username: 'admin', password: '...' }
 When the server uses a non-standard header or a proprietary scheme, send a custom header with an optional prefix.
 
 ```ts
-import { AgentFlowClient, headerAuth } from '@10xgraph/client';
+import { TenxGraphClient, headerAuth } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   // Sends: X-API-Key: my-secret-key
   auth: headerAuth('X-API-Key', process.env.API_KEY!),
@@ -139,7 +139,7 @@ If the config includes multiple headers with the same name (case-insensitive), t
 By default, requests wait up to 5 minutes (300,000 milliseconds) for a response. For interactive UIs, lower the timeout to fail fast and provide better feedback:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: bearerAuth(process.env.API_TOKEN!),
   timeout: 60_000,    // 1 minute
@@ -170,14 +170,14 @@ A successful call confirms that:
 
 ```ts
 import {
-  AgentFlowClient,
-  AgentFlowConfig,
+  TenxGraphClient,
+  TenxGraphConfig,
   bearerAuth,
   basicAuth,
   headerAuth,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
-const config: AgentFlowConfig = {
+const config: TenxGraphConfig = {
   baseUrl: 'http://localhost:8000',   // Required. No trailing slash.
 
   // Authentication: pick one, or omit for no auth
@@ -209,7 +209,7 @@ const config: AgentFlowConfig = {
   webSocketImpl: undefined,
 };
 
-const client = new AgentFlowClient(config);
+const client = new TenxGraphClient(config);
 ```
 
 ## WebSocket support on Node 18 and 20
@@ -222,9 +222,9 @@ npm install ws
 
 ```ts
 import WebSocket from 'ws';
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: bearerAuth(process.env.API_TOKEN!),
   webSocketImpl: WebSocket as unknown as typeof globalThis.WebSocket,
@@ -245,7 +245,7 @@ Do not do this:
 
 ```ts
 // DON'T DO THIS
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000',
   auth: process.env.NEXT_PUBLIC_API_TOKEN    // UNSAFE: exposed to browser
     ? { type: 'bearer', token: process.env.NEXT_PUBLIC_API_TOKEN }
@@ -264,9 +264,9 @@ Instead, either:
    ```ts
    // app/api/agent/route.ts (Next.js App Router)
    import { NextRequest, NextResponse } from 'next/server';
-   import { AgentFlowClient, bearerAuth } from '@10xgraph/client';
+   import { TenxGraphClient, bearerAuth } from '10xgraph-client';
 
-   const agentClient = new AgentFlowClient({
+   const agentClient = new TenxGraphClient({
      baseUrl: process.env.AGENT_SERVER_URL!,
      auth: bearerAuth(process.env.AGENT_TOKEN!),
    });
@@ -298,9 +298,9 @@ Create the client once at module level and import it wherever you need it. This 
 
 ```ts
 // lib/agent-client.ts
-import { AgentFlowClient, bearerAuth } from '@10xgraph/client';
+import { TenxGraphClient, bearerAuth } from '10xgraph-client';
 
-export const agentClient = new AgentFlowClient({
+export const agentClient = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: bearerAuth(process.env.API_TOKEN!),
   timeout: 60_000,
@@ -334,8 +334,8 @@ export function ChatWidget() {
 | Symptom | Likely cause | Solution |
 |---|---|---|
 | `TypeError: Failed to fetch` | Server is not running or the address is wrong. | Start the server with `10xgraph api` and verify the `baseUrl` is correct. |
-| `AgentFlowError` with status `401` | Authentication failed (missing, invalid, or expired token). | Check the token in `auth.token` or `authToken`. Verify it matches the server's secret (`JWT_SECRET_KEY` in `.env`). |
-| `AgentFlowError` with status `404` on `/ping` | Trailing slash in `baseUrl` or incorrect path. | Ensure `baseUrl` has no trailing slash. Example: `http://localhost:8000` not `http://localhost:8000/`. |
+| `TenxGraphError` with status `401` | Authentication failed (missing, invalid, or expired token). | Check the token in `auth.token` or `authToken`. Verify it matches the server's secret (`JWT_SECRET_KEY` in `.env`). |
+| `TenxGraphError` with status `404` on `/ping` | Trailing slash in `baseUrl` or incorrect path. | Ensure `baseUrl` has no trailing slash. Example: `http://localhost:8000` not `http://localhost:8000/`. |
 | CORS error in a browser | The server's CORS policy blocks your origin. | On the server, set `ORIGINS` to include your app's origin. Or in the client, set `credentials: 'include'` if the server allows credentials. |
 | `No WebSocket implementation available` | `wsStream()` or `realtime()` called on Node 18/20 without `webSocketImpl`. | Install `ws` and pass it to the client as shown above. |
 

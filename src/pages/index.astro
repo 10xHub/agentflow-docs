@@ -315,9 +315,9 @@ const jsonLd = [
           <li><b>Playground</b><code>10xgraph play</code> starts the server and a React UI to chat with your agent.</li>
         </ul>
       </div>
-      <div class="code"><div class="cap"><span>support-chat.ts</span><span>typescript</span></div><pre tabindex="0"><code><span class="k">import</span> &#123; AgentFlowClient, Message &#125; <span class="k">from</span> <span class="s">'10xgraph-client'</span>;
+      <div class="code"><div class="cap"><span>support-chat.ts</span><span>typescript</span></div><pre tabindex="0"><code><span class="k">import</span> &#123; TenxGraphClient, Message &#125; <span class="k">from</span> <span class="s">'10xgraph-client'</span>;
 
-<span class="k">const</span> client = <span class="k">new</span> AgentFlowClient(&#123;
+<span class="k">const</span> client = <span class="k">new</span> TenxGraphClient(&#123;
   baseUrl: <span class="s">'https://agents.example.com'</span>,
   authToken: userJwt,  <span class="c">// same JWT the API checks</span>
 &#125;);

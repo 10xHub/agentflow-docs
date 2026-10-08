@@ -7,7 +7,7 @@ group: "Memory and reliability"
 section: Concepts
 faq:
   - q: How do I retry a failed node?
-    a: Set retry_config on your Agent. Transient errors (429, 500, 502, 503, 529) and specific storage errors automatically retry with exponential back-off; fatal errors surface immediately.
+    a: Set retry_config on your Agent. LLM calls that fail with a transient error (429, 500, 502, 503, 529, or a connection or timeout error) retry with exponential back-off; other errors surface immediately.
   - q: What causes a GraphRecursionError?
     a: The default recursion limit is 25 steps. Each node execution counts as one step. Increase it when invoking, or redesign your graph to use fewer steps per run.
   - q: What should I do about StaleStateError?
@@ -18,11 +18,11 @@ faq:
 
 Graph execution raises structured exceptions when nodes fail, storage operations conflict, or limits are exceeded. Rather than crash the system, 10xGraph distinguishes retryable errors (which the runtime can recover from automatically) from fatal errors (which are surfaced immediately for the caller to handle).
 
-This allows you to build resilient agents: brief network glitches are invisible, but genuine problems surface quickly with enough context to diagnose and fix them.
+This lets you build resilient agents: brief network glitches are invisible, but genuine problems surface quickly with enough context to diagnose and fix them.
 
 ## Exception taxonomy
 
-All exceptions in the core graph engine inherit from `tenxgraph.core.exceptions.GraphError`, a base class that includes an error code, human-readable message, and structured context dictionary.
+Graph-level exceptions (`GraphError`, `NodeError`, `NodeTimeoutError`, `GraphRecursionError`) live in `tenxgraph.core.exceptions`. Storage exceptions derive from `StorageError`, a separate base. Both bases carry an error code, a human-readable message, and a structured context dictionary.
 
 ### Graph and node errors
 
@@ -33,25 +33,25 @@ All exceptions in the core graph engine inherit from `tenxgraph.core.exceptions.
 
 **NodeError** is raised when a node fails to execute. This includes tool errors, user code exceptions inside a custom node, and LLM call failures that cannot be retried. The exception includes the node name in context so you can see which step failed.
 
-**GraphRecursionError** occurs when the graph exceeds its recursion limit (default 25 steps). This is a safety mechanism to prevent infinite loops. Each node execution, tool call, and routing decision counts as one step.
+**GraphRecursionError** occurs when the graph exceeds its recursion limit (default 25 steps). This is a safety mechanism to prevent infinite loops. Each node execution counts as one step, including a `ToolNode` run.
 
 ### Timeout errors
 
-**NodeTimeoutError** is raised when a node or tool execution exceeds its timeout. Without a bound, a hanging tool (a half-open socket in an MCP server, a custom tool that never returns, a database query with no read timeout) blocks the entire graph forever. The recursion limit never trips because no step completes, and stop signals are only checked between nodes, never within them.
+**NodeTimeoutError** (a subclass of `NodeError`) is raised when a node or tool execution exceeds its timeout. Without a bound, a hanging tool (a half-open socket in an MCP server, a custom tool that never returns, a database query with no read timeout) blocks the entire graph forever. The recursion limit never trips because no step completes, and stop signals are only checked between nodes, never within them.
 
-Timing out the node execution converts that indefinite hang into a reportable error that the execution loop can persist, emit in logs, and recover from through retries or fallback models.
+Timing out the node converts that indefinite hang into a reportable error. Timeouts are on by default; see [Timeouts](#timeouts).
 
 ### Storage and concurrency errors
 
-**StorageError** is the base for persistence layer failures. These include database errors, serialization problems, schema version mismatches, and conflicts.
+**StorageError** is the base for persistence layer failures: database errors, serialization problems, schema version mismatches, and conflicts. It is not a subclass of `GraphError`.
 
-**TransientStorageError** is a retryable storage error: a connection drop, timeout, or transient database unavailability. The runtime automatically retries these. Appears when Redis, Postgres, or other external storage is temporarily unreachable.
+**TransientStorageError** is a retryable storage error: a connection drop, timeout, or transient database unavailability. `PgCheckpointer` retries connection-level failures itself (up to 3 attempts with exponential back-off) and raises this when it still cannot store state.
 
 **SerializationError** indicates that state or messages could not be serialized to or deserialized from the checkpointer. This is usually fatal (your state structure is corrupted or incompatible), so it does not retry.
 
 **SchemaVersionError** occurs when the checkpointer detects a schema version mismatch, usually after a code upgrade changes the state structure. May require migration; the exact recovery depends on your checkpointer.
 
-**StaleStateError** is raised during an optimistic-concurrency check: two graph runs tried to update the same thread simultaneously, and one write succeeded before the other. The losing write is rejected to prevent a lost update. HTTP API returns 409 Conflict. Reload the latest state and retry.
+**StaleStateError** is raised during an optimistic-concurrency check: two graph runs tried to update the same thread simultaneously, and one write succeeded before the other. The losing write is rejected to prevent a lost update. The HTTP API returns 409 Conflict. Reload the latest state and retry. `PgCheckpointer` raises it.
 
 **ResourceNotFoundError** indicates a resource (thread, file, stored message) does not exist. Non-retryable.
 
@@ -59,7 +59,7 @@ Timing out the node execution converts that indefinite hang into a reportable er
 
 **GraphStopRequested** is raised when a stop signal (from the API or client) is received while a node is running. This is control flow, not a failure: the execution loop catches it, marks the run stopped, and returns cleanly. It lets the stop check reach the caller even if a node is mid-execution.
 
-**MetricsError** occurs when metrics emission fails (e.g., OTEL export unavailable). Logged as a warning and swallowed so a metrics failure does not crash your agent. Should not be caught by user code.
+**MetricsError** is the exception type for metrics emission failures (for example, OTEL export unavailable).
 
 **UnsupportedMediaInputError** is raised before the provider call when a model cannot accept the given media type. For example, trying to send an image to a text-only model, or a document to a model that does not support documents. Includes a suggestion to switch models or change input format.
 
@@ -67,44 +67,46 @@ Timing out the node execution converts that indefinite hang into a reportable er
 
 ### Recursion limit
 
-The default recursion limit is 25 steps. Each of the following counts as one step:
-- A node execution (including an Agent node calling an LLM)
-- A tool execution
-- A routing decision
+The default recursion limit is 25 steps. Each node execution counts as one step. An Agent node and a `ToolNode` each count, so one model call plus one round of tool calls is two steps.
 
-This prevents accidental infinite loops. Legitimate multi-turn flows (e.g., a 10-step ReflectAgent or a SwarmAgent with internal delegation) exceed this without tuning. Increase it when invoking:
+This prevents accidental infinite loops. Legitimate multi-turn flows (a ReAct loop with several tool rounds, for example) can exceed it. Increase it per call:
 
 ```python
 result = graph.invoke(
     {"messages": [...]},
-    config={"recursion_limit": 50}
+    config={"thread_id": "t1", "recursion_limit": 50},
 )
 ```
 
-Or if you build your own node that calls `ainvoke` recursively, increase it there too. There is no hard upper limit, but each step requires memory for state snapshots and logs, so excessively high values (10,000+) may cause resource exhaustion.
+When the limit is hit, the run raises `GraphRecursionError`.
 
-### Node timeout
+### Timeouts
 
-Node execution (user code and tool calls) has no timeout by default. Set one in your graph compilation if you have long-running or flaky tools:
+Both timeouts are on by default:
+
+| Config key | Default | Applies to |
+|---|---|---|
+| `node_timeout` | 900 seconds | One node execution |
+| `tool_timeout` | 300 seconds | One tool call |
+
+Override them per run, or disable one with `None` or `0`. A timed-out node raises `NodeTimeoutError`:
 
 ```python
-graph = state_graph.compile(
-    checkpointer=checkpointer,
-    # TimeoutError raised after 300 seconds per node
+result = graph.invoke(
+    {"messages": [...]},
+    config={"thread_id": "t1", "node_timeout": 120, "tool_timeout": 60},
 )
 ```
 
-Individual tools can set their own timeouts if they use libraries that support them (e.g., HTTP clients with read timeouts). Custom tools that call async/await should use `asyncio.timeout()` in Python 3.11+.
+Defaults are in `tenxgraph/utils/constants.py`. Individual tools can also set their own timeouts with libraries that support them (for example, HTTP clients with read timeouts).
 
 ### State and message size
 
-There is no enforced maximum state size, but each state snapshot is persisted to the checkpointer. Storing very large state (gigabytes of uncompressed text) will stress your database. Trim context regularly with `MessageContextManager` or `SummaryContextManager` to keep state size reasonable.
-
-Media files (images, documents) are stored separately, not in the state. Use `MediaRef` to reference them.
+There is no enforced maximum state size, but each state snapshot is persisted to the checkpointer. Storing very large state (gigabytes of uncompressed text) will stress your database. Trim context regularly with `MessageContextManager` or `SummaryContextManager` to keep state size reasonable. See [Context management](/docs/concepts/context-management).
 
 ## Retry and fallback behavior
 
-The `Agent` class (and `ReactAgent`, `RAGAgent`, and other prebuilt agents) accept a `retry_config` parameter to control LLM call retry and fallback logic.
+The `Agent` class accepts `retry_config` and `fallback_models` parameters to control LLM call retry and fallback logic.
 
 ### RetryConfig
 
@@ -130,23 +132,22 @@ agent = Agent(
 )
 ```
 
-Default is `RetryConfig()` (3 retries, 1s initial, 2x backoff). Pass `retry_config=False` to disable retries.
+Retries are on by default with `RetryConfig()` (3 retries, 1s initial delay, 2x backoff). Pass `retry_config=False` to disable them.
 
 ### What gets retried
 
 LLM calls retry on:
 - HTTP status codes 429 (rate limit), 500 (server error), 502/503 (gateway/service unavailable), 529 (provider overloaded)
-- Transient network errors (connection reset, timeout)
-- Transient storage errors (database connection drop, Redis unavailable)
+- Connection-level errors (`ConnectionError`, `TimeoutError`, `OSError`) and exceptions whose class name contains `timeout`, `connection` or `unavailable`
 
 These are temporary; the same request often succeeds on the next attempt.
 
 ### What does not retry
 
-Fatal errors surface immediately:
-- 401/403 (authentication/authorization failure): Fix credentials or permissions, retry will fail again
+Anything outside the retryable set surfaces immediately:
+- 401/403 (authentication/authorization failure): Fix credentials or permissions
 - 404 (model not found): Use a valid model name
-- Serialization/schema errors: State structure is broken, retry will fail again
+- Serialization/schema errors in storage: The state structure is broken
 - User code exceptions in a custom node: Fix the code
 - GraphRecursionError: Design the graph to use fewer steps
 
@@ -157,22 +158,22 @@ If retries are exhausted on the primary model, try fallbacks:
 ```python
 agent = Agent(
     model="openai/gpt-4o",
-    fallback_models=["openai/gpt-4-turbo", "anthropic/claude-opus-5"],
-    retry_config=RetryConfig(max_retries=2)
+    fallback_models=["gpt-4o-mini", ("gemini-2.0-flash", "google")],
+    retry_config=RetryConfig(max_retries=2),
 )
 ```
 
-Fallback occurs after max_retries on the current model. Each fallback gets its own retry budget. This lets you degrade gracefully: use your fast/cheap primary model, but fall back to a more capable model if rate-limited or if the primary is unavailable.
+Fallback occurs after `max_retries` on the current model. Each entry is a model name or a `(model, provider)` tuple. Each fallback gets its own retry budget. This lets you degrade gracefully: use your fast/cheap primary model, but fall back to a more capable model if rate-limited or if the primary is unavailable.
 
 ### Circuit breaker
 
-The optional circuit breaker tracks consecutive failures per (provider, model) pair. After `circuit_breaker_threshold` failures (default 5), the circuit opens and that model is skipped for `circuit_breaker_reset_timeout` (default 30s). This avoids repeatedly hammering a known-dead provider:
+The circuit breaker is off by default. When enabled, it tracks consecutive failures per (provider, model) pair. After `circuit_breaker_threshold` failures (default 5), the circuit opens and that model is skipped for `circuit_breaker_reset_timeout` (default 30s). This avoids repeatedly hammering a known-dead provider:
 
 ```python
 retry = RetryConfig(
     circuit_breaker_enabled=True,
     circuit_breaker_threshold=3,
-    circuit_breaker_reset_timeout=60.0
+    circuit_breaker_reset_timeout=60.0,
 )
 ```
 
@@ -180,56 +181,64 @@ Enable this if you have flaky providers or your quota is exhausted and retries f
 
 ## Error recovery in streams
 
-When you stream a run with `astream()`, errors are emitted as events in the stream. Your client code decides how to handle each type:
+When a run fails while you stream it with `astream()`, the stream first yields a `StreamChunk` with `event=StreamEvent.ERROR` and the failure text in `chunk.data["reason"]`, and then the original exception is raised. Wrap the loop in `try/except` to handle the exception type:
 
 ```python
-async for event in graph.astream({"messages": [...]}):
-    if event_type == "error":
-        error = event["error"]
-        if isinstance(error, StaleStateError):
-            # Reload state and retry
-            new_state = await graph.get_state(thread_id)
-            # Re-invoke with new state
-        elif isinstance(error, TransientStorageError):
-            # Already retried; log and continue if acceptable
-            logger.warning(f"Storage glitch: {error.message}")
-        elif isinstance(error, NodeError):
-            # A node failed; may indicate bad input or a real problem
-            logger.error(f"Node failed: {error.message}")
-            raise  # Fail fast
-        else:
-            raise  # Unknown error; rethrow
+from tenxgraph.core.exceptions import GraphRecursionError, NodeError, StaleStateError
+from tenxgraph.core.state import Message, StreamEvent
+
+try:
+    async for chunk in app.astream(
+        {"messages": [Message.text_message("Hello")]},
+        config={"thread_id": "t1"},
+    ):
+        if chunk.event == StreamEvent.ERROR:
+            print("run failed:", chunk.data["reason"])
+except StaleStateError:
+    # Another run updated this thread. Reload the thread and retry.
+    ...
+except GraphRecursionError:
+    # Raise recursion_limit or simplify the graph.
+    ...
+except NodeError as e:
+    print(e.error_code, e.message)
+    raise
 ```
 
-Errors in the checkpoint/store do not automatically stop the run; they are logged and context is lost. A NodeError or LLM failure stops the run and surfaces the exception.
+On failure, the error is recorded in the state and the state is persisted before the exception propagates.
 
 ## HTTP API error responses
 
-The REST API returns error details in the response body. Common status codes:
+The REST API maps exceptions to status codes. Notable ones:
 
-- **400 Bad Request**: Invalid input shape or configuration
-- **401 Unauthorized**: Missing or invalid authentication
-- **403 Forbidden**: Authenticated, but insufficient permissions (usually via authorization backends)
-- **404 Not Found**: Thread or resource does not exist
-- **409 Conflict**: StaleStateError; reload state and retry
-- **429 Too Many Requests**: Rate limited; backoff and retry
-- **500 Internal Server Error**: Server-side exception; check logs
-- **503 Service Unavailable**: Server overloaded or shutting down; retry later
+- **401 Unauthorized** and **403 Forbidden**: missing or invalid authentication, or insufficient permissions
+- **404 Not Found**: thread or resource does not exist
+- **409 Conflict**: `StaleStateError`; reload state and retry
+- **422 Unprocessable Entity**: request or validation errors, and `SchemaVersionError`
+- **429 Too Many Requests**: rate limited
+- **500 Internal Server Error**: `GraphError`, `NodeError`, `GraphRecursionError`, `StorageError` and other server-side failures; messages are sanitized when `MODE=production`
+- **503 Service Unavailable**: `TransientStorageError`
 
-Example error response:
+Most errors use this body shape:
 
 ```json
 {
   "error": {
-    "error_type": "StaleStateError",
-    "error_code": "STORAGE_CONFLICT_000",
-    "message": "State version mismatch; another execution updated the thread",
-    "context": {
-      "thread_id": "abc123",
-      "expected_version": 5,
-      "current_version": 6
-    }
-  }
+    "code": "NODE_000",
+    "message": "Node failed",
+    "details": []
+  },
+  "metadata": {}
+}
+```
+
+The 409 conflict response has its own shape:
+
+```json
+{
+  "error": "state_conflict",
+  "detail": "This thread was updated by another run while yours was in flight. Reload the thread and retry.",
+  "thread_id": "abc123"
 }
 ```
 
@@ -237,13 +246,13 @@ Example error response:
 
 **Design for transience.** Assume any network-dependent operation (LLM call, database query, tool invocation) may fail once and succeed the next time. Set `retry_config` appropriately for your use case.
 
-**Handle StaleStateError.** If your application has concurrent runs on the same thread, catch `StaleStateError` and reload state before retrying. Or serialize access to threads to avoid the conflict in the first place.
+**Handle StaleStateError.** If your application has concurrent runs on the same thread, catch `StaleStateError` (or handle the 409) and reload state before retrying. Or serialize access to threads to avoid the conflict in the first place.
 
 **Log and monitor.** Errors are logged with structured context; forward logs to your observability stack (Logfire, LangSmith, Datadog) to spot patterns.
 
 **Validate input.** Catch errors early: validate user input before invoking the graph. Invalid input will fail all retries and delay error reporting.
 
-**Test error paths.** Unit test your error handling: mock providers to return 429 or 503, inject `TransientStorageError` to verify backoff, and check that fallback models are tried when the primary fails.
+**Test error paths.** Unit test your error handling: mock providers to return 429 or 503, raise `TransientStorageError` from a fake checkpointer, and check that fallback models are tried when the primary fails.
 
 ## Related pages
 

@@ -15,7 +15,7 @@ updated: "2026-10-08"
 
 **LLM providers.** The library detects your model string and calls the provider SDK. Use `"openai/gpt-4o"`, `"gemini/gemini-2.5-flash"`, or `"claude-opus-5"` to switch providers in one line. Anthropic supports three backends: the direct API, Vertex AI, and Bedrock.
 
-**Backend frameworks.** Serve graphs over the REST API (the `10xgraph api` server), embed them directly in your FastAPI app, or call them from TypeScript with the `@10xgraph/client` SDK. The API server handles auth, rate limiting, and streaming out of the box.
+**Backend frameworks.** Serve graphs over the REST API (the `10xgraph api` server), embed them directly in your FastAPI app, or call them from TypeScript with the `10xgraph-client` SDK. The API server handles auth, rate limiting, and streaming out of the box.
 
 **Storage and memory.** Persist thread state to PostgreSQL with Redis as a hot cache, use SQLite for local development, or keep everything in memory for tests. Long-term memory integrations (Qdrant, Mem0) store facts across sessions for your agents to retrieve.
 

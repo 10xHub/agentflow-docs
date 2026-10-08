@@ -9,7 +9,7 @@ updated: "2026-10-08"
 
 As an agent conversation grows, the message history it sends to the model on each turn grows with it. Without bounds, this inflates token cost, latency, and eventually hits the model's context window. Context managers handle this by keeping the history within limits while preserving what the model needs to continue the conversation.
 
-10xGraph offers two strategies: **trimming** (discard old messages) and **summarizing** (compress old messages with an LLM). Both preserve the full history in the checkpointer, so the agent's memory is durable; the context manager only changes what the model sees.
+10xGraph offers two strategies: **trimming** (discard old messages) and **summarizing** (compress old messages with an LLM). Messages are also written to the checkpointer's message store, but at the end of a run the persisted `state.context` is the trimmed or summarized version.
 
 ## The problem: unbounded history
 
@@ -19,11 +19,11 @@ Every time the model runs, it receives the full `state.context` list of messages
 - Latency increases because the model must process more tokens.
 - Beyond the context window (typically 128k or 200k tokens), the API rejects the request.
 
-The agent still has the full conversation saved in the checkpointer, so it can be resumed or audited. The context manager only trims what the model sees *right now*.
+The context manager bounds `state.context`, which is what the model sees on its next call.
 
 ## Strategy 1: Trimming with MessageContextManager
 
-`MessageContextManager` keeps the **N most recent user messages** and drops the rest. It does not use an LLM call.
+`MessageContextManager` keeps the **N most recent user messages** and drops the rest. It does not use an LLM call. Install a provider extra for the Agent, for example `pip install "10xgraph[google-genai]"`.
 
 ```python
 from tenxgraph.core import Agent, StateGraph
@@ -48,9 +48,9 @@ app = graph.compile()
 ### How trimming works
 
 - Counts only **user-role messages**, not all messages. An exchange (user + assistant + 3 tool calls + 3 tool results) counts as one.
-- **Always preserves the first message**, typically the system prompt, regardless of `max_messages`.
-- Drops old messages from the end, keeping the most recent N user messages.
-- Does not modify the checkpointer; the full thread is still durable.
+- **Always preserves system messages**, regardless of `max_messages`.
+- Drops the oldest non-system messages, keeping everything from the Nth most recent user message onward.
+- Runs before each Agent call and again when a run ends, so the persisted `state.context` is the trimmed list.
 
 If `remove_tool_msgs=True`, also strips assistant messages with tool calls and tool-result messages. This further reduces token cost when tools are verbose.
 
@@ -66,7 +66,7 @@ If `remove_tool_msgs=True`, also strips assistant messages with tool calls and t
 
 ## Strategy 2: Summarizing with SummaryContextManager
 
-`SummaryContextManager` replaces old messages with an LLM-generated summary, keeping the N most recent messages verbatim.
+`SummaryContextManager` replaces old messages with an LLM-generated summary, keeping the N most recent messages verbatim. It needs the extra for the summarizer model's provider (`10xgraph[google-genai]` or `10xgraph[openai]`).
 
 ```python
 from tenxgraph.core import Agent, StateGraph
@@ -95,15 +95,15 @@ app = graph.compile()
 
 Summarization triggers when **either** threshold is exceeded:
 
-- **`max_messages`**: total message count in `state.context` exceeds this value.
-- **`token_budget`**: estimated token count (roughly 4 characters per token) exceeds this value.
+- **`max_messages`**: total message count in `state.context` exceeds this value (default 30; `None` disables it).
+- **`token_budget`**: estimated token count (roughly 4 characters per token) exceeds this value (default `None`, disabled).
 
 Once triggered:
 
-1. The oldest messages are sent to the summarization model (with the summary system prompt).
+1. The oldest non-system messages are sent to the summarization model (with the summary system prompt). System messages are never summarized.
 2. The model produces a concise text capturing facts, decisions, tool results, and context.
 3. This summary replaces the old messages in `state.context_summary`.
-4. The most recent `keep_recent` messages remain verbatim in `state.context`.
+4. The most recent `keep_recent` non-system messages remain verbatim in `state.context`. If the summarization call fails, the context is left unchanged.
 
 `convert_messages` (the function that turns `state` into the model's message input) automatically injects the accumulated summary as an assistant message before the retained context, so the model sees:
 
@@ -168,16 +168,12 @@ Now even if the message history is trimmed to 10 messages, `state.decisions_made
 
 ## Context managers and the checkpointer
 
-Neither context manager modifies the checkpointer. The full message history is always saved:
+The context manager runs on `state` before the Agent calls the model, and again when a run finishes, just before the state is saved. So the saved state is already reduced:
 
-- **Trimming**: Only `state.context` is sliced before sending to the model. The checkpointer saves the full list.
-- **Summarizing**: `state.context_summary` is added; `state.context` is trimmed. The checkpointer saves both.
+- **Trimming**: the saved `state.context` holds only the kept messages.
+- **Summarizing**: the saved state has `state.context_summary` plus the trimmed `state.context`.
 
-This means:
-
-- You can always replay a thread from its beginning (the model's first call will have the full history to re-read).
-- Audit logs and evaluations see the complete conversation.
-- If you later want to re-run or inspect the thread without trimming, you can read the checkpoint directly.
+Messages produced during each run are also written to the checkpointer's message store as they happen, so a per-message record exists apart from the trimmed state. Treat the trimmed state, not the message store, as what the next run starts from.
 
 ## Related pages
 

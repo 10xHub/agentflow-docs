@@ -1,6 +1,6 @@
 ---
 title: Call from your app
-description: "Call your running 10xGraph agent server from a TypeScript app with @10xgraph/client: invoke, stream, keep a thread and send an auth token."
+description: "Call your running 10xGraph agent server from a TypeScript app with 10xgraph-client: invoke, stream, keep a thread and send an auth token."
 group: "Tutorial"
 section: "Get started"
 order: 90
@@ -8,14 +8,14 @@ label: Call from your app
 updated: "2026-10-08"
 faq:
   - q: "Which package do I install to call a 10xGraph server from TypeScript?"
-    a: "Install @10xgraph/client and import AgentFlowClient and Message from it. Until the renamed package is published on npm, the published name is @10xscale/agentflow-client."
+    a: "Install 10xgraph-client and import TenxGraphClient and Message from it. Until 10xgraph-client is published on npm, install @10xscale/agentflow-client, which exports the same client as AgentFlowClient."
   - q: "How does the agent remember earlier messages?"
     a: "Pass the same thread_id in the config option of every invoke or stream call. The server checkpointer stores the conversation under that ID and restores it on the next call."
   - q: "Is the stream Server-Sent Events?"
     a: "No. client.stream() reads newline-delimited JSON (NDJSON) over a normal HTTP response from POST /v1/graph/stream."
 ---
 
-In this step you call the agent server from step 4 with the TypeScript client. You create an `AgentFlowClient`, get a full reply with `invoke()`, read a live reply with `stream()`, keep a conversation on one `thread_id`, and send an auth token. By the end, a Node.js script talks to your Python graph over HTTP.
+In this step you call the agent server from step 4 with the TypeScript client. You create an `TenxGraphClient`, get a full reply with `invoke()`, read a live reply with `stream()`, keep a conversation on one `thread_id`, and send an auth token. By the end, a Node.js script talks to your Python graph over HTTP.
 
 ## Prerequisites
 
@@ -33,10 +33,10 @@ Install the client in any Node.js or browser project. It has no Python dependenc
 
 ```bash
 # Install the 10xGraph TypeScript client
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
-Until the renamed package is published on npm, the published name is `@10xscale/agentflow-client`. Install that instead and change the import path in the examples to match. The class is called `AgentFlowClient` in both.
+Until `10xgraph-client` is published on npm, install `@10xscale/agentflow-client` instead and change the import path in the examples. That package exports the same client under the older name `AgentFlowClient`.
 
 To run TypeScript files directly, install a runner such as `tsx`:
 
@@ -49,10 +49,10 @@ npm install --save-dev tsx
 The client needs only the address of your server. Every other option is optional.
 
 ```ts title="client.ts"
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient } from "10xgraph-client";
 
 // One client per server. Reuse it for every call.
-export const client = new AgentFlowClient({
+export const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
 });
 ```
@@ -72,9 +72,9 @@ See [Create the client](/docs/client/create-client) for the remaining options su
 `client.invoke()` sends your messages to `POST /v1/graph/invoke`, waits for the graph to finish, and returns every message the run produced. Use it when you need the complete answer before you do anything else.
 
 ```ts title="call-agent.ts"
-import { AgentFlowClient, Message } from "@10xgraph/client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function main() {
   // Send one user message on a named thread
@@ -120,9 +120,9 @@ If the graph asks the client to run a tool in your app (a remote tool), `invoke(
 A `thread_id` names a conversation. The server stores the state under that ID through the checkpointer, so a second call with the same ID continues where the first stopped.
 
 ```ts title="multi-turn.ts"
-import { AgentFlowClient, Message } from "@10xgraph/client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 const config = { thread_id: "conversation-with-user-123" };
 
 async function main() {
@@ -145,9 +145,9 @@ The second answer mentions Alex because the server, not your app, holds the hist
 `client.stream()` posts to `POST /v1/graph/stream` and returns an async generator. The server answers with newline-delimited JSON (NDJSON), not Server-Sent Events, and the client yields one chunk per line as it arrives.
 
 ```ts title="stream-agent.ts"
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function main() {
   const stream = client.stream(
@@ -185,9 +185,9 @@ Every chunk has an `event` field that tells you which other fields are set.
 Chunks can also carry `thread_id`, `run_id`, `metadata` and `timestamp`. Handle all four event types with a `switch`:
 
 ```ts title="stream-events.ts"
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function main() {
   const stream = client.stream(
@@ -223,10 +223,10 @@ Most apps only need the `message` event. The `state` and `updates` events help w
 If the server has authentication enabled, pass the token when you create the client. The client then adds `Authorization: Bearer <token>` to every request.
 
 ```ts title="authenticated-client.ts"
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient } from "10xgraph-client";
 
 // Read the token from the environment, never hard-code it
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   authToken: process.env.AGENT_TOKEN,
 });
@@ -235,9 +235,9 @@ const client = new AgentFlowClient({
 To send other headers as well, use the `headers` option. A `headers` entry named `Authorization` takes priority over `authToken`.
 
 ```ts title="custom-headers.ts"
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   headers: { "X-Request-Source": "tutorial" },
 });
@@ -252,7 +252,7 @@ The client turns your call into one HTTP request and parses the response back in
 ```mermaid
 sequenceDiagram
   participant App as Your TypeScript app
-  participant Client as AgentFlowClient
+  participant Client as TenxGraphClient
   participant Server as 10xGraph API server
   participant Graph as Python graph
 
@@ -271,9 +271,9 @@ sequenceDiagram
 Run one script that exercises both calls. If it prints a reply for each, your app is connected.
 
 ```ts title="verify.ts"
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function testInvoke() {
   console.log("Testing invoke...");
@@ -324,7 +324,7 @@ More fixes are in [Client troubleshooting](/docs/troubleshooting/client).
 
 ## What you learned
 
-- `AgentFlowClient` talks to your running server; only `baseUrl` is required.
+- `TenxGraphClient` talks to your running server; only `baseUrl` is required.
 - `client.invoke()` returns the full reply in one call, with `messages` and `meta`.
 - `client.stream()` yields NDJSON chunks; `message`, `updates`, `state` and `error` are the event types.
 - A shared `thread_id` makes the server restore the conversation on every call.

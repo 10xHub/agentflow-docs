@@ -11,11 +11,11 @@ Every API call from the client can fail: the server can reject authentication, r
 
 ## Error hierarchy
 
-All errors inherit from `AgentFlowError`, which gives you structured access to the status code, error code, request ID, and recovery suggestions.
+All errors inherit from `TenxGraphError`, which gives you structured access to the status code, error code, request ID, and recovery suggestions.
 
 ```ts
 import {
-  AgentFlowError,
+  TenxGraphError,
   BadRequestError,
   AuthenticationError,
   PermissionError,
@@ -26,7 +26,7 @@ import {
   NodeError,
   StorageError,
   TransientStorageError,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 ```
 
 | Error Class | HTTP Status | Meaning | Recovery |
@@ -49,9 +49,9 @@ The client automatically instantiates the appropriate error class based on HTTP 
 Wrap `invoke()` or `stream()` in a try-catch block:
 
 ```ts
-import { AgentFlowClient, TransientStorageError } from '@10xgraph/client';
+import { TenxGraphClient, TransientStorageError } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: process.env.AGENTFLOW_TOKEN,
 });
@@ -65,7 +65,7 @@ try {
 } catch (err) {
   if (err instanceof TransientStorageError) {
     console.log('Storage temporarily unavailable. Try again in a moment.');
-  } else if (err instanceof AgentFlowError) {
+  } else if (err instanceof TenxGraphError) {
     console.error(`Request failed: ${err.message}`);
     console.error(`Request ID: ${err.requestId}`);
     console.error(`Status: ${err.statusCode}`);
@@ -78,7 +78,7 @@ try {
 
 ## Using getUserMessage and toJSON
 
-`AgentFlowError` provides two utility methods for displaying and debugging errors.
+`TenxGraphError` provides two utility methods for displaying and debugging errors.
 
 **`getUserMessage()`** returns a user-friendly message that includes a recovery suggestion if one is available:
 
@@ -86,7 +86,7 @@ try {
 try {
   await client.invoke({ /* ... */ });
 } catch (err) {
-  if (err instanceof AgentFlowError) {
+  if (err instanceof TenxGraphError) {
     // Suitable for displaying to an end user
     console.log(err.getUserMessage());
     // Output: "Invoke request failed\n\nSuggestion: Check your graph configuration..."
@@ -97,7 +97,7 @@ try {
 **`toJSON()`** returns a detailed object with all error fields for logging or debugging. Use this when reporting errors to a monitoring system:
 
 ```ts
-if (err instanceof AgentFlowError) {
+if (err instanceof TenxGraphError) {
   console.log(JSON.stringify(err.toJSON(), null, 2));
   // {
   //   "name": "GraphError",
@@ -120,7 +120,7 @@ Some errors are temporary and safe to retry. The client itself does not retry au
 **Transient errors** are those where the problem is temporary and will likely resolve on its own:
 - `TransientStorageError` (503): the checkpointer or memory store is momentarily unavailable
 - `ServerError` with status 502/504: a gateway or upstream service is temporarily down
-- Network timeouts or connection resets (not an `AgentFlowError`)
+- Network timeouts or connection resets (not an `TenxGraphError`)
 
 **Non-transient errors** should not be retried the same way:
 - `AuthenticationError` (401): fix your token before retrying
@@ -205,7 +205,7 @@ try {
   }
 } catch (err) {
   // Network errors or stream parsing errors
-  if (err instanceof AgentFlowError) {
+  if (err instanceof TenxGraphError) {
     console.error('Request failed:', err.message);
   } else {
     console.error('Stream error:', err);
@@ -240,7 +240,7 @@ try {
 Set `debug: true` in the client config to enable detailed logging:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   debug: true, // Logs every request, response, and chunk
 });

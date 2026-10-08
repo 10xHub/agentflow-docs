@@ -9,7 +9,7 @@ label: Graph control
 updated: "2026-10-08"
 ---
 
-Seven methods on `AgentFlowClient` inspect the graph and control its execution. They check server health, retrieve the graph's topology, list available tools, fetch observability data for a run, return the state schema, and stop or repair a thread. All are imported from `@10xgraph/client` and called on a client instance.
+Seven methods on `TenxGraphClient` inspect the graph and control its execution. They check server health, retrieve the graph's topology, list available tools, fetch observability data for a run, return the state schema, and stop or repair a thread. All are imported from `10xgraph-client` and called on a client instance.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -42,10 +42,10 @@ interface PingResponse {
 ```
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
 const baseUrl = 'http://127.0.0.1:8000';
-const client = new AgentFlowClient({ baseUrl });
+const client = new TenxGraphClient({ baseUrl });
 
 // Fail fast at startup if the server is unreachable.
 try {
@@ -367,9 +367,9 @@ The constructor takes a partial object and `Object.assign`s it, so a graph compi
 An interrupt is not an error. The run ends normally and the state comes back paused:
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://127.0.0.1:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://127.0.0.1:8000' });
 
 // Placeholder: replace with your own approval UI.
 async function askUser(reason: string, data?: Record<string, any>): Promise<boolean> {

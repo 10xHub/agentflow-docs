@@ -14,7 +14,7 @@ Vision and document input work identically across `invoke()`, `stream()`, and `w
 
 ## Prerequisites
 
-- A configured `AgentFlowClient`. See [create-client](/docs/client/create-client).
+- A configured `TenxGraphClient`. See [create-client](/docs/client/create-client).
 - The API server running with media storage configured. You can check with `getMultimodalConfig()` before uploading.
 - A model that supports the media type you send (e.g., GPT-4V for images, Gemini for audio).
 
@@ -299,14 +299,14 @@ URL.revokeObjectURL(objUrl);
 
 ```ts
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   Message,
   ImageBlock,
   TextBlock,
   MediaRef,
 } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 async function describeImage(imageFile: File): Promise<string> {
   // 1. Check server config
@@ -360,9 +360,9 @@ The underlying LLM determines which types it can process. Check your model's doc
 | The document's content never reaches the model | `document_handling` is `skip` on the server. | Change the server setting, or send the text yourself in a `TextBlock`. |
 | `extracted_text` is `null` on a PDF | `document_handling` is `pass_raw` or `skip`, or the PDF is scanned images with no text layer. | Use `extract_text` with a text-bearing PDF, or run OCR before uploading. |
 | A rendered preview 403s after a while | The signed URL expired. | Fetch a fresh one with `getFileAccessUrl(file_id)`. |
-| `AgentFlowError` with `statusCode` 413 | The file is larger than `media_max_size_mb`. | Compress it, or raise the limit on the server. |
-| `AgentFlowError` with `statusCode` 415 | Unsupported MIME type for the storage backend. | Use a supported file type (see table above). |
-| `AgentFlowError` with `statusCode` 404 on download | `file_id` not found (deleted or wrong). | Re-upload the file. |
+| `TenxGraphError` with `statusCode` 413 | The file is larger than `media_max_size_mb`. | Compress it, or raise the limit on the server. |
+| `TenxGraphError` with `statusCode` 415 | Unsupported MIME type for the storage backend. | Use a supported file type (see table above). |
+| `TenxGraphError` with `statusCode` 404 on download | `file_id` not found (deleted or wrong). | Re-upload the file. |
 
 ---
 

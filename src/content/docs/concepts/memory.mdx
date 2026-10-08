@@ -27,24 +27,24 @@ PostgreSQL is the source of truth. Redis is expendable: if it crashes or the cac
 
 ## The write path: durable first, then cache
 
-When a graph completes a node and needs to checkpoint state, `PgCheckpointer.aput_checkpoint()` executes two sequential operations:
+When the graph loop checkpoints state, it calls `PgCheckpointer.aput_checkpoint()` and then `aput_state_cache()`, two sequential operations:
 
 ### 1. Durable write to PostgreSQL
 
-State is written in a single database transaction that:
+State and messages are written in a single database transaction that:
 
-1. Acquires a per-thread row lock to serialize writes (preventing lost updates when multiple workers run the same thread concurrently)
-2. Performs an optimistic version check: reads the current version from the `states` table, compares it to the version the run read at the start, and raises `StaleStateError` if another run committed in the meantime
+1. Creates the thread row if absent and locks it (`SELECT ... FOR UPDATE`) to serialize writers, so concurrent workers on the same thread cannot collide. When isolation is active, it also rejects a thread owned by a different user.
+2. Performs an optimistic version check: reads the highest version in the `states` table and, if the run recorded a version when it read the state, raises `StaleStateError` if the two differ because another run committed in the meantime
 3. If the check passes, inserts a new row with `version = current_version + 1` and the serialized state data
 4. Inserts any new messages into the `messages` table
-5. Prunes historical versions older than `state_history_limit` (default 20 rows)
+5. Prunes states older than the `state_history_limit` window (default 20 rows)
 6. Commits the transaction
 
 If PostgreSQL fails before commit, the transaction is rolled back and no state is persisted. The run's thread is left unchanged.
 
 ### 2. Cache refresh to Redis
 
-After PostgreSQL commits, the same state is written to Redis under the key `state_cache:{thread_id}:{user_id}` with the configured TTL. This cache write is atomic via Lua script and includes a version guard: the script compares the incoming version to any existing cached version and only writes if the new version is equal or newer. This prevents a stale run from overwriting a newer cached state with a Lua script atomically.
+After PostgreSQL commits, the graph loop writes the same state to Redis under the key `state_cache:{thread_id}:{user_id}` with the configured TTL. This cache write is atomic via a Lua script with a version guard: the script only writes if the incoming version is equal to or newer than the cached one, so a stale run cannot overwrite a newer cached state.
 
 If the Redis write fails, the failure is logged and ignored. The durable state is safe in PostgreSQL, and the next read will fall back to Postgres and refresh the cache.
 
@@ -54,12 +54,12 @@ The PostgreSQL-first ordering ensures the cache never holds state that is not du
 
 ## The read path: cache-aware with atomic fallback
 
-At the start of a run, `PgCheckpointer.aget_state_cache()` retrieves the thread's latest state:
+At the start of a run, the graph calls `PgCheckpointer.aget_state_cache()` (falling back to `aget_state()`) to retrieve the thread's latest state:
 
 1. **Redis hit**: Read `state_cache:{thread_id}:{user_id}` from Redis. Extract the embedded version number (stored as `__checkpoint_version__` in the cached JSON). Restore it into `config['_checkpoint_version']` so a subsequent write can use it for the version check. Return the deserialized state.
 
 2. **Redis miss or error**: Execute a Postgres read:
-   - Query `SELECT version, state_data FROM states WHERE thread_id = ? ORDER BY version DESC LIMIT 1`
+   - Query `SELECT version, state_data FROM states WHERE thread_id = ? ORDER BY version DESC, state_id DESC LIMIT 1`, scoped to the owning user through the `threads` table when isolation is active
    - Deserialize the state and extract the version
    - Populate `config['_checkpoint_version']` with this version
    - Return the state
@@ -76,10 +76,10 @@ Every call to `aput_checkpoint()` or `aput_state()` performs a compare-and-swap:
 
 1. The run reads a thread's state at the start and records its `version` in `config['_checkpoint_version']`
 2. The run executes its graph
-3. At the end, the write checks if `version` still matches the current row's version in Postgres
+3. At each checkpoint, the write checks if that version still matches the thread's highest version in Postgres
 4. If another run committed a new version in the meantime, the write raises `StaleStateError` instead of updating
 
-The SQL check is enforced via a WHERE clause in the insert's lock condition. If the check fails:
+The check runs inside the transaction, after the thread row is locked and before the insert. If the check fails:
 
 - The transaction is rolled back (no state is persisted)
 - The cached entry is invalidated (dropped from Redis) to prevent the thread from staying stuck on stale data
@@ -109,15 +109,15 @@ Run A succeeds. Runs B and C both fail because they started from v=0 but A alrea
 
 ## History pruning and bounded growth
 
-By default, `PgCheckpointer` keeps 20 state snapshots per thread (`state_history_limit=20`). After each successful write, rows older than this limit are deleted:
+By default, `PgCheckpointer` keeps 20 state snapshots per thread (`state_history_limit=20`). After each successful write, older rows are deleted:
 
 ```python
 # Pseudocode from _write_state_row()
 new_version = current_version + 1
-INSERT INTO states (thread_id, user_id, version, state_data) VALUES (...)
-DELETE FROM states 
-  WHERE thread_id = ? AND user_id = ?
-  AND version < (new_version - state_history_limit)
+INSERT INTO states (thread_id, version, state_data, meta) VALUES (...)
+DELETE FROM states
+  WHERE thread_id = ?
+  AND version <= (new_version - state_history_limit)
 ```
 
 This prevents the `states` table from growing indefinitely. The 20-row window is enough for debugging the recent execution history but not an audit log. If you need to preserve all history, export it before it is pruned, or increase `state_history_limit` (at the cost of more Postgres storage).
@@ -130,19 +130,19 @@ The `PgCheckpointer.asetup()` method creates these tables (in the specified sche
 
 | Table | Purpose |
 |---|---|
-| `threads` | Thread metadata: `thread_id`, `user_id`, `name`, `created_at`, `metadata` |
-| `states` | Versioned state snapshots: `thread_id`, `user_id`, `version` (primary), `state_data` (JSON), `created_at` |
-| `messages` | Message history: `thread_id`, `message_id`, `message_data` (JSON), `created_at` |
-| `tool_executions` | Tool call ledger for replay safety: `thread_id`, `tool_call_id`, `status`, `result` |
-| Schema version table | Tracks migrations |
+| `threads` | Thread metadata: `thread_id`, `thread_name`, `user_id`, `created_at`, `updated_at`, `meta` |
+| `states` | Versioned state snapshots: `thread_id`, `version`, `state_data` (JSONB), `created_at`, `updated_at`, `meta` |
+| `messages` | Message history: message id, `thread_id`, `role`, `content`, `tool_calls`, `tool_call_id`, `reasoning`, token usage and `meta` columns |
+| `tool_executions` | Tool call ledger for replay safety: `thread_id`, `tool_call_id`, `result`, `created_at` |
+| `schema_version` | Tracks migrations |
 
-The `states` table has a unique index on `(thread_id, user_id, version)` to enforce one version per thread. Writes acquire a row lock on the thread's metadata row in `threads` to serialize concurrent writers.
+The `states` table has a unique index on `(thread_id, version)` to enforce one row per version per thread. Writes lock the thread's row in `threads` to serialize concurrent writers.
 
 ## User isolation and scoping
 
-By default, `enforce_user_isolation=True`. Every query to `states` includes a `WHERE user_id = ?` clause scoped to the `user_id` in the config dict. This prevents one user from reading or writing another user's thread, even if they know the `thread_id`.
+By default, `enforce_user_isolation=True`. The `states` and `messages` tables carry no `user_id`; ownership lives on `threads`, so queries are scoped through it (`thread_id IN (SELECT thread_id FROM threads WHERE user_id = ?)`) using the `user_id` in the config dict. This prevents one user from reading or writing another user's thread, even if they know the `thread_id`. When the API server supplies an authorization policy in the config, that policy decides whether isolation applies.
 
-`PgCheckpointer` raises a `ValueError` at construction if `user_id` is missing from the config during a read or write. The API server fills `user_id` from the authenticated request (or sets it to `"anonymous"` if no auth is configured). Turn off isolation only for single-tenant deployments where all threads are logically shared.
+`PgCheckpointer` raises a `ValueError` on a read or write if `user_id` is missing from the config. The API server fills `user_id` from the authenticated request (or sets it to `"anonymous"` if no auth is configured). Turn off isolation only for single-tenant deployments where all threads are logically shared.
 
 ## Cache invalidation on conflict
 
@@ -167,7 +167,7 @@ checkpointer = InMemoryCheckpointer()
 
 ### Single-user: SqliteCheckpointer
 
-For client-side agents (desktop apps, CLIs, embedded systems), use `SqliteCheckpointer`. All layers (cache, durable state, messages) live in a single SQLite file:
+For client-side agents (desktop apps, CLIs, embedded systems), use `SqliteCheckpointer`. Durable state and messages live in a single SQLite file:
 
 ```python
 from tenxgraph.storage.checkpointer import SqliteCheckpointer

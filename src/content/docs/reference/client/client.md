@@ -1,24 +1,24 @@
 ---
-title: "AgentFlowClient"
-seoTitle: "AgentFlowClient reference (TypeScript)"
-description: "Complete reference for the AgentFlowClient class, constructor config, method list, and exports."
+title: "TenxGraphClient"
+seoTitle: "TenxGraphClient reference (TypeScript)"
+description: "Complete reference for the TenxGraphClient class, constructor config, method list, and exports."
 section: Reference
 group: "TypeScript client"
 order: 460
-label: "AgentFlowClient"
+label: "TenxGraphClient"
 updated: "2026-10-08"
 ---
 
-`AgentFlowClient` is the main class of the `@10xgraph/client` package. It wraps the 10xGraph REST and WebSocket endpoints in one typed object, so a TypeScript or JavaScript app can invoke, stream, manage threads, use memory and files, and run client-side tools without writing fetch code.
+`TenxGraphClient` is the main class of the `10xgraph-client` package. It wraps the 10xGraph REST and WebSocket endpoints in one typed object, so a TypeScript or JavaScript app can invoke, stream, manage threads, use memory and files, and run client-side tools without writing fetch code.
 
 The package also exports tool, authentication and error types, plus request and response types for every endpoint. The class lives in `src/client.ts` of the client source.
 
 ## Installation
 
-Install the package with npm or any compatible package manager. The class keeps its code name, `AgentFlowClient`.
+Install the package with npm or any compatible package manager. The class keeps its code name, `TenxGraphClient`.
 
 ```bash
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
 ## Import
@@ -26,24 +26,24 @@ npm install @10xgraph/client
 Every class, function and type on this page is a named export of the package root.
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 ```
 
 ## Constructor
 
-The constructor takes one `AgentFlowConfig` object. Only `baseUrl` is required. All settings are fixed for the life of the instance, so create a new client to change a token or header.
+The constructor takes one `TenxGraphConfig` object. Only `baseUrl` is required. All settings are fixed for the life of the instance, so create a new client to change a token or header.
 
 ```ts
-new AgentFlowClient(config: AgentFlowConfig)
+new TenxGraphClient(config: TenxGraphConfig)
 ```
 
-### `AgentFlowConfig`
+### `TenxGraphConfig`
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `baseUrl` | `string` | Yes | none | Full base URL of your 10xGraph API server, e.g. `http://localhost:8000`. A trailing slash is stripped when building WebSocket URLs, so avoid one. |
 | `authToken` | `string \| null` | No | `undefined` | Convenience shorthand for `Bearer` token auth. Equivalent to `auth: { type: 'bearer', token: '...' }`. If both `authToken` and `auth` are set, `auth` wins for HTTP and WebSocket requests. |
-| `auth` | `AgentFlowAuth \| null` | No | `undefined` | Structured auth configuration. See [Client auth](/docs/reference/client/auth) and the Authentication section below. |
+| `auth` | `TenxGraphAuth \| null` | No | `undefined` | Structured auth configuration. See [Client auth](/docs/reference/client/auth) and the Authentication section below. |
 | `headers` | `HeadersInit` | No | `undefined` | Additional HTTP headers appended to every request. Use this for custom tracing headers or API gateway keys. |
 | `credentials` | `RequestCredentials` | No | `undefined` | The `credentials` option forwarded to the underlying `fetch` call (e.g. `'include'` for cookie-based sessions). |
 | `timeout` | `number` | No | `300000` | Per-request timeout in milliseconds (default 5 minutes). A falsy value such as `0` falls back to the default. Set a lower value in latency-sensitive UIs. |
@@ -61,9 +61,9 @@ new AgentFlowClient(config: AgentFlowConfig)
 This example builds a client with bearer auth and a shorter timeout. Run it in Node 18+ or a browser.
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: process.env.API_TOKEN! },
   timeout: 120_000, // 2 minutes
@@ -75,7 +75,7 @@ console.log((await client.ping()).data); // server pong string
 
 ## Method Overview
 
-`AgentFlowClient` groups its public methods into seven areas. The tables below list each method with its return type; the linked reference pages give the request and response shapes.
+`TenxGraphClient` groups its public methods into seven areas. The tables below list each method with its return type; the linked reference pages give the request and response shapes.
 
 ### Graph control
 
@@ -208,33 +208,33 @@ export interface ToolHandler {
 
 ## Authentication
 
-The client supports bearer, basic and custom-header authentication through the `AgentFlowAuth` union. The package also exports the helpers `bearerAuth(token)`, `basicAuth(username, password)` and `headerAuth(name, value, prefix?)` that build these objects.
+The client supports bearer, basic and custom-header authentication through the `TenxGraphAuth` union. The package also exports the helpers `bearerAuth(token)`, `basicAuth(username, password)` and `headerAuth(name, value, prefix?)` that build these objects.
 
-### AgentFlowAuth types
+### TenxGraphAuth types
 
 ```ts
 // Bearer token
-export interface AgentFlowBearerAuth {
+export interface TenxGraphBearerAuth {
   type: 'bearer';
   token: string;
 }
 
 // HTTP Basic
-export interface AgentFlowBasicAuth {
+export interface TenxGraphBasicAuth {
   type: 'basic';
   username: string;
   password: string;
 }
 
 // Custom header
-export interface AgentFlowHeaderAuth {
+export interface TenxGraphHeaderAuth {
   type: 'header';
   name: string;
   value: string;
   prefix?: string | null;  // sent as `${prefix} ${value}` when set
 }
 
-export type AgentFlowAuth = AgentFlowBearerAuth | AgentFlowBasicAuth | AgentFlowHeaderAuth;
+export type TenxGraphAuth = TenxGraphBearerAuth | TenxGraphBasicAuth | TenxGraphHeaderAuth;
 ```
 
 ### Pass auth in the config
@@ -242,9 +242,9 @@ export type AgentFlowAuth = AgentFlowBearerAuth | AgentFlowBasicAuth | AgentFlow
 Set `auth` in the client config. Bearer and basic set the `Authorization` header; header auth sets the header you name.
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'bearer',
@@ -256,9 +256,9 @@ const client = new AgentFlowClient({
 Or use the shorthand for Bearer tokens:
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: process.env.API_TOKEN!,
 });
@@ -266,9 +266,9 @@ const client = new AgentFlowClient({
 
 ## Error handling
 
-Every method throws an `AgentFlowError` (or a specific subclass) when the server returns a non-2xx response. The error carries structured information for logging and recovery logic.
+Every method throws an `TenxGraphError` (or a specific subclass) when the server returns a non-2xx response. The error carries structured information for logging and recovery logic.
 
-### AgentFlowError properties
+### TenxGraphError properties
 
 | Property | Type | Description |
 |---|---|---|
@@ -294,7 +294,7 @@ Every method throws an `AgentFlowError` (or a specific subclass) when the server
 This example retries once on a transient storage error and logs any other client error. It assumes `client` from above.
 
 ```ts
-import { AgentFlowError, Message, TransientStorageError } from '@10xgraph/client';
+import { TenxGraphError, Message, TransientStorageError } from '10xgraph-client';
 
 const userMessage = Message.text_message('Hello', 'user');
 
@@ -304,7 +304,7 @@ try {
   if (err instanceof TransientStorageError) {
     // Safe to retry: call invoke again, ideally after a short delay
     await client.invoke([userMessage]);
-  } else if (err instanceof AgentFlowError) {
+  } else if (err instanceof TenxGraphError) {
     console.error(err.getUserMessage());
     logger.error(err.toJSON());
   } else {
@@ -317,13 +317,13 @@ For the complete error taxonomy and helper functions, see [Client errors](/docs/
 
 ## Request helpers
 
-The package exports `RequestContext`, `parseErrorResponse` and `createErrorFromResponse` for code that calls the API with `fetch` directly, for example a proxy server. `parseErrorResponse` returns the JSON error body or `null`; `createErrorFromResponse` turns a failed response into a typed `AgentFlowError`.
+The package exports `RequestContext`, `parseErrorResponse` and `createErrorFromResponse` for code that calls the API with `fetch` directly, for example a proxy server. `parseErrorResponse` returns the JSON error body or `null`; `createErrorFromResponse` turns a failed response into a typed `TenxGraphError`.
 
 ```ts
 export interface RequestContext {
   baseUrl: string;
   authToken?: string | null;
-  auth?: AgentFlowAuth | null;
+  auth?: TenxGraphAuth | null;
   headers?: HeadersInit;
   credentials?: RequestCredentials;
   timeout: number;
@@ -337,13 +337,13 @@ export async function createErrorFromResponse(
   fallbackMessage?: string,
   endpoint?: string,
   method?: string
-): Promise<AgentFlowError>;
+): Promise<TenxGraphError>;
 ```
 
 Use `createErrorFromResponse()` to build typed errors from a failed `fetch` response:
 
 ```ts
-import { createErrorFromResponse } from '@10xgraph/client';
+import { createErrorFromResponse } from '10xgraph-client';
 
 const base = 'http://localhost:8000';
 const init: RequestInit = {
@@ -360,7 +360,7 @@ if (!response.ok) {
 
 ## Summary
 
-The `AgentFlowClient` class wraps the 10xGraph REST API and WebSocket endpoints in a single, strongly typed interface. The package also exports `ToolExecutor` and related types for client-side tool execution, `AgentFlowAuth` types for three authentication methods, request/response structures for every endpoint, and error classes with recovery suggestions.
+The `TenxGraphClient` class wraps the 10xGraph REST API and WebSocket endpoints in a single, strongly typed interface. The package also exports `ToolExecutor` and related types for client-side tool execution, `TenxGraphAuth` types for three authentication methods, request/response structures for every endpoint, and error classes with recovery suggestions.
 
 ## Next steps
 

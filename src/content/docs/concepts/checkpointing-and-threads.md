@@ -7,11 +7,11 @@ group: "Memory and reliability"
 updated: "2026-10-08"
 ---
 
-By default every `app.invoke` call is stateless: each call starts with a fresh `AgentState` and sees no memory of prior messages or state. A **checkpointer** solves this by saving state after each node runs and reloading it at the start of the next call for the same **thread**. This enables multi-turn conversations where the agent remembers what happened before.
+A **checkpointer** saves state as the graph runs and reloads it at the start of the next call for the same **thread**. `compile()` creates an `InMemoryCheckpointer` when you pass none, so state persists within one process but is lost on restart. Pass a durable checkpointer for anything that must survive. This enables multi-turn conversations where the agent remembers what happened before.
 
 ## Why checkpointing matters
 
-Agent conversations typically span multiple requests: a user sends a message, the agent responds, the user asks a follow-up, and so on. Without checkpointing, each invoke call has no access to the history. With a checkpointer, the agent can recall prior messages, carry forward context, and maintain coherence across turns. This is essential for any real application.
+Agent conversations typically span multiple requests: a user sends a message, the agent responds, the user asks a follow-up, and so on. Without a checkpointer, each invoke call has no access to the history. With one, the agent can recall prior messages, carry forward context, and maintain coherence across turns. This is essential for any real application.
 
 Checkpointing also enables advanced workflows: pausing a run for human review (see [interrupts](/docs/concepts/interrupts)), replaying a conversation from a checkpoint, or auditing the exact state at each step.
 
@@ -22,11 +22,11 @@ A **thread** is a persistent conversation identified by a unique `thread_id`. Ev
 ```python
 config = {
     "thread_id": "conv-abc123",   # required, identifies the conversation
-    "user_id": "user-42",         # optional, used by PgCheckpointer for row scoping
+    "user_id": "user-42",         # required by PgCheckpointer, scopes thread ownership
 }
 ```
 
-`thread_id` is the primary key for all state, message, and metadata operations. `user_id` is used by `PgCheckpointer` to scope data in a multi-tenant deployment (so one user cannot see another's threads). Each user can have many threads; each thread persists independently until explicitly deleted.
+`thread_id` is the primary key for all state, message, and metadata operations. `user_id` scopes thread ownership in a multi-tenant deployment. `PgCheckpointer` enforces it by default (`enforce_user_isolation=True`), so one user cannot read another's threads; the other checkpointers enforce owner-only access only when the API server's authorization policy asks for it. Each user can have many threads; each thread persists independently until explicitly deleted.
 
 ## How checkpointing works
 
@@ -92,7 +92,7 @@ checkpointer = InMemoryCheckpointer()
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-All data is lost when the process exits. There is no user scoping, all threads are visible regardless of `user_id`.
+All data is lost when the process exits. Owner-only access applies only when the API server's authorization policy requests it.
 
 **Pros:** Zero setup, no external dependencies, fast for development.
 
@@ -116,15 +116,17 @@ Data survives process restarts because it is written to disk. However, SQLite se
 
 **Pros:** Durable, zero external dependencies (just a file), simple to deploy with a Python sidecar.
 
-**Cons:** Single-writer serialization, no user scoping, scales poorly across workers.
+**Cons:** Single-writer serialization, owner-only access only under an authorization policy, scales poorly across workers.
 
 **Best for:** client-side agents (desktop apps with Electron or Tauri), single-user CLI agents, edge deployments where each user has their own process and database.
 
-Call `await checkpointer.arelease()` at shutdown to clean up the connection:
+Install the extra with:
 
-```python
+```bash
 pip install "10xgraph[sqlite_checkpoint]"
 ```
+
+Call `await checkpointer.arelease()` at shutdown to clean up the connection.
 
 ### PgCheckpointer
 
@@ -141,7 +143,7 @@ await checkpointer.asetup()  # Migrate schema on first run
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-On each read, the cache (Redis) is checked first. If missed, PostgreSQL is queried and the result is cached. Writes always go to both layers. The cache TTL (default 24 hours) is configurable.
+On each read, the cache (Redis) is checked first. If missed, PostgreSQL is queried and the result is cached. Writes always go to both layers. The cache TTL (default 24 hours) is configurable with the `cache_ttl` keyword argument, in seconds.
 
 Why two layers? Postgres alone would be too slow for high-frequency reads (e.g., a user repeatedly invoking the same agent over microseconds). Redis caches hot threads, avoiding Postgres round-trips. Cold threads (those not accessed recently) are still available in Postgres.
 
@@ -167,10 +169,10 @@ Choosing the right checkpointer is a scaling decision:
 |---|---|---|---|
 | State survives restart | No | Yes | Yes |
 | Shared across multiple workers | No | No | Yes |
-| Multi-tenant user scoping | No | No (pure `thread_id`) | Yes (via `user_id`) |
+| Multi-tenant user scoping | Only under an API authorization policy | Only under an API authorization policy | Yes (via `user_id`, on by default) |
 | External dependencies | None | None (single file) | PostgreSQL + Redis |
 | Setup required | No | No | Yes (`asetup()`) |
-| Read latency (cache-hit) | μs | ms | μs (Redis) |
+| Read latency (cache-hit) | Fastest (in process) | Local disk | Redis round trip |
 | Write throughput | Single-process | Single-writer | Multi-writer |
 | Best for | Dev, tests | Client-side sidecar | Production multi-user |
 
@@ -191,12 +193,12 @@ When running your graph behind the 10xGraph API server, pass the checkpointer to
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(postgres_dsn="...", redis_url="...")
-await checkpointer.asetup()
+# Create the schema once from an async context: await checkpointer.asetup()
 
 app = state_graph.compile(checkpointer=checkpointer)
 ```
 
-The server will use this checkpointer for all requests. Specify your checkpointer choice in the configuration: see [server/configure](/docs/server/configure) for details.
+The server uses the compiled graph's checkpointer for all requests. See [server/configure](/docs/server/configure) for details.
 
 ## Related concepts
 

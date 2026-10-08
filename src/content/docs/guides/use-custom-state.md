@@ -8,7 +8,7 @@ label: Custom state
 updated: "2026-10-08"
 ---
 
-Every 10xGraph agent runs within an `AgentState` instance that persists data across all nodes in the graph. By default, `AgentState` holds the message conversation history and execution metadata. You extend it by subclassing to add typed, persistent application fields, like user IDs, ticket numbers, sentiment scores, or any domain-specific data your agent needs. The graph automatically threads the state and applies reducer logic when fields are updated.
+Every 10xGraph agent runs within an `AgentState` instance that persists data across all nodes in the graph. By default, `AgentState` holds the message conversation history and execution metadata. You extend it by subclassing to add typed, persistent application fields, like user IDs, ticket numbers, sentiment scores, or any domain-specific data your agent needs. The graph threads the state through every node and saves it with the checkpointer.
 
 ## Why custom state
 
@@ -17,7 +17,7 @@ Custom state fields let you:
 - Use placeholders in system prompts (`"Help user {user_id}"`) interpolated at runtime
 - Persist application context across multiple invocations via checkpointing
 - Structure decision-making (conditional edges read custom fields to route the graph)
-- Pass initial values into the agent without rebuilding the graph
+- Pass initial values into a run without rebuilding the graph
 
 Without custom state, you would store this data outside the graph, losing the automatic persistence and threading benefits of the framework.
 
@@ -27,7 +27,7 @@ Without custom state, you would store this data outside the graph, losing the au
 
 | Field | Type | Description |
 |---|---|---|
-| `context` | `list[Message]` | The conversation history (appended via the `add_messages` reducer; never replaced) |
+| `context` | `list[Message]` | The conversation history (new messages are appended with the `add_messages` reducer and deduplicated by `message_id`) |
 | `context_summary` | `str \| None` | Optional compressed summary of older messages |
 | `execution_meta` | `ExecutionState` | Internal metadata tracking node progress, interrupts, and step counts. Read-only for most use cases. |
 
@@ -72,58 +72,51 @@ initial_state = SupportTicketState(user_id="user-456")
 graph = StateGraph(initial_state)
 ```
 
-Both approaches work. Option A creates a fresh instance for each run; Option B lets you bake in defaults that persist across invocations (when checkpointing).
+Both approaches work. The instance is a prototype: a new thread starts from a deep copy of it, and a thread that already has a saved state loads that state instead. Option B lets you bake in different defaults.
 
 ---
 
 ## Step 3: Read and update custom fields in nodes
 
-Node functions receive the state as their first argument. Read fields directly; return a dict with only the fields you changed:
+Node functions receive the current state (declare a `state` parameter). Change the fields you need on the state object and return it. A node can also return a `str`, a `Message`, a list of messages, or a `Command`; a plain `dict` is not a valid return value. See [use custom nodes](/docs/guides/use-custom-nodes).
 
 ```python
 from tenxgraph.core.state import Message
 
 
-def classify_sentiment(state: SupportTicketState, config: dict, **deps) -> dict:
+def classify_sentiment(state: SupportTicketState, config: dict) -> SupportTicketState:
     """Analyze the last user message and update sentiment."""
     last_user_msg = next(
         (m for m in reversed(state.context) if m.role == "user"), None
     )
     if not last_user_msg:
-        return {}
-    
-    text = str(last_user_msg.content).lower()
+        return state
+
+    text = last_user_msg.text().lower()
     if any(word in text for word in ["angry", "terrible", "worst", "unacceptable"]):
-        new_sentiment = "negative"
-        new_escalation = state.escalation_count + 1
+        state.sentiment = "negative"
+        state.escalation_count += 1
     elif any(word in text for word in ["great", "thanks", "excellent", "happy"]):
-        new_sentiment = "positive"
-        new_escalation = state.escalation_count
+        state.sentiment = "positive"
     else:
-        new_sentiment = "neutral"
-        new_escalation = state.escalation_count
-    
-    return {
-        "sentiment": new_sentiment,
-        "escalation_count": new_escalation,
-    }
+        state.sentiment = "neutral"
+    return state
 
 
-def resolve_ticket(state: SupportTicketState, config: dict, **deps) -> dict:
+def resolve_ticket(state: SupportTicketState, config: dict) -> SupportTicketState:
     """Mark the ticket resolved and append a closing message."""
-    return {
-        "resolved": True,
-        "tags": ["handled", "closed"] if state.ticket_id else [],
-        "context": [
-            Message.text_message(
-                f"Ticket {state.ticket_id} has been resolved. Thank you for using our support.",
-                role="assistant"
-            )
-        ],
-    }
+    state.resolved = True
+    state.tags = ["handled", "closed"] if state.ticket_id else []
+    state.context.append(
+        Message.text_message(
+            f"Ticket {state.ticket_id} has been resolved. Thank you for using our support.",
+            role="assistant",
+        )
+    )
+    return state
 ```
 
-When you return `{"context": [...]}`, the list appends to the existing context via the `add_messages` reducer. When you return `{"sentiment": "positive"}`, only the `sentiment` field updates, you never copy the whole state. This is the core benefit of reducers: controlled, predictable merging.
+When a node returns the state, the runtime keeps the new field values and records any new entries in `state.context` as new messages of the run.
 
 ---
 
@@ -149,35 +142,41 @@ agent = Agent(
 )
 ```
 
-Placeholders in curly braces are filled from the current state. If a field is missing or None, the placeholder is left as-is. Use this to make agent behavior adapt to application context without rebuilding the graph.
+Placeholders in curly braces are filled from the current state with `str.format`. If any placeholder names a field the state does not have, a warning is logged and the whole prompt is sent without interpolation. A field set to `None` renders as `None` (so `ticket_id` above reads `Ticket: None` until it is set). Escape literal braces as `{{` and `}}`.
 
 ---
 
 ## Step 5: Pass initial values at invocation
 
-When you invoke the graph, pass initial field values in the input dict:
+Messages go under `"messages"`. Custom field values go under a `"state"` key:
 
 ```python
+from tenxgraph.utils import ResponseGranularity
+
 result = app.invoke(
     {
-        "context": [Message.text_message("My order hasn't arrived.")],
-        "user_id": "cust-789",
-        "ticket_id": "TKT-2024-001",
-        "sentiment": "negative",
+        "messages": [Message.text_message("My order hasn't arrived.")],
+        "state": {
+            "user_id": "cust-789",
+            "ticket_id": "TKT-2024-001",
+            "sentiment": "negative",
+        },
     },
     config={"thread_id": "support-session-1"},
+    response_granularity=ResponseGranularity.FULL,
 )
+print(result["state"].ticket_id)
 ```
 
-Any keys matching state fields are merged into the state before the graph starts. You can omit fields you do not need to set.
+Only keys that already exist as fields on your state class are applied; `context`, `context_summary` and `execution_meta` are skipped. By default `invoke` returns only `messages` and `token_usage`. Pass `response_granularity=ResponseGranularity.FULL` (from `tenxgraph.utils`) to also get the final `state` object.
 
 ---
 
-## Reducers: controlling field updates
+## Reducers: combining concurrent updates
 
-A reducer is a function that defines how two values merge when a node returns an update. Without reducers, each field update would **replace** the old value. Reducers let you **append**, **deduplicate**, or **summarize** instead.
+A reducer is a function `(left, right) -> merged`, attached to a field with `Annotated`. The runtime uses a field's reducer when parallel tool calls in one `ToolNode` step both change the same field: their changes are combined with the reducer instead of one overwriting the other. Without a reducer the last write wins and a warning is logged. Reducers are not applied to values returned from ordinary function nodes; there you assign the field yourself.
 
-10xGraph provides five reducers in `tenxgraph.core.state`:
+10xGraph provides these in `tenxgraph.core.state`:
 
 ### `add_messages` (append with deduplication)
 
@@ -195,11 +194,11 @@ class PipelineState(AgentState):
     processing_log: Annotated[list[Message], add_messages] = Field(default_factory=list)
 ```
 
-When a node returns `{"processing_log": [msg1, msg2]}`, those messages are appended to the existing list. If a message ID already exists, it is skipped. This prevents the same message from appearing twice.
+When two parallel tool calls each add messages to `processing_log`, both sets are appended. A message whose ID already exists is skipped. The same function is what keeps `context` free of duplicate messages.
 
 ### `replace_messages` (replace entire list)
 
-Replaces the entire message list with a new one. Use this when you want to discard history:
+Replaces the entire message list with the new one. Use this when the latest write should win outright:
 
 ```python
 from typing import Annotated
@@ -211,7 +210,7 @@ class SummarizedState(AgentState):
     summary_messages: Annotated[list[Message], replace_messages] = Field(default_factory=list)
 ```
 
-When a node returns `{"summary_messages": [new_msg]}`, the old list is discarded and replaced.
+When the reducer runs, the old list is discarded and replaced by the new one.
 
 ### `append_items` (append objects with id deduplication)
 
@@ -234,23 +233,24 @@ class ToolState(AgentState):
     tool_results: Annotated[list[ToolResult], append_items] = Field(default_factory=list)
 ```
 
-When a node returns `{"tool_results": [result1, result2]}`, they are appended. If an item with the same `.id` already exists, it is skipped.
+When the reducer runs, new items are appended. An item with an `.id` that already exists is skipped.
 
-### `replace_value` (replace scalar)
+### `replace_value` (replace a value)
 
-Replaces any scalar value. This is the default for fields without an annotation:
+Returns the new value and ignores the old one. Use it to make last-write-wins explicit:
 
 ```python
-class MyState(AgentState):
-    counter: int = 0  # Uses replace_value implicitly
-    status: str = "pending"  # Also uses replace_value
-```
+from tenxgraph.core.state.reducers import replace_value
 
-When a node returns `{"counter": 5}`, the old value (say, `3`) is replaced with `5`.
+
+class MyState(AgentState):
+    status: Annotated[str, replace_value] = "pending"
+    counter: int = 0  # No reducer: last write wins, with a warning on a parallel conflict
+```
 
 ### `remove_tool_messages` (prune completed tool sequences)
 
-Removes completed tool interaction sequences from a message list to keep context lean. A sequence is only removed if it is **complete**:
+Unlike the others, this takes a single list and returns the pruned list, so it is a plain helper, not a field reducer. It removes completed tool interaction sequences to keep context lean. A sequence is only removed if it is **complete**:
 
 1. An assistant message with tool calls
 2. One or more tool result messages
@@ -259,28 +259,27 @@ Removes completed tool interaction sequences from a message list to keep context
 If a sequence is incomplete (tool call made but no final response yet), all messages are kept:
 
 ```python
-from typing import Annotated
 from tenxgraph.core.state.reducers import remove_tool_messages
 
 
-class LeanState(AgentState):
-    # Tool messages are removed after use, keeping only the summary
-    lean_context: Annotated[list[Message], remove_tool_messages] = Field(default_factory=list)
+def prune(state: AgentState, config: dict) -> AgentState:
+    state.context = remove_tool_messages(state.context)
+    return state
 ```
 
-This is useful in long-running agents where you want to prune tool calls and results after they have been incorporated into the model's response, reducing token usage on subsequent calls. Incomplete sequences are preserved to avoid breaking the conversation flow.
+This is useful in long-running agents where you want to drop tool calls and results after the model has used them, reducing token usage on later calls.
 
 ---
 
 ## Complete example
 
-Here is a working example that ties it together:
+Here is a working example that ties it together. Install a provider extra first, for example `pip install "10xgraph[openai]"`, and set `OPENAI_API_KEY`.
 
 ```python
 from pydantic import Field
-from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from tenxgraph.core.graph import StateGraph, Agent
 from tenxgraph.core.state import AgentState, Message
-from tenxgraph.utils.constants import END
+from tenxgraph.utils import END, ResponseGranularity
 
 
 # Define custom state
@@ -292,25 +291,23 @@ class ResearchState(AgentState):
 
 
 # Define a node that processes custom fields
-def extract_findings(state: ResearchState, config: dict, **deps) -> dict:
+def extract_findings(state: ResearchState, config: dict) -> ResearchState:
     """Extract key findings from the last response."""
     if not state.context:
-        return {}
-    
-    last_msg = state.context[-1]
-    text = str(last_msg.content)
-    
+        return state
+
+    text = state.context[-1].text()
+
     # Simplified extraction: split by "Finding:" markers
     findings = [
-        f.strip() 
-        for f in text.split("Finding:")[1:] 
+        f.strip()
+        for f in text.split("Finding:")[1:]
         if f.strip()
     ]
-    
-    return {
-        "findings": findings,
-        "confidence": 0.85 if len(findings) > 2 else 0.5,
-    }
+
+    state.findings = findings
+    state.confidence = 0.85 if len(findings) > 2 else 0.5
+    return state
 
 
 # Build the graph
@@ -324,7 +321,7 @@ agent = Agent(
             "content": (
                 "You are a research assistant. "
                 "Research topic: {research_topic}. "
-                "Your confidence level: {confidence}%. "
+                "Your confidence level: {confidence}. "
                 "List your findings prefixed with 'Finding:'."
             ),
         }
@@ -342,97 +339,78 @@ app = graph.compile()
 # Invoke with initial state values
 result = app.invoke(
     {
-        "context": [Message.text_message("Research the benefits of remote work.")],
-        "research_topic": "Remote work productivity",
+        "messages": [Message.text_message("Research the benefits of remote work.")],
+        "state": {"research_topic": "Remote work productivity"},
     },
     config={"thread_id": "research-session-1"},
+    response_granularity=ResponseGranularity.FULL,
 )
 
-print("Findings:", result["findings"])
-print("Confidence:", result["confidence"])
+final = result["state"]
+print("Findings:", final.findings)
+print("Confidence:", final.confidence)
 ```
 
 ---
 
 ## How to verify it worked
 
-After invoking your graph, check:
+Invoke with `response_granularity=ResponseGranularity.FULL` so the result includes the final state, then check:
 
-1. **State is threaded:** Inspect the returned state to confirm custom fields have the values you expect.
-
-```python
-print(result["user_id"])      # Should match what you passed
-print(result["sentiment"])    # Should reflect updates from nodes
-print(len(result["context"])) # Messages should be accumulated
-```
-
-2. **Reducers merged correctly:** For message lists, confirm messages were appended, not replaced.
+1. **State is threaded:** custom fields hold the values you expect.
 
 ```python
-# Before the run, context has 2 messages
-# After the run, context should have 4+ messages, not just 2
-assert len(result["context"]) > initial_count
+state = result["state"]
+print(state.user_id)      # Should match what you passed
+print(state.sentiment)    # Should reflect updates from nodes
+print(len(state.context)) # Messages should be accumulated
 ```
 
-3. **Checkpointing preserves state:** If using a checkpointer, invoke the graph again with the same `thread_id` and verify your custom fields persist.
+2. **Checkpointing preserves state:** `compile()` uses an in-memory checkpointer by default, so invoking again with the same `thread_id` in the same process continues from the saved state.
 
 ```python
 result2 = app.invoke(
-    {"context": [Message.text_message("Follow-up question.")]},
-    config={"thread_id": "same-thread"},
+    {"messages": [Message.text_message("Follow-up question.")]},
+    config={"thread_id": "support-session-1"},
+    response_granularity=ResponseGranularity.FULL,
 )
-# Custom fields from result1 should still be there
-assert result2["user_id"] == result["user_id"]
+assert result2["state"].user_id == state.user_id
 ```
 
 ---
 
 ## Common errors and fixes
 
-**Error: `AttributeError: 'SupportTicketState' object has no attribute 'my_field'`**
+**Error: `AttributeError` or a Pydantic error mentioning a missing field**
 
-You accessed a field in a node that is not defined in your state class. Add it:
+You accessed or assigned a field that is not defined in your state class. Add it:
 
 ```python
 class SupportTicketState(AgentState):
     my_field: str = ""  # Add the missing field
 ```
 
-**Error: `ValueError: Field 'context' cannot be assigned to; it uses a reducer`**
+**My field in `"state"` was ignored.**
 
-You tried to replace the context field directly instead of appending. Use the right reducer:
+Only keys that already exist on the state class are applied, and `context`, `context_summary` and `execution_meta` are always skipped. Check the spelling, and pass messages under `"messages"`.
 
-```python
-# Wrong
-return {"context": [msg1]}  # Replaces context
+**The system prompt shows raw `{placeholders}`.**
 
-# Right
-return {"context": [msg1]}  # With add_messages reducer, appends
-```
-
-If you truly want to replace context (rare), use a different field with `replace_messages` instead.
-
-**Error: `KeyError: 'user_id'` in system prompt**
-
-A placeholder in your system prompt references a field that is missing or None. Either provide the field at invocation or use a default:
+A placeholder names a field the state does not have, so interpolation was skipped for the whole prompt and a warning was logged. Add the field to your state class with a default:
 
 ```python
-# Make the field optional with a default
 class MyState(AgentState):
     user_id: str = "unknown"
-
-# Or adjust your system prompt to handle missing values
-"content": f"User: {state.get('user_id', 'anonymous')}"
 ```
 
-**My custom state updates do not persist across runs.**
+**My custom state updates do not persist across restarts.**
 
-You are invoking the graph without a checkpointer, or the checkpointer is not configured. Checkpointing is optional but required for persistence:
+The default checkpointer is in memory. Pass a durable one to `compile()`, for example `SqliteCheckpointer` (`pip install "10xgraph[sqlite_checkpoint]"`):
 
 ```python
-from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
-app = graph.compile(checkpointer=InMemoryCheckpointer())
+app = graph.compile(checkpointer=SqliteCheckpointer(db_path="./state.db"))
 ```
 
 ---
@@ -442,6 +420,12 @@ app = graph.compile(checkpointer=InMemoryCheckpointer())
 **Typed reducers for custom types:** If your field is a list of domain objects, use `append_items`:
 
 ```python
+from typing import Annotated
+from pydantic import BaseModel, Field
+from tenxgraph.core.state import AgentState
+from tenxgraph.core.state.reducers import append_items
+
+
 class Item(BaseModel):
     id: str
     name: str
@@ -454,6 +438,8 @@ class MyState(AgentState):
 
 ```python
 from typing import Annotated
+from pydantic import BaseModel, Field
+from tenxgraph.core.state import AgentState, Message
 from tenxgraph.core.state.reducers import add_messages, replace_value, append_items
 
 

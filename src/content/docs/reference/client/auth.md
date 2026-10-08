@@ -9,7 +9,7 @@ label: Auth
 updated: "2026-10-08"
 ---
 
-`AgentFlowClient` authenticates with a bearer token, HTTP Basic credentials or a custom header, set through the `auth` field of `AgentFlowConfig`. The `authToken` field is a shorthand for bearer tokens. This page lists each option, the header it sends, how HTTP and WebSocket requests resolve credentials, and common failures.
+`TenxGraphClient` authenticates with a bearer token, HTTP Basic credentials or a custom header, set through the `auth` field of `TenxGraphConfig`. The `authToken` field is a shorthand for bearer tokens. This page lists each option, the header it sends, how HTTP and WebSocket requests resolve credentials, and common failures.
 
 Source: `src/request.ts` and `src/ws.ts`.
 
@@ -19,29 +19,29 @@ Source: `src/request.ts` and `src/ws.ts`.
 
 ```ts
 import {
-  AgentFlowClient,
-  AgentFlowAuth,
-  AgentFlowBearerAuth,
-  AgentFlowBasicAuth,
-  AgentFlowHeaderAuth,
+  TenxGraphClient,
+  TenxGraphAuth,
+  TenxGraphBearerAuth,
+  TenxGraphBasicAuth,
+  TenxGraphHeaderAuth,
   bearerAuth,
   basicAuth,
   headerAuth,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 ```
 
 ---
 
-## `AgentFlowAuth` union type
+## `TenxGraphAuth` union type
 
 ```ts
-type AgentFlowAuth =
-  | AgentFlowBearerAuth
-  | AgentFlowBasicAuth
-  | AgentFlowHeaderAuth;
+type TenxGraphAuth =
+  | TenxGraphBearerAuth
+  | TenxGraphBasicAuth
+  | TenxGraphHeaderAuth;
 ```
 
-Pass a value of this type to `AgentFlowConfig.auth`. If both `authToken` and `auth` are set, `auth` takes precedence on HTTP requests.
+Pass a value of this type to `TenxGraphConfig.auth`. If both `authToken` and `auth` are set, `auth` takes precedence on HTTP requests.
 
 The package also exports three small factory functions that return these objects:
 
@@ -53,7 +53,7 @@ The package also exports three small factory functions that return these objects
 
 ```ts
 // Equivalent to auth: { type: 'bearer', token: ... }
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: bearerAuth(process.env.API_TOKEN!),
 });
@@ -63,10 +63,10 @@ const client = new AgentFlowClient({
 
 ## Bearer token auth
 
-### `AgentFlowBearerAuth`
+### `TenxGraphBearerAuth`
 
 ```ts
-interface AgentFlowBearerAuth {
+interface TenxGraphBearerAuth {
   type: 'bearer';
   token: string;
 }
@@ -83,7 +83,7 @@ This is the dominant auth method when the server is configured with `"auth": "jw
 #### Example
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'bearer',
@@ -97,7 +97,7 @@ const client = new AgentFlowClient({
 For bearer tokens you can also use the `authToken` convenience field:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: process.env.API_TOKEN,
 });
@@ -109,10 +109,10 @@ Both examples produce the same `Authorization` header. Use `auth: { type: 'beare
 
 ## Basic auth
 
-### `AgentFlowBasicAuth`
+### `TenxGraphBasicAuth`
 
 ```ts
-interface AgentFlowBasicAuth {
+interface TenxGraphBasicAuth {
   type: 'basic';
   username: string;
   password: string;
@@ -130,7 +130,7 @@ The client encodes the credentials as UTF-8 base64, using `Buffer` when it exist
 #### Example
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'basic',
@@ -150,10 +150,10 @@ Basic auth sends credentials with every request. Always use HTTPS in production.
 
 ## Custom header auth
 
-### `AgentFlowHeaderAuth`
+### `TenxGraphHeaderAuth`
 
 ```ts
-interface AgentFlowHeaderAuth {
+interface TenxGraphHeaderAuth {
   type: 'header';
   name: string;     // Header name, e.g. 'X-API-Key'
   value: string;    // Header value
@@ -166,7 +166,7 @@ Sends a custom header with the specified name and value. If `prefix` is set, the
 #### Example: API key header
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'header',
@@ -180,7 +180,7 @@ const client = new AgentFlowClient({
 #### Example: with prefix
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'header',
@@ -199,7 +199,7 @@ const client = new AgentFlowClient({
 When the server is configured with `"auth": null` (no auth / open endpoint), omit `auth` and `authToken` entirely:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   // No auth fields: appropriate for local development or
   // internal services behind a gateway
@@ -213,7 +213,7 @@ const client = new AgentFlowClient({
 All three auth strategies can be combined with `headers` for custom per-request headers such as tracing IDs or gateway credentials:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: process.env.TOKEN! },
   headers: {
@@ -271,7 +271,7 @@ import {
   openWebSocket,
   resolveBearerToken,
   WS_BEARER_SUBPROTOCOL,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
 const context = {
   baseUrl: 'https://api.example.com',
@@ -329,7 +329,7 @@ print(token)
 
 ```ts
 // TypeScript: use the token
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'bearer',
@@ -345,7 +345,7 @@ const client = new AgentFlowClient({
 For browser apps that rely on session cookies (e.g. an API gateway that sets a cookie), configure `credentials`:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'https://api.example.com',
   credentials: 'include',
   // No auth field: the cookie is sent automatically by the browser
@@ -360,8 +360,8 @@ const client = new AgentFlowClient({
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `401` | Missing or invalid token. | Check the `auth` config and the server `JWT_SECRET_KEY` / custom auth handler. |
-| `AgentFlowError` status `403` | Token is valid but lacks permission for the requested operation. | Check the server-side `AuthorizationBackend` configuration. |
+| `TenxGraphError` status `401` | Missing or invalid token. | Check the `auth` config and the server `JWT_SECRET_KEY` / custom auth handler. |
+| `TenxGraphError` status `403` | Token is valid but lacks permission for the requested operation. | Check the server-side `AuthorizationBackend` configuration. |
 | `TypeError: Failed to fetch` | CORS blocked due to missing credentials or wrong origin. | Set `credentials: 'include'` and verify CORS headers on the server. |
 | WebSocket rejected while HTTP works | Non-bearer auth in a browser, or a proxy stripping `Sec-WebSocket-Protocol`. | Use a bearer token, and forward the subprotocol header through the proxy. |
 

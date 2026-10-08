@@ -32,6 +32,8 @@ A visual inspection of the compiled graph catches routing mistakes before they s
 
 Once your graph is compiled, call `generate_graph()` to retrieve its structure as a JSON-compatible dictionary.
 
+Install the provider extra used by the sample: `pip install "10xgraph[google-genai]"`.
+
 ```python
 from tenxgraph import StateGraph, Agent, END
 from tenxgraph.core.state import AgentState
@@ -39,7 +41,7 @@ from tenxgraph.core.state import AgentState
 # Build a simple graph
 graph = StateGraph(AgentState)
 
-agent = Agent(model="gemini/gemini-2.5-flash")
+agent = Agent(model="gemini-2.5-flash", provider="google")
 graph.add_node("agent", agent)
 
 def route_to_end(state):
@@ -59,16 +61,17 @@ print(graph_data)
 
 The returned dictionary contains three sections:
 
-**`nodes`**: A list of every node in the graph. Each node has an `id` (unique identifier) and `name` (the node's label). The name matches what you passed to `add_node()`.
+**`nodes`**: A list of every node in the graph. Each node has an `id` (a random UUID generated on each call) and `name` (the node's label). The name matches what you passed to `add_node()`. The list always includes the built-in `__start__` and `__end__` nodes.
 
-**`edges`**: A list of connections between nodes. Each edge has an `id`, a `source` node name, and a `target` node name. Edges include both explicit edges (from `add_edge()`) and conditional edges (from `add_conditional_edges()`).
+**`edges`**: A list of connections between nodes. Each edge has an `id`, a `source` node name, and a `target` node name. Edges include explicit edges (from `add_edge()`), the `__start__` edge created by `set_entry_point()`, and conditional edges (from `add_conditional_edges()`), which appear as one edge per `path_map` entry. Edges carry no label, so the router condition itself is not visible.
 
 **`info`**: Metadata about the graph, including:
 - `node_count` and `edge_count`: totals
 - `checkpointer` and `checkpointer_type`: persistence configuration
+- `publisher` and `store`: whether each is configured
 - `state_type` and `state_fields`: the state shape
 - `interrupt_before` and `interrupt_after`: human-in-the-loop settings
-- `context_type`, `id_generator`: runtime configuration
+- `context_type`, `id_generator` and `id_type`: runtime configuration
 
 Example output:
 
@@ -77,19 +80,21 @@ Example output:
   "nodes": [
     {"id": "abc-123", "name": "agent"},
     {"id": "def-456", "name": "tool_node"},
-    {"id": "ghi-789", "name": "__end__"}
+    {"id": "ghi-789", "name": "__start__"},
+    {"id": "jkl-012", "name": "__end__"}
   ],
   "edges": [
-    {"id": "edge-1", "source": "agent", "target": "tool_node"},
-    {"id": "edge-2", "source": "tool_node", "target": "__end__"}
+    {"id": "edge-1", "source": "__start__", "target": "agent"},
+    {"id": "edge-2", "source": "agent", "target": "tool_node"},
+    {"id": "edge-3", "source": "tool_node", "target": "__end__"}
   ],
   "info": {
-    "node_count": 3,
-    "edge_count": 2,
+    "node_count": 4,
+    "edge_count": 3,
     "checkpointer": true,
     "checkpointer_type": "PgCheckpointer",
     "state_type": "AgentState",
-    "state_fields": ["messages"]
+    "state_fields": ["context", "context_summary", "execution_meta"]
   }
 }
 ```
@@ -103,15 +108,15 @@ curl http://localhost:8000/v1/graph \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-The response includes the same structure as `generate_graph()` plus an additional `is_realtime` field in `info` that indicates whether the agent uses Anthropic's Realtime API.
+The response wraps the same structure as `generate_graph()` in a `data` envelope, plus an additional `is_realtime` field in `info` that indicates whether the agent is a realtime/live agent (driven over `/v1/graph/live`). The `Authorization` header is only needed when auth is configured.
 
 Example:
 
 ```bash
-curl -s http://localhost:8000/v1/graph | jq '.nodes'
+curl -s http://localhost:8000/v1/graph | jq '.data.nodes'
 ```
 
-Returns:
+Returns a list like:
 
 ```json
 [
@@ -119,6 +124,8 @@ Returns:
   {"id": "def-456", "name": "tool_node"}
 ]
 ```
+
+(plus the `__start__` and `__end__` nodes).
 
 Use this endpoint to inspect live production agents without deploying extra code, or to build admin dashboards that visualize agent topology.
 
@@ -148,8 +155,9 @@ def graph_to_mermaid(graph_data):
 # Usage
 mermaid_code = graph_to_mermaid(graph_data)
 print(mermaid_code)
-# Output:
+# Output (shape):
 # graph TD
+#   __start__ --> agent
 #   agent --> tool_node
 #   tool_node --> __end__
 ```
@@ -158,26 +166,12 @@ Paste the output into a Markdown file or Mermaid editor to visualize it:
 
 ```mermaid
 graph TD
+  __start__ --> agent
   agent --> tool_node
   tool_node --> __end__
 ```
 
-For conditional edges with multiple routes, you can label the arrows:
-
-```python
-def graph_to_mermaid_with_labels(graph_data):
-    """Convert to Mermaid with conditional edge labels."""
-    lines = ["graph TD"]
-    
-    # Note: the current generate_graph() output does not include edge labels.
-    # You can extend this by modifying your graph inspection code.
-    for edge in graph_data["edges"]:
-        source = edge["source"].replace("-", "_")
-        target = edge["target"].replace("-", "_")
-        lines.append(f'  {source} --> {target}')
-    
-    return "\n".join(lines)
-```
+`generate_graph()` does not include edge labels, so conditional routes render as plain arrows.
 
 ### Visualize with a web dashboard
 
@@ -186,9 +180,10 @@ If you prefer interactive exploration, render the nodes and edges in a web UI us
 ```python
 import json
 from tenxgraph import StateGraph, Agent, END
+from tenxgraph.core.state import AgentState
 
 graph = StateGraph(AgentState)
-agent = Agent(model="gemini/gemini-2.5-flash")
+agent = Agent(model="gemini-2.5-flash", provider="google")
 graph.add_node("agent", agent)
 graph.add_conditional_edges("agent", lambda s: "end", {"end": END})
 graph.set_entry_point("agent")
@@ -222,9 +217,9 @@ After building and compiling a graph, use `generate_graph()` to verify:
 
 **Connections are correct**: Verify that each edge in `edges` matches your intended routing logic. Ensure that nodes you expected to be connected are present and in the right order.
 
-**No orphaned nodes**: Ensure every node has at least one incoming edge (except `START`) and at least one outgoing edge (except `END`).
+**No orphaned nodes**: Ensure every node has at least one incoming edge (except `__start__`) and at least one outgoing edge (except `__end__`).
 
-**Conditional edges are resolved**: If you use conditional routing, the `edges` list includes the resolved target nodes. Check that all branches you defined are present.
+**Conditional edges are listed**: If you use conditional routing, the `edges` list includes one edge per `path_map` entry. Check that all branches you defined are present.
 
 Example verification:
 
@@ -232,7 +227,7 @@ Example verification:
 graph_data = compiled.generate_graph()
 
 # Verify expected nodes exist
-expected_nodes = {"agent", "tool_node", "__end__"}
+expected_nodes = {"agent", "tool_node", "__start__", "__end__"}
 actual_nodes = {n["name"] for n in graph_data["nodes"]}
 assert expected_nodes == actual_nodes, f"Missing nodes: {expected_nodes - actual_nodes}"
 
@@ -250,7 +245,7 @@ When your graph has a tool node that runs multiple tools in parallel, the struct
 agent --> tool_node --> agent (loop back for more tools or end)
 ```
 
-Verify that the tool node executes all tools before returning to the agent, by checking that there is one edge from the tool node back to the agent (or to `__end__`).
+Verify that there is an edge from the tool node back to the agent. The tool node runs all requested tool calls from one response before control returns to the agent.
 
 ### Multi-step workflows
 
@@ -277,7 +272,7 @@ Verify that all conditional branches eventually reconverge or reach a terminal s
 If your agent behaves unexpectedly:
 
 1. **Call `generate_graph()`** to see the compiled structure.
-2. **Check the entry point** in the `info` section or by looking for a node with an incoming edge from `__start__`.
+2. **Check the entry point** by looking for the edge whose `source` is `__start__`.
 3. **Trace all paths** from entry to exit to ensure none are orphaned.
 4. **Look for loops** (cycles) where a node feeds back into itself; these should be intentional (e.g., agent calls tools, tools return, agent loops).
 

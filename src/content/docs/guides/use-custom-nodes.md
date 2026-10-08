@@ -24,11 +24,9 @@ For a comparison of when to use custom nodes, Agents, and prebuilt agents, see [
 ```python
 from tenxgraph.core.state import AgentState, Message
 
-def greet(state: AgentState, config: dict) -> dict:
+def greet(state: AgentState, config: dict) -> Message:
     user_id = config.get("user_id", "stranger")
-    return {
-        "messages": [Message.text_message(f"Hello, {user_id}!", role="assistant")],
-    }
+    return Message.text_message(f"Hello, {user_id}!", role="assistant")
 ```
 
 Register and wire it like any other node:
@@ -59,17 +57,14 @@ The runtime inspects the function signature and provides two parameters by name,
 Declare only the ones you need. A node that only reads `config` can omit `state` entirely, and vice versa.
 
 ```python
-def audit_log(config: dict) -> dict:
+def audit_log(config: dict) -> list:
     print(f"thread={config['thread_id']} user={config.get('user_id')}")
-    return {}
+    return []  # no new messages
 ```
 
 ```python
-def summarize(state: AgentState) -> dict:
-    count = len(state.context)
-    return {
-        "messages": [Message.text_message(f"Conversation has {count} messages.", role="assistant")],
-    }
+def summarize(state: AgentState) -> str:
+    return f"Conversation has {len(state.context)} messages."
 ```
 
 ---
@@ -82,9 +77,12 @@ A node function can return any of the following:
 |---|---|
 | `str` | Wrapped in `Message.text_message(content, role="assistant")` and appended to state. |
 | `Message` | Appended to state as-is. |
-| `list[Message \| str]` | Each item is processed individually and appended. |
+| `list[Message \| str]` | Each item is processed individually and appended. An empty list means no output. |
+| `ModelResponseConverter` | Converted to a `Message` and appended (see "Calling an LLM yourself"). |
 | `AgentState` | Replaces the current state; new context entries are extracted and recorded as new messages. |
 | `Command` | Updates state **and** overrides the next node at runtime (see below). |
+
+A plain `dict` is not a valid return value and raises an error. To change state fields, change them on `state` and return it.
 
 ```python
 from tenxgraph.core.state import AgentState, Message
@@ -105,10 +103,12 @@ def node_list(state: AgentState, config: dict) -> list:
     ]
 
 # Return a modified state (custom state fields updated inline)
-def node_state(state: AgentState, config: dict) -> AgentState:
-    updated = state.model_copy(deep=True)
-    updated.metadata["processed"] = True   # requires a custom state with this field
-    return updated
+class FlagState(AgentState):
+    processed: bool = False
+
+def node_state(state: FlagState, config: dict) -> FlagState:
+    state.processed = True
+    return state
 ```
 
 ---
@@ -120,6 +120,7 @@ If your node calls an LLM directly you have three options.
 **Option 1, return a `str`:** simplest; the framework wraps it as an assistant message.
 
 ```python
+# pip install "10xgraph[openai]"
 import openai
 
 async def call_llm(state: AgentState, config: dict) -> str:
@@ -159,7 +160,7 @@ async def call_llm_converter(state: AgentState, config: dict) -> ModelResponseCo
         model="gpt-4o",
         messages=[{"role": "user", "content": state.context[-1].text()}],
     )
-    # Pass the raw response and a converter name: "openai", "openai_responses", or "google"
+    # Pass the raw response and a converter name: "openai", "openai_responses", "google" or "anthropic"
     return ModelResponseConverter(response, converter="openai")
 ```
 
@@ -177,6 +178,7 @@ from tenxgraph.storage.checkpointer import BaseCheckpointer
 from tenxgraph.storage.store import BaseStore
 from tenxgraph.runtime.publisher import BasePublisher
 from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils.injection import fresh
 
 async def persist_result(
     state: AgentState,
@@ -184,29 +186,32 @@ async def persist_result(
     checkpointer: BaseCheckpointer = Inject[BaseCheckpointer],
     store: BaseStore = Inject[BaseStore],
     publisher: BasePublisher = Inject[BasePublisher],
-) -> dict:
-    # checkpointer, store, and publisher are resolved by the container -
-    # you never pass them manually.
-    await store.astore(
-        config,
-        content=f"Thread {config['thread_id']} has {len(state.context)} messages.",
-        category="results",
-    )
-    return {}
+) -> list:
+    # Resolve each Inject default on every call. An unbound service becomes None.
+    store = fresh(store)
+    if store is not None:
+        await store.astore(
+            config,
+            content=f"Thread {config['thread_id']} has {len(state.context)} messages.",
+            category="results",
+        )
+    return []
 ```
 
-### All injectable framework services
+### Injectable framework services
 
-| Parameter name | Type | Provided by |
-|---|---|---|
-| `checkpointer` | `BaseCheckpointer` | `Inject[BaseCheckpointer]` |
-| `store` | `BaseStore` | `Inject[BaseStore]` |
-| `publisher` | `BasePublisher` | `Inject[BasePublisher]` |
-| `context_manager` | `BaseContextManager` | `Inject[BaseContextManager]` |
-| `task_manager` | `BackgroundTaskManager` | `Inject[BackgroundTaskManager]` |
-| `generated_id` | `str` | `Inject[...]` or `container.try_get("generated_id")` |
+Services are injected by type through the `Inject[T]` default, not by parameter name. The graph binds these types:
 
-The framework registers all of these automatically when `compile()` is called. If a service was not configured (e.g. no store passed to `compile()`), the injected value is `None`, guard accordingly.
+| Type | Notes |
+|---|---|
+| `BaseCheckpointer` | Always bound; defaults to `InMemoryCheckpointer`. |
+| `BaseStore` | `None` unless you pass `store=` to `compile()`. |
+| `BasePublisher` | `None` unless you pass `publisher=` to `StateGraph`. |
+| `BaseContextManager` | `None` unless you pass `context_manager=` to `StateGraph`. |
+| `BackgroundTaskManager` | Always bound. |
+| `BaseIDGenerator` | The graph's ID generator. |
+
+The framework binds these when the graph is built and compiled. A service that was not configured resolves to `None`, so guard for it. Wrap each injected parameter in `fresh()` (from `tenxgraph.utils.injection`) so it is resolved from the active container on every call. Without it, an `Inject[...]` default keeps the first object it resolved for the life of the process.
 
 For your own services, bind them first:
 
@@ -219,9 +224,9 @@ class Analytics:
 
 InjectQ.get_instance().bind_instance(Analytics, Analytics())
 
-def track(state: AgentState, config: dict, analytics: Analytics = Inject[Analytics]) -> dict:
+def track(state: AgentState, config: dict, analytics: Analytics = Inject[Analytics]) -> list:
     analytics.record("node_visited", {"thread": config["thread_id"]})
-    return {}
+    return []
 ```
 
 See [use-dependency-injection.md](/docs/guides/use-dependency-injection) for the full DI reference.
@@ -230,30 +235,38 @@ See [use-dependency-injection.md](/docs/guides/use-dependency-injection) for the
 
 ## Async nodes
 
-Async functions work identically. The runtime awaits them automatically.
+Async functions work identically. The runtime awaits them automatically. Plain `def` nodes run in a worker thread, so they do not block the event loop.
 
 ```python
-import asyncio
+from injectq import Inject
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.store import BaseStore
+from tenxgraph.utils.injection import fresh
+
+
+class ProfileState(AgentState):
+    profile: str = ""
+
 
 async def fetch_context(
-    state: AgentState,
+    state: ProfileState,
     config: dict,
     store: BaseStore = Inject[BaseStore],
-) -> dict:
-    data = await store.aget(
-        namespace=("context", config["user_id"]),
-        key="profile",
-    )
-    if data:
-        return {"state": {**state.model_dump(), "profile": data.value}}
-    return {}
+) -> ProfileState:
+    store = fresh(store)
+    if store is None:
+        return state
+    hits = await store.asearch(config, query="user profile", category="profile", limit=1)
+    if hits:
+        state.profile = hits[0].content
+    return state
 ```
 
 ---
 
 ## Dynamic routing with Command
 
-Return `Command` when a node must both update state and choose the next node at runtime:
+Return `Command` when a node must both update state and choose the next node at runtime. `update` accepts a `str`, `Message`, list of messages, or `AgentState`; `goto` is a node name or `END`:
 
 ```python
 from tenxgraph.utils import Command, END
@@ -262,7 +275,7 @@ def router(state: AgentState, config: dict) -> Command:
     last = state.context[-1].text() if state.context else ""
 
     if "urgent" in last.lower():
-        return Command(update={"priority": "high"}, goto="ESCALATE")
+        return Command(update="Escalating to a human.", goto="ESCALATE")
 
     return Command(goto=END)
 ```
@@ -276,49 +289,55 @@ Use `Command` for exceptional branching. For normal routing, prefer `add_conditi
 ```python
 # Both are valid.
 
-def sync_node(state: AgentState, config: dict) -> dict:
-    return {"messages": [Message.text_message("sync result", role="assistant")]}
+def sync_node(state: AgentState, config: dict) -> str:
+    return "sync result"
 
-async def async_node(state: AgentState, config: dict) -> dict:
+async def async_node(state: AgentState, config: dict) -> str:
     await asyncio.sleep(0)   # any async work here
-    return {"messages": [Message.text_message("async result", role="assistant")]}
+    return "async result"
 ```
 
 ---
 
 ## Complete example
 
+Install `pip install "10xgraph[openai]"` and set `OPENAI_API_KEY`. Without a store passed to `compile()`, the profile lookup is skipped.
+
 ```python
 import asyncio
-from injectq import Inject, InjectQ
-from tenxgraph.core.graph import StateGraph, Agent, ToolNode
+from injectq import Inject
+from tenxgraph.core.graph import StateGraph, Agent
 from tenxgraph.core.state import AgentState, Message
 from tenxgraph.storage.store import BaseStore
 from tenxgraph.utils import END
+from tenxgraph.utils.injection import fresh
+
+class ProfileState(AgentState):
+    profile: str = ""
+
 
 # --- Custom node: runs before the agent, enriches state ---
 async def load_user_profile(
-    state: AgentState,
+    state: ProfileState,
     config: dict,
     store: BaseStore = Inject[BaseStore],
-) -> dict:
+) -> ProfileState:
+    store = fresh(store)
     if store is None:
-        return {}
-    profile = await store.aget(
-        namespace=("profiles", config.get("user_id", "anon")),
-        key="data",
-    )
-    if profile:
-        # Merge profile into custom state field (requires a custom state with `profile` field)
-        return {"profile": profile.value}
-    return {}
+        return state
+    hits = await store.asearch(config, query="user profile", category="profile", limit=1)
+    if hits:
+        state.profile = hits[0].content
+    return state
+
 
 # --- Custom node: runs after the agent, logs the result ---
-def log_response(state: AgentState, config: dict) -> dict:
+def log_response(state: ProfileState, config: dict) -> list:
     last = state.context[-1] if state.context else None
     if last:
         print(f"[{config.get('thread_id')}] assistant: {last.text()}")
-    return {}
+    return []
+
 
 # --- Standard agent node ---
 agent = Agent(
@@ -326,7 +345,7 @@ agent = Agent(
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
 )
 
-graph = StateGraph()
+graph = StateGraph(ProfileState)
 graph.add_node("LOAD", load_user_profile)
 graph.add_node("MAIN", agent)
 graph.add_node("LOG", log_response)
@@ -342,7 +361,7 @@ result = app.invoke(
     {"messages": [Message.text_message("Hello!")]},
     config={"thread_id": "demo", "user_id": "user-42"},
 )
-print(result["messages"][-1].content)
+print(result["messages"][-1].text())
 ```
 
 ---
@@ -353,7 +372,7 @@ print(result["messages"][-1].content)
 - The runtime auto-injects `state` and `config` by parameter name.
 - Framework services (checkpointer, store, publisher, etc.) are requested via `Inject[T]` defaults.
 - Your own services are registered with `InjectQ.get_instance().bind_instance(...)` and injected the same way.
-- Return a `str`, `Message`, `list`, `AgentState`, or `Command`.
+- Return a `str`, `Message`, `list`, `AgentState`, or `Command`. Update state fields by changing `state` and returning it.
 
 ---
 

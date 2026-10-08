@@ -1,7 +1,7 @@
 ---
 title: "invoke()"
 seoTitle: "invoke() in the TypeScript client"
-description: "Reference for AgentFlowClient.invoke(): send messages to the agent graph, run remote tools automatically, and get the final result."
+description: "Reference for TenxGraphClient.invoke(): send messages to the agent graph, run remote tools automatically, and get the final result."
 section: Reference
 group: "TypeScript client"
 order: 490
@@ -22,10 +22,10 @@ faq:
 
 ## Signature
 
-`invoke()` takes an array of `Message` objects and an optional options object, and returns a promise of `InvokeResult`. It is a method of `AgentFlowClient`, so create a client first (see [Client](/docs/reference/client/client)).
+`invoke()` takes an array of `Message` objects and an optional options object, and returns a promise of `InvokeResult`. It is a method of `TenxGraphClient`, so create a client first (see [Client](/docs/reference/client/client)).
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
 // client.invoke(messages, options?) => Promise<InvokeResult>
 invoke(
@@ -49,7 +49,7 @@ The first parameter carries the conversation input and the second tunes the run.
 `messages` is an array of `Message` objects. The last one is normally the user's input, and you can add a `system` message before it. Each message is serialised before sending. If `message_id` is `null` or `undefined`, the payload uses `"0"` and the server assigns a real id.
 
 ```ts
-import { Message } from '@10xgraph/client';
+import { Message } from '10xgraph-client';
 
 // A system message sets the persona, the user message is the input
 const systemMsg = Message.text_message('You are a concise assistant.', 'system');
@@ -109,7 +109,7 @@ const followUp = await client.invoke([Message.text_message('Tell me more')], {
 | `'partial'` | Messages, context and summary | When you need context or the summary but not the full state. |
 | `'low'` | Messages only | Chat UIs that only render messages. Smallest payload. |
 
-The client sends `'full'` when you omit the option. The server's own default is `low`, but a call through `AgentFlowClient` never relies on it.
+The client sends `'full'` when you omit the option. The server's own default is `low`, but a call through `TenxGraphClient` never relies on it.
 
 ## Progress callback
 
@@ -146,7 +146,7 @@ const result = await client.invoke([Message.text_message('Weather in Paris?')], 
 
 ## Remote tool call loop
 
-The client resolves remote tool calls for you. When a response contains a `remote_tool_call` content block and a `ToolExecutor` is available (it is, on every `AgentFlowClient`), the client runs the matching handler and sends the results back.
+The client resolves remote tool calls for you. When a response contains a `remote_tool_call` content block and a `ToolExecutor` is available (it is, on every `TenxGraphClient`), the client runs the matching handler and sends the results back.
 
 1. The client posts your messages to `/v1/graph/invoke`.
 2. If any response message holds a `remote_tool_call` block, the client passes those messages to its tool executor, which calls the handlers you registered with `client.registerToolHandler()`.
@@ -178,9 +178,9 @@ The examples assume a server running at `http://localhost:8000`.
 This call sends one user message and prints the first content block of the first returned message.
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 const result = await client.invoke([
   Message.text_message('What is the capital of Japan?'),
@@ -196,9 +196,9 @@ console.log(result.messages[0].content[0]);
 Reusing one `thread_id` makes the server load the saved state, so the agent remembers earlier turns. This needs a checkpointer on the server.
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const THREAD_ID = 'user-123-session-456';
 
 async function chat(userInput: string): Promise<string> {
@@ -230,7 +230,7 @@ const result = await client.invoke([Message.text_message('Continue where we left
 
 ## Common errors
 
-A non-2xx response throws a subclass of `AgentFlowError`, chosen by status code. See [Errors](/docs/reference/client/errors) for the full list and the fields on each error.
+A non-2xx response throws a subclass of `TenxGraphError`, chosen by status code. See [Errors](/docs/reference/client/errors) for the full list and the fields on each error.
 
 | Error | Cause | Fix |
 |---|---|---|

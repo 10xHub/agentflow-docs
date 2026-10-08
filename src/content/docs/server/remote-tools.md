@@ -112,12 +112,12 @@ This flow is automatic; you do not write any plumbing code. The framework handle
 
 The client must register a handler for every remote tool you define on the server. This is done at request time, before streaming or invoking.
 
-For the TypeScript client (using the `@10xgraph/client` package):
+For the TypeScript client (using the `10xgraph-client` package):
 
 ```typescript
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
 });
 

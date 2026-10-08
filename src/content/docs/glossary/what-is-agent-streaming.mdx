@@ -77,12 +77,12 @@ The response uses the `text/event-stream` content type, but the body is one JSON
 
 ## Consuming the stream from TypeScript
 
-The `@10xgraph/client` npm package parses the stream for you:
+The `10xgraph-client` npm package parses the stream for you:
 
 ```typescript
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://localhost:8000" });
 
 for await (const chunk of client.stream(
   [Message.text_message("Explain neural networks")],
@@ -100,9 +100,9 @@ The client package exposes a single entry point and ships no React bindings, so 
 
 ```tsx
 import { useCallback, useState } from "react";
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://localhost:8000" });
 
 function Chat() {
   const [text, setText] = useState("");

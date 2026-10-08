@@ -11,9 +11,9 @@ faq:
   - q: Can I use OpenAI or Anthropic instead of Google?
     a: Yes. Change the model string and the provider argument, and install the matching extra. The graph, the tools and the API server stay the same.
   - q: Which Node.js version does the TypeScript client need?
-    a: Node.js 18 or newer. Install the client with npm and point AgentFlowClient at the baseUrl of your running 10xgraph api server.
+    a: Node.js 18 or newer. Install the client with npm and point TenxGraphClient at the baseUrl of your running 10xgraph api server.
   - q: How do I authenticate the TypeScript client?
-    a: Pass an auth option to the AgentFlowClient constructor, for example bearerAuth("your-token"). The client also exports basicAuth(username, password) and headerAuth(name, value).
+    a: Pass an auth option to the TenxGraphClient constructor, for example bearerAuth("your-token"). The client also exports basicAuth(username, password) and headerAuth(name, value).
   - q: Why does the second curl call remember the first one?
     a: Both calls send the same thread_id, and the compiled graph has a checkpointer. The checkpointer stores the conversation per thread, so the next call on that thread continues it.
 ---
@@ -287,18 +287,18 @@ You will create two Python files: one that defines the agent, and one that runs 
 
 The 10xGraph client for TypeScript wraps the HTTP API with types and helper methods. It handles graph execution, thread management, long-term memory, and file uploads. It requires Node.js 18 or newer.
 
-Install the client. If the `@10xgraph/client` name is not published yet, [Installation](/docs/get-started/installation) lists the current npm name.
+Install the client. If the `10xgraph-client` name is not published yet, [Installation](/docs/get-started/installation) lists the current npm name.
 
 ```bash
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
 Create a file named `client.ts`:
 
 ```typescript title="client.ts"
-import { AgentFlowClient, Message } from "@10xgraph/client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
 });
 
@@ -331,9 +331,9 @@ The client wraps the HTTP request, parses the response, and returns a typed obje
 To see the agent reasoning in real time, use `stream()` instead of `invoke()`. It returns an async iterable of stream events:
 
 ```typescript title="stream.ts"
-import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType } from "10xgraph-client";
 
-const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const client = new TenxGraphClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function main() {
   const stream = client.stream(
@@ -357,9 +357,9 @@ main();
 If your API server has authentication enabled, pass `auth` to the client constructor:
 
 ```typescript
-import { AgentFlowClient, bearerAuth } from "@10xgraph/client";
+import { TenxGraphClient, bearerAuth } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   auth: bearerAuth("your-api-token"),
 });

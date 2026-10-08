@@ -9,9 +9,9 @@ label: "Error handling"
 updated: "2026-10-08"
 ---
 
-When the server returns a non-2xx response, `AgentFlowClient` throws an `AgentFlowError` or one of its 14 subclasses. The class is chosen from the response's error code first, then from the HTTP status. Network failures and client timeouts are not API errors: they throw a plain `Error`.
+When the server returns a non-2xx response, `TenxGraphClient` throws an `TenxGraphError` or one of its 14 subclasses. The class is chosen from the response's error code first, then from the HTTP status. Network failures and client timeouts are not API errors: they throw a plain `Error`.
 
-**Import:** `import { AgentFlowError } from '@10xgraph/client';`
+**Import:** `import { TenxGraphError } from '10xgraph-client';`
 
 For the practical guide (retries, stream errors), see [Handle errors](/docs/client/error-handling). For the codes the server can return, see [Error codes](/docs/reference/error-codes).
 
@@ -31,7 +31,7 @@ The client reads the JSON error body, then matches the error `code` by prefix, t
 | 8 | Code starts with `SERIALIZATION` | `SerializationError` |
 | 9 | Status 400, 401, 403, 404, 422 | `BadRequestError`, `AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError` |
 | 10 | Status 500, 502, 503, 504 | `ServerError` |
-| 11 | Any other status | `AgentFlowError` with code `UNKNOWN_ERROR` (unless the body gave one) |
+| 11 | Any other status | `TenxGraphError` with code `UNKNOWN_ERROR` (unless the body gave one) |
 
 If the body is not JSON or cannot be parsed, the same status mapping applies with `requestId` set to `'unknown'`.
 
@@ -41,9 +41,9 @@ If the body is not JSON or cannot be parsed, the same status mapping applies wit
 
 </aside>
 
-## AgentFlowError (base class)
+## TenxGraphError (base class)
 
-`AgentFlowError` extends the built-in `Error`; every other class on this page extends it. Check it last in an `instanceof` chain, after the specific subclasses.
+`TenxGraphError` extends the built-in `Error`; every other class on this page extends it. Check it last in an `instanceof` chain, after the specific subclasses.
 
 | Property | Type | Description |
 |---|---|---|
@@ -68,14 +68,14 @@ Two methods are available on every error:
 `toJSON()` includes the stack trace, so log it on the server but do not send it to end users.
 
 ```ts title="log-error.ts"
-import { AgentFlowClient, AgentFlowError, Message } from '@10xgraph/client';
+import { TenxGraphClient, TenxGraphError, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 try {
   await client.invoke([Message.text_message('Hi')]);
 } catch (err) {
-  if (err instanceof AgentFlowError) {
+  if (err instanceof TenxGraphError) {
     // Log structured details, show a safe message to the user.
     console.error(`Error ${err.statusCode} (${err.errorCode}): ${err.getUserMessage()}`);
     console.error(JSON.stringify(err.toJSON()));
@@ -99,13 +99,13 @@ These five classes map to one status each. They carry no recovery suggestion, so
 
 ```ts title="http-status-errors.ts"
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   AuthenticationError,
   NotFoundError,
   ValidationError,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 try {
   await client.threadDetails('thread-123');
@@ -132,9 +132,9 @@ try {
 Treat 502, 503 and 504 as usually transient and retry them with backoff. Do not retry a 500 blindly: it is often a bug in a node or tool.
 
 ```ts title="server-error.ts"
-import { AgentFlowClient, Message, ServerError } from '@10xgraph/client';
+import { TenxGraphClient, Message, ServerError } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 try {
   await client.invoke([Message.text_message('Hi')]);
@@ -160,9 +160,9 @@ These classes mean the graph failed while running. Each has status 500 and its o
 `GraphRecursionError` means a run exceeded its step limit. `invoke` sends `recursion_limit` (default 25) with each request, so raise it in the options if the graph legitimately needs more steps.
 
 ```ts title="graph-errors.ts"
-import { AgentFlowClient, GraphRecursionError, Message, NodeError } from '@10xgraph/client';
+import { TenxGraphClient, GraphRecursionError, Message, NodeError } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 try {
   await client.invoke([Message.text_message('Plan my trip')], { recursion_limit: 50 });
@@ -189,9 +189,9 @@ Storage errors mean the checkpointer or memory store failed. The two classes dif
 `TransientStorageError` is matched before `StorageError` because its code starts with `TRANSIENT_STORAGE`.
 
 ```ts title="storage-errors.ts"
-import { AgentFlowClient, StorageError, TransientStorageError } from '@10xgraph/client';
+import { TenxGraphClient, StorageError, TransientStorageError } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 async function loadState(threadId: string) {
   try {
@@ -222,9 +222,9 @@ These three classes cover data format, version and telemetry failures.
 `SchemaVersionError` shares status 422 with `ValidationError`; the code prefix is what separates them. A `MetricsError` may mean the operation itself worked, so log it and decide per call whether to treat it as fatal.
 
 ```ts title="schema-errors.ts"
-import { AgentFlowClient, MetricsError, SchemaVersionError } from '@10xgraph/client';
+import { TenxGraphClient, MetricsError, SchemaVersionError } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 try {
   await client.updateThreadState('thread-1', {}, { context: [] });
@@ -245,16 +245,16 @@ Check specific subclasses first and the base class last. This handler routes eac
 
 ```ts title="handle-errors.ts"
 import {
-  AgentFlowClient,
-  AgentFlowError,
+  TenxGraphClient,
+  TenxGraphError,
   AuthenticationError,
   GraphRecursionError,
   Message,
   TransientStorageError,
   ValidationError,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function ask(text: string, attempt = 0): Promise<unknown> {
@@ -270,7 +270,7 @@ async function ask(text: string, attempt = 0): Promise<unknown> {
       return ask(text, attempt + 1);
     } else if (err instanceof GraphRecursionError) {
       console.error('Step limit exceeded. Raise recursion_limit or fix the loop.');
-    } else if (err instanceof AgentFlowError) {
+    } else if (err instanceof TenxGraphError) {
       console.error(err.getUserMessage());
     } else {
       throw err; // network error or timeout
@@ -288,10 +288,10 @@ await ask('Hello');
 | Function | Parameters | Returns |
 |---|---|---|
 | `parseErrorResponse` | `response: Response` | `Promise<ApiErrorResponse \| null>`. `null` if the content type is not JSON or parsing fails. |
-| `createErrorFromResponse` | `response: Response`, `fallbackMessage?: string`, `endpoint?: string`, `method?: string` | `Promise<AgentFlowError>`, the most specific subclass. |
+| `createErrorFromResponse` | `response: Response`, `fallbackMessage?: string`, `endpoint?: string`, `method?: string` | `Promise<TenxGraphError>`, the most specific subclass. |
 
 ```ts title="app/api/invoke/route.ts"
-import { createErrorFromResponse } from '@10xgraph/client';
+import { createErrorFromResponse } from '10xgraph-client';
 
 export async function POST(req: Request) {
   const upstream = await fetch('http://localhost:8000/v1/graph/invoke', {

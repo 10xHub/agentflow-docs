@@ -82,7 +82,7 @@ Do NOT use ReactAgent for:
 
 - **Multi-step planning with an explicit plan node**: use `/docs/guides/prebuilt/plan-act-reflect-agent` instead.
 - **Handing off between multiple specialized agents**: use `/docs/guides/prebuilt/swarm-agent` or `/docs/guides/prebuilt/supervisor-team-agent`.
-- **Retrieval-augmented generation with explicit retrieval steps**: use `/docs/guides/prebuilt/rag-agent` (which wraps ReactAgent with retrieval).
+- **Retrieval-augmented generation with explicit retrieval steps**: use `/docs/guides/prebuilt/rag-agent` (which retrieves documents before the wrapped agent answers).
 - **Complex custom routing logic**: build a custom graph with `/docs/guides/build-a-graph`.
 
 ---
@@ -131,7 +131,7 @@ async def main():
         {"messages": [Message.text_message("What is the weather in Paris?")]},
         config={"thread_id": "demo-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -151,9 +151,11 @@ from tenxgraph.prebuilt.tools import fetch_url
 from tenxgraph.storage.checkpointer import PgCheckpointer
 from tenxgraph.core.state import Message
 
-# Create a PostgreSQL checkpointer for durability
+# Create a Postgres + Redis checkpointer for durability
+# Requires: pip install "10xgraph[pg_checkpoint]"
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql://user:password@localhost/agents_db"
+    postgres_dsn="postgresql://user:password@localhost/agents_db",
+    redis_url="redis://localhost:6379",  # PgCheckpointer needs Redis as well as Postgres
 )
 
 # Build the agent
@@ -171,14 +173,14 @@ async def main():
         {"messages": [Message.text_message("Fetch https://example.com and summarize the title")]},
         config={"thread_id": "user-session-1"},
     )
-    print("Turn 1:", result["context"][-1].text())
+    print("Turn 1:", result["messages"][-1].text())
 
     # Second turn: same thread, agent remembers the previous exchange
     result = await app.ainvoke(
         {"messages": [Message.text_message("Now translate that summary to Spanish")]},
         config={"thread_id": "user-session-1"},
     )
-    print("Turn 2:", result["context"][-1].text())
+    print("Turn 2:", result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -286,14 +288,14 @@ agent = ReactAgent(
 
 ### Retries on LLM errors
 
-ReactAgent automatically retries on transient LLM errors. Customize retry behavior.
+ReactAgent retries transient LLM errors by default (`retry_config=True`). Customize retry behavior.
 
 ```python
 from tenxgraph.core.graph import RetryConfig
 
 agent = ReactAgent(
     model="gpt-4o-mini",
-    retry_config=RetryConfig(max_attempts=3, backoff=True),
+    retry_config=RetryConfig(max_retries=3, initial_delay=1.0, backoff_factor=2.0),
 )
 ```
 
@@ -405,9 +407,9 @@ result = await app.ainvoke(
     config={"thread_id": "test-1"},
 )
 
-for msg in result["context"]:
+for msg in result["messages"]:
     if msg.role == "assistant" and msg.tools_calls:
-        print(f"Tool calls: {[tc.name for tc in msg.tools_calls]}")
+        print(f"Tool calls: {[tc['function']['name'] for tc in msg.tools_calls]}")
 ```
 
 ### Handling tool errors gracefully
@@ -432,7 +434,12 @@ agent = ReactAgent(
 Pass application context (user ID, database, config) to tools without passing it through the message.
 
 ```python
-from tenxgraph.utils import tool, Inject
+from injectq import Inject
+from tenxgraph.utils import tool
+
+class Database:
+    def query(self, user_id: str):
+        ...  # return an object with .name and .email
 
 @tool
 def fetch_user_data(user_id: str, db: Inject[Database]) -> str:
@@ -456,7 +463,7 @@ See `/docs/guides/use-dependency-injection` for full details.
 |---|---|---|
 | **ReactAgent** | LLM → tools → LLM | Simple tool use, iterative reasoning |
 | PlanActReflect | Plan → act (tools) → reflect → loop | Complex multi-step tasks with reflection |
-| RAG | Retrieval → LLM + tools | Document search and question answering |
+| RAG | Retrieve → (rerank) → synthesize | Document search and question answering |
 | Swarm | Agent → agent handoff | Multiple specialized agents working together |
 | SupervisorTeam | Supervisor → worker agents | Teams with a coordinator |
 
@@ -465,16 +472,16 @@ See `/docs/guides/use-dependency-injection` for full details.
 ## Troubleshooting
 
 **Agent keeps calling tools and never exits:**
-Check that your tools are returning meaningful results and your system prompt guides the agent toward a final answer. If needed, add a max-step limit at the graph level (see `/docs/concepts/errors-and-limits`).
+Check that your tools are returning meaningful results and your system prompt guides the agent toward a final answer. If needed, lower the `recursion_limit` in the run config (see `/docs/concepts/errors-and-limits`).
 
 **Tools are called but results are ignored:**
-Ensure your tool is properly decorated with `@tool` or passed as a regular function. The tool must return a string or serializable value. See `/docs/guides/use-tool-decorator`.
+Ensure your tool is a regular function (the `@tool` decorator is optional) with type hints and a docstring. The tool must return a string or serializable value. See `/docs/guides/use-tool-decorator`.
 
 **Agent forgets previous messages in the conversation:**
 You must pass a checkpointer to `compile()` and use the same `thread_id` across invocations. Without persistence, each call is independent.
 
 **LLM returns errors about tool schemas:**
-The `@tool` decorator extracts schemas from type hints and docstrings. Ensure all parameters have type hints and the docstring describes what the tool does.
+Tool schemas are extracted from type hints and docstrings. Ensure all parameters have type hints and the docstring describes what the tool does.
 
 ---
 

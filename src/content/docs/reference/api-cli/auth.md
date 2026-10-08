@@ -405,10 +405,10 @@ Adding paths to the allowlist requires editing the source frozenset, which is de
 ## Using auth with the TypeScript client
 
 ```typescript
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient } from "10xgraph-client";
 
 // authToken is sent as a Bearer token on every request
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   authToken: token,
 });

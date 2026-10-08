@@ -10,7 +10,9 @@ updated: "2026-10-08"
 
 PlanActReflectAgent is a self-improving agent that breaks tasks into steps, executes them, then explicitly evaluates whether the work is complete. If not, it iterates. This pattern solves a common problem in agent workflows: standard ReAct loops can get stuck or produce incomplete answers because they lack a clear evaluation step. By adding a dedicated critic that inspects all work and decides whether to continue or stop, this agent achieves higher task completion rates on complex assignments like research, analysis, and planning.
 
-**Import path:** `tenxgraph.prebuilt.agent`
+**Import path:** `from tenxgraph.prebuilt.agent import PlanActReflectAgent`
+
+**Install:** `pip install "10xgraph[openai]"` (or `[google-genai]`, `[anthropic]` for other providers)
 
 ---
 
@@ -76,7 +78,7 @@ To prevent long tool outputs from overflowing context, tool result messages (mes
 
 ### Default system prompts
 
-Each phase has a built-in prompt that can be overridden:
+Each phase has a built-in prompt that can be overridden (paraphrased here; see `DEFAULT_PLAN_SYSTEM_PROMPT` and `DEFAULT_REFLECT_SYSTEM_PROMPT` in `tenxgraph.prebuilt.agent.plan_act_reflect` for the exact text):
 
 **PLAN**, "You are a strategic planner. Break the user's task into clear, actionable steps and make progress toward it. When a step requires external information, call the appropriate tools. When you can make progress without tools, provide your analysis. Be concise."
 
@@ -98,7 +100,7 @@ Create a PlanActReflectAgent by passing a model and optionally tools and configu
 agent = PlanActReflectAgent(
     model="gpt-4o-mini",
     provider="openai",
-    tools=[web_search, fetch_url],
+    tools=[google_web_search, fetch_url],
     max_iterations=4,
 )
 app = agent.compile()
@@ -108,7 +110,7 @@ app = agent.compile()
 
 | Parameter | Type | Description |
 |---|---|---|
-| `model` | `str` | LLM model identifier (e.g., `"gpt-4o-mini"`, `"gemini-2.5-flash"`). Used by all three internal agents (planner, reflector, and indirect tool executor). Infer the provider from the model name or set `provider` explicitly in `agent_kwargs` (e.g., `provider="anthropic"`). |
+| `model` | `str` | LLM model identifier (e.g., `"gpt-4o-mini"`, `"gemini-2.5-flash"`). Used by the planner and reflector (the ACT node is a plain ToolNode). The provider is inferred from the model name or set `provider` explicitly via `agent_kwargs` (e.g., `provider="anthropic"`). |
 
 **Optional parameters:**
 
@@ -195,7 +197,7 @@ async def main():
         )]},
         config={"thread_id": "research-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -250,7 +252,7 @@ async def main():
         {"messages": [Message.text_message("Devise three approaches to reduce LLM hallucination.")]},
         config={"thread_id": "reason-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -273,7 +275,11 @@ agent = PlanActReflectAgent(
     max_iterations=4,
 )
 
-checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
+# Requires: pip install "10xgraph[pg_checkpoint]"
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:pass@localhost/db",
+    redis_url="redis://localhost:6379",
+)
 app = agent.compile(checkpointer=checkpointer)
 
 async def main():
@@ -281,7 +287,7 @@ async def main():
         {"messages": [Message.text_message("Research recent breakthroughs in solid-state batteries.")]},
         config={"thread_id": "user-42-research"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -410,11 +416,11 @@ agent = PlanActReflectAgent(
 
 ### Extended reasoning for specific phases
 
-Use `plan_reasoning_config` and `reflect_reasoning_config` to enable extended reasoning (e.g., Claude Thinking, OpenAI o1) only where you need it:
+Use `plan_reasoning_config` and `reflect_reasoning_config` to enable extended reasoning only where you need it:
 
 ```python
 agent = PlanActReflectAgent(
-    model="claude-opus-5",
+    model="gpt-4o",
     plan_reasoning_config={"effort": "high"},  # Enable thinking for planning
     reflect_reasoning_config=False,  # Skip for reflection to save tokens
     tools=[...],
@@ -445,7 +451,7 @@ result = await app.ainvoke(
     {"messages": [Message.text_message("Research X")]},
     config={"thread_id": "t1"},
 )
-print(f"Plan state: {result['context']}")
+print(f"Plan state: {result['messages']}")
 
 # Optionally add feedback, then resume
 result = await app.ainvoke(

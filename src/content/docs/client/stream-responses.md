@@ -18,7 +18,7 @@ Streaming also enables progressive rendering in UIs: you can parse structured co
 
 ## Prerequisites
 
-- A configured `@10xgraph/client`. See `/docs/client/create-client`.
+- A configured `10xgraph-client`. See `/docs/client/create-client`.
 - The 10xGraph API server running.
 - Basic familiarity with async generators and `for await`.
 
@@ -43,9 +43,9 @@ The stream starts when you iterate with `for await`. A single run may emit dozen
 Call `client.stream()` with a list of messages. The method returns immediately; the request begins only when you start iterating:
 
 ```ts
-import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
+import { TenxGraphClient, Message, StreamEventType } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 const stream = client.stream([
   Message.text_message('Write a haiku about mountains.'),
@@ -248,7 +248,7 @@ Both methods emit identical `StreamChunk` sequences. If your graph makes remote 
 Browsers cannot set custom headers on WebSocket connections. The client sends the bearer token via the `Sec-WebSocket-Protocol` header using the `10xgraph-bearer` subprotocol:
 
 ```ts
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: 'your-jwt-token',
 });
@@ -259,7 +259,7 @@ On Node.js 18 and 20, you must supply a WebSocket implementation (the `ws` packa
 ```ts
 import WebSocket from 'ws';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: process.env.API_TOKEN,
   webSocketImpl: WebSocket as unknown as typeof globalThis.WebSocket,
@@ -358,9 +358,9 @@ The `for await` loop respects backpressure automatically. If you slowly consume 
 To verify streaming works, run this in Node:
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 const stream = client.stream([
   Message.text_message('Write a haiku about mountains.'),

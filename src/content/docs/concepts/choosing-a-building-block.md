@@ -27,7 +27,7 @@ Pick a prebuilt agent when your workflow is a standard pattern, an `Agent` node 
 | LLM call | Handled | Handled by `Agent` | You write it, or none |
 | Graph shape | Fixed by the pattern | You define it | You define it |
 | Routing control | Limited to constructor options | Full | Full, including `Command(goto=...)` |
-| Dependency injection | Not available inside the graph | Not on the agent itself, available on other nodes | `Inject[T]` on any parameter |
+| Dependency injection | Pass an InjectQ `container` to the constructor | Tools and other nodes can use `Inject[T]`; the `Agent` itself takes none | `Inject[T]` on any parameter |
 | Best for | Standard patterns, prototypes | Most production agents | Non-LLM steps, custom providers |
 
 Choosing too high a level forces a rewrite when you need custom routing. Choosing too low a level means you rebuild behavior that already exists. Match the level to the pattern you actually have.

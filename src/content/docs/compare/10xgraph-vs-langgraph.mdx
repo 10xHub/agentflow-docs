@@ -47,7 +47,7 @@ The rows below start with what differs most between the two. The shared basics (
 | Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | `TimeoutPolicy` per node, async nodes only, plus `RetryPolicy` ([fault tolerance docs](https://docs.langchain.com/oss/python/langgraph/fault-tolerance)) |
 | Docker Compose and Kubernetes manifests | `10xgraph build --docker-compose --k8s` writes `Dockerfile`, `docker-compose.yml`, `k8s.yaml` | `langgraph build` builds an image ([CLI docs](https://docs.langchain.com/langsmith/cli)). Standalone self-hosting documents Helm and a Docker Compose example, and needs a license key ([standalone docs](https://docs.langchain.com/langsmith/deploy-standalone-server)) |
 | License | MIT, including API/CLI and client | MIT for the library. LangSmith plans are commercial ([pricing](https://www.langchain.com/pricing)) |
-| TypeScript client | Typed `@10xgraph/client` for the 10xGraph API | `@langchain/langgraph-sdk`, MIT ([npm](https://www.npmjs.com/package/@langchain/langgraph-sdk)) |
+| TypeScript client | Typed `10xgraph-client` for the 10xGraph API | `@langchain/langgraph-sdk`, MIT ([npm](https://www.npmjs.com/package/@langchain/langgraph-sdk)) |
 | Visual tooling | Browser playground (`10xgraph play`) | LangSmith Studio, free with a LangSmith account ([Studio docs](https://docs.langchain.com/oss/python/langgraph/studio)) |
 | Python version | 3.12 or newer | 3.10 or newer ([PyPI](https://pypi.org/project/langgraph/)) |
 | LangChain dependency | None | `langchain-core` is a required dependency ([PyPI](https://pypi.org/project/langgraph/)) |
@@ -105,9 +105,9 @@ For the equivalent LangGraph quickstart, see [LangGraph's docs](https://docs.lan
 ## Calling from TypeScript
 
 ```typescript
-import { AgentFlowClient, Message, bearerAuth } from "@10xgraph/client";
+import { TenxGraphClient, Message, bearerAuth } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   auth: bearerAuth(token),
 });
@@ -128,7 +128,7 @@ LangChain publishes its own client for the LangGraph API, [`@langchain/langgraph
 3. Use `ReactAgent` or `tenxgraph.core.graph.Agent` with a `ToolNode` where you used a prebuilt agent. Pass `model`, `system_prompt` and tools.
 4. Replace `InMemorySaver` / `PostgresSaver` with `InMemoryCheckpointer` / `PgCheckpointer`. Thread IDs move from `config["configurable"]["thread_id"]` to `config["thread_id"]`.
 5. Replace `langgraph.json` with `10xgraph.json` pointing at your compiled graph, and run `10xgraph api`.
-6. Point your frontend at `@10xgraph/client`.
+6. Point your frontend at `10xgraph-client`.
 
 For multi-agent handoffs, see [the handoff how-to](/docs/guides/handoff-between-agents).
 

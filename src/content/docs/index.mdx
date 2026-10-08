@@ -26,7 +26,7 @@ faq:
 
 **API server and CLI** (`10xgraph-api`, import `tenxgraph_api`, command `10xgraph`) wraps your graph in a FastAPI server. You point `10xgraph.json` at your compiled graph, and the server auto-generates REST and WebSocket endpoints, Swagger UI, authentication, rate limits, thread and memory management, file uploads, and observability hooks. The `10xgraph` CLI scaffolds a new project, runs the server in development or production, serves the built-in playground, tests your agent, evaluates against test sets, and generates Docker and Kubernetes files. Running `10xgraph api` starts the server on port 8000.
 
-**TypeScript client** (`@10xgraph/client`) is a typed SDK for Node.js and browsers. It handles authentication, invokes the graph over REST or WebSocket, streams responses, manages threads and memory, uploads files, and abstracts the transport. It works with Next.js, React, plain TypeScript and Node backends. You can also call the server with plain HTTP or curl.
+**TypeScript client** (`10xgraph-client`) is a typed SDK for Node.js and browsers. It handles authentication, invokes the graph over REST or WebSocket, streams responses, manages threads and memory, uploads files, and abstracts the transport. It works with Next.js, React, plain TypeScript and Node backends. You can also call the server with plain HTTP or curl.
 
 All three are optional. You can use the library standalone (no server), the server without the client (curl is fine), or the client with any compatible API.
 

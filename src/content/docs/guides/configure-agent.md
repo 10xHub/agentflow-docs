@@ -12,6 +12,8 @@ updated: "2026-10-08"
 
 ## Minimal example
 
+Install the extra for your provider, for example `pip install "10xgraph[openai]"`, `"10xgraph[google-genai]"` or `"10xgraph[anthropic]"`.
+
 ```python
 from tenxgraph.core.graph import Agent
 
@@ -64,7 +66,7 @@ Anthropic provides three backends: the direct Claude API, Vertex AI, and Bedrock
 agent = Agent(model="claude-opus-5", provider="anthropic")
 ```
 
-**Vertex AI (requires `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`):**
+**Vertex AI (requires `pip install "10xgraph[anthropic-vertex]"` and Google Cloud credentials; the Anthropic SDK resolves project and region):**
 
 ```python
 agent = Agent(
@@ -74,7 +76,7 @@ agent = Agent(
 )
 ```
 
-**Bedrock (AWS region and credentials required):**
+**Bedrock (requires `pip install "10xgraph[anthropic-bedrock]"` and AWS credentials):**
 
 ```python
 agent = Agent(
@@ -191,7 +193,9 @@ agent = Agent(model="gpt-4o", tool_node=tool_node)
 For complex graphs, define the `ToolNode` as a separate graph node and reference it by name. This lets you control the flow of tool calls (e.g., route based on tool results).
 
 ```python
-from tenxgraph.core.graph import StateGraph, ToolNode, Agent, END
+from tenxgraph.core.graph import StateGraph, ToolNode, Agent
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
 
 def my_tool(x: int) -> int:
     """A simple tool."""
@@ -207,13 +211,13 @@ graph.add_node("AGENT", agent)
 graph.add_node("TOOLS", tool_node)
 
 # Set up conditional edges based on tool calls
-def route_tools(state):
-    if state["messages"][-1].tool_calls:
+def route_tools(state: AgentState) -> str:
+    last = state.context[-1] if state.context else None
+    if last and last.role == "assistant" and last.tools_calls:
         return "TOOLS"
     return END
 
-graph.add_edge("AGENT", "route")
-graph.add_conditional_edges("route", route_tools, {"TOOLS": "TOOLS", END: END})
+graph.add_conditional_edges("AGENT", route_tools, {"TOOLS": "TOOLS", END: END})
 graph.add_edge("TOOLS", "AGENT")
 graph.set_entry_point("AGENT")
 ```
@@ -365,12 +369,6 @@ Set this before starting your agent or server:
 export AGENTFLOW_LLM_TIMEOUT=120   # Use 2-minute timeout instead
 ```
 
-Or in your `.env` file:
-
-```bash
-AGENTFLOW_LLM_TIMEOUT=120
-```
-
 ### Override programmatically
 
 ```python
@@ -390,10 +388,10 @@ set_default_llm_timeout(None)
 
 The timeout is determined in this order (first match wins):
 
-1. A programmatic override via `set_default_llm_timeout()`.
-2. The `AGENTFLOW_LLM_TIMEOUT` environment variable.
-3. The built-in default of 600 seconds.
-4. An explicit `timeout=` kwarg passed to the underlying SDK client (highest priority).
+1. An explicit `timeout=` kwarg passed to the `Agent` (forwarded to the SDK client).
+2. A programmatic override via `set_default_llm_timeout()`.
+3. The `AGENTFLOW_LLM_TIMEOUT` environment variable.
+4. The built-in default of 600 seconds.
 
 ---
 
@@ -453,7 +451,7 @@ By default, agents generate text. For specialized use cases, you can configure a
 | `output_type` | Models | Use case |
 |---|---|---|
 | `"text"` (default) | All | Natural language responses, analysis, reasoning |
-| `"image"` | DALL-E 3, Flux, etc. | Image generation from prompts |
+| `"image"` | DALL-E 3, Gemini and Imagen image models | Image generation from prompts |
 | `"video"` | Supported video models | Video generation (limited provider support) |
 | `"audio"` | TTS models (e.g. OpenAI's tts-1, tts-1-hd) | Text-to-speech conversion |
 
@@ -474,7 +472,7 @@ voice_agent = Agent(model="tts-1", output_type="audio")
 
 Force the agent to return JSON conforming to a schema using Pydantic models. This is useful when you need deterministic, machine-readable output: extracting data, parsing responses, or integrating with downstream systems.
 
-`output_schema` requires `output_type="text"`.
+`output_schema` cannot be combined with `output_type` of `"image"`, `"video"` or `"audio"`. Anthropic supports only `"text"` and `"json"` output types.
 
 ```python
 from pydantic import BaseModel
@@ -495,7 +493,7 @@ agent = Agent(
 )
 ```
 
-The agent's response message will contain a JSON string that parses to a `ReviewAnalysis` instance. The model enforces the schema at generation time, so outputs are always valid.
+The agent's response message will contain a JSON string that parses to a `ReviewAnalysis` instance. The schema is passed to the provider as a response format, so the output follows it.
 
 ---
 
@@ -541,7 +539,7 @@ OpenAI provides two API surfaces; use `api_style` to select which one. Only rele
 # Chat Completions (default, works with most OpenAI models)
 agent = Agent(model="gpt-4o", api_style="chat")
 
-# Responses API (supports structured mode and vision better on some models)
+# Responses API (falls back to Chat Completions when output_schema is set)
 agent = Agent(model="o4-mini", api_style="responses")
 ```
 
@@ -567,10 +565,11 @@ For Anthropic models, you can pass Anthropic-specific parameters:
 agent = Agent(
     model="claude-opus-5",
     provider="anthropic",
-    max_tokens=2048,      # Required for Anthropic
-    temperature=0.7,
+    max_tokens=2048,      # Optional; defaults to 16000 (64000 when streaming)
 )
 ```
+
+Newer Claude models such as `claude-opus-5` reject `temperature`, `top_p` and `top_k`, so 10xGraph strips them before the request is sent.
 
 Check the provider SDK documentation (OpenAI, Google GenAI, Anthropic) for the full set of supported parameters.
 
@@ -600,7 +599,7 @@ Agent(
     provider: str | None = None,
     base_url: str | None = None,
     api_style: str = "chat",
-    use_vertex_ai: bool = False,
+    use_vertex_ai: bool = False,   # default: GOOGLE_GENAI_USE_VERTEXAI == "true"
     anthropic_backend: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,

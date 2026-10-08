@@ -169,7 +169,7 @@ The function's **docstring** becomes the tool description shown to the model. **
 
 ### Parallel tool dispatch
 
-When the model requests multiple tool calls, `ToolNode` executes them in parallel using `asyncio.gather`. This is orders of magnitude faster than running them sequentially: if the model calls three tools that each take 2 seconds, parallel execution takes 2 seconds; sequential would take 6 seconds. All tool results are collected and appended to state together, so the next node in the graph sees them all at once.
+When the model requests multiple tool calls, `ToolNode` executes them in parallel using `asyncio.gather`. This is faster than running them sequentially: if the model calls three tools that each take 2 seconds, parallel execution takes 2 seconds; sequential would take 6 seconds. All tool results are collected and appended to state together, so the next node in the graph sees them all at once.
 
 To opt out of parallelism and execute tools sequentially, you can iterate over tool calls and invoke them one at a time in your own node. In practice, parallelism is the right default.
 
@@ -246,7 +246,7 @@ def select_city(city: str) -> ToolResult:
 
 When a tool raises an exception, `ToolNode` catches it and returns the error as a `ToolResultBlock` with `is_error=True` and status `"failed"`. The error message is forwarded to the model so it can retry with different arguments or report the failure to the user.
 
-This is the right default: a tool failure is not a graph failure. The model sees the error and decides what to do next. If you want a specific tool error to fail the entire run, raise it after logging, and the graph will stop. For details on exception taxonomy and handling, see [Errors and limits](/docs/concepts/errors-and-limits).
+This is the right default: a tool failure is not a graph failure. The model sees the error and decides what to do next. For details on exception taxonomy and handling, see [Errors and limits](/docs/concepts/errors-and-limits).
 
 Tool errors are also published as events, so you can monitor and alert on them. Tool functions can also return a `ToolResult` with `is_error=True` to signal a business error (e.g., "insufficient permissions") rather than an exception.
 
@@ -355,10 +355,10 @@ This is useful when you want to share one `ToolNode` across multiple agents.
 
 | Method | Returns | Use when |
 |---|---|---|
-| `compiled.invoke(input, config)` | Final `AgentState` | You only need the end result |
+| `compiled.invoke(input, config)` | Result dict with `messages` (more keys via `response_granularity`) | You only need the end result |
 | `compiled.stream(input, config)` | Sync generator of `StreamChunk` | Sync context, real-time display |
 | `compiled.astream(input, config)` | Async generator of `StreamChunk` | Async context (FastAPI, WebSocket) |
-| `compiled.ainvoke(input, config)` | Awaitable `AgentState` | Async context, no streaming needed |
+| `compiled.ainvoke(input, config)` | Awaitable result dict, same as `invoke` | Async context, no streaming needed |
 
 Use `ainvoke` and `astream` inside an async context. `invoke` and `stream` are sync wrappers. See [Streaming](/docs/concepts/streaming) for chunk fields and events.
 
@@ -369,7 +369,7 @@ For prebuilt agents, callbacks, `Command`, validators and background tasks, see 
 ## What you learned
 
 - `Agent` exists to handle all LLM integration machinery (retry, fallback, system prompts, streaming, tools, skills, memory, reasoning) so you do not have to build it by hand.
-- `ToolNode` executes tool calls from the model in parallel, making multi-tool workflows orders of magnitude faster than sequential execution.
+- `ToolNode` executes tool calls from the model in parallel, making multi-tool workflows faster than sequential execution.
 - Tools are ordinary Python functions with docstrings and type hints; MCP tools work the same way through the `client` parameter.
 - Tool errors are caught and returned to the model as failed results, not graph failures; the model decides what to do next.
 - `state`, `tool_call_id`, `config` and other services are injectable parameters that do not appear in the tool schema.

@@ -45,17 +45,18 @@ When a run starts, validators are applied to the incoming messages before anythi
 4. If a validator raises `ValidationError`, execution stops and the error is returned to the caller. If a publisher is configured, a rejection event is emitted.
 5. If all validators pass, the graph continues normally.
 
-Through the API server, a `ValidationError` becomes an HTTP 422 response with the error code `AGENTFLOW_VALIDATION_ERROR` and the `violation_type` from the exception.
+Through the API server, a `ValidationError` becomes an HTTP 422 response with the error code `AGENTFLOW_VALIDATION_ERROR`. In production mode the message is sanitized; the `violation_type` is not included in the response.
 
 Input validators see only messages entering the graph on fresh runs and continued threads (resume calls). They do not inspect model output or tool arguments. To guard those, use `register_before_invoke()` and `register_after_invoke()` callbacks (see [Callbacks and Command](/docs/concepts/callbacks-and-command)).
 
 ## Writing a validator
 
-A validator is a subclass of `BaseValidator` with an `async validate(messages: list[Message]) -> bool` method. Raise `ValidationError(message, violation_type, details=None)` to reject input. The `violation_type` is a machine-readable string (e.g., `"pii_card"`, `"prompt_injection"`) used for logging and API responses.
+A validator is a subclass of `BaseValidator` with an `async validate(messages: list[Message]) -> bool` method. Raise `ValidationError(message, violation_type, details=None)` to reject input. The `violation_type` is a machine-readable string (e.g., `"pii_payment_card"`, `"content_policy"`) available on the exception for logging.
 
 Here is a complete example: a validator that blocks known test credit card numbers and another that blocks offensive language.
 
 ```python
+from tenxgraph import StateGraph
 from tenxgraph.core.state import Message
 from tenxgraph.utils.callbacks import BaseValidator, CallbackManager
 from tenxgraph.utils.validators import PromptInjectionValidator, ValidationError
@@ -94,7 +95,7 @@ class NoProfanity(BaseValidator):
             for word in self.blocked_words:
                 if word in text:
                     raise ValidationError(
-                        f"Message contains prohibited language",
+                        "Message contains prohibited language",
                         "content_policy"
                     )
         return True
@@ -113,7 +114,9 @@ callback_manager.register_input_validator(NoCreditCardNumbers())
 callback_manager.register_input_validator(NoProfanity())
 
 # Compile the graph with the callback manager
-graph = StateGraph(AgentState).add_node("agent", agent_node)
+# (AgentState and agent_node are your own state class and node function)
+graph = StateGraph(AgentState)
+graph.add_node("agent", agent_node)
 # ... add edges and set entry point
 app = graph.compile(callback_manager=callback_manager)
 ```
@@ -126,19 +129,19 @@ Validators run synchronously from the graph's perspective; make them fast and de
 
 This validator detects prompt injection and jailbreak attempts using pattern matching, keyword analysis, and heuristics. It checks for:
 
-- Excessive length (configurable, default 2000 characters)
-- Regex patterns for common instruction-override tricks (e.g., `"Ignore above, now "`)
-- Role manipulation attempts (e.g., `"Pretend you are"`, `"Act as"`)
+- Excessive length (configurable, default 10000 characters)
+- Regex patterns for common instruction-override tricks (e.g., `"ignore all previous instructions"`)
+- Role manipulation attempts (e.g., `"you are now a ..."`, `"pretend as a ..."`)
 - System prompt leakage techniques (e.g., `"Reveal the system prompt"`)
-- Encoding obfuscation (Base64, Unicode, emoji tricks)
-- Delimiter confusion (e.g., `"---"`, `"###"` used to split instructions)
-- Three or more suspicious keywords in a single message (e.g., `"bypass"`, `"override"`, `"secret"`)
+- Encoding obfuscation (Base64 payloads that decode to suspicious keywords, messages that are mostly non-ASCII)
+- Delimiter confusion (e.g., `"--- END OF INSTRUCTIONS ---"`, `<system>` tags)
+- Three or more suspicious keywords in a single message (e.g., `"bypass"`, `"override"`, `"reveal"`)
 
 Constructor parameters:
 
 - `strict_mode=True` (default): Raises `ValidationError` on detection.
-- `strict_mode=False`: Logs a warning and allows the message through (useful for auditing without breaking the user experience).
-- `max_length=2000` (default): Rejects messages longer than this.
+- `strict_mode=False`: Logs a warning and allows the message through without raising (useful for auditing without breaking the user experience).
+- `max_length=10000` (default): Rejects messages longer than this.
 - `blocked_patterns=None` (optional): Add custom regex patterns to block.
 - `suspicious_keywords=None` (optional): Add domain-specific suspicious keywords (e.g., `["refund", "cancel", "override"]` for a support agent).
 
@@ -154,13 +157,13 @@ validator = PromptInjectionValidator(
 
 Validates the structure of messages themselves, independent of content. It checks:
 
-- Allowed message roles (e.g., only `"user"` and `"assistant"`)
+- Allowed message roles (default `"user"`, `"assistant"`, `"system"`, `"tool"`)
 - Maximum number of content blocks per message (default 50)
 
 Constructor parameters:
 
-- `allowed_roles=None` (default: all roles allowed)
-- `max_blocks_per_message=50` (default)
+- `allowed_roles=None` (default: user, assistant, system, tool)
+- `max_content_blocks=50` (default)
 
 ### register_default_validators
 
@@ -179,11 +182,11 @@ When you run `10xgraph init --template production`, the generated project includ
 
 - `graph/validators/validators.py` defines a `PromptInjectionValidator(strict_mode=True, max_length=1000)` with domain-specific suspicious keywords: `"bypass"`, `"override"`, `"token"`, `"coupon"`, `"free"`, and others. **Tune this list to your product.** Words like `"free"` are normal in a customer-facing e-commerce app but may be red flags in a payment processing app.
 
-- `graph/validators/manager.py` creates a `CallbackManager`, registers the validators, and optionally adds lifecycle hooks for logging rejections.
+- `graph/validators/manager.py` creates a `CallbackManager`, registers the validators, and registers an `AgentLifecycleHook` (a `GraphLifecycleHook` subclass).
 
 - `graph/agent.py` passes the manager to `graph.compile(callback_manager=callback_manager)`.
 
-The template also sets up `10xgraph.json` with JWT authentication enabled (if `--auth jwt` is used). The API server enforces scopes at every endpoint, and the validators catch suspicious input before it reaches the model. Together, these layers provide a production-ready security posture.
+The template also sets up `10xgraph.json` with an `auth` entry; choose the mode with `--auth none|jwt|custom`. The validators catch suspicious input before it reaches the model.
 
 ## Limitations and tradeoffs
 

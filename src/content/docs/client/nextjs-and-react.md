@@ -50,10 +50,10 @@ In this setup, your browser never talks directly to the 10xGraph API. Instead, N
 
 ## Installation
 
-Install the 10xGraph TypeScript client. The package is currently published as `@10xscale/agentflow-client` but is also available under the new name `@10xgraph/client`.
+Install the 10xGraph TypeScript client. Until `10xgraph-client` is published on npm, install `@10xscale/agentflow-client` and import `AgentFlowClient` from it instead; the API is the same.
 
 ```bash
-npm install @10xscale/agentflow-client
+npm install 10xgraph-client
 ```
 
 Ensure your Next.js project has `Node >= 18` for global `fetch` support, or configure your `.npmrc` to include a polyfill.
@@ -72,7 +72,7 @@ Create a Next.js API route that accepts a message from the client, streams from 
 
 ```ts title="app/api/agent/stream/route.ts"
 import { NextRequest } from "next/server";
-import { AgentFlowClient, Message } from "@10xscale/agentflow-client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 import { auth } from "@/lib/auth";
 
 // Use Node runtime for streaming support
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   const { text } = await req.json();
 
   // Create a client instance with your API key
-  const client = new AgentFlowClient({
+  const client = new TenxGraphClient({
     baseUrl: process.env.AGENTFLOW_URL!,
     headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
   });
@@ -339,10 +339,10 @@ For simple request-response interactions without streaming, Next.js Server Actio
 ```tsx title="app/actions/agent.ts"
 "use server";
 
-import { AgentFlowClient, Message } from "@10xscale/agentflow-client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 import { auth } from "@/lib/auth";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: process.env.AGENTFLOW_URL!,
   headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
 });
@@ -407,7 +407,7 @@ The route handler or Server Action validates the user and creates a scoped sessi
 Validate the user in Next.js, then send your API key to 10xGraph. Use the user ID as the thread ID to isolate conversations:
 
 ```tsx
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: process.env.AGENTFLOW_URL!,
   headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
 });
@@ -429,7 +429,7 @@ const token = jwt.sign({ sub: user.id, scope: "invoke" }, JWT_SECRET, {
   expiresIn: "5m",
 });
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: process.env.AGENTFLOW_URL!,
   headers: { Authorization: `Bearer ${token}` },
 });

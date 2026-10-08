@@ -15,7 +15,7 @@ For the complete `RealtimeSession` API (every event type, reconnect behavior, in
 ## Prerequisites
 
 - A graph rooted at a `LiveAgent`. A turn-based graph rejects the connection: the server sends a fatal `error` event with `code: 'not_live'` and closes the socket with code `1008`. Always check `info.is_realtime` from `client.graph()` before rendering an audio UI.
-- A configured `AgentFlowClient` instance. On Node 18 or 20, you must pass `webSocketImpl` (the `ws` package) in the client config; see [create-client](/docs/client/create-client) for details. Browsers ship WebSocket natively.
+- A configured `TenxGraphClient` instance. On Node 18 or 20, you must pass `webSocketImpl` (the `ws` package) in the client config; see [create-client](/docs/client/create-client) for details. Browsers ship WebSocket natively.
 - A secure context. `getUserMedia` requires HTTPS or `localhost`. On `http://`, `getUserMedia` rejects immediately.
 
 ## The audio contract
@@ -149,9 +149,9 @@ Always keep the returned handle and call `stop()` when the session ends. Forgett
 Call `client.realtime()` with the model you want and audio modality. The method returns a `RealtimeSession` object immediately and begins connecting in the background.
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: token,
 });
@@ -306,7 +306,7 @@ To run it: `10xgraph play` (starts the API server and playground together), then
 | The agent constantly interrupts itself mid-sentence. | Echo cancellation is disabled. The agent hears its own voice playing from the speaker, mistakes it for new user input, and stops to respond. | Enable `echoCancellation: true` in the `getUserMedia` call (Step 2). If echo is still a problem, recommend headphones. |
 | `getUserMedia` rejects immediately with a permission error. | The user denied the permission prompt, or the page is not on HTTPS or localhost. | Handle the rejection in a catch block, show the user a clear error message, and call `activityEnd()` to clean up the pending turn. |
 | Socket closes immediately after opening, error code `not_live`. | The graph is turn-based, not a live agent. Or the init `model` (e.g. Gemini Flash) is not available for your API key, region, or quota. | Always check `info.is_realtime` before offering the audio UI. Omit the `model` field and let the server select one. |
-| `No WebSocket implementation available` error in Node.js. | Node 18 and 20 do not have a global `WebSocket` object. | Pass `webSocketImpl` in the `AgentFlowClient` config: `{ webSocketImpl: require('ws') }`. |
+| `No WebSocket implementation available` error in Node.js. | Node 18 and 20 do not have a global `WebSocket` object. | Pass `webSocketImpl` in the `TenxGraphClient` config: `{ webSocketImpl: require('ws') }`. |
 | Microphone indicator remains on after ending the session. | The `mic.stop()` method was not called or an exception prevented it from running. | Always call `stop()` in the "End" button handler and in a React `useEffect` cleanup. Wrap calls in try/catch or use optional chaining (`mic?.stop()`). |
 
 ---

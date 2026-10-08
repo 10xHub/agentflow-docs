@@ -10,6 +10,8 @@ updated: "2026-10-08"
 
 10xGraph ships seven prebuilt agent classes that wrap a fully wired `StateGraph` behind a single constructor and `compile()` call. Each is a ready-made pattern for a common orchestration task. They compile to a `CompiledGraph` you can `invoke()`, `astream()`, or serve over the API server just like any graph you wrote by hand. This page helps you choose the right agent and points to detailed guides for each.
 
+Install the core package with the provider extra your samples use, for example `pip install "10xgraph[openai]"` or `pip install "10xgraph[google-genai]"`. RAGAgent also needs the `qdrant` extra, and AudioAgent needs `google-genai` and `realtime`.
+
 ## Why prebuilt agents
 
 A prebuilt agent solves the wiring problem: routing logic, message handling, loop termination, state reduction, and error recovery are already implemented. You provide the model, tools, and optional system prompt. When a prebuilt agent no longer fits your use case, move to a custom `StateGraph` and reuse the same components (you can read the agent's source to see exactly how it builds the graph).
@@ -20,10 +22,10 @@ A prebuilt agent solves the wiring problem: routing logic, message handling, loo
 |---|---|---|
 | [ReactAgent](/docs/guides/prebuilt/react-agent) | One model calls tools in a loop until done | MAIN -> TOOL (conditional) -> END |
 | [PlanActReflectAgent](/docs/guides/prebuilt/plan-act-reflect-agent) | Task needs a plan, execution, and reflection cycle | PLAN -> ACT -> REFLECT (conditional loop) -> END |
-| [StructuredOutputAgent](/docs/guides/prebuilt/structured-output-agent) | Output must match a Pydantic schema | MAIN (with output_schema) -> REPAIR (if invalid JSON) -> END |
-| [RAGAgent](/docs/guides/prebuilt/rag-agent) | Answers must come from a document store | RETRIEVE -> MAIN -> END |
-| [SupervisorTeamAgent](/docs/guides/prebuilt/supervisor-team-agent) | One coordinator routes tasks to specialists | SUPERVISOR -> WORKERS (conditional) -> END |
-| [SwarmAgent](/docs/guides/prebuilt/swarm-agent) | Peer agents hand off to each other | MEMBERS (dynamic handoffs) -> END |
+| [StructuredOutputAgent](/docs/guides/prebuilt/structured-output-agent) | Output must match a Pydantic schema | GENERATE -> REPAIR (if invalid) -> GENERATE, with optional TOOL -> END |
+| [RAGAgent](/docs/guides/prebuilt/rag-agent) | Answers must come from a document store | RETRIEVE -> (RERANK) -> SYNTHESIZE -> END |
+| [SupervisorTeamAgent](/docs/guides/prebuilt/supervisor-team-agent) | One coordinator routes tasks to specialists | SUPERVISOR -> worker (conditional) -> PRE_SUPERVISOR -> SUPERVISOR, or END |
+| [SwarmAgent](/docs/guides/prebuilt/swarm-agent) | Peer agents hand off to each other | Members hand off to each other, then END |
 | [AudioAgent](/docs/guides/prebuilt/audio-agent) | Real-time audio conversations (Gemini Live) | LIVE (streaming audio session) |
 
 ## Each prebuilt agent
@@ -98,8 +100,12 @@ Retrieval-augmented generation. Queries a document store to find relevant contex
 from tenxgraph.prebuilt.agent import RAGAgent
 from tenxgraph.core.graph import Agent
 from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
-store = create_local_qdrant_store(path="./knowledge_base")
+store = create_local_qdrant_store(
+    path="./knowledge_base",
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
+)
 
 agent = RAGAgent(
     store=store,
@@ -182,6 +188,7 @@ Enables real-time audio-to-audio conversations through Gemini Live (streaming au
 
 ```python
 from tenxgraph.prebuilt.agent import AudioAgent
+from tenxgraph.prebuilt.tools import fetch_url, safe_calculator
 
 agent = AudioAgent(
     model="gemini-2.5-flash",
@@ -196,7 +203,7 @@ See [AudioAgent](/docs/guides/prebuilt/audio-agent) for realtime configuration, 
 
 ## Extending with custom tools
 
-All prebuilt agents accept a `tools` list. Pass prebuilt tools together with your own functions:
+ReactAgent, PlanActReflectAgent, StructuredOutputAgent and AudioAgent accept a `tools` list. (Supervisor and Swarm members carry tools on their own `Agent`, as shown above.) Pass prebuilt tools together with your own functions:
 
 ```python
 from tenxgraph.prebuilt.agent import ReactAgent
@@ -213,17 +220,19 @@ agent = ReactAgent(
 app = agent.compile()
 ```
 
-The decorator `@tool` and type hints tell the LLM the tool's schema automatically. See [Use the tool decorator](/docs/guides/use-tool-decorator) for how to define tools with parameters, error handling, and dependency injection.
+Type hints and the docstring tell the LLM the tool's schema automatically; the optional `@tool` decorator adds metadata such as tags. See [Use the tool decorator](/docs/guides/use-tool-decorator) for how to define tools with parameters, error handling, and dependency injection.
 
 ## Compile and run
 
-All prebuilt agents expose the same `compile()` signature. Specify persistence, checkpointing, and callbacks here:
+The tool-calling agents (ReactAgent, PlanActReflectAgent, StructuredOutputAgent, RAGAgent) share this `compile()` signature. AudioAgent's `compile()` accepts only `checkpointer`, `store`, `callback_manager` and `shutdown_timeout`. Specify persistence and callbacks here:
 
 ```python
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+
 app = agent.compile(
     checkpointer=InMemoryCheckpointer(),  # or PgCheckpointer for production
     store=memory_store,                    # for long-term memory
-    interrupt_before=["TOOL"],             # pause before tool node
+    interrupt_before=["TOOL"],             # pause before tool node (ReactAgent node names)
     interrupt_after=["MAIN"],              # pause after main node
     callback_manager=callback_manager,     # lifecycle hooks
     media_store=media_store,               # for multimodal content
@@ -231,7 +240,7 @@ app = agent.compile(
 )
 ```
 
-Once compiled, use `invoke()`, `astream()`, `stream()` or serve over the API server. See [Build a graph](/docs/guides/build-a-graph) for examples of running and routing.
+Once compiled, use `invoke()`, `ainvoke()`, `astream()`, `stream()` or serve over the API server. See [Build a graph](/docs/guides/build-a-graph) for examples of running and routing.
 
 ## When to move to a custom graph
 

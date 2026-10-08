@@ -14,7 +14,7 @@ faq:
     a: "1008 means the server rejected the connection by policy: the graph type does not match the endpoint, the token is invalid, or the user is not authorized for the thread."
 ---
 
-Use this page when the TypeScript client (`AgentFlowClient`) or a hand-written HTTP client cannot invoke, stream or connect to a 10xGraph API server. It walks from a quick client-versus-server triage to the five most common failures, each with symptoms, causes and a tested fix, then lists WebSocket close codes.
+Use this page when the TypeScript client (`TenxGraphClient`) or a hand-written HTTP client cannot invoke, stream or connect to a 10xGraph API server. It walks from a quick client-versus-server triage to the five most common failures, each with symptoms, causes and a tested fix, then lists WebSocket close codes.
 
 ## Decide whether the client or the server is at fault
 
@@ -52,9 +52,9 @@ If every call fails with a connection error, the client is not reaching the serv
 Confirm the exact URL with the curl check above, then make the client use it. The client also has a `ping()` method and a `debug` flag that logs each request and response.
 
 ```ts title="check-connection.ts"
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000', // no trailing path, must match the curl URL
   debug: true, // logs request and response details to the console
 });
@@ -88,9 +88,9 @@ export ORIGINS=https://my-app.com,https://www.my-app.com
 Then configure the client with the token and, only if you rely on cookies, `credentials`.
 
 ```ts title="browser-client.ts"
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'https://api.my-app.com', // same scheme (https) as the page
   authToken: 'your-jwt-token', // sent as a Bearer token
   credentials: 'include', // only needed when you use cookies
@@ -115,9 +115,9 @@ If each request feels like a new conversation, the server is not seeing the same
 Build messages with `Message.text_message` and reuse one `thread_id` for the whole conversation.
 
 ```ts title="thread-continuity.ts"
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const threadId = 'user-123-conversation-1';
 
 // First call starts the thread.
@@ -136,9 +136,9 @@ console.log(result.meta.thread_id, result.meta.is_new_thread); // is_new_thread 
 Check whether the server has a checkpointer with `graph()`. The response holds `data.info.checkpointer` (a boolean) and `data.info.checkpointer_type`.
 
 ```ts title="check-checkpointer.ts"
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const graph = await client.graph();
 console.log(graph.data.info.checkpointer, graph.data.info.checkpointer_type);
 ```
@@ -160,9 +160,9 @@ If `checkpointer` is `false`, configure one: see [Set up checkpointing](/docs/gu
 Use the client methods, which parse the stream for you.
 
 ```ts title="stream-vs-invoke.ts"
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 const messages = [Message.text_message('Hello')];
 const config = { thread_id: 'stream-test' };
 
@@ -203,9 +203,9 @@ npm install ws
 
 ```ts title="node-websocket.ts"
 import WebSocket from 'ws';
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: 'your-jwt-token',
   webSocketImpl: WebSocket as never, // needed on Node < 21
@@ -242,9 +242,9 @@ If a reverse proxy strips `Sec-WebSocket-Protocol`, the browser handshake arrive
 After `maxAttempts` failures the session emits a fatal `error` event with `code: 'reconnect_failed'`. No reconnect happens after you call `close()` or after any fatal error. Set `reconnect: { enabled: false }` to turn it off.
 
 ```ts title="realtime-reconnect.ts"
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   authToken: 'your-jwt-token',
 });

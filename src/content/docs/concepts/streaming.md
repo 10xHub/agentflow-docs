@@ -68,7 +68,7 @@ The `event` field determines which of the four data fields is populated. Match o
 | `StreamEvent` | Meaning | Populated field | Use |
 |---|---|---|---|
 | `MESSAGE` | Model or tool output | `message` | Render text tokens, display tool calls |
-| `STATE` | Node completed | `state` | Show execution progress, update context |
+| `STATE` | State after a node's messages are added | `state` | Show execution progress, update context |
 | `ERROR` | Execution failed | `data` | Handle errors in the stream |
 | `UPDATES` | Custom node emission | `data` | Receive progress, metrics, or custom data from tools |
 
@@ -85,7 +85,7 @@ from tenxgraph.utils import ResponseGranularity
 | Value | Includes | Use when |
 |---|---|---|
 | `LOW` (default) | Latest messages only | You only need the model's output, not internal state |
-| `PARTIAL` | Messages, context, context summary | You need context to render memory or summaries alongside output |
+| `PARTIAL` | Messages, context, summary | You need context to render memory or summaries alongside output |
 | `FULL` | Full state plus all messages | You're rebuilding the complete execution state on the client |
 
 ---
@@ -179,14 +179,14 @@ The returned dict keys depend on `response_granularity`:
 | Granularity | Keys returned |
 |---|---|
 | `LOW` | `messages` |
-| `PARTIAL` | `messages`, `context`, `context_summary` |
+| `PARTIAL` | `messages`, `context`, `summary` |
 | `FULL` | `messages`, `state` |
 
 ---
 
 ## Stopping a stream
 
-Request graceful cancellation of a running stream with `stop()` or `astop()`. The graph checks the stop flag after each node and exits cleanly, returning a final state dict:
+Request graceful cancellation of a running stream with `stop()` or `astop()`. The graph checks the stop flag after each node and exits cleanly. `astop()` itself returns a small status dict such as `{"ok": True, "running": True}`:
 
 ```python
 # Stop from another coroutine or thread
@@ -209,27 +209,27 @@ See [Invoke and stream over REST](/docs/server/invoke-and-stream) for details an
 
 ### WebSocket (turn-based)
 
-The WebSocket `/v1/graph/ws` endpoint streams individual `StreamChunk` frames over a persistent WebSocket connection. Use this for lower-latency bidirectional communication and tighter control over thread state. Suitable for most chat UIs.
+The WebSocket `/v1/graph/ws` endpoint streams individual `StreamChunk` frames over a persistent WebSocket connection. Use this for lower-latency bidirectional communication on one persistent connection. Suitable for most chat UIs.
 
 See [WebSocket streaming](/docs/server/websockets) for configuration, authentication, and close codes.
 
 ### WebSocket (realtime audio)
 
-The WebSocket `/v1/graph/live` endpoint is optimized for realtime (Anthropic Realtime API and similar) agents that need to stream audio frames bidirectionally with minimal latency. This is a specialized transport; use it only if your agent is built for continuous audio I/O.
+The WebSocket `/v1/graph/live` endpoint is a provider-neutral audio-to-audio bridge: binary frames carry PCM16 audio and JSON frames carry control messages and events, not `StreamChunk` objects. Use it only if your agent is built for continuous audio I/O.
 
 See [Realtime audio agent](/docs/guides/use-realtime-audio) for integration details.
 
 ### AG-UI
 
-The POST `/v1/ag-ui` endpoint implements the AG-UI (agentic UI) protocol for frameworks like CopilotKit. It streams events and tool results in the AG-UI format, handles browser tool execution, and supports human approval interrupts.
+The POST `/v1/ag-ui` endpoint implements the AG-UI (agentic UI) protocol for frameworks like CopilotKit. It streams events and tool results in the AG-UI format, and handles browser tool execution.
 
-This transport is automatically configured when `ag_ui.enabled` is set in your 10xgraph.json.
+This transport is off unless `ag_ui.enabled` is set in your `10xgraph.json`, and needs the `ag-ui` extra (`pip install "10xgraph-api[ag-ui]"`).
 
 ---
 
 ## TypeScript client
 
-From TypeScript, the `AgentFlowClient.stream()` method handles all transport details and returns a unified async iterator of `StreamChunk` objects. No need to parse NDJSON or manage WebSocket frames yourself.
+From TypeScript, `TenxGraphClient.stream()` (HTTP) and `TenxGraphClient.wsStream()` (WebSocket) return async iterators of stream chunks, so you do not parse NDJSON or manage WebSocket frames yourself.
 
 See [Stream responses in TypeScript](/docs/client/stream-responses) for code examples and React integration patterns.
 

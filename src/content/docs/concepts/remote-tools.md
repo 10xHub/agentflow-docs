@@ -98,7 +98,7 @@ location_tool = RemoteToolConfig(
     }
 )
 
-# Build your graph
+# Build your graph (AgentState, my_local_tool and agent are your own)
 graph = StateGraph(AgentState)
 graph.add_node("tools", ToolNode([my_local_tool]))
 graph.add_node("agent", agent)
@@ -111,14 +111,14 @@ compiled.attach_remote_tools([clipboard_tool, location_tool])
 
 ## Registering handlers on the client
 
-The client uses the `@10xgraph/client` SDK to register handlers that match the server schemas by name:
+The client uses the `10xgraph-client` SDK to register handlers that match the server schemas by name:
 
 ```typescript
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
-const client = new AgentFlowClient({
-  serverUrl: "http://localhost:8000",
-  token: "your-token",
+const client = new TenxGraphClient({
+  baseUrl: "http://localhost:8000",
+  authToken: "your-token",
 });
 
 // Register a handler for the read_clipboard tool
@@ -144,9 +144,9 @@ client.registerToolHandler("get_location", async (params) => {
 });
 
 // Invoke the agent; handlers are called automatically
-const result = await client.invoke({
-  messages: [{ role: "user", content: "Copy our location to the clipboard" }],
-});
+const result = await client.invoke([
+  Message.text_message("Copy our location to the clipboard"),
+]);
 ```
 
 Handlers receive the tool parameters and must return a serializable object. See the client implementation guide for complete details.

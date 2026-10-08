@@ -7,11 +7,11 @@ group: "Serving"
 section: Concepts
 faq:
   - q: "How do I export events to LangSmith or Logfire?"
-    a: "Use `setup_langsmith()` or `setup_logfire()` in your `10xgraph.json` observability config, or call the functions directly at startup from Python. These wrap the OTEL tracer and export spans to their backend."
+    a: "Enable `langsmith` or `logfire` in the `observability` block of `10xgraph.json`, or call `setup_langsmith()` or `setup_logfire()` from Python before `compile()`. Set `LANGSMITH_API_KEY` or `LOGFIRE_TOKEN` in the environment."
   - q: "What is the difference between metrics and tracing?"
     a: "Metrics are aggregated counters and histograms (message count, latency percentiles), dimensioned, dashboarded data. Tracing captures individual request flows as spans with attributes and hierarchy, useful for debugging. 10xGraph emits both."
   - q: "Can I publish events to multiple backends at once?"
-    a: "Yes. Use `CompositePublisher` to fan out to Console, Redis, Kafka, RabbitMQ, and OTEL simultaneously. Wire them together in `10xgraph.json` or Python."
+    a: "Yes. Pass a list of publishers to `StateGraph(publisher=[...])`, or wrap them in a `CompositePublisher`, to fan out to Console, Redis, Kafka, RabbitMQ, and OTEL at once."
 ---
 
 When a 10xGraph agent executes, it emits a continuous stream of structured events: the graph starts, nodes run, tools call, LLMs respond, and the graph ends. Each event carries execution context (thread ID, run ID, user ID, timestamps) and semantic content type (text, tool call, error). This event stream is the foundation for observability in production: you can publish events to external systems for logging, distributed tracing, metrics, and real-time monitoring.
@@ -24,7 +24,7 @@ Every execution event is an `EventModel`: a structured record with a source, pha
 
 ### Event sources and phases
 
-Events come from four sources within the runtime:
+Events come from six sources within the runtime:
 
 - **Graph execution**: The overall graph lifecycle (start, progress, end).
 - **Node execution**: A node in the graph running (a step of work).
@@ -57,37 +57,37 @@ This structure lets you slice and filter events by any dimension: all events for
 
 ## Publishers: routing events to external systems
 
-The runtime publishes events to external systems via pluggable publishers. Each publisher implements a simple interface: `async def publish(event: EventModel)`. You can wire one or many publishers into your graph at compile time, and the runtime fans events out to all of them.
+The runtime publishes events to external systems via pluggable publishers. Each publisher implements a simple interface: `async def publish(event: EventModel)`. You can wire one or many publishers into your graph through the `publisher` argument of `StateGraph(...)`; a list of publishers is wrapped in a `CompositePublisher`.
 
 ### Built-in publishers
 
-**ConsolePublisher** is for development and debugging. It writes events to stdout (or to a logger) so you see them as your graph runs locally. It's opt-in and not used in production by default.
+**ConsolePublisher** is for development and debugging. It writes events to stdout (or to a logger with `use_logger`) so you see them as your graph runs locally. It's opt-in and not used in production by default.
 
 ```python
 from tenxgraph import StateGraph
 from tenxgraph.runtime.publisher import ConsolePublisher
 
-graph = StateGraph(AgentState)
-# ... add nodes and edges ...
-
-compiled = graph.compile(
-    publisher=ConsolePublisher({"format": "json", "indent": 2})
+graph = StateGraph(
+    AgentState,
+    publisher=ConsolePublisher({"format": "json", "indent": 2}),
 )
+# ... add nodes and edges ...
+compiled = graph.compile()
 ```
 
-**RedisPublisher** broadcasts each event to a Redis Pub/Sub channel. Subscribers on the server (or any external system listening to that channel) receive all events in real time. Useful for event-driven architectures and low-latency integrations.
+**RedisPublisher** broadcasts each event to a Redis Pub/Sub channel (default `tenxgraph.events`) or, with `mode: "stream"`, to a Redis stream. Subscribers on the server (or any external system listening to that channel) receive all events in real time. Useful for event-driven architectures and low-latency integrations.
 
 **KafkaPublisher** publishes events to a Kafka topic. Each event becomes a message in the stream, so multiple consumers can replay or process them independently. Kafka is durable and fault-tolerant, making it a good choice for high-volume production systems.
 
-**RabbitMQPublisher** sends events to a RabbitMQ exchange and queue. You configure routing keys and exchanges to partition events by type, user, or any other dimension.
+**RabbitMQPublisher** sends events to a RabbitMQ exchange (default `tenxgraph.events`). You configure the exchange, exchange type and routing key to partition events by type, user, or any other dimension.
 
 **OtelPublisher** reconstructs OTEL (OpenTelemetry) spans from events. Every graph execution becomes a span tree: the graph span has child spans for nodes, LLM calls, and tool calls. Attributes from the event data are attached to each span, and the span timing comes from the event timestamps. If you have an OTEL collector and exporter configured (e.g., Jaeger, Datadog, New Relic), spans are sent there automatically.
 
-**LangsmithPublisher** sends traces to LangSmith, the observability platform from LangChain. Traces map to individual graph runs, with each span corresponding to a node or tool call. This is useful if your team already uses LangSmith for monitoring and debugging.
+**LangsmithPublisher** exports OTEL spans to LangSmith, the observability platform from LangChain, over its OTLP endpoint. Each span corresponds to a graph, node, LLM or tool event. This is useful if your team already uses LangSmith for monitoring and debugging.
 
 **LogfirePublisher** exports spans to Logfire, Pydantic's observability platform. Like LangSmith, it captures the full execution trace and makes it queryable in their UI.
 
-**CompositePublisher** is a fan-out publisher: it holds a list of other publishers and sends each event to all of them concurrently. Failures in one publisher are logged but do not block the others. Use this to, for example, send events to both Redis and OTEL at the same time.
+**CompositePublisher** is a fan-out publisher: it holds a list of other publishers and sends each event to all of them concurrently. A failure in one publisher does not block the others. Use this to, for example, send events to both Redis and OTEL at the same time.
 
 ```python
 from tenxgraph.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
@@ -98,36 +98,33 @@ publishers = [
 ]
 composite = CompositePublisher(publishers)
 
-compiled = graph.compile(publisher=composite)
+graph = StateGraph(AgentState, publisher=composite)
+# ... add nodes and edges ...
+compiled = graph.compile()
 ```
 
 ### Configuring publishers
 
-In Python, pass a publisher to `compile()`:
+In Python, pass a publisher (or a list of publishers) to the `StateGraph` constructor:
 
 ```python
-compiled = graph.compile(publisher=redis_publisher)
+graph = StateGraph(AgentState, publisher=redis_publisher)
 ```
 
-Or use the API server's `10xgraph.json` observability block:
+The API server's `10xgraph.json` has an `observability` block for the OTEL-based backends only (Logfire and LangSmith). Console, Redis, Kafka and RabbitMQ publishers are not configured there; create them in your graph module.
 
 ```json
 {
   "agent": "graph:app",
   "observability": {
-    "publishers": [
-      {"type": "console", "format": "json"},
-      {"type": "redis", "url": "redis://localhost:6379"}
-    ],
-    "otel": {
-      "enabled": true,
-      "level": "STANDARD"
-    }
+    "level": "standard",
+    "logfire": {"enabled": true, "service_name": "my-agent"},
+    "langsmith": {"enabled": true, "project": "my-agent"}
   }
 }
 ```
 
-The API server wires up publishers from the config and binds them into the dependency injection container, so they are injected into the graph at runtime.
+Secrets stay in the environment: set `LOGFIRE_TOKEN` and `LANGSMITH_API_KEY`. The `level` value is one of `spans`, `standard` or `full` and falls back to `standard` if unrecognized.
 
 ## Metrics: counters and latency timers
 
@@ -182,11 +179,13 @@ setup_otel_metrics()
 
 If you do not have OpenTelemetry installed, `setup_otel_metrics()` returns False and logs a message; metrics keep working in-process.
 
-The framework emits standard metrics:
-- `tenxgraph.node.executions`: Counter for node runs, with attributes for node name and outcome.
-- `tenxgraph.llm.calls`: Counter for LLM calls.
-- `tenxgraph.tool.calls`: Counter for tool calls.
-- `tenxgraph.execution.latency_ms`: Histogram of execution times.
+The framework emits standard metrics, including:
+- `tenxgraph.node.executions`, `tenxgraph.node.errors`, `tenxgraph.node.timeouts`, `tenxgraph.node.stopped`: counters for node runs, with node attributes.
+- `tenxgraph.node.duration`: timer for node execution.
+- `tenxgraph.tool.calls`, `tenxgraph.tool.errors`, `tenxgraph.tool.timeouts`: counters for tool calls.
+- `tenxgraph.tool.duration`: timer for tool execution.
+
+Checkpointers and the background task manager add their own counters and timers.
 
 You can add your own metrics in custom nodes or tools, and they will all export together if OTEL is configured.
 
@@ -210,7 +209,7 @@ Span timing is set from `EventModel.timestamp`. Attributes are derived from even
 The `OtelPublisher` emits different amounts of data based on the `ObservabilityLevel`:
 
 - **SPANS**: Structure and timing only. No input/output data on spans (fastest, smallest, safest).
-- **STANDARD**: Adds token counts, model name, request parameters (default).
+- **STANDARD**: Adds token counts, model name, request parameters when available (default).
 - **FULL**: Adds model input messages, output, tool I/O, system prompt (may contain PII; use only in dev/controlled environments).
 
 Set the level when configuring OTEL:
@@ -219,21 +218,12 @@ Set the level when configuring OTEL:
 from tenxgraph.runtime.publisher import OtelPublisher, ObservabilityLevel
 
 publisher = OtelPublisher(level=ObservabilityLevel.FULL)
-compiled = graph.compile(publisher=publisher)
+graph = StateGraph(AgentState, publisher=publisher)
+# ... add nodes and edges ...
+compiled = graph.compile()
 ```
 
-Or in `10xgraph.json`:
-
-```json
-{
-  "observability": {
-    "otel": {
-      "enabled": true,
-      "level": "STANDARD"
-    }
-  }
-}
-```
+Or call `setup_tracing(graph, level=ObservabilityLevel.FULL)` before `compile()`. In `10xgraph.json`, the `observability.level` key sets the level for Logfire and LangSmith.
 
 ### Distributed tracing
 
@@ -248,40 +238,36 @@ When you integrate with an OTEL collector (e.g., Jaeger, Datadog, New Relic), sp
 
 Here is a reference table of where each piece is configured:
 
-| Feature | Config key / env var | Python API | 10xgraph.json | Details |
-|---------|----------------------|------------|-------|----------|
-| Console output | - | `ConsolePublisher()` | `observability.publishers[].type: "console"` | Dev/debug only |
-| Redis Pub/Sub | `REDIS_URL` | `RedisPublisher(url)` | `observability.publishers[].type: "redis"` | Event stream |
-| Kafka | - | `KafkaPublisher(brokers)` | `observability.publishers[].type: "kafka"` | High-volume events |
-| RabbitMQ | - | `RabbitMQPublisher(url)` | `observability.publishers[].type: "rabbitmq"` | Durable queues |
-| OTEL tracing | `OTEL_EXPORTER_OTLP_ENDPOINT` | `OtelPublisher(level)` | `observability.otel.enabled` | Spans tree |
-| LangSmith | `LANGCHAIN_API_KEY` | `setup_langsmith()` | `observability.langsmith.enabled` | LangSmith traces |
-| Logfire | `LOGFIRE_TOKEN` | `setup_logfire()` | `observability.logfire.enabled` | Logfire traces |
-| Metrics | - | `setup_otel_metrics()` | - | Counters/histograms |
+| Feature | Env var | Python API | 10xgraph.json |
+|---------|---------|------------|---------------|
+| Console output | - | `ConsolePublisher(config)` | - |
+| Redis | - | `RedisPublisher({"url": ...})` | - |
+| Kafka | - | `KafkaPublisher({"bootstrap_servers": ...})` | - |
+| RabbitMQ | - | `RabbitMQPublisher({"url": ...})` | - |
+| OTEL tracing | standard OTEL SDK variables | `OtelPublisher(level=...)`, `setup_tracing(graph)` | - |
+| LangSmith | `LANGSMITH_API_KEY` | `setup_langsmith(graph)` | `observability.langsmith.enabled` |
+| Logfire | `LOGFIRE_TOKEN` | `setup_logfire(graph)` | `observability.logfire.enabled` |
+| Metrics | - | `setup_otel_metrics()` | - |
 
 ## Publishing events from custom nodes
 
 If you write custom nodes or tools, you can emit your own events:
 
 ```python
-from tenxgraph.runtime.publisher import EventModel, Event, EventType, ContentType, publish_event
+from tenxgraph.runtime.publisher import ContentType, Event, EventModel, EventType, publish_event
 
-async def my_custom_node(state, publish=Inject[publish_event]):
+
+async def my_custom_node(state, config: dict):
     # ... do work ...
-    
     event = EventModel.default(
-        base_config={
-            "thread_id": state.thread_id,
-            "run_id": state.run_id,
-            "timestamp": time.time(),
-        },
-        data={"custom_metric": value},
+        config,
+        data={"custom_metric": 1},
         content_type=[ContentType.DATA],
         event=Event.NODE_EXECUTION,
         event_type=EventType.UPDATE,
         node_name="my_custom_node",
     )
-    publish(event)
+    publish_event(event)
 ```
 
 The publisher (if configured) will route your event to all sinks automatically.

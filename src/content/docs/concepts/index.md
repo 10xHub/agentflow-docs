@@ -38,7 +38,7 @@ flowchart TB
     API[FastAPI Server]
   end
   subgraph "TypeScript client (10xgraph-client)"
-    SDK[AgentFlowClient]
+    SDK[TenxGraphClient]
   end
   SDK -->|HTTP / SSE / WS| API
   CLI --> API
@@ -50,9 +50,9 @@ flowchart TB
 |-------|---------|-------------|
 | **Core library** | `10xgraph` (import `tenxgraph`) | Graph engine, agents, tools, state, checkpointing, memory stores, media handling, publishers. Use this to build agents locally or embed graphs in your own apps. |
 | **API server & CLI** | `10xgraph-api` (import `tenxgraph_api`, command `10xgraph`) | FastAPI server that wraps your compiled graph, REST and WebSocket endpoints, auth, authorization, rate limiting, thread management. Use this to serve agents over HTTP. |
-| **TypeScript client** | `10xgraph-client` (npm `@10xgraph/client`) | Typed HTTP wrapper for browser and Node.js, handles auth, streaming, thread management, file uploads. Use this to call the server from your frontend or backend. |
+| **TypeScript client** | `10xgraph-client` (npm `10xgraph-client`) | Typed HTTP wrapper for browser and Node.js, handles auth, streaming, thread management, file uploads. Use this to call the server from your frontend or backend. |
 
-Python code imports from `tenxgraph`, for example `from tenxgraph.core.graph import StateGraph`. The deprecated alias `agentflow` still works until 2.0. The TypeScript class is named `AgentFlowClient`.
+Python code imports from `tenxgraph`, for example `from tenxgraph.core.graph import StateGraph`. The deprecated alias `agentflow` still works until 2.0. The TypeScript class is named `TenxGraphClient`.
 
 ## How a request flows through the system
 

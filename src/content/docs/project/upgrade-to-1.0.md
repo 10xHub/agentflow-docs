@@ -15,7 +15,7 @@ call. Work through this page before upgrading a running deployment.
 
 ```bash
 pip install --upgrade 10xgraph 10xgraph-api
-npm install @10xscale/agentflow-client@latest
+npm install 10xgraph-client@latest
 ```
 
 ---

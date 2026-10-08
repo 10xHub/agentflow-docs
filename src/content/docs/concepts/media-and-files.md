@@ -62,8 +62,8 @@ MediaRef(kind="file_id", file_id="a1b2c3d4e5f6...", mime_type="image/png")
 ```python
 class MediaRef(BaseModel):
     kind: Literal["url", "file_id", "data"] = "url"
-    url: str | None = None              # https:// or graph://media/<key>
-    file_id: str | None = None          # storage key from MediaStore.store()
+    url: str | None = None              # http(s), data: URL, or graph://media/<key>
+    file_id: str | None = None          # storage key from MediaStore.store(), or a provider file ID
     data_base64: str | None = None      # small payloads only
     mime_type: str | None = None
     size_bytes: int | None = None       # optional size hint
@@ -104,69 +104,42 @@ All methods are async; they are safe to call from agent nodes and tools via norm
 | Class | Location | Best for |
 |---|---|---|
 | `InMemoryMediaStore` | `tenxgraph.storage.media` | Tests, development, single-process |
-| `LocalFileMediaStore` | `tenxgraph.storage.media.storage` | Development, single-server deployments |
-| `CloudMediaStore` | `tenxgraph.storage.media.storage` | Production with S3 / GCS |
+| `LocalFileMediaStore` | `tenxgraph.storage.media` | Development, single-server deployments |
+| `CloudMediaStore` | `tenxgraph.storage.media` | Production with S3 / GCS |
 
 **InMemoryMediaStore** stores files in RAM. Data is lost on process restart and is not shared across workers. Use it for testing and local development.
 
-**LocalFileMediaStore** shards files on disk under a base directory. Each file is stored as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with a `.meta.json` sidecar. Suitable for single-server deployments or development environments with persistent storage.
+**LocalFileMediaStore** shards files on disk under a base directory. Each file is stored as `{base_dir}/{key[:2]}/{key[2:4]}/{key}{ext}` with a `.meta.json` sidecar. The default `base_dir` is `./agentflow_media`. Suitable for single-server deployments or development environments with persistent storage.
 
-**CloudMediaStore** offloads to S3 or GCS via the cloud-storage-manager SDK. Requires the `[cloud-storage]` extra. Generates signed URLs so providers can fetch media directly without re-downloading to your server. The right choice for distributed systems and production deployments.
+**CloudMediaStore** offloads to S3 or GCS via the cloud-storage-manager SDK. Requires the `cloud-storage` extra (`pip install "10xgraph[cloud-storage]"`). Generates signed URLs so providers can fetch media directly without re-downloading to your server. The right choice for distributed systems and production deployments.
 
-## MultimodalConfig, how agents adapt media for providers
+## MultimodalConfig, opting an agent into media
 
-Not every LLM provider handles every media type or transport mode the same way. `MultimodalConfig` lets you specify per-agent strategies, and the runtime adapts messages automatically.
+An `Agent` only keeps media blocks (images, audio, video, documents) in its prompt when it has a `multimodal_config`. An agent without one strips them before calling the model, so a text-only agent downstream of a multimodal one never sees them.
 
 ```python
 from tenxgraph.core.graph import Agent
-from tenxgraph.storage.media import ImageHandling, DocumentHandling, MultimodalConfig
+from tenxgraph.storage.media import MultimodalConfig
 
 agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
-    multimodal_config=MultimodalConfig(
-        image_handling=ImageHandling.BASE64,
-        document_handling=DocumentHandling.EXTRACT_TEXT,
-        max_image_size_mb=10.0,
-        max_image_dimension=2048,
-        supported_image_types={"image/jpeg", "image/png", "image/webp", "image/gif"},
-        supported_doc_types={"application/pdf"},
-    ),
+    multimodal_config=MultimodalConfig(),
 )
 ```
 
-### Image handling strategies
-
-| Strategy | When to use |
-|---|---|
-| `ImageHandling.BASE64` | Embed inline (provider must accept base64; best for small images) |
-| `ImageHandling.URL` | Send a URL directly (provider fetches it; requires network access) |
-| `ImageHandling.FILE_ID` | Use provider-native file APIs (e.g., Google File API; most robust) |
-
-The runtime tries strategies in order of preference. If the first fails, it falls back to the next.
-
-### Document handling strategies
-
-| Strategy | Behavior |
-|---|---|
-| `DocumentHandling.EXTRACT_TEXT` | Parse the document and send extracted text as TextBlock |
-| `DocumentHandling.FORWARD_RAW` | Send raw bytes to the provider (if supported) |
-| `DocumentHandling.SKIP` | Ignore document blocks entirely |
+`MultimodalConfig` is a Pydantic model with these fields and defaults: `image_handling` (`ImageHandling.BASE64`), `document_handling` (`DocumentHandling.EXTRACT_TEXT`), `max_image_size_mb` (10.0), `max_image_dimension` (2048), `supported_image_types` (JPEG, PNG, WebP, GIF) and `supported_doc_types` (PDF, DOCX). The enums are `ImageHandling` (`BASE64`, `URL`, `FILE_ID`) and `DocumentHandling` (`EXTRACT_TEXT`, `FORWARD_RAW`, `SKIP`). In the core agent path, the presence of the config is what enables media; transport is chosen by the capability matrix below.
 
 ## Provider capability matrix and fallback
 
-10xGraph maintains an internal capability matrix (`tenxgraph.storage.media.capabilities`) that maps each provider and model to what it supports. When your agent sends media, the system tries to deliver it in this order:
+10xGraph maintains an internal capability matrix (`tenxgraph.storage.media.capabilities`) that maps each provider and model to what it supports. When your agent sends media, the system tries transports from a per-model list (the order varies by model). The possible modes are:
 
 1. **remote_url**: Send a public or signed HTTPS URL directly.
 2. **provider_file**: Use the provider's native file upload API (e.g., Google Files API, OpenAI file search).
 3. **inline_bytes**: Embed as base64 data URI.
 4. **unsupported**: The provider does not support this media type.
 
-You do not manually manage this chain. `MultimodalConfig` tells the system which strategies you prefer, and the resolver automatically picks the best transport for each provider and falls back gracefully.
-
-### Example: why this matters
-
-If you configure `image_handling=ImageHandling.FILE_ID` but your model does not support file APIs, the resolver automatically tries URL mode, then inline base64. If a file is too large for inline delivery, it switches to URL or file mode. This keeps your code simple: you write one message structure and trust the system to adapt.
+You do not manually manage this chain. The capability matrix lists a transport order per provider, model and media type, and the resolver tries each in turn, moving to the next when one fails.
 
 ## Trade-offs and design decisions
 
@@ -175,8 +148,8 @@ If you configure `image_handling=ImageHandling.FILE_ID` but your model does not 
 - URL is fast if media is already hosted and the provider has network access, but introduces an external dependency.
 - file_id decouples the message from storage and enables deduplication, but requires infrastructure (a MediaStore backend).
 
-**Per-agent config vs. global config:**
-MultimodalConfig is per-agent, so different agents in the same graph can use different strategies. A vision agent might prefer inline base64 for speed, while a document processing agent uses file_id for durability.
+**Per-agent opt-in:**
+`multimodal_config` is per-agent, so a vision agent can receive media while a text-only agent in the same graph has it stripped.
 
 **Messages stay lightweight:**
 By never storing raw bytes in messages, 10xGraph keeps state snapshots small, thread history fast to retrieve, and checkpoints cheap to store. Media bytes live in specialized stores where they belong.

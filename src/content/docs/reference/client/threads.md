@@ -9,12 +9,12 @@ label: Threads
 updated: "2026-10-08"
 ---
 
-A thread is one conversation stored by the server's checkpointer: an ordered list of messages plus a state snapshot. The `AgentFlowClient` thread methods list threads, read and edit their state and messages, and delete them. They all call the `/v1/threads` routes and need a checkpointer on the server.
+A thread is one conversation stored by the server's checkpointer: an ordered list of messages plus a state snapshot. The `TenxGraphClient` thread methods list threads, read and edit their state and messages, and delete them. They all call the `/v1/threads` routes and need a checkpointer on the server.
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 ```
 
 <aside class="callout callout-note" role="note"><p class="callout-title">A checkpointer is required</p>
@@ -23,7 +23,7 @@ If the server was started without a checkpointer, every thread route returns HTT
 
 </aside>
 
-Every method accepts `threadId` as `string | number`. Failed requests throw `AgentFlowError` (see [Errors](/docs/reference/client/errors)).
+Every method accepts `threadId` as `string | number`. Failed requests throw `TenxGraphError` (see [Errors](/docs/reference/client/errors)).
 
 | Method | HTTP route | Purpose |
 |---|---|---|
@@ -262,9 +262,9 @@ The server checks these constraints and answers HTTP 422 when one fails.
 ### Page through every thread
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 // Yield threads page by page until a short page signals the end
 async function* allThreads(pageSize = 50) {
@@ -286,9 +286,9 @@ for await (const thread of allThreads()) {
 ### Print a conversation
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 // Join the text blocks of each message into one line
 const response = await client.threadMessages('thread-123', { offset: 0, limit: 100 });
@@ -305,9 +305,9 @@ for (const msg of response.data.messages) {
 ### Reset a thread
 
 ```ts
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 // Drop only the state snapshot, keep the thread and its messages
 await client.clearThreadState('thread-123');
@@ -323,7 +323,7 @@ await client.deleteThread('thread-123');
 | 503 | The server has no checkpointer configured. | Configure a checkpointer on the server. |
 | 422 | A validation rule above failed, or a message carries a tool call. | Check the IDs, pagination values and message content. |
 
-All of these surface as `AgentFlowError` with `statusCode` set. See [Errors](/docs/reference/client/errors).
+All of these surface as `TenxGraphError` with `statusCode` set. See [Errors](/docs/reference/client/errors).
 
 ## Next step
 

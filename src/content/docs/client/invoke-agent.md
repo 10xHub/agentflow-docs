@@ -19,16 +19,16 @@ faq:
 
 ## Prerequisites
 
-You need a configured `AgentFlowClient` instance and a 10xGraph API server with a compiled graph running. Set up both in [Create a client](/docs/client/create-client) first.
+You need a configured `TenxGraphClient` instance and a 10xGraph API server with a compiled graph running. Set up both in [Create a client](/docs/client/create-client) first.
 
 ## Build and send a message
 
 Messages are the fundamental unit of communication with the agent. Create a message using `Message.text_message()`, then pass it to `client.invoke()` in an array:
 
 ```ts
-import { Message, AgentFlowClient } from '@10xgraph/client';
+import { Message, TenxGraphClient } from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: 'your-token' },
 });
@@ -135,10 +135,10 @@ The `InvokePartialResult` gives you iteration count, whether tool calls were mad
 
 ## Handle errors gracefully
 
-Network errors, authentication failures, and validation errors are thrown as exceptions. Catch `AgentFlowError` to handle specific HTTP status codes:
+Network errors, authentication failures, and validation errors are thrown as exceptions. Catch `TenxGraphError` to handle specific HTTP status codes:
 
 ```ts
-import { AgentFlowError } from '@10xgraph/client';
+import { TenxGraphError } from '10xgraph-client';
 
 try {
   const response = await client.invoke([
@@ -146,7 +146,7 @@ try {
   ]);
   displayResponse(response.messages);
 } catch (err) {
-  if (err instanceof AgentFlowError) {
+  if (err instanceof TenxGraphError) {
     switch (err.statusCode) {
       case 401:
         // Auth failed: token invalid or expired
@@ -178,12 +178,12 @@ This example creates a client, invokes the agent in a loop to simulate a convers
 
 ```ts
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   Message,
-  AgentFlowError,
-} from '@10xgraph/client';
+  TenxGraphError,
+} from '10xgraph-client';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   auth: { type: 'bearer', token: process.env.API_TOKEN || '' },
 });
@@ -211,7 +211,7 @@ async function askAgent(
       .map(block => (block as any).text)
       .join('');
   } catch (err) {
-    if (err instanceof AgentFlowError) {
+    if (err instanceof TenxGraphError) {
       console.error(`Agent error [${err.statusCode}]: ${err.message}`);
     } else {
       console.error('Unexpected error:', err);
@@ -247,8 +247,8 @@ If you see these errors, here are the fixes:
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `TypeError: Failed to fetch` | Server not running | Start it with `10xgraph api` |
-| `AgentFlowError 401` | Token invalid or missing | Check `API_TOKEN` env var |
-| `AgentFlowError 404` | Agent graph not found | Verify the config file path |
+| `TenxGraphError 401` | Token invalid or missing | Check `API_TOKEN` env var |
+| `TenxGraphError 404` | Agent graph not found | Verify the config file path |
 | Empty messages array | Agent has no output | Check the agent code for issues |
 
 The agent should respond within seconds. If responses take too long, check the graph's tool calls and model configuration.
@@ -260,7 +260,7 @@ The agent should respond within seconds. If responses take too long, check the g
 - Use `thread_id` in the config to persist conversation history across calls.
 - Set `response_granularity` to 'low' for production, 'full' or 'partial' for debugging.
 - Monitor progress with `onPartialResult` callbacks for multi-step agent runs.
-- Catch `AgentFlowError` by status code to handle auth, permission, and server errors.
+- Catch `TenxGraphError` by status code to handle auth, permission, and server errors.
 
 ## Next steps
 

@@ -42,7 +42,7 @@ Build the core graph logic. These guides cover the fundamental patterns: constru
 
 ### Prebuilt agents
 
-10xGraph ships six production-ready agents that handle common patterns. Use one if it matches your needs; customize or extend it if not.
+10xGraph ships seven prebuilt agents that handle common patterns. Use one if it matches your needs; customize or extend it if not.
 
 - [Prebuilt agents overview](/docs/guides/prebuilt-agents): Quick comparison and when to use each
 - [ReactAgent](/docs/guides/prebuilt/react-agent): The standard tool-calling loop
@@ -77,7 +77,7 @@ Manage graph state, persistence, and memory. These guides cover how messages acc
 
 ### Multi-agent and control flow
 
-Coordinate multiple agents and implement advanced control flow. Covers handoff patterns, human-in-the-loop approval, background tasks, and distributed agent-to-agent calls.
+Coordinate multiple agents and implement advanced control flow. Covers handoff patterns, human-in-the-loop approval, and background tasks.
 
 - [Handoff between agents](/docs/guides/handoff-between-agents): Agent A asks agent B to take over
 - [Add human approval](/docs/guides/add-human-approval): Pause runs for human review before proceeding

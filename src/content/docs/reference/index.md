@@ -125,7 +125,7 @@ Set both `DOCS_PATH` and `REDOCS_PATH` to empty values in production to turn off
 
 ## TypeScript client
 
-The `@10xgraph/client` package, framework-agnostic and fully typed. (Until the renamed npm package is published, the current name is `@10xscale/agentflow-client`.)
+The `10xgraph-client` package, framework-agnostic and fully typed. (Until it is published on npm, install `@10xscale/agentflow-client`, which exports the same API under the older `AgentFlow*` class names.)
 
 ### Basics
 

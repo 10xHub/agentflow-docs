@@ -231,9 +231,9 @@ Without this, clients behind a proxy appear to have the proxy's IP and all land 
 Here's a minimal example using the 10xGraph TypeScript client:
 
 ```typescript
-import { AgentFlowClient } from "@10xgraph/client";
+import { TenxGraphClient } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://localhost:8000",
   token: "your-jwt-token"
 });

@@ -15,6 +15,12 @@ In this step, you will start the API server from the agent and memory you built 
 
 ## Prerequisites
 
+Install the server and a provider extra, and set your provider API key in `.env`:
+
+```bash
+pip install 10xgraph-api "10xgraph[google-genai]"
+```
+
 You need the step 3 graph with memory. If you skipped that step, create `graph/react.py`:
 
 ```python
@@ -72,18 +78,13 @@ From the folder containing `10xgraph.json`, run:
 10xgraph api --host 127.0.0.1 --port 8000
 ```
 
-Expected output:
-
-```text
-INFO: Uvicorn running on http://127.0.0.1:8000
-INFO: OpenAPI docs at http://127.0.0.1:8000/docs
-```
+Uvicorn logs show the server listening on `http://127.0.0.1:8000`. The exact log lines vary by version.
 
 The server is now running. The API server loaded your graph module, compiled the graph once at startup, and is ready to handle requests.
 
 ## Explore the API in Swagger UI
 
-Open the Swagger UI at `http://127.0.0.1:8000/docs`. You will see every endpoint the server exposes, grouped by tag (Graph, checkpointer, etc.). Each endpoint shows its request and response schema, so you can test directly in the browser.
+Open the Swagger UI at `http://127.0.0.1:8000/docs`. You will see every endpoint the server exposes, grouped by tag. Each endpoint shows its request and response schema, so you can test directly in the browser.
 
 Check server health with a simple endpoint:
 
@@ -91,15 +92,15 @@ Check server health with a simple endpoint:
 curl http://127.0.0.1:8000/ping
 ```
 
-Response:
+Response (the `metadata` values vary per request):
 
 ```json
-{"data":"pong"}
+{"data":"pong","metadata":{"request_id":"...","timestamp":"...","message":"OK"}}
 ```
 
 ## Test the graph with `invoke`
 
-The `/v1/graph/invoke` endpoint executes the graph end-to-end and returns the final state. Open a second terminal and send:
+The `/v1/graph/invoke` endpoint executes the graph end-to-end and returns the final messages. Open a second terminal and send:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
@@ -110,16 +111,16 @@ curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   }'
 ```
 
-The response is the full final state:
+The request body takes `messages`, `config`, and optional `initial_state`, `recursion_limit` (default 25) and `response_granularity`. By default the response lists the messages produced by this run, each with `message_id`, `role` and a `content` array of typed blocks (abbreviated here):
 
 ```json
 {
   "data": {
     "messages": [
-      {"role": "user", "content": "What is the weather in Paris?"},
-      {"role": "assistant", "content": "The weather in Paris is sunny and 22°C."}
+      {"role": "assistant", "content": [{"type": "text", "text": "The weather in Paris is sunny and 22°C."}]}
     ]
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -138,7 +139,7 @@ The agent remembers your first question because the checkpointer loaded the earl
 
 ## Stream responses with `stream`
 
-For real-time feedback, use `/v1/graph/stream`. The server sends newline-delimited JSON (NDJSON) chunks, one per event:
+For real-time feedback, use `/v1/graph/stream`. The server sends one JSON object per line. Each object is a `StreamChunk` with an `event` field (`message`, `state`, `updates` or `error`):
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/graph/stream \
@@ -149,20 +150,18 @@ curl -X POST http://127.0.0.1:8000/v1/graph/stream \
   }' | head -20
 ```
 
-Output (each line is a separate JSON object):
+Output (abbreviated; each line is a separate JSON object, and the fields inside `message` are the same as in the invoke response):
 
 ```json
-{"type":"message_delta","index":0,"delta":{"content":"The"}}
-{"type":"message_delta","index":0,"delta":{"content":" weather"}}
-{"type":"message_delta","index":0,"delta":{"content":" in"}}
+{"event":"message","message":{"role":"assistant","delta":true,"content":[...]},"thread_id":"step4-thread-2",...}
 ...
 ```
 
-The streaming format is useful for chatbots and real-time UIs where you display tokens as they arrive.
+Chunks with `"delta": true` are partial text. The streaming format is useful for chatbots and real-time UIs where you display tokens as they arrive.
 
 ## Read thread state over REST
 
-You can inspect any thread without invoking the graph again. The `GET /v1/threads/{thread_id}/state` endpoint returns the full checkpoint:
+You can inspect any thread without invoking the graph again. The `GET /v1/threads/{thread_id}/state` endpoint returns the saved state:
 
 ```bash
 curl http://127.0.0.1:8000/v1/threads/step4-thread-1/state
@@ -173,33 +172,35 @@ Response:
 ```json
 {
   "data": {
-    "messages": [
-      {"role": "user", "content": "What is the weather in Paris?"},
-      {"role": "assistant", "content": "The weather in Paris is sunny and 22°C."},
-      {"role": "user", "content": "What did I ask about first?"},
-      {"role": "assistant", "content": "You asked about the weather in Paris."}
-    ]
-  }
+    "state": {
+      "context": [ ...all saved messages, oldest first... ],
+      "context_summary": null,
+      "execution_meta": { ... }
+    }
+  },
+  "metadata": {...}
 }
 ```
+
+Custom fields from your `AgentState` subclass appear next to `context`. To list only the messages, call `GET /v1/threads/step4-thread-1/messages`.
 
 This endpoint does not run the graph; it only retrieves what the checkpointer saved. It is useful for debugging, auditing, or building a chat history UI without replaying the graph.
 
 ## Test interactively with the playground
 
-The hosted playground gives you a chat UI without writing frontend code. Start the playground:
+The hosted playground gives you a chat UI without writing frontend code. Stop the `10xgraph api` server first, because `10xgraph play` starts the API server itself and then opens the hosted playground:
 
 ```bash
 10xgraph play --host 127.0.0.1 --port 8000
 ```
 
-The browser opens automatically (if not, copy the URL from the terminal). The playground connects to your local API and shows a chat interface.
+The browser opens automatically once the API responds (if not, copy the URL from the terminal). The playground connects to your local API and shows a chat interface.
 
 In the playground, you can:
 
-1. **Send messages**: type naturally. Each message calls `POST /v1/graph/invoke` on your API.
+1. **Send messages**: type naturally. Each message calls `POST /v1/graph/stream` or `POST /v1/graph/invoke`, depending on the mode you pick.
 2. **See tool calls**: if the agent uses tools, you see what was called and the result.
-3. **Inspect raw state**: expand the debug panel to see the full message array.
+3. **Inspect raw traffic**: open the request log to see the frames exchanged with the API.
 4. **Test multiple threads**: create a new conversation to start a fresh thread.
 
 Try the same questions:
@@ -210,7 +211,7 @@ What about London?
 What did I ask first?
 ```
 
-The last question tests memory. The playground passes the same `thread_id` for each turn, so the checkpointer restores context.
+The last question tests memory. The playground keeps the same `thread_id` within a conversation, so the checkpointer restores context.
 
 When you stop the server (Ctrl+C), the playground loses its connection and shows an error until you restart.
 
@@ -235,28 +236,28 @@ flowchart LR
   Response -->|return| Client
 ```
 
-The server loads your config once at startup. For each request, it invokes the graph, passes the checkpointer, and returns the final state as JSON.
+The server loads your config once at startup. For each request, it invokes the graph, passes the checkpointer, and returns the result as JSON.
 
 ## Available endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/v1/graph/invoke` | POST | Invoke the graph, return final state |
-| `/v1/graph/stream` | POST | Invoke the graph, stream NDJSON chunks |
+| `/v1/graph/stream` | POST | Invoke the graph, stream one JSON chunk per line |
 | `/v1/graph/stop` | POST | Stop a running graph |
 | `/v1/graph/fix` | POST | Remove broken tool calls from state |
 | `/v1/threads/{thread_id}/state` | GET | Read thread checkpoint |
 | `/v1/threads/{thread_id}/messages` | GET | List thread messages |
 | `/ping` | GET | Health check |
-| `/docs` | GET | Swagger UI |
+| `/docs` | GET | Swagger UI (on by default; off in production unless `DOCS_PATH` is set) |
 
 Full details are in the [API reference](/docs/reference/rest-api/graph).
 
 ## What you learned
 
 - `10xgraph api` starts a production-ready FastAPI server that loads your graph from `10xgraph.json`.
-- The `/v1/graph/invoke` endpoint runs the graph and returns the final state.
-- The `/v1/graph/stream` endpoint sends results as NDJSON for real-time streaming.
+- The `/v1/graph/invoke` endpoint runs the graph and returns the final messages.
+- The `/v1/graph/stream` endpoint sends one JSON chunk per line for real-time streaming.
 - Thread state is readable via `GET /v1/threads/{thread_id}/state` without replaying the graph.
 - The hosted playground (`10xgraph play`) provides a chat UI for testing without code.
 - The checkpointer saves state automatically; pass the same `thread_id` to restore context across requests.

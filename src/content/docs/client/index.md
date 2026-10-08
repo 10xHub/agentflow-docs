@@ -13,14 +13,14 @@ faq:
     answer: "Yes. Register handlers for remote tools declared in the server's 10xgraph.json and the client executes them without the server owning the implementation."
 ---
 
-The `@10xgraph/client` TypeScript SDK is a typed wrapper that connects browser and Node.js apps to a running 10xGraph API. It handles session threading, multiple transport modes, auth headers, file uploads, memory access, and client-side tool execution.
+The `10xgraph-client` TypeScript SDK is a typed wrapper that connects browser and Node.js apps to a running 10xGraph API. It handles session threading, multiple transport modes, auth headers, file uploads, memory access, and client-side tool execution.
 
 ## What you need
 
 Install Node 18 or later and the client package:
 
 ```bash
-npm install @10xgraph/client
+npm install 10xgraph-client
 ```
 
 For WebSocket support on Node 18-20, also install the `ws` package and pass it to the client config:
@@ -30,10 +30,10 @@ npm install ws
 ```
 
 ```typescript
-import { AgentFlowClient } from '@10xgraph/client';
+import { TenxGraphClient } from '10xgraph-client';
 import WebSocket from 'ws';
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
   webSocketImpl: WebSocket,  // required on Node < 21
   authToken: 'your-token',
@@ -48,7 +48,7 @@ Your app calls the client with messages and config. The client connects to the 1
 flowchart LR
   subgraph "Browser / Node.js"
     APP[Your App]
-    SDK[AgentFlowClient]
+    SDK[TenxGraphClient]
   end
   subgraph "10xGraph API"
     REST["REST Endpoints"]

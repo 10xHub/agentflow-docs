@@ -91,13 +91,13 @@ Or open the interactive playground:
 
 ### The TypeScript client
 
-The TypeScript client (`@10xgraph/client`, class `AgentFlowClient`) is a typed interface to the API. It sends the bearer token, parses the NDJSON stream into typed chunks, and covers invoke, stream, threads, memory and files. It does not ship React hooks.
+The TypeScript client (`10xgraph-client`, class `TenxGraphClient`) is a typed interface to the API. It sends the bearer token, parses the NDJSON stream into typed chunks, and covers invoke, stream, threads, memory and files. It does not ship React hooks.
 
 ```ts title="app.ts"
-import { AgentFlowClient, Message } from "@10xgraph/client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
 // Omit authToken when the server runs without auth
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://localhost:8000",
   authToken: "your-jwt-token",
 });

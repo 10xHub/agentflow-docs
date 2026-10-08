@@ -31,7 +31,7 @@ import {
   MediaRef,
   AnnotationRef,
   TokenUsages,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 ```
 
 ---
@@ -578,15 +578,15 @@ class TokenUsages {
 
 ```ts
 import {
-  AgentFlowClient,
+  TenxGraphClient,
   Message,
   TextBlock,
   ImageBlock,
   MediaRef,
-} from '@10xgraph/client';
+} from '10xgraph-client';
 
 // Connect to a running 10xGraph API server
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 // 1. Simple text message
 const greeting = Message.text_message('Hello!');

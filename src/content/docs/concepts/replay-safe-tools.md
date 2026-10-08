@@ -49,6 +49,7 @@ This provides at-most-once protection for recorded calls, not a global exactly-o
 - **A failed record write.** If the checkpointer cannot store the record, 10xGraph logs an error but continues. A replay may then execute the call a second time.
 - **A failed ledger read.** If the ledger cannot be read, the tool runs again with a warning logged. 10xGraph treats an unreadable entry as "no record" because skipping a tool that never ran is worse.
 - **Timeouts.** A tool exceeding its timeout is cancelled and raises an error with nothing recorded. If the provider already acted, the call may run again.
+- **Streaming runs.** The ledger check lives in the `invoke` and `ainvoke` tool path. The streaming tool path (`stream` and `astream`) does not consult or write the ledger, so streamed runs get no replay protection.
 - **Missing ids.** Without a `tool_call_id` or message id, no ledger key can be built and the tool is not protected.
 
 For these cases, always send an idempotency key to your payment or email provider. Derive it from stable inputs such as the order id, never from a random value generated inside the tool.
@@ -87,7 +88,7 @@ def refund_order(order_id: str, amount: float) -> str:
 
 
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql://user:password@db/agentflow",
+    postgres_dsn="postgresql://user:password@db/tenxgraph",
     redis_url="redis://redis:6379/0",
 )
 

@@ -27,7 +27,7 @@ All thread operations use the checkpointer your graph was compiled with (`compil
 
 ## Prerequisites
 
-- A configured `AgentFlowClient` instance. See [Create a client](/docs/client/create-client).
+- A configured `TenxGraphClient` instance. See [Create a client](/docs/client/create-client).
 - The 10xGraph API server running with a durable checkpointer (SQLite, Postgres+Redis, or custom).
 - Node 18+ or a browser with fetch support.
 
@@ -224,7 +224,7 @@ This is useful if you want to reset a conversation while keeping the message his
 Inject messages directly into a thread's history. This is useful for synthetic context (system prompts), importing data, or continuing a conversation from an external source:
 
 ```ts
-import { Message } from '@10xgraph/client';
+import { Message } from '10xgraph-client';
 
 await client.addThreadMessages(
   'thread-abc123',
@@ -259,9 +259,9 @@ After deletion, the thread ID cannot be reused. If you want to keep the message 
 Putting all operations together in a utility function that displays a thread's full history:
 
 ```ts
-import { AgentFlowClient, Message } from '@10xgraph/client';
+import { TenxGraphClient, Message } from '10xgraph-client';
 
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const client = new TenxGraphClient({ baseUrl: 'http://localhost:8000' });
 
 async function displayThreadHistory(threadId: string) {
   try {

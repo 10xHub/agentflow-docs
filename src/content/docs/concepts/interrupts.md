@@ -16,6 +16,7 @@ Call `interrupt()` inside a node or tool whenever your code needs outside input.
 ```python
 from tenxgraph.utils import interrupt
 
+# issue_refund is your own function that performs the refund.
 async def refund_tool(amount: float) -> str:
     """A tool that asks for approval before issuing a refund."""
     decision = interrupt(
@@ -35,11 +36,15 @@ async def refund_tool(amount: float) -> str:
 When this tool runs, the graph calls `interrupt()`, which raises `GraphInterrupt` internally. The graph catches it, saves the pending request, and returns control. Later, you resume with the answer:
 
 ```python
+from tenxgraph import Message
+from tenxgraph.utils import ResponseGranularity
+
 # First run: pauses at interrupt()
 config = {"thread_id": "refund-123"}
 result = await graph.ainvoke(
     {"messages": [Message.text_message("Please refund my order")]},
-    config=config
+    config=config,
+    response_granularity=ResponseGranularity.FULL,  # include "state" in the result
 )
 
 # The thread is paused; inspect what it's waiting for
@@ -63,7 +68,7 @@ result = await graph.ainvoke(
 | Parameter | Type | Purpose |
 |---|---|---|
 | `value` | Any | Data for the person answering: what to approve, what to choose from, context they need. |
-| `message` | str | Human-readable prompt shown by UI frameworks (CopilotKit, AG-UI, etc.). |
+| `message` | str | Human-readable prompt shown by UI frameworks (CopilotKit and similar). |
 | `reason` | str | Machine-readable pause reason, e.g. `"tool_approval"`, `"user_choice"`, `"input_required"` (default). |
 | `response_schema` | dict | JSON Schema the resume value should match. Helps UIs build forms and validate input. |
 
@@ -130,7 +135,7 @@ result = await graph.ainvoke(
 )
 ```
 
-Resume does not accept `messages`. Sending both `messages` and `resume` raises a validation error. Sending `resume` to a thread not paused at an `interrupt()` raises a `ValueError`.
+Sending `messages` without `resume` to a paused thread raises a `ValueError`. Sending `resume` to a thread not paused at an `interrupt()` raises a `ValueError`.
 
 On resume, the graph:
 1. Loads the checkpointed thread.
@@ -143,7 +148,7 @@ A client that cancels instead of answering sends `{"resume": null}`. The `interr
 
 ## Sending new messages to a paused thread
 
-A paused thread only accepts resume values. Sending `messages` instead raises an error:
+A thread paused by `interrupt()` needs a `resume` value. Sending `messages` without `resume` raises a `ValueError`:
 
 ```python
 # This raises ValueError
@@ -172,7 +177,7 @@ With `interrupt_before=["approval_node"]`, the graph pauses **before** that node
 
 This differs from `interrupt()`: fixed-point interrupts trigger at the boundary regardless of code logic. Use them for workflows with fixed gates (e.g. always ask for approval before a specific node) or when integrating with external approval systems.
 
-The checkpoint and resume mechanism is identical: `is_interrupted()` returns true, `pending_interrupt(state)` retrieves the pause info, and `invoke({"resume": value}, config)` resumes.
+These pauses are not `interrupt()` pauses: `state.is_interrupted()` is true, but `pending_interrupt(state)` returns `None` and there is no resume value to send. To continue, invoke the same thread again with new input; sending `{"resume": ...}` raises a `ValueError`.
 
 ## The Interrupt and GraphInterrupt classes
 
@@ -211,7 +216,7 @@ It derives from `BaseException` (not `Exception`) so tool and node error handler
 
 ## How the API server exposes interrupts
 
-The REST API and WebSocket interface expose interrupts through the same checkpoint/resume flow:
+The REST API exposes interrupts through the same checkpoint/resume flow. Send `resume` instead of `messages` to `/v1/graph/invoke` or `/v1/graph/stream`; `thread_id` goes in `config`.
 
 **At `/v1/graph/invoke` (REST):**
 
@@ -220,27 +225,31 @@ The REST API and WebSocket interface expose interrupts through the same checkpoi
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"type": "text", "content": "Refund my order"}],
-    "thread_id": "order-42"
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Refund my order"}]}],
+    "config": {"thread_id": "order-42"},
+    "response_granularity": "full"
   }'
 
-# Response includes the interrupt data
+# With "response_granularity": "full", the response "state" carries the pause
 {
   "messages": [...],
-  "execution_meta": {
-    "interrupt_reason": "interrupt",
-    "interrupt_data": {
-      "interrupt": {
-        "id": "int_abc123...",
-        "node": "refund_tool",
-        "message": "Approve a refund of $150?",
-        "reason": "tool_approval",
-        "value": {"amount": 150},
-        "response_schema": {...},
-        "tool_call_id": null
+  "state": {
+    "execution_meta": {
+      "interrupt_reason": "interrupt",
+      "interrupt_data": {
+        "interrupt": {
+          "id": "int_abc123...",
+          "node": "refund_tool",
+          "message": "Approve a refund of $150?",
+          "reason": "tool_approval",
+          "value": {"amount": 150},
+          "response_schema": {...},
+          "tool_call_id": null
+        }
       }
     }
-  }
+  },
+  ...
 }
 
 # Resume with the approval
@@ -248,32 +257,19 @@ curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
     "resume": {"approved": true},
-    "thread_id": "order-42"
+    "config": {"thread_id": "order-42"}
   }'
 ```
 
 **At `/v1/graph/stream` (NDJSON streaming):**
 
-Streaming sends an `UPDATES` event when the graph pauses:
+Streaming sends an `updates` event when the graph pauses. The same `resume` field resumes the thread:
 
 ```json
-{"event": "UPDATES", "data": {"status": "interrupted", "interrupt": {...}}}
+{"event": "updates", "data": {"status": "interrupted", "node": "refund_tool", "interrupt": {...}}}
 ```
 
-**WebSocket (`/v1/graph/ws`):**
-
-The WebSocket transport handles interrupts the same way: the server emits interrupt events, and the client resumes by sending an event with `invoke_type: "resume"`.
-
-## How AG-UI (the playground) handles interrupts
-
-The AG-UI dashboard provides a form-based interface for human-in-the-loop approval:
-
-- When a graph pauses, AG-UI displays the `message` and builds a form from the `response_schema`.
-- The user fills in the form and clicks Approve (or Reject).
-- AG-UI sends a resume request with the form data.
-- The graph continues.
-
-AG-UI stores the thread_id in its session, so pausing and resuming happen seamlessly in the same session.
+For UI integration, see [Add human approval](/docs/guides/add-human-approval).
 
 ## Common patterns
 
@@ -346,4 +342,4 @@ See [`guides/add-human-approval`](/docs/guides/add-human-approval) for task-focu
 - **Requires checkpointing:** Interrupts must save the thread state, so a checkpointer is required. `compile()` creates an `InMemoryCheckpointer` by default, but for production use a durable one like `PgCheckpointer`.
 - **Replay safety:** Interrupted nodes re-run from the start. Tool results in a `ToolNode` are memoized from the ledger, but other side effects run twice; move them after `interrupt()`.
 - **Serialization:** The Interrupt object is JSON-serialized in the checkpoint. Custom Python objects in `value` or `response_schema` must be JSON-serializable.
-- **WebSocket closure:** If a WebSocket connection closes while a graph is paused, the next resume is a new request; the client is not automatically restored. Use thread_id to recover the paused session.
+- **Fixed-point pauses:** `interrupt_before` and `interrupt_after` pauses are not reported by `pending_interrupt()` and are not resumed with `resume`.

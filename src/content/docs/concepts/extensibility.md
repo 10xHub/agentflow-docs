@@ -8,11 +8,11 @@ group: "Serving"
 updated: "2026-10-08"
 faq:
   - q: "Why extend a base class instead of modifying the code?"
-    a: "Extensions let you swap implementations at runtime without modifying the framework code or graph logic. You keep your custom backend in your own codebase and pass it via compile() or 10xgraph.json."
+    a: "Extensions let you swap implementations at runtime without modifying the framework code or graph logic. You keep your custom backend in your own codebase and pass it to `StateGraph(...)`, `compile()` or `10xgraph.json`."
   - q: "Can I extend multiple base classes in the same graph?"
     a: "Yes. You can extend a checkpointer for storage, a publisher for events, and an authorization backend all in the same graph. They compose independently."
   - q: "Which base classes go in compile() vs 10xgraph.json?"
-    a: "Graph-layer classes (checkpointer, store, media_store, context_manager) go in compile(). Server-layer classes (auth, authorization, rate-limiter, thread_name_generator) go in 10xgraph.json."
+    a: "Checkpointer, store and media_store go in compile(). Context manager, publisher and ID generator go in the StateGraph constructor. Auth, authorization and thread_name_generator are set in 10xgraph.json; a custom rate-limit backend is bound in the InjectQ container."
 ---
 
 10xGraph's major components are built on abstract base classes. Extend any of them to swap storage backends, auth mechanisms, LLM providers, ID schemes, rate limiting, or event routing. Your graph logic stays unchanged. This page explains the pattern and shows when and how to extend each.
@@ -55,22 +55,22 @@ flowchart TB
 
 | ABC | File | What you override |
 |---|---|---|
-| `BaseAgent` | `tenxgraph/core/graph/base_agent.py` | `execute()` |
+| `BaseAgent` | `tenxgraph/core/graph/base_agent.py` | `execute()`, `_call_llm()` |
 | `BaseContextManager` | `tenxgraph/core/state/base_context.py` | `trim_context()`, `atrim_context()` |
-| `BaseCheckpointer` | `tenxgraph/storage/checkpointer/base_checkpointer.py` | State, message, thread, cache API |
-| `BaseStore` | `tenxgraph/storage/store/base_store.py` | Vector store read/write |
+| `BaseCheckpointer` | `tenxgraph/storage/checkpointer/base_checkpointer.py` | Async state, cache, message and thread methods |
+| `BaseStore` | `tenxgraph/storage/store/base_store.py` | `astore()`, `asearch()`, `aget()`, `aget_all()`, `aupdate()`, `adelete()`, `aforget_memory()` |
 | `BaseEmbedding` | `tenxgraph/storage/store/embedding/base_embedding.py` | `aembed()`, `aembed_batch()`, `dimension` |
 | `BaseMediaStore` | `tenxgraph/storage/media/storage/base.py` | `store()`, `retrieve()`, `delete()`, `exists()` |
-| `BasePublisher` | `tenxgraph/runtime/publisher/base_publisher.py` | `publish(EventModel)`, `close()` |
+| `BasePublisher` | `tenxgraph/runtime/publisher/base_publisher.py` | `publish(EventModel)`, `close()`, `sync_close()` |
 | `BaseConverter` | `tenxgraph/runtime/adapters/llm/base_converter.py` | `convert_response()`, `convert_streaming_response()` |
-| `BaseValidator` | `tenxgraph/utils/callbacks.py` | `validate(messages)` |
-| `BaseIDGenerator` | `tenxgraph/utils/id_generator.py` | `generate()` |
+| `BaseValidator` | `tenxgraph/utils/callbacks.py` | `async validate(messages)` |
+| `BaseIDGenerator` | `tenxgraph/utils/id_generator.py` | `id_type`, `generate()` |
 | `BaseAuth` | `tenxgraph_api/src/app/core/auth/base_auth.py` | `authenticate(request, response, credential)` |
 | `AuthorizationBackend` | `tenxgraph_api/src/app/core/auth/authorization.py` | `authorize(user, resource, action, resource_id=None, **context)` |
 | `BaseRateLimitBackend` | `tenxgraph_api/src/app/core/middleware/rate_limit/base.py` | `check(key, limit, window)`, `close()` |
 | `ThreadNameGenerator` | `tenxgraph_api/src/app/utils/thread_name_generator.py` | `generate_name(messages)` |
-| `BaseCriterion` | `tenxgraph/qa/evaluation/criteria/base.py` | `score(trajectory, response)` |
-| `BaseReporter` | `tenxgraph/qa/evaluation/reporters/base.py` | `generate(report, output_dir)` |
+| `BaseCriterion` | `tenxgraph/qa/evaluation/criteria/base.py` | `async evaluate(actual, expected)` |
+| `BaseReporter` | `tenxgraph/qa/evaluation/reporters/base.py` | `generate(report, output_dir=None)` |
 
 ---
 
@@ -86,24 +86,24 @@ flowchart LR
 ```
 
 1. Subclass the ABC and implement its abstract methods.
-2. Pass the instance at compile time (such as `graph.compile(checkpointer=...)`) or set the path in `10xgraph.json` for server-layer ABCs. A checkpointer always goes to `compile()`: the server does not apply the checkpointer key in `10xgraph.json` yet.
+2. Pass the instance when building the graph (such as `graph.compile(checkpointer=...)` or `StateGraph(publisher=...)`) or set the path in `10xgraph.json` for server-layer ABCs. A checkpointer always goes to `compile()`: the server does not apply the checkpointer key in `10xgraph.json` yet.
 3. The framework picks it up. Graph logic, routing, and API endpoints are unchanged.
 
 ---
 
 ## Storage extension points
 
-10xGraph ships with an in-memory checkpointer for dev and a Postgres+Redis checkpointer for production. Extend `BaseCheckpointer` if you need to use DynamoDB, Google Cloud Datastore, or a custom backend. The other storage ABCs let you bring your own embedding models, vector stores, and file storage. All four follow the same pattern: subclass, implement the abstract methods, pass the instance at `compile()`.
+10xGraph ships with an in-memory checkpointer for dev and a Postgres+Redis checkpointer for production. Extend `BaseCheckpointer` if you need to use DynamoDB, Google Cloud Datastore, or a custom backend. The other storage ABCs let you bring your own embedding models, vector stores, and file storage. The checkpointer, store and media store are passed to `compile()`; the embedding model is passed to the store implementation you build.
 
 ### BaseCheckpointer: conversational state
 
-A checkpointer persists your graph's state and thread history to a backend. You extend `BaseCheckpointer` when your deployment requires a specific database (DynamoDB for AWS shops, Firestore for Google Cloud, or something custom like a legacy oracle system). The minimum required methods handle state and thread lifecycle. Message and cache methods have default no-op implementations; override them only if your backend can serve them efficiently.
+A checkpointer persists your graph's state and thread history to a backend. You extend `BaseCheckpointer` when your deployment requires a specific database (DynamoDB for AWS shops, Firestore for Google Cloud, or something custom like a legacy oracle system). All of the async methods below are abstract, so a subclass must implement every one; the synchronous wrappers (`put_state()` and similar) are provided by the base class.
 
 ```python
 from tenxgraph.storage.checkpointer.base_checkpointer import BaseCheckpointer
 
 class DynamoCheckpointer(BaseCheckpointer):
-    # Required: control state and thread lifecycle
+    # State and thread lifecycle
     async def asetup(self) -> None: ...                                  # create tables / connect
     async def aput_state(self, config, state) -> None: ...               # persist full state
     async def aget_state(self, config) -> AgentState | None: ...         # load state by thread_id
@@ -111,16 +111,16 @@ class DynamoCheckpointer(BaseCheckpointer):
     async def aclean_thread(self, config) -> None: ...                   # delete all thread data
     async def arelease(self) -> None: ...                                # close connections
 
-    # Optional: override if your backend supports them efficiently
+    # Cache, messages and thread metadata
     async def aput_state_cache(self, config, state) -> None: ...         # hot-path write cache
     async def aget_state_cache(self, config) -> AgentState | None: ...   # hot-path read cache
-    async def aput_messages(self, config, messages) -> None: ...         # store messages separately
+    async def aput_messages(self, config, messages, metadata=None) -> None: ...  # store messages
     async def aget_message(self, config, message_id) -> Message: ...     # fetch single message
-    async def alist_messages(self, config) -> list[Message]: ...         # list thread messages
+    async def alist_messages(self, config, search=None, offset=None, limit=None) -> list[Message]: ...
     async def adelete_message(self, config, message_id) -> None: ...     # delete single message
-    async def aput_thread(self, config, info) -> None: ...               # store thread metadata
-    async def aget_thread(self, config) -> dict | None: ...              # fetch thread metadata
-    async def alist_threads(self, config) -> list[dict]: ...             # list threads for user
+    async def aput_thread(self, config, thread_info) -> None: ...        # store thread metadata
+    async def aget_thread(self, config) -> ThreadInfo | None: ...        # fetch thread metadata
+    async def alist_threads(self, config, search=None, offset=None, limit=None) -> list[ThreadInfo]: ...
 
 compiled = graph.compile(checkpointer=DynamoCheckpointer())
 ```
@@ -133,12 +133,13 @@ A store holds embeddings and metadata for long-term retrieval across conversatio
 from tenxgraph.storage.store.base_store import BaseStore
 
 class PineconeStore(BaseStore):
-    async def astore(self, user_id, content, metadata) -> str: ...
-    async def asearch(self, user_id, query, limit) -> list[dict]: ...
-    async def aget(self, memory_id) -> dict | None: ...
-    async def aupdate(self, memory_id, content) -> None: ...
-    async def adelete(self, memory_id) -> None: ...
-    async def alist(self, user_id) -> list[dict]: ...
+    async def astore(self, config, content, memory_type=..., category="general", metadata=None, **kwargs) -> str: ...
+    async def asearch(self, config, query, memory_type=None, category=None, limit=10, **kwargs) -> list: ...
+    async def aget(self, config, memory_id, **kwargs): ...
+    async def aget_all(self, config, limit=100, **kwargs) -> list: ...
+    async def aupdate(self, config, memory_id, content, metadata=None, **kwargs): ...
+    async def adelete(self, config, memory_id, **kwargs): ...
+    async def aforget_memory(self, config, **kwargs): ...
 
 compiled = graph.compile(store=PineconeStore())
 ```
@@ -175,7 +176,7 @@ class S3MediaStore(BaseMediaStore):
         ...
 
     async def retrieve(self, storage_key: str) -> tuple[bytes, str]:
-        """Return (bytes, mime_type). Raise KeyError if not found."""
+        """Return (bytes, mime_type)."""
         ...
 
     async def delete(self, storage_key: str) -> bool:
@@ -201,31 +202,40 @@ class AnthropicAgent(BaseAgent):
     async def execute(self, state: AgentState, config: dict) -> Message:
         # Convert 10xGraph messages to the format Anthropic expects
         messages = [
-            {"role": m.role, "content": m.text}
+            {"role": m.role, "content": m.text()}
             for m in state.context
             if m.role in ("user", "assistant")
         ]
         response = await anthropic_client.messages.create(
-            model="claude-opus-4-7",
+            model="your-anthropic-model-id",
+            max_tokens=1024,
             messages=messages,
         )
         return Message.text_message(response.content[0].text, role="assistant")
+
+    async def _call_llm(self, messages, tools=None, **kwargs):
+        # Also abstract: the low-level provider call
+        ...
 ```
 
 ### BaseConverter: LLM response normalization
 
-`BaseConverter` maps a raw provider response into 10xGraph's `Message` format. You implement one when integrating a provider that isn't OpenAI or Google and need to normalize its output shape into the framework's message format.
+`BaseConverter` maps a raw provider response into 10xGraph's `Message` format. You implement one when integrating a provider whose output shape needs normalizing into the framework's message format.
 
 ```python
+from tenxgraph.core.state import Message
 from tenxgraph.runtime.adapters.llm.base_converter import BaseConverter
 
 class MyProviderConverter(BaseConverter):
-    async def convert_response(self, raw_response) -> Message:
-        return Message.text_message(raw_response["output"], role="assistant")
+    async def convert_response(self, response) -> Message:
+        return Message.text_message(response["output"], role="assistant")
 
-    async def convert_streaming_response(self, chunk) -> Message | None:
-        text = chunk.get("delta", "")
-        return Message.text_message(text, role="assistant") if text else None
+    async def convert_streaming_response(self, config, node_name, response, meta=None):
+        # async generator yielding EventModel or Message
+        async for chunk in response:
+            text = chunk.get("delta", "")
+            if text:
+                yield Message.text_message(text, role="assistant")
 ```
 
 ### BaseContextManager: custom context trimming
@@ -252,15 +262,18 @@ graph = StateGraph(state=MyState(), context_manager=PriorityContextManager())
 
 ## ID generation
 
-Five built-in generators cover most needs. Swap them globally or per-graph.
+Several built-in generators cover most needs. Swap them globally or per-graph.
 
-| Class | Format | Example |
-|---|---|---|
-| `UUIDGenerator` | UUID v4 | `550e8400-e29b-41d4-a716-446655440000` |
-| `BigIntIDGenerator` | 64-bit integer | `7891234567890123` |
-| `TimestampIDGenerator` | ms timestamp with random suffix | `1716480000000-a3f2` |
-| `HexIDGenerator` | Hex string | `4a8f3c1d` |
-| `ShortIDGenerator` | Short alphanumeric | `xK9mP2` |
+| Class | Output |
+|---|---|
+| `DefaultIDGenerator` | Empty string, so the framework substitutes its UUID-based default (used when none is set) |
+| `UUIDGenerator` | UUID string |
+| `BigIntIDGenerator` | Big integer |
+| `IntIDGenerator` | 32-bit random integer |
+| `TimestampIDGenerator` | Integer of microseconds since the Unix epoch |
+| `HexIDGenerator` | Hex string |
+| `ShortIDGenerator` | 8-character alphanumeric string |
+| `AsyncIDGenerator` | Async `generate()` returning a string |
 
 You extend `BaseIDGenerator` when you need IDs in a specific format: employee IDs matching your company's naming scheme, snowflake IDs for distributed systems, or UUIDs with a custom prefix.
 
@@ -276,20 +289,29 @@ Custom generator:
 ```python
 from tenxgraph.utils.id_generator import BaseIDGenerator
 
+import uuid
+
+from tenxgraph.utils.id_generator import BaseIDGenerator, IDType
+
+
 class PrefixedIDGenerator(BaseIDGenerator):
+    @property
+    def id_type(self) -> IDType:
+        return IDType.STRING
+
     def generate(self) -> str:
-        return f"run_{uuid4().hex[:8]}"
+        return f"run_{uuid.uuid4().hex[:8]}"
 ```
 
 ---
 
 ## API and server extension
 
-Server-layer ABCs are wired via `10xgraph.json`, with no code changes to the server required. You extend these to enforce your deployment's security policies, integrate custom identity systems, or implement rate limiting specific to your infrastructure.
+Server-layer ABCs are wired via `10xgraph.json` (or the InjectQ container for rate-limit backends), with no code changes to the server required. You extend these to enforce your deployment's security policies, integrate custom identity systems, or implement rate limiting specific to your infrastructure.
 
 ### BaseAuth
 
-Extend `BaseAuth` when you need custom authentication beyond JWT: API key lookup, LDAP integration, OAuth2 with your identity provider, or a legacy auth system. The `authenticate` method is synchronous and receives the request, response, and credential.
+Extend `BaseAuth` when you need custom authentication beyond JWT: API key lookup, LDAP integration, OAuth2 with your identity provider, or a legacy auth system. The `authenticate` method is synchronous and receives the request, response, and credential. Return a dict with at least `user_id`, or raise an exception to reject the request.
 
 ```python
 from tenxgraph_api import BaseAuth
@@ -297,12 +319,12 @@ from tenxgraph_api import BaseAuth
 class ApiKeyAuth(BaseAuth):
     def authenticate(self, request, response, credential) -> dict | None:
         key = request.headers.get("X-API-Key")
-        return lookup_api_key(key)   # dict with user_id, or None for 401
+        return lookup_api_key(key)   # dict with user_id; raise an exception to reject
 ```
 
 ### AuthorizationBackend
 
-You extend `AuthorizationBackend` when the built-in authorization models (default, ownership, RBAC) do not fit your permission model. Examples: attribute-based access control (ABAC), graph-based permissions, or integration with an external policy engine.
+You extend `AuthorizationBackend` when the built-in authorization models (allow-all, ownership, RBAC) do not fit your permission model. Examples: attribute-based access control (ABAC), graph-based permissions, or integration with an external policy engine.
 
 ```python
 from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
@@ -312,14 +334,17 @@ class RBACBackend(AuthorizationBackend):
         return f"{resource}:{action}" in ROLE_PERMISSIONS[user["role"]]
 ```
 
-For simple role-to-scope mapping, you do not need a class. Set `authorization` to an RBAC config block (`{"backend": "rbac", "roles": {...}}`). The built-in `ownership` backend gives owner-only threads with no code.
+For simple role-to-scope mapping, you do not need a class. Set `authorization` to an RBAC config block (`{"backend": "rbac", "roles": {...}}`). The built-in `"ownership"` selector gives owner-only threads with no code, and `"allow_all"` permits any authenticated user.
 
 ### BaseRateLimitBackend
 
 You extend `BaseRateLimitBackend` when you need rate limiting with custom logic: tiered limits based on user tier, graceful degradation, or integration with an external rate limiter service.
 
 ```python
-from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import (
+    BaseRateLimitBackend,
+    RateLimitDecision,
+)
 
 class RedisClusterRateLimiter(BaseRateLimitBackend):
     async def check(self, key: str, *, limit: int, window: int) -> RateLimitDecision: ...
@@ -330,7 +355,7 @@ The `check` method returns a `RateLimitDecision(allowed, remaining, reset_after)
 
 ### ThreadNameGenerator
 
-You extend `ThreadNameGenerator` when you want custom thread names: date-prefixed names, user-specific prefixes, or names derived from the conversation topic. The built-in `AIThreadNameGenerator` uses an LLM to generate topic-based names.
+You extend `ThreadNameGenerator` when you want custom thread names: date-prefixed names, user-specific prefixes, or names derived from the conversation topic. If none is configured, a default generator produces varied adjective-noun style names.
 
 ```python
 from tenxgraph_api.src.app.utils.thread_name_generator import ThreadNameGenerator
@@ -370,18 +395,23 @@ container.bind_instance(BaseRateLimitBackend, RedisClusterRateLimiter())
 
 ## Event stream extension
 
-You extend `BasePublisher` to send execution events to a custom endpoint: your internal event bus, a webhook, a monitoring system, or a custom log aggregator. Multiple publishers can run together with `CompositePublisher`.
+You extend `BasePublisher` to send execution events to a custom endpoint: your internal event bus, a webhook, a monitoring system, or a custom log aggregator. Multiple publishers can run together: pass a list to `StateGraph(publisher=[...])` or wrap them in `CompositePublisher`.
 
 ```python
 from tenxgraph.runtime.publisher.base_publisher import BasePublisher
 from tenxgraph.runtime.publisher.events import EventModel
 
+import httpx
+
+
 class WebhookPublisher(BasePublisher):
     def __init__(self, url: str):
+        super().__init__({"url": url})
         self.url = url
 
     async def publish(self, event: EventModel) -> None:
-        await httpx.post(self.url, json=event.dict())
+        async with httpx.AsyncClient() as client:
+            await client.post(self.url, json=event.model_dump(mode="json"))
 
     async def close(self) -> None:
         pass
@@ -393,7 +423,8 @@ class WebhookPublisher(BasePublisher):
 Compose multiple publishers:
 
 ```python
-from tenxgraph.runtime.publisher import CompositePublisher
+from tenxgraph import StateGraph
+from tenxgraph.runtime.publisher import CompositePublisher, ConsolePublisher
 
 graph = StateGraph(
     publisher=CompositePublisher([ConsolePublisher(), WebhookPublisher("https://...")])
@@ -407,20 +438,25 @@ compiled = graph.compile()
 
 ### BaseValidator: input screening
 
-You extend `BaseValidator` to add custom input validation before messages reach the graph: length checks, content filtering, PII detection, or rate limiting per user. Register validators with the callback manager.
+You extend `BaseValidator` to add custom input validation before messages reach the graph: length checks, content filtering, or PII detection. Register validators with the callback manager.
 
 ```python
-from tenxgraph.utils.callbacks import BaseValidator
+from tenxgraph.core.state import Message
+from tenxgraph.utils.callbacks import BaseValidator, CallbackManager
+from tenxgraph.utils.validators import ValidationError
 
 class LengthValidator(BaseValidator):
-    def validate(self, messages: list[Message]) -> list[Message]:
+    async def validate(self, messages: list[Message]) -> bool:
         for m in messages:
-            if len(m.text) > 10_000:
-                raise ValueError("Message exceeds maximum length")
-        return messages
+            if len(m.text()) > 10_000:
+                raise ValidationError(
+                    "Message exceeds maximum length", "length_exceeded"
+                )
+        return True
 
 cb = CallbackManager()
 cb.register_input_validator(LengthValidator())
+graph.compile(callback_manager=cb)
 ```
 
 ### BaseCriterion: custom evaluation criterion
@@ -429,14 +465,20 @@ You extend `BaseCriterion` to score agent responses against custom metrics when 
 
 ```python
 from tenxgraph.qa.evaluation.criteria.base import BaseCriterion
+from tenxgraph.qa.evaluation.eval_result import CriterionResult
 
 class KeywordCriterion(BaseCriterion):
-    def __init__(self, keywords: list[str]):
+    def __init__(self, keywords: list[str], config=None):
+        super().__init__(config)
         self.keywords = keywords
 
-    async def score(self, trajectory, response) -> float:
-        hits = sum(1 for kw in self.keywords if kw in response.text)
-        return hits / len(self.keywords)
+    async def evaluate(self, actual, expected) -> CriterionResult:
+        text = actual.actual_response
+        hits = sum(1 for kw in self.keywords if kw in text)
+        score = hits / len(self.keywords)
+        return CriterionResult.success(
+            criterion="keywords", score=score, threshold=0.5
+        )
 ```
 
 ### BaseReporter: custom evaluation report
@@ -447,9 +489,10 @@ You extend `BaseReporter` to generate evaluation reports in a custom format or s
 from tenxgraph.qa.evaluation.reporters.base import BaseReporter
 
 class SlackReporter(BaseReporter):
-    async def generate(self, report, output_dir: str) -> None:
-        summary = f"Score: {report.overall_score:.2f}"
-        await slack_client.post(channel="#evals", text=summary)
+    def generate(self, report, output_dir: str | None = None) -> str | None:
+        summary = f"Pass rate: {report.summary.pass_rate:.2f}"
+        post_to_slack("#evals", summary)  # your own helper
+        return summary
 ```
 
 ---
@@ -458,7 +501,7 @@ class SlackReporter(BaseReporter):
 
 | Page | What it covers |
 |---|---|
-| [Agents and Tools](/docs/concepts/agents-and-tools) | BaseValidator, CallbackManager, GraphLifecycleHook in practice |
+| [Callbacks and Command](/docs/concepts/callbacks-and-command) | BaseValidator, CallbackManager, GraphLifecycleHook in practice |
 | [Serving Agents](/docs/concepts/serving-agents) | BaseAuth, AuthorizationBackend, BasePublisher wired to a running server |
-| [Memory](/docs/concepts/memory) | BaseCheckpointer, BaseStore, BaseEmbedding in the memory layer context |
-| [Testing and Evaluation](/docs/testing) | BaseCriterion, BaseReporter in the evaluation pipeline |
+| [Memory and store](/docs/concepts/memory-and-store) | BaseCheckpointer, BaseStore, BaseEmbedding in the memory layer context |
+| [Testing and evaluation](/docs/testing) | BaseCriterion, BaseReporter in the evaluation pipeline |

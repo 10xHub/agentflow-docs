@@ -47,7 +47,7 @@ The first rows are where the two differ most. Orchestration basics are at the bo
 | Node and tool timeouts | `node_timeout` and `tool_timeout`, with defaults of 900 s and 300 s | `TimeoutTermination` stops a team after a duration in seconds ([termination docs](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/termination.html)) |
 | Docker Compose and Kubernetes manifests | `10xgraph build --docker-compose --k8s` writes `Dockerfile`, `docker-compose.yml`, `k8s.yaml` | Not documented |
 | License | MIT, including API/CLI and client | MIT and CC-BY-4.0 dual license per the repository ([repository](https://github.com/microsoft/autogen)). `autogen-agentchat` on PyPI lists MIT ([PyPI](https://pypi.org/project/autogen-agentchat/)) |
-| TypeScript client | Typed `@10xgraph/client` | Not documented |
+| TypeScript client | Typed `10xgraph-client` | Not documented |
 | Project status | Pre-1.0, actively developed | Maintenance mode, community managed ([repository](https://github.com/microsoft/autogen)) |
 | Orchestration | Typed `StateGraph` with conditional edges and sub-graphs | Group chat teams, including `SelectorGroupChat` where a model picks the next speaker, and `GraphFlow` for structured workflows ([teams docs](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/teams.html)) |
 | State persistence | `InMemoryCheckpointer`, `PgCheckpointer` (Postgres plus Redis), SQLite, keyed by `thread_id` | `save_state()` and `load_state()` on agents and teams, with no built-in database persistence ([state docs](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/state.html)) |
@@ -169,9 +169,9 @@ Endpoints include:
 ## TypeScript client
 
 ```typescript
-import { AgentFlowClient, Message, StreamEventType, bearerAuth } from "@10xgraph/client";
+import { TenxGraphClient, Message, StreamEventType, bearerAuth } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   auth: bearerAuth(token),
 });

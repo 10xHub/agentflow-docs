@@ -143,9 +143,9 @@ You get REST and SSE endpoints for invoke, stream and thread state, plus a WebSo
 ## Calling from TypeScript
 
 ```typescript
-import { AgentFlowClient, Message, bearerAuth } from "@10xgraph/client";
+import { TenxGraphClient, Message, bearerAuth } from "10xgraph-client";
 
-const client = new AgentFlowClient({
+const client = new TenxGraphClient({
   baseUrl: "http://127.0.0.1:8000",
   auth: bearerAuth(token),
 });

@@ -44,7 +44,7 @@ instead of three.
 10xgraph version
 python --version
 pip show 10xgraph 10xgraph-api | grep -E "Name|Version"
-node --version && npm list @10xscale/agentflow-client
+node --version && npm list 10xgraph-client @10xscale/agentflow-client
 ```
 
 Then include:
