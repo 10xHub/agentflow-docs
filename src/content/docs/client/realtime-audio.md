@@ -1,22 +1,22 @@
 ---
-title: How to build a realtime audio session
-description: Step-by-step guide to capturing microphone audio, streaming it to a live agent with client.realtime(), and playing the agent's PCM16 reply back in the browser.
+title: Build a realtime audio conversation
+description: Capture microphone input, stream it to a live agent with client.realtime(), receive PCM16 audio output, and play it back in the browser.
 section: "TypeScript client"
 group: "Features"
 order: 100
-label: How to build a realtime audio session
-updated: "2026-07-21"
+label: Realtime audio conversations
+updated: "2026-10-08"
 ---
 
-`client.realtime()` gives you a bidirectional audio socket to a live agent. It is transport only: it moves PCM16 bytes and JSON events, and deliberately ships no microphone or speaker code, so the browser side is yours to write. This guide is that missing half, capture the mic, send it, play the reply.
+`client.realtime()` opens a WebSocket connection that carries bidirectional PCM16 audio frames and JSON control events between your browser and a live agent. The API is transport only: it handles the audio bytes and event delivery, but leaves microphone capture and speaker playback to you. This guide covers both sides: building a mic capturer to send PCM16 at 16 kHz, a PCM16 player to receive audio at 24 kHz, managing the session lifecycle, and handling interrupts.
 
-For the full API surface of `RealtimeSession` (every event channel, the reconnect policy, the init fields) see [`reference/client/realtime`](/docs/reference/client/realtime).
+For the complete `RealtimeSession` API (every event type, reconnect behavior, init parameters) see [`reference/client/realtime`](/docs/reference/client/realtime).
 
 ## Prerequisites
 
-- A graph rooted at a `LiveAgent`. A turn-based graph rejects the connection: the server sends a fatal `error` event with `code: 'not_live'` and closes with code `1008`. Check `info.is_realtime` from `client.graph()` before offering an audio UI.
-- A configured `AgentFlowClient`. On Node 18 or 20, pass `webSocketImpl` (see [how-to/client/create-client](/docs/client/create-client)); browsers need nothing.
-- A secure context. `getUserMedia` requires HTTPS or `localhost`.
+- A graph rooted at a `LiveAgent`. A turn-based graph rejects the connection: the server sends a fatal `error` event with `code: 'not_live'` and closes the socket with code `1008`. Always check `info.is_realtime` from `client.graph()` before rendering an audio UI.
+- A configured `AgentFlowClient` instance. On Node 18 or 20, you must pass `webSocketImpl` (the `ws` package) in the client config; see [create-client](/docs/client/create-client) for details. Browsers ship WebSocket natively.
+- A secure context. `getUserMedia` requires HTTPS or `localhost`. On `http://`, `getUserMedia` rejects immediately.
 
 ## The audio contract
 
@@ -31,7 +31,7 @@ The two rates differ, and getting them backwards produces audio that plays at th
 
 ## Step 1: Build a PCM16 player
 
-Model audio arrives as a stream of small frames. Playing each one with a fresh `AudioBufferSourceNode` starting "now" leaves audible gaps, so schedule each frame at the end of the previous one:
+The agent sends audio as a stream of PCM16 frames (typically 50-200ms each). If you play each frame independently starting at the current time, you get silence between them. Instead, schedule each frame to start exactly when the previous one ends. This keeps playback continuous and eliminates the stuttering that makes the agent's voice sound broken.
 
 ```js
 export const createPcmPlayer = (defaultSampleRate = 24000) => {
@@ -80,15 +80,15 @@ export const createPcmPlayer = (defaultSampleRate = 24000) => {
 };
 ```
 
-Two details matter. `getInt16(offset, true)` reads little-endian, which is what the server sends. And `nextTime` is what keeps the frames butted together; without it playback stutters.
+Two details are critical. First, `getInt16(offset, true)` reads little-endian because that is what the server sends. Second, `nextTime` tracks the end of the previous frame so you know where to start the next one. Without it, each frame starts at `currentTime`, which may be before the previous frame finishes, causing overlap or gaps.
 
-Construct the player from a user gesture. Browsers start an `AudioContext` suspended until a click or tap, so building it inside the "Start" handler avoids silent playback.
+Always construct the player inside a user gesture (click or tap). Browsers start an `AudioContext` in a suspended state until user interaction, so building it outside the event handler results in silence. The `resume()` call wakes a suspended context on demand.
 
 ---
 
 ## Step 2: Capture the microphone as PCM16 at 16 kHz
 
-Ask the browser for a 16 kHz `AudioContext` and it resamples the mic for you, so you never write a resampler:
+Request a 16 kHz `AudioContext` and the browser automatically resamples the microphone input to that rate. This saves you from writing a resampler. The sample rate must be exactly 16 kHz because the agent's speech-to-text model expects that bitrate. The code also enables echo cancellation and noise suppression to improve audio quality on the server side.
 
 ```js
 export const createMicCapture = async (onFrame, sampleRate = 16000) => {
@@ -136,18 +136,20 @@ export const createMicCapture = async (onFrame, sampleRate = 16000) => {
 };
 ```
 
-`echoCancellation: true` is doing real work here: without it the agent hears its own voice through your speakers and interrupts itself.
+Echo cancellation is not optional. Without it, the agent hears its voice playing from your speakers through the microphone, interprets it as new user input, and interrupts itself in an endless loop. If a user turns off echo cancellation or is using a speaker without proper shielding, recommend headphones.
 
-`createScriptProcessor` is deprecated but universally supported. An `AudioWorklet` is the modern replacement and worth the extra build step in production; the frame conversion is identical either way.
+`createScriptProcessor` is deprecated but universally supported. For production apps with high-traffic requirements, use `AudioWorklet` instead (it runs in a separate thread and reduces main-thread blocking). The frame-to-PCM conversion code is identical.
 
-Always keep the returned handle. Failing to call `stop()` leaves the mic indicator on after the session ends.
+Always keep the returned handle and call `stop()` when the session ends. Forgetting to call `stop()` leaves the microphone indicator on in the browser, confusing users and potentially creating a privacy issue.
 
 ---
 
-## Step 3: Open the session
+## Step 3: Open the realtime session
+
+Call `client.realtime()` with the model you want and audio modality. The method returns a `RealtimeSession` object immediately and begins connecting in the background.
 
 ```ts
-import { AgentFlowClient } from '10xgraph-client';
+import { AgentFlowClient } from '@10xgraph/client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -172,17 +174,15 @@ session.on('close', () => {
 await session.ready;
 ```
 
-`realtime()` returns immediately and connects in the background; `session.ready` resolves once the socket is open and the init frame has been sent.
+Wait for `session.ready` to resolve before proceeding, which confirms the WebSocket is open and the init frame has been sent. `reconnect: { enabled: false }` makes a close permanent, suitable for a "Start / End" button UI. For long-lived assistants that should survive network hiccups, leave reconnect enabled (the default) so the session reopen with the same `thread_id` and resume from the checkpoint.
 
-`reconnect: { enabled: false }` makes `close` terminal, which is usually what a single "Start / End" UI wants. Leave reconnect on (the default) for a long-lived assistant that should survive a network blip: the session re-opens with the same `thread_id` and the conversation resumes from its checkpoint.
-
-If your server pins the live model through its own configuration, omit `model` from the init frame rather than hardcoding one. The init `model` is a per-session override that wins over the server's setting, and live model availability is key- and region-specific, so a hardcoded value is a common cause of a session that closes immediately.
+Do not hardcode a model name if your server is already pinned to one through its configuration. The init `model` parameter is a per-session override that takes precedence over the server setting. Live model availability varies by API key and region, so hardcoding a specific model often causes immediate connection failure.
 
 ---
 
-## Step 4: Push to talk
+## Step 4: Implement push-to-talk (manual turn-taking)
 
-Manual turn-taking is the simplest thing to get right: open the mic on tap, close it on the next tap, and bracket the audio with `activityStart()` / `activityEnd()` so the agent knows the turn is over and should reply.
+In push-to-talk mode, the user holds down a button to speak and releases to stop. Call `activityStart()` before opening the mic and `activityEnd()` when closing it. The server uses these signals to detect turn boundaries: it stops listening and responds.
 
 ```ts
 let mic = null;
@@ -209,13 +209,13 @@ const toggleMic = async () => {
 };
 ```
 
-For hands-free operation, leave server-side VAD on (the default) and skip `activityStart` / `activityEnd` entirely, just stream mic frames continuously and let the server detect turn boundaries. Set `vad: { enabled: false }` in the init frame only when you are driving turns manually as above.
+For hands-free (continuous) operation, leave voice activation detection (VAD) enabled on the server (the default) and omit `activityStart` / `activityEnd`. Stream mic frames continuously and let the server detect silence and turn boundaries automatically. Only set `vad: { enabled: false }` in the init frame if you want manual turn control as shown above.
 
 ---
 
-## Step 5: Show transcripts
+## Step 5: Display live transcripts
 
-Both sides of the conversation stream in as text, in deltas, with a `finished` flag on the last one. Coalesce consecutive deltas from the same speaker into a single bubble:
+As the user speaks and the agent responds, both sides stream in as text deltas (small chunks). Each delta event includes a `finished` flag that signals the end of a sentence or turn. Buffer consecutive deltas from the same speaker into a single message bubble to avoid a cluttered UI.
 
 ```ts
 const open = { user: null, agent: null };   // id of the in-progress bubble per role
@@ -240,9 +240,9 @@ session.on('output_transcript', (e) => append('agent', e.text || '', e.finished)
 
 ---
 
-## Step 6: Handle barge-in and teardown
+## Step 6: Handle interruption and cleanup
 
-When the user talks over the agent, the server sends `interrupted`. Any audio you have already scheduled will keep playing unless you drop it, which is what makes an interrupted assistant feel broken:
+When a user starts talking while the agent is still speaking, the server detects this and sends an `interrupted` event. If you don't clear the audio queue, the agent's previous response will keep playing while the new one starts, creating a chaotic overlap. Always discard queued playback and create a fresh player on interrupt.
 
 ```ts
 session.on('interrupted', () => {
@@ -251,7 +251,7 @@ session.on('interrupted', () => {
 });
 ```
 
-Tear down on unmount as well as on the explicit End button, navigating away mid-session otherwise leaves the mic open and the socket connected:
+Always clean up when the session ends or the component unmounts. If a user navigates away without calling `stop()` on the mic and `close()` on the session, the browser shows a microphone indicator, the socket stays open, and resources leak.
 
 ```ts
 useEffect(() => () => {
@@ -261,13 +261,13 @@ useEffect(() => () => {
 }, []);
 ```
 
-`session.close()` sends a close frame, closes the socket, and disables reconnect. It is idempotent.
+`session.close()` sends a close frame to the server, closes the WebSocket, and prevents automatic reconnection. It is safe to call multiple times (idempotent).
 
 ---
 
-## Step 7: Gate the UI on a live-capable graph
+## Step 7: Check if the agent supports realtime audio
 
-Do not offer an audio button against a graph that cannot accept it. Read the capability from `client.graph()` once, at connect time:
+Not all agents are configured for realtime conversations. Before rendering an audio UI, fetch the graph info once at startup and check the `is_realtime` flag. If it is false, show a notice and use the standard chat interface instead.
 
 ```ts
 const { info } = (await client.graph()).data;
@@ -278,47 +278,52 @@ if (!liveCapable) {
 }
 ```
 
-This is exactly what the playground does: the Live page renders a gate rather than a session when `is_realtime` is false, so users get an explanation instead of a socket that closes on them.
+If you skip this check and try to open a realtime session against a turn-based agent, the server closes the connection immediately with a `not_live` error. The playground's **Live** page implements this gate to prevent users from seeing a broken interface.
 
 ---
 
 ## Reference implementation
 
-The 10xGraph playground ships a complete working version of everything above:
+The 10xGraph playground (`agentflow-playground/`) includes a complete, production-ready implementation of realtime audio:
 
-| File | What it contains |
+| File | Contains |
 |---|---|
-| `src/lib/realtime-audio.js` | `createPcmPlayer(24000)` and `createMicCapture(onFrame, 16000)`, as reproduced here. |
-| `src/pages/live/components/live-session.jsx` | Session lifecycle, push-to-talk, transcript coalescing, teardown. |
-| `src/pages/live/live-page.jsx` | The connect-first and not-live-capable gates. |
+| `src/lib/realtime-audio.js` | `createPcmPlayer(24000)` and `createMicCapture(onFrame, 16000)` (the code from Steps 1 and 2). |
+| `src/pages/live/components/live-session.jsx` | Session lifecycle, push-to-talk button handler, transcript coalescing, interruption handling, and cleanup. |
+| `src/pages/live/live-page.jsx` | The live-capable check (Step 7) and UI gate. |
 
-Run it with `10xgraph play` and open the **Live** page.
+To run it: `10xgraph play` (starts the API server and playground together), then open the **Live** page to test the realtime audio session.
 
 ---
 
-## Common issues
+## Troubleshooting common issues
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Playback is too fast or too slow | Playing 24 kHz output at 16 kHz, or vice versa. | Use the `sampleRate` the `'audio'` listener hands you; do not assume. |
-| No audio at all, no errors | The `AudioContext` was created outside a user gesture and stayed suspended. | Create the player inside the click handler, and call `resume()`. |
-| Choppy playback with gaps between frames | Each frame started at `currentTime`. | Schedule at `max(currentTime, nextTime)` and advance `nextTime` by the buffer duration. |
-| The agent interrupts itself constantly | The mic is picking up the speakers. | Enable `echoCancellation`, or use headphones. |
-| `getUserMedia` rejects immediately | Permission denied, or the page is not on HTTPS/localhost. | Handle the rejection, tell the user, and call `activityEnd()` so the turn does not hang. |
-| Socket closes right after connecting | The graph is not a live agent, or the init `model` is unavailable for your key/region. | Check `info.is_realtime`; omit `model` and let the server decide. |
-| `No WebSocket implementation available` | Node 18 or 20 with no global `WebSocket`. | Pass `webSocketImpl` (the `ws` package) in the client config. |
-| The mic indicator stays on after the session | `mic.stop()` was never called. | Stop the capture in the End handler and in the unmount cleanup. |
+| Playback is too fast or too slow. | Playing output frames intended for 24 kHz at 16 kHz playback rate, or vice versa. The audio itself is correct; only the playback speed is wrong. | Always use the `sampleRate` parameter passed to the `'audio'` event listener. Do not hardcode `REALTIME_OUTPUT_SAMPLE_RATE`. |
+| No audio at all, no errors in the console. | The `AudioContext` was created before the first user interaction and is in suspended state. Browsers enforce this for security and battery reasons. | Create the `AudioContext` and player inside the click handler, and call `resume()` on a suspended context. |
+| Choppy playback with audible gaps between frames. | Each frame starts at the current time instead of when the previous frame ends. With typical frame durations of 50-200ms, this creates noticeable silence. | Schedule frames using `max(currentTime, nextTime)` and update `nextTime` by the buffer duration. See Step 1. |
+| The agent constantly interrupts itself mid-sentence. | Echo cancellation is disabled. The agent hears its own voice playing from the speaker, mistakes it for new user input, and stops to respond. | Enable `echoCancellation: true` in the `getUserMedia` call (Step 2). If echo is still a problem, recommend headphones. |
+| `getUserMedia` rejects immediately with a permission error. | The user denied the permission prompt, or the page is not on HTTPS or localhost. | Handle the rejection in a catch block, show the user a clear error message, and call `activityEnd()` to clean up the pending turn. |
+| Socket closes immediately after opening, error code `not_live`. | The graph is turn-based, not a live agent. Or the init `model` (e.g. Gemini Flash) is not available for your API key, region, or quota. | Always check `info.is_realtime` before offering the audio UI. Omit the `model` field and let the server select one. |
+| `No WebSocket implementation available` error in Node.js. | Node 18 and 20 do not have a global `WebSocket` object. | Pass `webSocketImpl` in the `AgentFlowClient` config: `{ webSocketImpl: require('ws') }`. |
+| Microphone indicator remains on after ending the session. | The `mic.stop()` method was not called or an exception prevented it from running. | Always call `stop()` in the "End" button handler and in a React `useEffect` cleanup. Wrap calls in try/catch or use optional chaining (`mic?.stop()`). |
 
 ---
 
-## What you learned
+## Summary
 
-- Input is PCM16 mono at 16 kHz; output is PCM16 mono at 24 kHz. They are different on purpose.
-- Requesting an `AudioContext` at 16 kHz makes the browser resample the microphone for you.
-- Scheduling each output frame at the end of the previous one is what makes playback continuous.
-- Push-to-talk means `activityStart()`, stream frames, `activityEnd()`; hands-free means leaving server VAD on.
-- Handle `interrupted` by discarding queued playback, and always tear down the mic and socket on unmount.
+You now understand the full lifecycle of a realtime audio conversation:
 
-## Next step
+- **Sample rates are intentional.** Input at 16 kHz optimizes speech-to-text quality; output at 24 kHz is what the model produces. Using the browser's automatic resampling avoids decoder complexity.
+- **Playback scheduling prevents gaps.** Tracking the end time of the previous frame and scheduling the next one there keeps the audio stream seamless.
+- **Echo cancellation is essential.** Without it, the agent hears its own voice and loops. Always enable it in the `getUserMedia` constraints.
+- **Turn-taking has two modes.** Push-to-talk (manual `activityStart/activityEnd`) suits voice-assistant UIs. Hands-free (server VAD) suits always-listening assistants.
+- **Interruption and cleanup are critical.** The `interrupted` event requires clearing the audio queue. Cleanup on unmount and on error prevents resource leaks and privacy issues.
+- **Runtime checks prevent broken experiences.** Always verify `is_realtime` before offering the audio UI, and omit hardcoded model names to let the server choose.
 
-See [`reference/client/realtime`](/docs/reference/client/realtime) for the complete `RealtimeSession` API, including the reconnect and resume behaviour.
+## Next steps
+
+- See the [reference](/docs/reference/client/realtime) for the complete `RealtimeSession` API: every event type, reconnect configuration, and resumption behavior.
+- Explore the playground's [Live page implementation](https://github.com/10xGraph/agentflow-playground/tree/main/src/pages/live) for a production example.
+- For Python server-side realtime audio, see [use-realtime-audio](/docs/guides/use-realtime-audio) (the guide for building a `LiveAgent`).

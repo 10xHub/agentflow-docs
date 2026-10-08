@@ -6,26 +6,43 @@ section: Integrations
 group: "Models"
 order: 30
 label: OpenAI
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - question: "Which OpenAI models work with 10xGraph?"
+    answer: "All GPT models (gpt-4o, gpt-4o-mini, gpt-4-turbo) and reasoning models (o1, o3, o4-mini). To check the latest available models, use the OpenAI API directly or see platform.openai.com."
+  - question: "How do I enable caching for OpenAI?"
+    answer: "Prompt caching is automatic on OpenAI. Cache hits are logged at DEBUG level. Pass prompt_cache_key for stable cross-request hits."
+  - question: "Do I need to change code to use the Responses API?"
+    answer: "Only if you want features unique to Responses (e.g. moderation). Pass api_style='responses' to your Agent or context manager."
 ---
 
-Run GPT-class models (`gpt-4o`, `gpt-4o-mini`) and reasoning models (`o1`, `o3`, `o4-mini`) through the OpenAI API.
+Run GPT-class models (`gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`) and reasoning models (`o1`, `o3`, `o4-mini`) through the OpenAI API. 10xGraph handles response conversion, tool calling, and prompt caching automatically.
 
-## Setup
+## Prerequisites
 
-Get an API key from [platform.openai.com](https://platform.openai.com) and export it:
+Install the OpenAI provider extra:
+
+```bash
+pip install "10xgraph[openai]"
+```
+
+Get an API key from [platform.openai.com](https://platform.openai.com) and set it as an environment variable:
 
 ```bash
 export OPENAI_API_KEY="sk-..."
 ```
 
-Or add it to a `.env` file:
+Or load it from a `.env` file:
 
 ```bash
 OPENAI_API_KEY=sk-...
 ```
 
+The environment variable is required; 10xGraph detects the provider from the model name or an explicit `provider="openai"` parameter.
+
 ## Basic usage
+
+Create an Agent with any OpenAI model:
 
 ```python
 from tenxgraph.core.graph import Agent
@@ -35,25 +52,32 @@ agent = Agent(
     provider="openai",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
 )
+
+# Invoke and get a response
+result = agent.invoke({"messages": [{"role": "user", "content": "What is 2 + 2?"}]})
+for message in result["messages"]:
+    print(f"{message['role']}: {message['content']}")
 ```
 
+The `provider="openai"` parameter is optional if your model name starts with `gpt-` or `o1`-`o4`. Both Chat Completions (the default) and the Responses API are supported; see [API Style](#api-style) below.
+
 ## Full example with tools
+
+Here is a complete example using ReactAgent with a weather tool:
 
 ```python
 from dotenv import load_dotenv
 
-from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state import Message
 from tenxgraph.prebuilt.agent import ReactAgent
 
 load_dotenv()
 
-def get_weather(
-    location: str,
-    tool_call_id: str | None = None,
-    state: AgentState | None = None,
-) -> str:
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
     return f"The weather in {location} is sunny."
 
+# Create a ReactAgent with OpenAI
 react_agent = ReactAgent(
     model="gpt-4o",
     provider="openai",
@@ -70,14 +94,34 @@ react_agent = ReactAgent(
 if __name__ == "__main__":
     app = react_agent.compile()
 
+    # Invoke the agent
     result = app.invoke(
         {"messages": [Message.text_message("What is the weather in New York City?")]},
         config={"thread_id": "openai-demo", "recursion_limit": 10},
     )
 
+    # Print the messages in the result
     for message in result["messages"]:
-        print(message.role, message)
+        print(f"{message.role}: {message.content}")
 ```
+
+Run the example:
+
+```bash
+python your_script.py
+```
+
+You should see the agent call the tool and summarize the weather.
+
+## Verify it worked
+
+After running, you will see:
+1. A user message with your question.
+2. An assistant message with a tool call to `get_weather`.
+3. A tool result message with the weather data.
+4. A final assistant message with the answer.
+
+This confirms the agent is routing tool calls correctly.
 
 ---
 
@@ -303,3 +347,9 @@ before the request is sent and must be passed to the client constructor instead.
 | `AuthenticationError` | `OPENAI_API_KEY` missing or invalid |
 | `RateLimitError` | You hit a rate limit — enable retries via `retry_config=True` |
 | `Model not found` | Check the model name; some models require tier-gated access |
+
+## Next steps
+
+- See [Models](/docs/integrations/models) for a full capability matrix comparing OpenAI with Google and Anthropic.
+- Read [Configure an Agent](/docs/guides/configure-agent) to learn about fallbacks, retries, and other provider-agnostic settings.
+- Explore [Reasoning Models](/docs/guides/structured-output) for techniques using extended thinking with `o1` and `o3`.

@@ -1,26 +1,17 @@
 ---
 title: Unit Testing
 seoTitle: "Unit testing AI agents with 10xGraph"
-description: How to unit-test 10xGraph agents without LLM API calls using TestAgent, QuickTest, MockToolRegistry, and the 10xgraph test CLI command.
+description: "Write fast, deterministic tests for agents using TestAgent, QuickTest, MockToolRegistry, and mock storage without making real LLM API calls."
 section: "Testing and evaluation"
 group: "Unit tests"
 order: 20
 label: Unit Testing
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-Unit tests for 10xGraph agents verify that the **graph logic, routing, and tool selection** work correctly — without making any real LLM API calls. This keeps tests fast, deterministic, and free of external dependencies.
+Unit testing 10xGraph agents verifies that **graph logic, routing, tool selection, and memory management** work correctly without making expensive or slow LLM API calls. Tests run fast, produce consistent results, and stay deterministic.
 
-The `tenxgraph.qa.testing` module provides three building blocks:
-
-| Class | Purpose |
-|---|---|
-| `TestAgent` | Drops into any graph node; returns predefined responses |
-| `QuickTest` | One-liner factory methods for common test scenarios |
-| `MockToolRegistry` | Registers mock tools and tracks every invocation |
-| `TestResult` | Fluent assertions on the graph output |
-
-The `10xgraph test` CLI wraps pytest so you can run these tests with a single command.
+The `tenxgraph.qa.testing` module provides six core utilities: `TestAgent` (mock LLM), `QuickTest` (minimal setup factory methods), `MockToolRegistry` (tool call tracking), `MockMCPClient` (mock MCP servers), `InMemoryStore` (mock memory and retrieval), and `TestContext` (isolated test environment setup). `TestResult` provides fluent assertions on graph outputs. Together they let you test any combination of agents, tools, and memory without external dependencies or live models.
 
 ---
 
@@ -30,15 +21,17 @@ The `10xgraph test` CLI wraps pytest so you can run these tests with a single co
 pip install pytest pytest-asyncio
 ```
 
-`tenxgraph.qa` is included with `10xgraph` — no extra install needed.
+`tenxgraph.qa.testing` is built into `10xgraph` — no extra install needed.
 
 ---
 
 ## TestAgent
 
-`TestAgent` is a drop-in replacement for `Agent`. It accepts the same constructor arguments but never calls an LLM. Instead it cycles through a list of predefined responses.
+`TestAgent` is a drop-in replacement for `Agent`. It accepts the same constructor arguments but never calls an LLM. Instead it returns responses from a list you provide, cycling through them on repeated calls.
 
 ### Basic usage
+
+Create a `TestAgent` with a list of predefined responses and use it exactly as you would an `Agent`:
 
 ```python
 from tenxgraph.qa.testing import TestAgent
@@ -59,6 +52,8 @@ app = graph.compile()
 
 ### Override a node in an existing graph
 
+Replace an Agent node in a production graph with a `TestAgent`:
+
 ```python
 from tenxgraph.qa.testing import TestAgent
 
@@ -67,11 +62,11 @@ graph.override_node("MAIN", test_agent)
 app = graph.compile()
 ```
 
-This is the pattern to use when you have a production graph in a separate module and want to swap out only the agent node.
+This pattern is useful when you have a production graph in a separate module and want to test only the graph logic without the LLM.
 
 ### Multiple responses
 
-When an agent is called more than once (for example in a ReAct loop), `TestAgent` cycles through the `responses` list:
+When an agent is called more than once (e.g., in a ReAct loop), `TestAgent` cycles through the `responses` list:
 
 ```python
 agent = TestAgent(responses=["Calling tool...", "Final answer here"])
@@ -94,6 +89,8 @@ agent = TestAgent(
 
 ### Assertion helpers
 
+After running the graph, assert on `TestAgent` state:
+
 ```python
 # Assert the agent was called at least once
 agent.assert_called()
@@ -115,11 +112,11 @@ agent.reset()
 
 ## QuickTest
 
-`QuickTest` removes the boilerplate of building a graph, compiling it, and invoking it. Every method returns a `TestResult`.
-
-All `QuickTest` methods are async — use `pytest-asyncio` or `asyncio.run()`.
+`QuickTest` removes boilerplate by building, compiling, and invoking a graph in one call. Every method returns a `TestResult` for assertions. All `QuickTest` methods are async — use `pytest-asyncio` or `asyncio.run()`.
 
 ### Single-turn test
+
+Test a single user message and agent response:
 
 ```python
 import pytest
@@ -136,6 +133,8 @@ async def test_greeting():
 
 ### Multi-turn conversation
 
+Test a back-and-forth exchange:
+
 ```python
 @pytest.mark.asyncio
 async def test_conversation():
@@ -149,6 +148,8 @@ async def test_conversation():
 ```
 
 ### Test with tool calls
+
+Test the agent's decision to call a tool and the tool's result:
 
 ```python
 @pytest.mark.asyncio
@@ -164,6 +165,8 @@ async def test_weather_tool():
 ```
 
 ### Custom graph
+
+Test with a custom graph you build:
 
 ```python
 @pytest.mark.asyncio
@@ -181,65 +184,9 @@ async def test_custom_graph():
 
 ---
 
-## MockToolRegistry
-
-Use `MockToolRegistry` when you want to verify tool calls with full control over the mock implementations.
-
-```python
-from tenxgraph.qa.testing import MockToolRegistry
-from tenxgraph.core.graph import ToolNode
-
-tools = MockToolRegistry()
-
-tools.register("get_weather", lambda city: f"22°C in {city}")
-tools.register("send_email", lambda to, body: "Sent")
-
-tool_node = ToolNode(tools.get_tool_list())
-```
-
-After running the graph:
-
-```python
-# Boolean check
-assert tools.was_called("get_weather")
-
-# Call count
-assert tools.call_count("send_email") == 1
-
-# Full call history
-calls = tools.get_calls("get_weather")
-assert calls[0]["kwargs"]["city"] == "London"
-
-# Last call only
-last = tools.get_last_call("get_weather")
-
-# Fluent assertions
-tools.assert_called("get_weather")
-tools.assert_called_with("get_weather", city="London")
-tools.assert_call_count("send_email", 1)
-```
-
-### Async tools
-
-```python
-tools.register_async("search_web", async_search_func)
-```
-
-### Reset between tests
-
-```python
-# Clear call history, keep registered functions
-tools.reset()
-
-# Full reset: clear functions and history
-tools.clear()
-```
-
----
-
 ## TestResult
 
-Every `QuickTest` method returns a `TestResult`. Its methods all return `self` for chaining.
+Every `QuickTest` method returns a `TestResult`. All assertion methods return `self` for chaining:
 
 ```python
 result = await QuickTest.single_turn(
@@ -265,82 +212,265 @@ result = await QuickTest.single_turn(
 | `assert_message_count(n)` | Total messages in the conversation equals `n` |
 | `assert_no_errors()` | No error messages in the conversation |
 
-The `final_response`, `messages`, `tool_calls`, and `state` attributes are also available for custom assertions.
+Also available: `final_response`, `messages`, `tool_calls`, and `state` attributes for custom assertions.
 
 ---
 
-## 10xgraph test CLI
+## MockToolRegistry
 
-`10xgraph test` is a thin pytest wrapper. It reads optional defaults from `10xgraph.json` and forwards any extra arguments straight to pytest.
+Use `MockToolRegistry` to register mock tool implementations and track every call made to them. This gives you full control over tool behavior and call history.
 
-```bash
-# Run all tests (pytest auto-discovery)
-10xgraph test
+### Register tools
 
-# Target a specific path
-10xgraph test tests/unit
+```python
+from tenxgraph.qa.testing import MockToolRegistry
+from tenxgraph.core.graph import ToolNode
 
-# Run with coverage
-10xgraph test --coverage
+tools = MockToolRegistry()
 
-# Open the HTML coverage report automatically
-10xgraph test --coverage --html
+tools.register("get_weather", lambda city: f"22°C in {city}")
+tools.register("send_email", lambda to, body: "Sent")
 
-# Filter by keyword
-10xgraph test -k "weather"
-
-# Pass raw pytest flags
-10xgraph test -- -m "not integration" --tb=short
+tool_node = ToolNode(tools.get_tool_list())
 ```
 
-### 10xgraph.json configuration
+### Inspect and assert tool calls
 
-```json
-{
-  "agent": "graph.react:app",
-  "test": {
-    "path": "tests",
-    "coverage": true,
-    "coverage_threshold": 80
-  }
-}
+After running the graph, check which tools were called and with what arguments:
+
+```python
+# Boolean check
+assert tools.was_called("get_weather")
+
+# Call count
+assert tools.call_count("send_email") == 1
+
+# Full call history
+calls = tools.get_calls("get_weather")
+assert calls[0]["kwargs"]["city"] == "London"
+
+# Last call only
+last = tools.get_last_call("get_weather")
+
+# Fluent assertions
+tools.assert_called("get_weather")
+tools.assert_called_with("get_weather", city="London")
+tools.assert_call_count("send_email", 1)
 ```
 
-| Field | Description |
-|---|---|
-| `path` | Default path when no `PATH` argument is given |
-| `coverage` | Enable coverage on every run |
-| `coverage_threshold` | Minimum coverage %; run fails if coverage drops below this |
+### Async tools
 
-A bare `10xgraph test` with the above config is equivalent to:
+Register async tool implementations:
 
-```bash
-10xgraph test tests --coverage -- --cov-fail-under=80
+```python
+tools.register_async("search_web", async_search_func)
 ```
 
-### CI example
+### Reset between tests
 
-```yaml
-# .github/workflows/ci.yml
-- name: Run tests
-  run: 10xgraph test --coverage
+```python
+# Clear call history, keep registered functions
+tools.reset()
+
+# Full reset: clear functions and history
+tools.clear()
 ```
 
-Set `coverage_threshold` in `10xgraph.json` — no extra flags needed in the workflow.
+---
+
+## MockMCPClient
+
+`MockMCPClient` simulates an MCP server for testing ToolNode with MCP tool integrations without requiring actual MCP servers.
+
+### Register mock MCP tools
+
+```python
+from tenxgraph.qa.testing import MockMCPClient
+from tenxgraph.core.graph import ToolNode
+
+mock_client = MockMCPClient()
+mock_client.add_tool(
+    name="search",
+    description="Search the web",
+    parameters={"query": {"type": "string"}},
+    handler=lambda query: f"Results for: {query}",
+)
+
+# Pass to ToolNode
+tools = ToolNode([], client=mock_client)
+```
+
+### Assert MCP tool calls
+
+After running the graph, check which MCP tools were called:
+
+```python
+# Check if called
+mock_client.assert_called("search")
+
+# Check call arguments
+mock_client.assert_called_with("search", query="climate change")
+
+# Get call history
+calls = mock_client.get_calls("search")
+last_call = mock_client.get_last_call("search")
+```
+
+### Method chaining
+
+`add_tool()` returns `self`, so you can chain registrations:
+
+```python
+mock_client\
+    .add_tool("search", description="Search", parameters={"query": {"type": "string"}}, handler=...)\
+    .add_tool("email", description="Send email", parameters={...}, handler=...)
+```
+
+### Reset between tests
+
+```python
+# Clear call history, keep tool registrations
+mock_client.reset()
+
+# Full reset: clear tools and history
+mock_client.clear()
+```
+
+---
+
+## InMemoryStore
+
+`InMemoryStore` provides an in-memory implementation of the memory store for testing graphs that use memory retrieval (memory tools, long-term storage) without requiring Postgres, Qdrant, or Mem0.
+
+### Basic setup
+
+```python
+from tenxgraph.qa.testing import InMemoryStore
+from tenxgraph.core.graph import StateGraph
+
+store = InMemoryStore()
+
+graph = StateGraph()
+compiled = graph.compile(store=store)
+```
+
+### Pre-configure search results
+
+For testing retrieval-dependent behavior, pre-set the results your graph should find:
+
+```python
+from tenxgraph.storage.store.store_schema import MemorySearchResult
+
+store = InMemoryStore()
+store.set_search_results([
+    MemorySearchResult(id="1", content="User mentioned budget of $5000", score=0.95),
+    MemorySearchResult(id="2", content="Preferred timeline is Q4", score=0.88),
+])
+
+# When the graph calls store.asearch(...), it gets these results
+```
+
+### Store and retrieve manually
+
+For more control, store and retrieve memories directly:
+
+```python
+config = {"user_id": "user123", "thread_id": "thread456"}
+
+# Store a memory
+mem_id = await store.astore(
+    config=config,
+    content="User prefers email over phone",
+    memory_type=MemoryType.EPISODIC,
+)
+
+# Retrieve it
+result = await store.aget(config, mem_id)
+print(result.content)
+
+# Search by text
+results = await store.asearch(config, query="contact preferences")
+```
+
+### Clear between tests
+
+```python
+# Clear all memories and pre-configured results
+store.clear()
+```
+
+---
+
+## TestContext
+
+`TestContext` provides a helper for setting up isolated test environments. It bundles a dependency container, in-memory store, and mock tools together so you can focus on your test logic.
+
+### Context manager usage
+
+```python
+from tenxgraph.qa.testing import TestContext
+from tenxgraph.utils.constants import END
+
+with TestContext() as ctx:
+    # Create a graph with the test container
+    graph = ctx.create_graph()
+    
+    # Create a test agent
+    agent = ctx.create_test_agent(responses=["Hello!"])
+    
+    # Build the graph
+    graph.add_node("MAIN", agent)
+    graph.set_entry_point("MAIN")
+    graph.add_edge("MAIN", END)
+    
+    # Compile and run
+    compiled = graph.compile(store=ctx.get_store())
+    result = await compiled.ainvoke({"messages": [Message.text_message("Hi")]})
+    
+    # Assertions work on agent and tools
+    agent.assert_called()
+```
+
+### Use the bundled components
+
+Access the context's store and mock tools:
+
+```python
+with TestContext() as ctx:
+    # Get the in-memory store
+    store = ctx.get_store()
+    
+    # Register mock tools
+    ctx.register_mock_tool("get_weather", lambda city: f"Sunny in {city}")
+    mock_tools = ctx.get_mock_tools()
+    
+    # After running...
+    assert mock_tools.was_called("get_weather")
+```
+
+### Reset between tests
+
+```python
+ctx.reset()  # Clears store, tools, and all tracking
+```
 
 ---
 
 ## Complete pytest example
 
+Here is a full example that combines `TestAgent`, `MockToolRegistry`, and `TestContext`:
+
 ```python
 # tests/unit/test_weather_agent.py
 import pytest
-from tenxgraph.qa.testing import MockToolRegistry, QuickTest, TestAgent
+from tenxgraph.qa.testing import MockToolRegistry, QuickTest, TestAgent, TestContext
 from tenxgraph.core.graph import StateGraph, ToolNode
+from tenxgraph.core.state import Message
 from tenxgraph.utils.constants import END
 
 @pytest.mark.asyncio
 async def test_weather_query_routes_to_tool():
+    """Test that a weather query triggers the tool."""
     tools = MockToolRegistry()
     tools.register("get_weather", lambda city: "22°C")
 
@@ -357,32 +487,51 @@ async def test_weather_query_routes_to_tool():
 
     def route(state):
         last = state.context[-1] if state.context else None
-        if last and getattr(last, "tools_calls", None):
+        if last and getattr(last, "tool_calls", None):
             return "TOOL"
         return END
 
     graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
     graph.add_edge("TOOL", "MAIN")
 
-    from tenxgraph.core.state import Message
     app = graph.compile()
     result = await app.ainvoke({"messages": [Message.text_message("Weather in London?")]})
 
+    # Assert tool was called
     tools.assert_called("get_weather")
-    agent.assert_called_times(2)  # once for tool call, once for final response
+    
+    # Assert agent was called twice (once for tool call, once for final response)
+    agent.assert_called_times(2)
 
 @pytest.mark.asyncio
-async def test_single_turn_quick():
+async def test_quick_fact_lookup():
+    """Test with QuickTest for minimal setup."""
     result = await QuickTest.single_turn(
         agent_response="Paris is the capital of France.",
-        user_message="Capital of France?",
+        user_message="What is the capital of France?",
     )
-    result.assert_contains("Paris")
+    result.assert_contains("Paris").assert_not_contains("London")
+
+@pytest.mark.asyncio
+async def test_with_context_helper():
+    """Test using TestContext for isolated setup."""
+    with TestContext() as ctx:
+        agent = ctx.create_test_agent(responses=["Task complete"])
+        
+        graph = ctx.create_graph()
+        graph.add_node("MAIN", agent)
+        graph.set_entry_point("MAIN")
+        graph.add_edge("MAIN", END)
+        
+        compiled = graph.compile()
+        result = await compiled.ainvoke({"messages": [Message.text_message("Go")]})
+        
+        agent.assert_called()
 ```
 
 ---
 
 ## Further reading
 
-- [How to run tests with 10xgraph test](/docs/testing/run-tests)
-- [Evaluation guide](/docs/testing/evaluation) — for scoring real agent behaviour
+- [Run tests with 10xgraph test](/docs/testing/run-tests) — executing tests and coverage configuration
+- [Evaluation guide](/docs/testing/evaluation) — scoring agent behavior with evals

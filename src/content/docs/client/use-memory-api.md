@@ -1,268 +1,118 @@
 ---
-title: How to use the memory API
-description: Step-by-step guide to storing, searching, and managing long-term memories with AgentFlowClient.
+title: Use the memory API
+description: "Store, search, and manage long-term memories across agent conversations with the 10xGraph TypeScript client."
 section: "TypeScript client"
 group: "Features"
 order: 80
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-The memory API stores information that persists across threads and sessions, user preferences, facts learned during conversations, and anything else the agent should remember long-term. This guide shows you how to store, search, and manage memories.
+The memory API lets you store facts, preferences, and conversation history that persists across threads and sessions. Agents can search this long-term context during conversation to provide personalized, informed responses. This guide shows you how to build agents that learn and remember.
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
-All memory operations require the `store` field to be configured in `10xgraph.json`. Without a store the endpoints return empty results.
+Memory operations require the `store` field configured in `10xgraph.json`. Without a store, all endpoints return empty results.
 
 </aside>
 
+## Why memory matters
+
+Without memory, each thread starts fresh: the agent sees no history, no preferences, no facts about the user. With memory, you can:
+
+- Personalize responses based on learned user preferences.
+- Accumulate context that grows richer over time.
+- Build continuity across separate conversations and days.
+- Let agents refer to prior decisions and past interactions.
+
+The memory API handles the storage and retrieval; you control what to remember and how to use it.
+
 ## Prerequisites
 
-- A configured `AgentFlowClient`. See [how-to/client/create-client](/docs/client/create-client).
-- The API server running with a memory store configured.
+- A configured `AgentFlowClient`. See [create the client](/docs/client/create-client).
+- The API server running with a memory store configured in `10xgraph.json`.
 
 ---
 
-## Step 1: Store a memory
+## Store a memory
 
-Use `storeMemory()` to store any piece of information:
+Use `storeMemory()` to save any piece of information. Each memory has a type (semantic, episodic, etc.) and a category (like "preferences" or "history").
 
 ```ts
 import { MemoryType } from '10xgraph-client';
 
 const response = await client.storeMemory({
-  content: 'User prefers responses in French.',
+  content: 'User works in healthcare and prefers technical explanations.',
   memory_type: MemoryType.SEMANTIC,
-  category: 'preferences',
-  metadata: { source: 'user_profile' },
+  category: 'user_profile',
+  metadata: { source: 'inferred', confidence: 0.9 },
 });
 
 const memoryId = response.data.memory_id;
-console.log('Stored memory:', memoryId);
+console.log('Stored memory with ID:', memoryId);
 ```
 
-Save `memory_id` if you need to update or delete the memory later.
+The response includes `memory_id`, which you can use later to update or delete the memory. Save it if you need to reference the memory later.
 
 ---
 
-## Step 2: Search for memories
+## Search memories to build context
 
-`searchMemory()` uses vector similarity to find memories that are semantically related to your query:
+Vector similarity search finds memories that relate to your current query, even if the wording differs. This is the core value of the memory API: you ask a question, and the store returns relevant past facts.
 
 ```ts
 import { MemoryType, RetrievalStrategy } from '10xgraph-client';
 
 const results = await client.searchMemory({
-  query: 'What language does the user prefer?',
+  query: 'What is the user\'s background?',
   memory_type: MemoryType.SEMANTIC,
-  category: 'preferences',
+  category: 'user_profile',
   limit: 3,
   score_threshold: 0.6,
   retrieval_strategy: RetrievalStrategy.SIMILARITY,
 });
 
-for (const r of results.data.results) {
-  console.log(`Score: ${r.score.toFixed(3)}, ${r.content}`);
+for (const result of results.data.results) {
+  console.log(`Match (score ${result.score.toFixed(2)}): ${result.content}`);
 }
 ```
 
-Memories with a score above `score_threshold` (0–1) are returned. Remove `score_threshold` if you want all results regardless of relevance.
+The `score` ranges from 0 to 1; higher means more similar. The `score_threshold` filters out low-confidence matches.
 
 ---
 
-## Step 3: Use memories to enhance agent responses
+## Build an agent that uses memory
 
-Build relevant context from memories and inject it into the system prompt before each `invoke()` call:
+The full pattern is: search for relevant memories, build a system prompt with them, then invoke the agent. This way, the agent always has context.
 
 ```ts
-async function invokeWithMemory(question: string, threadId: string) {
-  // 1. Find relevant memories
+import { AgentFlowClient, Message, MemoryType, RetrievalStrategy } from '10xgraph-client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const THREAD_ID = 'user-session-123';
+
+async function respondWithMemory(userQuestion: string) {
+  // 1. Search for relevant memories
   const memories = await client.searchMemory({
-    query: question,
+    query: userQuestion,
     memory_type: MemoryType.SEMANTIC,
     limit: 5,
     score_threshold: 0.65,
   });
 
-  // 2. Build context block
+  // 2. Build context from the top matches
   const context = memories.data.results
     .map(r => `- ${r.content}`)
     .join('\n');
 
-  const systemMsg = Message.text_message(
-    `You are a helpful assistant.\n\nLong-term context:\n${context}`,
-    'system'
-  );
+  const systemPrompt = context
+    ? `You are a helpful assistant with knowledge of the user:\n${context}`
+    : 'You are a helpful assistant.';
 
-  // 3. Invoke
-  return client.invoke([systemMsg, Message.text_message(question)], {
-    config: { thread_id: threadId },
-    response_granularity: 'low',
-  });
-}
-```
-
----
-
-## Step 4: Retrieve a specific memory
-
-Fetch a single memory by its ID:
-
-```ts
-const memory = await client.getMemory(memoryId);
-console.log(memory.data.memory.content);
-console.log(memory.data.memory.memory_type);
-console.log(memory.data.memory.metadata);
-```
-
----
-
-## Step 5: Update a memory
-
-Replace the content of an existing memory:
-
-```ts
-await client.updateMemory(
-  memoryId,
-  'User prefers responses in French and Spanish.',
-  {
-    metadata: { updated: true, updated_at: new Date().toISOString() },
-  }
-);
-console.log('Memory updated');
-```
-
----
-
-## Step 6: Delete a specific memory
-
-```ts
-const result = await client.deleteMemory(memoryId);
-console.log('Deleted:', result.data.success);
-```
-
----
-
-## Step 7: List all memories
-
-`listMemories()` returns all stored memories. Use `limit` to paginate:
-
-```ts
-const all = await client.listMemories({ limit: 50 });
-console.log(`Found ${all.data.memories.length} memories`);
-
-for (const mem of all.data.memories) {
-  console.log(`[${mem.memory_type}] ${mem.content.slice(0, 80)}`);
-}
-```
-
----
-
-## Step 8: Bulk-delete memories
-
-`forgetMemories()` removes all memories matching a type or category. More efficient than deleting one by one:
-
-```ts
-// Delete all episodic memories in a temporary category
-await client.forgetMemories({
-  memory_type: MemoryType.EPISODIC,
-  category: 'session_temp',
-});
-
-// Delete memories matching a custom filter
-await client.forgetMemories({
-  filters: { expired: true },
-});
-```
-
----
-
-## Memory type guide
-
-Choose the right `MemoryType` for each piece of information:
-
-| Type | Use for |
-|---|---|
-| `EPISODIC` | Conversation events, session notes, recent interactions. |
-| `SEMANTIC` | Facts, user preferences, world knowledge the agent should recall. |
-| `PROCEDURAL` | How-to workflows, step sequences, recurring processes. |
-| `ENTITY` | Information about specific people, places, or products. |
-| `RELATIONSHIP` | How entities relate to each other. |
-| `DECLARATIVE` | Explicit facts stated directly by the user or administrator. |
-| `CUSTOM` | Domain-specific memory types unique to your application. |
-
-Using consistent types makes retrieval more accurate, `searchMemory` can filter by type.
-
----
-
-## Choosing a retrieval strategy
-
-| Strategy | Best for |
-|---|---|
-| `SIMILARITY` | Finding semantically related memories. Default and most useful. |
-| `TEMPORAL` | Retrieving the most recent memories in chronological order. |
-| `RELEVANCE` | Scoring by the store backend's custom relevance model. |
-| `HYBRID` | Combining similarity and relevance for balanced retrieval. |
-| `GRAPH_TRAVERSAL` | Navigating entity/relationship memories in a knowledge graph. |
-
----
-
-## Choosing a distance metric
-
-The `distance_metric` option on `searchMemory()` controls how vector similarity is computed. It is passed to the store backend; support depends on the backend in use.
-
-| Metric | When to use |
-|---|---|
-| `COSINE` | Default. Best for text/embeddings where direction matters more than magnitude. |
-| `EUCLIDEAN` | Use when absolute vector distances are meaningful. |
-| `DOT_PRODUCT` | Useful with normalised vectors; fastest for high-dimensional spaces. |
-| `MANHATTAN` | L1 distance. Less common but supported for completeness. |
-
-```ts
-import { RetrievalStrategy, DistanceMetric } from '10xgraph-client';
-
-const results = await client.searchMemory({
-  query: 'user preferences',
-  retrieval_strategy: RetrievalStrategy.SIMILARITY,
-  distance_metric: DistanceMetric.COSINE,   // explicit; same as default
-  limit: 5,
-  max_tokens: 2000,  // Cap total tokens across all results
-});
-```
-
----
-
-## Complete example: memory-aware chat
-
-```ts
-import {
-  AgentFlowClient,
-  Message,
-  MemoryType,
-  RetrievalStrategy,
-} from '10xgraph-client';
-
-const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
-const THREAD_ID = 'user-abc-session';
-
-async function memoryChat(userInput: string) {
-  // Recall relevant memories
-  const recalled = await client.searchMemory({
-    query: userInput,
-    memory_type: MemoryType.SEMANTIC,
-    limit: 3,
-    score_threshold: 0.6,
-    retrieval_strategy: RetrievalStrategy.SIMILARITY,
-  });
-
-  const contextBlock = recalled.data.results.length > 0
-    ? '\n\nContext from memory:\n' + recalled.data.results.map(r => `- ${r.content}`).join('\n')
-    : '';
-
-  // Invoke with memory context
-  const result = await client.invoke(
+  // 3. Invoke the agent with memory context
+  const response = await client.invoke(
     [
-      Message.text_message(`You are a helpful assistant.${contextBlock}`, 'system'),
-      Message.text_message(userInput),
+      Message.text_message(systemPrompt, 'system'),
+      Message.text_message(userQuestion),
     ],
     {
       config: { thread_id: THREAD_ID },
@@ -270,41 +120,178 @@ async function memoryChat(userInput: string) {
     }
   );
 
-  // Store this exchange as an episodic memory
+  // 4. Store this interaction for future reference
   await client.storeMemory({
-    content: `User asked: "${userInput}"`,
+    content: `User asked: "${userQuestion}". Agent responded with: "${response.messages[response.messages.length - 1].content[0].text}"`,
     memory_type: MemoryType.EPISODIC,
     category: 'conversations',
-    metadata: { thread_id: THREAD_ID },
+    metadata: { timestamp: new Date().toISOString(), thread_id: THREAD_ID },
   });
 
-  return result;
+  return response;
 }
 
-// Run the memory-aware chat
-const result = await memoryChat('What is my preferred language?');
+// Use it
+const result = await respondWithMemory('How should I approach this project?');
 console.log(result.messages);
+```
+
+This pattern ensures every conversation is stored for learning, and every new question is informed by past context.
+
+---
+
+## Organize memories with types and categories
+
+Choosing the right `MemoryType` makes searches more precise. See [memory reference](/docs/reference/client/memory) for the full list, but here are the main types:
+
+- **Semantic**: Facts, preferences, knowledge. Best for agent learning.
+- **Episodic**: Specific conversations, events, interactions. Builds a history.
+- **Procedural**: How-to workflows, recurring processes.
+- **Entity**: Information about people, places, or things.
+
+Use categories to group related memories (like `"user_profile"`, `"conversations"`, `"work_history"`). When searching, you can filter by category to avoid irrelevant results.
+
+```ts
+// Store different types
+await client.storeMemory({
+  content: 'User is a software engineer interested in Rust.',
+  memory_type: MemoryType.SEMANTIC,
+  category: 'user_profile',
+});
+
+await client.storeMemory({
+  content: 'Discussed deployment architecture for microservices.',
+  memory_type: MemoryType.EPISODIC,
+  category: 'conversations',
+});
+
+// Search only semantic memories in the profile
+const facts = await client.searchMemory({
+  query: 'What does the user do?',
+  memory_type: MemoryType.SEMANTIC,
+  category: 'user_profile',
+  limit: 3,
+});
 ```
 
 ---
 
-## Common errors
+## Retrieve and update a specific memory
 
-| Error | Cause | Fix |
-|---|---|---|
-| `AgentFlowError` status `404` on `getMemory` | Memory ID not found. | Verify the ID. Memories may have been deleted. |
-| `AgentFlowError` status `503` | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and the store backend status. |
-| Empty search results | Score threshold too high, wrong memory type, or store is empty. | Lower `score_threshold`, remove the type filter, or check that memories have been stored. |
+If you have a `memory_id`, you can fetch a single memory by ID:
+
+```ts
+const memory = await client.getMemory(memoryId);
+console.log('Content:', memory.data.memory.content);
+console.log('Type:', memory.data.memory.memory_type);
+console.log('Stored at:', memory.data.memory.timestamp);
+```
+
+To update a memory's content or metadata:
+
+```ts
+await client.updateMemory(
+  memoryId,
+  'User works in healthcare, prefers technical explanations, and uses Python daily.',
+  {
+    metadata: { updated_at: new Date().toISOString(), reason: 'user_correction' },
+  }
+);
+```
+
+---
+
+## Advanced search options
+
+The memory API supports multiple retrieval strategies and distance metrics. Most use cases work well with the defaults (similarity and cosine distance), but for specialized scenarios, you have options.
+
+For detailed tables of retrieval strategies and distance metrics, see [memory reference](/docs/reference/client/memory#retrieval-strategy) and [distance metric reference](/docs/reference/client/memory#distance-metric).
+
+Common advanced patterns:
+
+```ts
+// Temporal retrieval: get the most recent memories
+const recent = await client.searchMemory({
+  query: 'recent activity',
+  limit: 10,
+  retrieval_strategy: RetrievalStrategy.TEMPORAL,
+});
+
+// Hybrid search: combine similarity and relevance
+const hybrid = await client.searchMemory({
+  query: 'user preferences',
+  limit: 5,
+  retrieval_strategy: RetrievalStrategy.HYBRID,
+  score_threshold: 0.5,
+});
+
+// Cap results by tokens to avoid oversized context
+const limited = await client.searchMemory({
+  query: 'project history',
+  limit: 20,
+  max_tokens: 2000,  // Return at most 2000 tokens total
+});
+```
+
+---
+
+## List and manage memory lifecycle
+
+List all stored memories:
+
+```ts
+const response = await client.listMemories({ limit: 100 });
+console.log(`Total memories: ${response.data.memories.length}`);
+
+for (const mem of response.data.memories) {
+  console.log(`[${mem.memory_type}] ${mem.content.slice(0, 60)}`);
+}
+```
+
+Delete a single memory by ID:
+
+```ts
+await client.deleteMemory(memoryId);
+console.log('Memory deleted');
+```
+
+Bulk-delete memories matching a filter (more efficient than deleting one by one):
+
+```ts
+// Clear all session-temporary memories
+await client.forgetMemories({
+  memory_type: MemoryType.EPISODIC,
+  category: 'session_temp',
+});
+
+// Clear memories with a custom filter
+await client.forgetMemories({
+  filters: { archived: true },
+});
+```
+
+---
+
+## Common errors and fixes
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| `AgentFlowError` status 404 on `getMemory()` | Memory ID not found or deleted. | Verify the ID is correct. Use `listMemories()` to check what exists. |
+| `AgentFlowError` status 503 | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and ensure the store backend is running. |
+| Empty search results | Score threshold too high, or no memories match the type/category. | Lower `score_threshold`, remove the type filter, or store more memories. |
+| Irrelevant search results | Query is too vague, or memories are poorly written. | Use specific queries. Store memories with clear, descriptive content. |
 
 ---
 
 ## What you learned
 
-- `storeMemory()` requires `content`, `memory_type`, and `category`.
-- `searchMemory()` with `RetrievalStrategy.SIMILARITY` does vector search, the store must support embeddings.
-- Use memory search results to build a system prompt that gives the agent long-term context.
-- `forgetMemories()` bulk-deletes by type, category, or filter.
+- Use `storeMemory()` to save facts, preferences, and interactions with a type and category.
+- `searchMemory()` finds related memories using vector similarity; higher scores mean stronger matches.
+- Build agent context by searching memories before invoking the agent.
+- Store agent interactions as episodic memories to build a conversation history.
+- Organize memories with types and categories to make searches more precise.
+- Use `updateMemory()`, `deleteMemory()`, and `forgetMemories()` to manage the memory lifecycle.
 
 ## Next step
 
-See [how-to/client/upload-files](/docs/client/files-and-multimodal) to learn how to upload images and documents for use in multimodal messages.
+See [files and multimodal](/docs/client/files-and-multimodal) to learn how to upload and reference images, audio, and documents in your agents.

@@ -33,7 +33,9 @@ All thread operations use the checkpointer your graph was compiled with (`compil
 
 ---
 
-## Step 1: List all threads
+## List all threads
+
+Retrieve all threads from the server. This is useful for discovering past conversations, searching for a specific thread, or bulk operations on threads.
 
 ```ts
 const response = await client.threads();
@@ -45,23 +47,29 @@ for (const t of threads) {
 }
 ```
 
-### Filter by name
+### Filter threads by name
 
-Search for threads whose name contains a keyword:
+Search for threads containing a keyword in their name:
 
 ```ts
 const response = await client.threads({ search: 'Paris' });
+const matchingThreads = response.data.threads;
+
+for (const thread of matchingThreads) {
+  console.log(`Matched: ${thread.thread_name}`);
+}
 ```
 
-### Paginate
+### Paginate through threads
 
-Retrieve 20 threads at a time starting from the first:
+Retrieve threads in pages to handle large thread lists:
 
 ```ts
 const response = await client.threads({ offset: 0, limit: 20 });
+const firstPage = response.data.threads;
 ```
 
-### Paginate through all threads
+For iterating through all threads, use an async generator:
 
 ```ts
 async function* allThreads(pageSize = 50) {
@@ -76,25 +84,34 @@ async function* allThreads(pageSize = 50) {
   }
 }
 
+// Iterate through all threads
 for await (const thread of allThreads()) {
-  console.log(thread.thread_id, thread.thread_name);
+  console.log(`Processing: ${thread.thread_id}`);
 }
 ```
 
 ---
 
-## Step 2: Fetch thread details
+## Fetch thread details
 
-Get metadata for a single thread (ID, name, user, timestamps):
+Get metadata for a single thread, including its ID, name, user, and timestamps:
 
 ```ts
 const details = await client.threadDetails('thread-abc123');
-console.log(details.data.thread_data.thread);
+const thread = details.data.thread_data.thread;
+
+console.log(`Thread ID: ${thread.thread_id}`);
+console.log(`Name: ${thread.thread_name ?? '(unnamed)'}`);
+console.log(`Updated: ${thread.updated_at}`);
 ```
+
+This is useful for displaying thread information in a UI or validating that a thread exists before performing operations on it.
 
 ---
 
-## Step 3: List messages in a thread
+## List and search messages in a thread
+
+Retrieve all messages from a thread, optionally searching by content:
 
 ```ts
 const messages = await client.threadMessages('thread-abc123');
@@ -104,169 +121,213 @@ for (const msg of messages.data.messages) {
     .filter(b => b.type === 'text')
     .map(b => (b as any).text as string)
     .join('');
-  console.log(`[${msg.role}] ${text.slice(0, 100)}`);
+  console.log(`[${msg.role.toUpperCase()}] ${text.slice(0, 80)}`);
 }
 ```
 
-### Search messages
+To search messages by keyword:
 
 ```ts
 const results = await client.threadMessages('thread-abc123', {
   search: 'capital of France',
   limit: 10,
+  offset: 0,
 });
+
+console.log(`Found ${results.data.messages.length} matching message(s)`);
 ```
+
+Messages can be paginated using `offset` and `limit` parameters.
 
 ---
 
-## Step 4: Fetch a single message
+## Fetch a single message
+
+Retrieve a specific message by its ID:
 
 ```ts
 const msg = await client.singleMessage('thread-abc123', 'msg-001');
-console.log(msg.data.message);
+console.log(`Role: ${msg.data.message.role}`);
+console.log(`Content: ${JSON.stringify(msg.data.message.content)}`);
 ```
+
+Use this when you need to read or inspect a specific message without fetching the entire thread.
 
 ---
 
-## Step 5: Delete a message
+## Delete a message
 
-Remove an individual message from the thread's history. Useful for cleaning up tool call messages that should not appear in the conversation:
+Remove a message from the thread's history. This is useful for cleaning up incomplete tool calls or messages that shouldn't appear in the conversation:
 
 ```ts
 await client.deleteMessage('thread-abc123', 'msg-001');
+console.log('Message deleted');
 ```
+
+The thread continues to exist with the remaining messages. You cannot delete messages once they are part of a completed checkpoint.
 
 ---
 
-## Step 6: Inspect thread state
+## Inspect and update thread state
 
-Fetch the full graph state snapshot (the last checkpoint):
+The thread state is the graph's state snapshot at the last checkpoint. You can read it, modify it, or reset it.
+
+### Read the current state
 
 ```ts
-const stateResponse = await client.threadState(12345);
-console.log(stateResponse.data);
+const stateResponse = await client.threadState('thread-abc123');
+const state = stateResponse.data;
+
+console.log('Current state:', JSON.stringify(state, null, 2));
 ```
 
-The state object shape depends on your graph's `StateGraph` definition.
+The state object shape depends on your graph's `StateGraph` definition. It contains all values you stored in the graph's state during execution.
 
----
-
-## Step 7: Update thread state
+### Update the state
 
 Write a new state snapshot for a thread. Use this to inject values, repair corrupted state, or seed initial data:
 
 ```ts
 await client.updateThreadState(
-  12345,
-  {},                     // config body (the server derives it from the path thread_id)
+  'thread-abc123',
+  {},  // config (derived from thread_id)
   {
     user_preferences: { language: 'fr', timezone: 'Europe/Paris' },
     context_window: [],
   }
 );
+
+console.log('State updated. Next invoke() will use this state.');
 ```
 
-<aside class="callout callout-warning" role="note"><p class="callout-title">Warning</p>
+<aside class="callout callout-warning" role="note"><p class="callout-title">State updates are immediate and final</p>
 
-`updateThreadState()` replaces the state at the last checkpoint. The graph will continue from this state on the next `invoke()` call. Use with care, incorrect state can break the agent's logic.
+`updateThreadState()` replaces the state at the last checkpoint. The next `invoke()` call will continue from your new state. Use with care: incorrect state can cause the agent to fail or behave unexpectedly.
 
 </aside>
 
----
+### Clear the state
 
-## Step 8: Clear thread state
-
-Remove the state snapshot without deleting the thread or its messages. The thread exists but will start fresh on the next `invoke()` call:
+Remove the state snapshot without deleting messages. The thread exists but will start fresh on the next `invoke()` call:
 
 ```ts
-await client.clearThreadState(12345);
+await client.clearThreadState('thread-abc123');
+console.log('State cleared. Thread messages remain.');
 ```
 
+This is useful if you want to reset a conversation while keeping the message history.
+
 ---
 
-## Step 9: Add messages to a thread
+## Add messages to a thread
 
-Inject messages directly into the thread's history (useful for synthetic context or importing data):
+Inject messages directly into a thread's history. This is useful for synthetic context (system prompts), importing data, or continuing a conversation from an external source:
 
 ```ts
+import { Message } from '@10xgraph/client';
+
 await client.addThreadMessages(
   'thread-abc123',
   [
     Message.text_message('You are a Paris travel expert.', 'system'),
   ],
-  {}                     // config body (the server derives it from the path thread_id)
+  {}  // config (derived from thread_id)
 );
+
+console.log('Messages added to thread');
 ```
+
+Added messages become part of the thread history and will be included when you list messages or start a new invoke.
 
 ---
 
-## Step 10: Delete a thread
+## Delete a thread
 
-Delete a thread and all its associated state and messages. This is irreversible:
+Delete a thread and all its associated state and messages permanently. This operation is irreversible:
 
 ```ts
 await client.deleteThread('thread-abc123');
+console.log('Thread deleted');
 ```
+
+After deletion, the thread ID cannot be reused. If you want to keep the message history but reset the state, use `clearThreadState()` instead.
 
 ---
 
-## Build a thread history viewer
+## Complete example: thread history viewer
 
-Putting it all together, a basic function that loads and displays a thread history:
+Putting all operations together in a utility function that displays a thread's full history:
 
 ```ts
-import {
-  AgentFlowClient,
-  Message,
-} from '10xgraph-client';
+import { AgentFlowClient, Message } from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-async function showThreadHistory(threadId: string) {
-  // Get details
-  const details = await client.threadDetails(threadId);
-  const thread = details.data.thread_data.thread;
-  console.log(`Thread: ${thread.thread_name ?? threadId}`);
+async function displayThreadHistory(threadId: string) {
+  try {
+    // Fetch thread details
+    const details = await client.threadDetails(threadId);
+    const thread = details.data.thread_data.thread;
+    console.log(`\n=== Thread: ${thread.thread_name ?? threadId} ===`);
+    console.log(`Created: ${thread.created_at}`);
+    console.log(`Updated: ${thread.updated_at}`);
 
-  // Get messages
-  const msgs = await client.threadMessages(threadId, {
-    offset: 0,
-    limit: 100,
-  });
+    // Fetch all messages with pagination
+    const messagesResponse = await client.threadMessages(threadId, {
+      offset: 0,
+      limit: 100,
+    });
 
-  for (const msg of msgs.data.messages) {
-    const text = msg.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as any).text as string)
-      .join('') || '[non-text content]';
-    console.log(`[${msg.role.toUpperCase()}] ${text}`);
+    const messages = messagesResponse.data.messages;
+    console.log(`\n--- Messages (${messages.length} total) ---`);
+
+    for (const msg of messages) {
+      const text = msg.content
+        .filter(b => b.type === 'text')
+        .map(b => (b as any).text as string)
+        .join('') || '[non-text content]';
+      
+      console.log(`[${msg.role.toUpperCase()}] ${text.slice(0, 120)}`);
+    }
+
+    // Fetch and display current state
+    const stateResponse = await client.threadState(threadId);
+    console.log(`\n--- Current State ---`);
+    console.log(JSON.stringify(stateResponse.data, null, 2));
+
+  } catch (error) {
+    console.error(`Failed to display thread: ${error}`);
   }
-
-  console.log(`\nTotal: ${msgs.data.messages.length} messages`);
 }
 
-await showThreadHistory('thread-abc123');
+// Usage
+await displayThreadHistory('thread-abc123');
 ```
 
 ---
 
-## Common errors
+## Troubleshooting: common errors
 
-| Error | Cause | Fix |
+| Error | Cause | Solution |
 |---|---|---|
-| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id` and check `10xgraph.json`. |
-| `AgentFlowError` status `422` | Invalid `thread_id` (empty string or zero), `message_id` (empty), `offset` (< 0), or `limit` (≤ 0). | Check the values you pass to each method. |
-| Empty `threads` list | Checkpointer not configured or no threads created yet. | Compile the graph with a checkpointer (`compile(checkpointer=...)`). |
+| `404 Not Found` | Thread does not exist, or no checkpointer is configured. | Verify the thread ID exists. Check that the API server has a checkpointer configured. |
+| `422 Unprocessable Entity` | Invalid parameter: empty/invalid thread ID, message ID, negative offset, or non-positive limit. | Ensure all parameters match their type and constraints (thread IDs are strings, offsets are >= 0, limits are > 0). |
+| Empty `threads` list | Checkpointer is not configured, or no threads have been created yet. | Compile your graph with a checkpointer: `compile(checkpointer=PgCheckpointer(...))`. Run a test invocation to create a thread. |
+| `State is null` | The thread exists but has no state snapshot (e.g., after `clearThreadState()`). | Call `updateThreadState()` to set a state, or `addThreadMessages()` to add messages to the thread. |
 
 ---
 
-## What you learned
+## Key takeaways
 
-- `threads()` lists all threads with optional search and pagination.
-- `threadMessages()` lists messages in a thread with search and pagination.
-- `threadState()` / `updateThreadState()` / `clearThreadState()` operate on the graph state snapshot.
-- `deleteThread()` removes everything, use `clearThreadState()` if you want to keep the history but reset the state.
+- **List threads** with `threads()` to discover or search for conversations.
+- **Thread details** via `threadDetails()` give you metadata (ID, name, timestamps).
+- **Messages** are read with `threadMessages()`, modified with `addThreadMessages()`, and deleted individually with `deleteMessage()`.
+- **Thread state** (checkpoint) is read with `threadState()`, updated with `updateThreadState()`, and cleared with `clearThreadState()`.
+- **Deletion** is permanent: `deleteThread()` removes everything, while `clearThreadState()` keeps messages but resets state.
+- **Idempotency**: thread operations are safe to retry; the API prevents duplicate messages or state changes.
+
+---
 
 ## Next step
 
-See [how-to/client/use-memory-api](/docs/client/use-memory-api) to learn how to store and retrieve long-term memories.
+Learn how to store and retrieve long-term memories separate from conversation history. See [Memory API](/docs/client/use-memory-api).

@@ -1,32 +1,40 @@
 ---
-title: How to send images and documents
-description: "Send images, PDFs, and other media to an agent from TypeScript with uploadFile, Message.withImage, Message.withFile, and Message.multimodal."
+title: "Work with files and multimodal messages"
+description: "Upload images, documents, and audio; reference them in messages with file_id for secure, efficient multimodal input."
 section: "TypeScript client"
 group: "Features"
 order: 70
-label: How to send images and documents
-updated: "2026-09-29"
+label: "Files and multimodal"
+updated: "2026-10-08"
 ---
 
-Vision and document input work the same way on `invoke()`, `stream()`, and `wsStream()`. The path is always:
+The 10xGraph client supports multimodal messages: you upload files once, then reference them by `file_id` in as many messages as you need. The server handles access control and media resolution, so you never expose public URLs or inline base64.
 
-1. Upload the file with `client.uploadFile()` and keep the returned `file_id`.
-2. Build a message whose content carries a media block referencing that `file_id`.
-3. Send the message like any other message.
-
-The server rewrites each `file_id` reference into an internal `graph://media/{file_id}` URL when the request arrives, then resolves it to real bytes or a provider URL at LLM-call time. You never have to inline base64 or expose a public URL.
+Vision and document input work identically across `invoke()`, `stream()`, and `wsStream()`.
 
 ## Prerequisites
 
-- A configured `AgentFlowClient`. See [how-to/client/create-client](/docs/client/create-client).
-- The API server running with media storage configured. Verify with `getMultimodalConfig()` (step 1).
-- A model that can actually read the media you send. Sending a PNG to a text-only model is a model error, not a client error.
+- A configured `AgentFlowClient`. See [create-client](/docs/client/create-client).
+- The API server running with media storage configured. You can check with `getMultimodalConfig()` before uploading.
+- A model that supports the media type you send (e.g., GPT-4V for images, Gemini for audio).
 
 ---
 
-## Step 1: Read the server's limits first
+## The upload-once, reference-many pattern
 
-The limits belong to the server, not the client, so read them rather than hardcoding them:
+The path for any multimodal interaction is:
+
+1. Upload the file with `client.uploadFile()` and capture the returned `file_id`.
+2. Build a message with a media block that references that `file_id`.
+3. Send the message like any other message.
+
+The server translates each `file_id` reference into an internal `graph://media/{file_id}` URL at request time, then resolves it to real bytes or a provider URL when calling the LLM. You never inline base64 or expose a public URL.
+
+---
+
+## Step 1: Check the server's configuration first
+
+Before uploading, read the server's limits and media handling mode:
 
 ```ts
 const config = await client.getMultimodalConfig();
@@ -38,56 +46,85 @@ const {
 } = config.data;
 ```
 
-`document_handling` decides what happens to non-image files and is worth branching on in your UI:
+`document_handling` controls what happens to non-image files:
 
 | Value | Effect |
 |---|---|
 | `extract_text` | The server extracts the document's text at upload time and exposes it as `extracted_text`. A `DocumentBlock` carrying that `file_id` is replaced with the extracted text before the graph runs. This is the server default. |
-| `pass_raw` | The document is passed through to the model as a media reference. Only useful with models that accept documents natively. |
-| `skip` | Documents are not sent to the model at all. Offer image attachments only. |
+| `pass_raw` | The document is passed to the model as a media reference. Only useful with models that accept documents natively. |
+| `skip` | Documents are not sent to the model. Image attachments only. |
+
+Use these settings to validate user input and show appropriate UI:
 
 ```ts
 const acceptsDocuments = config.data.document_handling !== 'skip';
 const maxBytes = config.data.media_max_size_mb * 1024 * 1024;
-```
 
-Enforce `maxBytes` before uploading. The server rejects an oversized file, but checking locally saves the round trip.
+if (!acceptsDocuments && file.type.startsWith('application/')) {
+  // Show "images only" message to the user
+}
+
+if (file.size > maxBytes) {
+  // Show "file too large" message
+}
+```
 
 ---
 
-## Step 2: Upload the file
+## Step 2: Upload a file
 
-`uploadFile()` takes exactly one argument: a `File`, a `Blob`, or `{ data: Blob; filename: string }`. There are no options, no `purpose`, no MIME override. The server infers the type from the upload itself.
+`uploadFile()` accepts a `File`, a `Blob`, or `{ data: Blob; filename: string }`. There are no options, no purpose parameter, no MIME type override. The server infers the type from the upload.
+
+### From a browser file input
 
 ```ts
-// Browser: straight from a file input
+const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
 const file = input.files![0];
-const upload = await client.uploadFile(file);
 
-// Node or programmatic: give the blob a filename
+const upload = await client.uploadFile(file);
+console.log('File ID:', upload.data.file_id);
+```
+
+### From a Blob (Node.js or programmatic)
+
+```ts
 import { readFileSync } from 'fs';
-const blob = new Blob([readFileSync('./chart.png')], { type: 'image/png' });
-const upload = await client.uploadFile({ data: blob, filename: 'chart.png' });
+
+const buffer = readFileSync('./diagram.png');
+const blob = new Blob([buffer], { type: 'image/png' });
+
+const upload = await client.uploadFile({ data: blob, filename: 'diagram.png' });
+```
+
+### From a URL (fetch first)
+
+```ts
+const imageResponse = await fetch('https://example.com/photo.jpg');
+const blob = await imageResponse.blob();
+
+const upload = await client.uploadFile({ data: blob, filename: 'photo.jpg' });
 ```
 
 The response nests everything under `data`:
 
 ```ts
-upload.data.file_id;         // the id you put in messages
+upload.data.file_id;         // the id you put in messages (string)
 upload.data.mime_type;       // e.g. 'image/png'
-upload.data.size_bytes;
-upload.data.filename;
-upload.data.extracted_text;  // string for documents under extract_text, otherwise null
-upload.data.url;             // access URL, for rendering a preview in your own UI
+upload.data.size_bytes;      // (number)
+upload.data.filename;        // (string)
+upload.data.extracted_text;  // string for docs under extract_text, otherwise null
+upload.data.url;             // access URL for rendering a preview in your own UI
 ```
 
-Read `upload.data.file_id`, not `upload.file_id`.
+**Always read `upload.data.file_id`, not `upload.file_id`.** The response structure nests the actual data under the `data` key.
 
 ---
 
-## Step 3: Build the message
+## Step 3: Build a message with media
 
-### One image
+Use the `file_id` from the upload in a media block. There are several ways to do this.
+
+### The simplest: one image or document with `Message.withFile()`
 
 ```ts
 import { Message } from '10xgraph-client';
@@ -95,41 +132,25 @@ import { Message } from '10xgraph-client';
 const msg = Message.withFile(
   'What is shown in this image?',
   upload.data.file_id,
-  upload.data.mime_type,   // 'image/png' → the helper builds an ImageBlock
+  upload.data.mime_type,   // 'image/png' → ImageBlock, 'application/pdf' → DocumentBlock
 );
 ```
 
-`Message.withFile()` picks the block type from the MIME type: `image/*` gives an `ImageBlock`, `audio/*` an `AudioBlock`, `video/*` a `VideoBlock`, and anything else a `DocumentBlock`. Pass `upload.data.mime_type` straight through and it is always right. Omitting it produces a `DocumentBlock`, which is not what a vision model expects.
+`Message.withFile()` picks the block type from the MIME type: `image/*` becomes an `ImageBlock`, `audio/*` an `AudioBlock`, `video/*` a `VideoBlock`, and anything else a `DocumentBlock`. **Always pass `upload.data.mime_type`** so the helper creates the right block. Omitting it produces a `DocumentBlock`, which may confuse vision models expecting an image.
 
-### One document
+### A public URL with `Message.withImage()`
 
-Same call, the MIME type steers it:
-
-```ts
-const upload = await client.uploadFile(pdfFile);
-
-const msg = Message.withFile(
-  'Summarize the key obligations in this contract.',
-  upload.data.file_id,
-  upload.data.mime_type,   // 'application/pdf' → DocumentBlock
-);
-```
-
-Under `extract_text`, the extracted text is already sitting in `upload.data.extracted_text`. Sending the `file_id` is still the right move: the server swaps in the cached extraction itself, so you avoid shipping the whole document body up with the request.
-
-### An image from a public URL
-
-If the image is already on a URL the server can fetch, skip the upload entirely:
+If the image is already on a URL the server can fetch, skip the upload:
 
 ```ts
 const msg = Message.withImage('Describe this', 'https://example.com/photo.jpg');
 ```
 
-`withImage()` also accepts a `data:` URI for inline base64. Prefer `uploadFile()` plus `withFile()` for anything user-supplied, it keeps the request small and gives the server a stable id to enforce access control against.
+`Message.withImage()` also accepts `data:` URIs. Prefer `uploadFile()` plus `withFile()` for anything user-supplied: it keeps the request small and gives the server a stable file_id to enforce access control against.
 
-### Several files, or a specific block order
+### Multiple files or custom block order with `Message.multimodal()`
 
-`Message.multimodal()` takes the blocks verbatim, so you control the ordering the model sees:
+For fine-grained control over the blocks and their order:
 
 ```ts
 import { Message, TextBlock, ImageBlock, MediaRef } from '10xgraph-client';
@@ -142,18 +163,16 @@ const imageRef = (fileId: string, mime: string) => {
 };
 
 const msg = Message.multimodal([
-  new TextBlock('Which of these two floor plans has more storage?'),
+  new TextBlock('Which of these floor plans has more storage?'),
   imageRef(first.data.file_id, first.data.mime_type),
   imageRef(second.data.file_id, second.data.mime_type),
-  new TextBlock('Answer with A or B and one sentence of reasoning.'),
+  new TextBlock('Answer with A or B.'),
 ]);
 ```
 
-The `MediaRef` constructor is positional, `(kind, url, file_id, data_base64, mime_type, ...)`, so building it by field name, as above, is far less error-prone than `new MediaRef('file_id', undefined, id, undefined, mime)`.
+The `MediaRef` constructor is positional, `(kind, url, file_id, data_base64, mime_type, ...)`, so building it by field name is far less error-prone than positional arguments.
 
-### Adding media to a message you already have
-
-`attach_media()` appends a block to an existing message in place:
+### Adding media to an existing message with `attach_media()`
 
 ```ts
 const msg = Message.text_message('Compare these screenshots');
@@ -170,7 +189,9 @@ Any `as_type` outside those four values throws `Unsupported media type: <value>`
 
 ---
 
-## Step 4: Send it
+## Step 4: Send the message
+
+The message works unchanged across all three call methods:
 
 ### With `invoke()`
 
@@ -183,8 +204,6 @@ console.log(result.messages.at(-1)?.text());
 ```
 
 ### With `stream()`
-
-Nothing about the message changes; only the call does:
 
 ```ts
 import { StreamEventType } from '10xgraph-client';
@@ -201,13 +220,15 @@ for await (const chunk of stream) {
 }
 ```
 
+### With `wsStream()`
+
 `wsStream()` accepts the same message and options.
 
 ---
 
-## Step 5: Keep the file across turns
+## Step 5: Reuse files across turns
 
-The `file_id` stays valid, so a follow-up question about the same image does not need a re-upload:
+A `file_id` remains valid indefinitely, so a follow-up question about the same image does not need a re-upload:
 
 ```ts
 const followUp = Message.withFile(
@@ -219,44 +240,114 @@ const followUp = Message.withFile(
 await client.invoke([followUp], { config: { thread_id: 'vision-demo-1' } });
 ```
 
-Because the thread is checkpointed, the earlier turn is already in context; re-attaching the file just makes sure the model can look at the pixels again rather than relying on its own earlier description.
+Because the thread is checkpointed, the earlier turn is already in context. Re-attaching the file ensures the model can look at the pixels again rather than relying on its own earlier description.
 
-To render the file back in your own UI, use `getFileAccessUrl()` rather than caching `upload.data.url`, on cloud-backed storage that URL is signed and expires:
+---
+
+## Step 6: Fetch file metadata and refresh URLs
+
+### Get file info
 
 ```ts
-const { data } = await client.getFileAccessUrl(upload.data.file_id);
-renderImage(data.url);   // data.expires_at is a UNIX timestamp when signed
+const info = await client.getFileInfo(upload.data.file_id);
+
+console.log(info.data.mime_type);
+console.log(info.data.size_bytes);
+console.log(info.data.extracted_text);  // Non-null for documents with text extraction
+```
+
+### Refresh the access URL
+
+For cloud-backed storage (S3, GCS, Azure Blob), the initial `upload.data.url` is a signed URL that expires. Before rendering files long after upload, fetch a fresh URL:
+
+```ts
+const urlInfo = await client.getFileAccessUrl(upload.data.file_id);
+
+// Check if the URL is still valid. expires_at is a UNIX timestamp in seconds.
+const isExpired = urlInfo.data.expires_at
+  ? Date.now() / 1000 > urlInfo.data.expires_at
+  : false;
+
+const freshUrl = isExpired
+  ? (await client.getFileAccessUrl(upload.data.file_id)).data.url
+  : urlInfo.data.url;
+
+renderImage(freshUrl);
 ```
 
 ---
 
-## Complete example
+## Step 7: Download a file
+
+Retrieve the raw file bytes as a `Blob`:
 
 ```ts
-import { AgentFlowClient, Message } from '10xgraph-client';
+const blob = await client.getFile(upload.data.file_id);
+
+// Create a download link in the browser
+const objUrl = URL.createObjectURL(blob);
+const link = document.createElement('a');
+link.href = objUrl;
+link.download = 'downloaded-file';
+link.click();
+URL.revokeObjectURL(objUrl);
+```
+
+---
+
+## Complete end-to-end example
+
+```ts
+import {
+  AgentFlowClient,
+  Message,
+  ImageBlock,
+  TextBlock,
+  MediaRef,
+} from '10xgraph-client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-async function ask(file: File, question: string, threadId: string): Promise<string> {
+async function describeImage(imageFile: File): Promise<string> {
+  // 1. Check server config
   const config = await client.getMultimodalConfig();
-
-  if (file.size > config.data.media_max_size_mb * 1024 * 1024) {
+  if (imageFile.size > config.data.media_max_size_mb * 1024 * 1024) {
     throw new Error(`File exceeds the server limit of ${config.data.media_max_size_mb} MB`);
   }
 
-  const isImage = file.type.startsWith('image/');
-  if (!isImage && config.data.document_handling === 'skip') {
-    throw new Error('This server does not accept documents; attach an image instead');
-  }
+  // 2. Upload
+  const upload = await client.uploadFile(imageFile);
 
-  const upload = await client.uploadFile(file);
+  // 3. Build message using file_id
+  const msg = Message.withFile('Describe this image in detail.', upload.data.file_id, upload.data.mime_type);
 
-  const message = Message.withFile(question, upload.data.file_id, upload.data.mime_type);
+  // 4. Invoke
+  const result = await client.invoke([msg]);
 
-  const result = await client.invoke([message], { config: { thread_id: threadId } });
-  return result.messages.at(-1)?.text() ?? '';
+  // 5. Extract text response
+  return result.messages
+    .filter(m => m.role === 'assistant')
+    .flatMap(m => m.content)
+    .filter(b => b.type === 'text')
+    .map(b => (b as any).text as string)
+    .join('');
 }
 ```
+
+---
+
+## Supported file types
+
+The server accepts any MIME type permitted by the configured storage backend. Common types:
+
+| Category | MIME types |
+|---|---|
+| Images | `image/jpeg`, `image/png`, `image/gif`, `image/webp` |
+| Audio | `audio/mpeg`, `audio/wav`, `audio/ogg`, `audio/webm` |
+| Video | `video/mp4`, `video/webm` |
+| Documents | `application/pdf`, `text/plain`, `text/markdown` |
+
+The underlying LLM determines which types it can process. Check your model's documentation for supported media types.
 
 ---
 
@@ -266,21 +357,25 @@ async function ask(file: File, question: string, threadId: string): Promise<stri
 |---|---|---|
 | `file_id` is `undefined` | Reading `upload.file_id` instead of `upload.data.file_id`. | The upload response nests everything under `data`. |
 | The model answers as if there were no image | `Message.withFile()` was called without `mimeType`, so the image became a `DocumentBlock`. | Pass `upload.data.mime_type`. |
-| The document's content never reaches the model | `document_handling` is `skip`. | Change the server setting, or send the text yourself in a `TextBlock`. |
+| The document's content never reaches the model | `document_handling` is `skip` on the server. | Change the server setting, or send the text yourself in a `TextBlock`. |
 | `extracted_text` is `null` on a PDF | `document_handling` is `pass_raw` or `skip`, or the PDF is scanned images with no text layer. | Use `extract_text` with a text-bearing PDF, or run OCR before uploading. |
 | A rendered preview 403s after a while | The signed URL expired. | Fetch a fresh one with `getFileAccessUrl(file_id)`. |
 | `AgentFlowError` with `statusCode` 413 | The file is larger than `media_max_size_mb`. | Compress it, or raise the limit on the server. |
+| `AgentFlowError` with `statusCode` 415 | Unsupported MIME type for the storage backend. | Use a supported file type (see table above). |
+| `AgentFlowError` with `statusCode` 404 on download | `file_id` not found (deleted or wrong). | Re-upload the file. |
 
 ---
 
 ## What you learned
 
-- `uploadFile()` takes exactly one argument and returns everything under `response.data`.
-- `Message.withFile(text, fileId, mimeType)` is the shortest correct path for an uploaded image or document; the MIME type is what selects the block type.
-- `Message.withImage()` is for URLs and `data:` URIs; `Message.multimodal()` and `attach_media()` cover multi-file and custom orderings.
+- Upload files with `uploadFile()`, which accepts `File`, `Blob`, or `{ data: Blob; filename: string }`.
+- The `file_id` is always nested under `response.data.file_id`, not `response.file_id`.
+- Reference uploaded files in messages via `Message.withFile(text, fileId, mimeType)` or `Message.withImage()` for public URLs.
+- For multiple files or custom ordering, use `Message.multimodal()` or `attach_media()`.
 - The same message works unchanged across `invoke()`, `stream()`, and `wsStream()`.
 - Read `getMultimodalConfig()` for the size limit and `document_handling` instead of hardcoding them.
+- For cloud storage, refresh signed URLs with `getFileAccessUrl()` before rendering (expires_at is in UNIX seconds, not milliseconds).
 
-## Next step
+## Next steps
 
-See [`reference/client/message`](/docs/reference/client/message) for every block type and factory signature, or [`reference/client/files`](/docs/reference/client/files) for the full files API.
+See [`reference/client/message`](/docs/reference/client/message) for every block type and factory signature, or [`reference/client/files`](/docs/reference/client/files) for the full files API. For sending media from Python, see [`guides/send-media`](/docs/guides/send-media).

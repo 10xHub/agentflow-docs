@@ -1,106 +1,181 @@
 ---
-title: Tutorials
-seoTitle: "10xGraph tutorials from the example repo"
-description: Step-by-step 10xGraph tutorials built from the repository examples, covering agents, tools, streaming, MCP, memory, multi-agent handoff, testing and evaluation.
+title: Examples
+description: Runnable examples and reference architectures demonstrating 10xGraph agents, tools, streaming, MCP, memory, and multi-agent patterns.
 section: Examples
+group: null
 order: 10
 label: Overview
-updated: "2026-10-06"
+updated: "2026-10-08"
 ---
 
-10xGraph tutorials are guided walkthroughs of the example code in the repository's `examples/` folder. They sit between the quickstart pages and the reference: each one explains a working script, covering agents, custom state, tools, streaming, MCP, memory, multimodal input, multi-agent handoff, skills, testing and evaluation. They are for developers who learn best by reading and running real code.
+The examples section provides two types of learning resources. The first are guided walkthroughs of working example scripts from the repository's `examples/` folder: each covers a specific feature or pattern (agents, custom state, tools, streaming, MCP, memory, multi-agent handoff, testing and evaluation). The second are reference architectures for five common production use cases (customer support, data extraction, coding, research and RAG agents). Together they show how 10xGraph concepts translate into real, runnable code.
 
-## Start here
+These examples sit between the quickstart and the reference documentation. If you learn best from reading and running actual code, start here. If you prefer concepts first, read the Concepts section and return here to see the patterns in action.
 
-Begin with the [Agent Class pattern](/docs/examples/agent-class), the smallest useful graph. Continue with [Custom state](/docs/examples/custom-state) and the [Tool decorator](/docs/examples/tool-decorator) to see how state and tools are modeled, then assemble the loop in the [ReAct agent](/docs/examples/react-agent) tutorial.
+## Getting started with examples
 
-For real-time output, [React streaming](/docs/examples/react-streaming) and [Stop stream](/docs/examples/stop-stream) cover token streaming and cancellation. For connecting outside systems, see [MCP ReAct agent](/docs/examples/mcp-react-agent) and [Memory](/docs/examples/memory). The [Testing](/docs/examples/testing) and [Evaluation](/docs/examples/evaluation) tutorials show how to check an agent before release, and [Graceful shutdown](/docs/examples/graceful-shutdown) covers stopping cleanly.
+The examples are located in the repository at `agentflow/examples/`. Each example directory contains a runnable Python script and an optional `README.md` with setup instructions.
 
-Tutorials teach the library. To run an agent as a service, with auth and deployment, use the [how-to guides](/docs/guides) and the [beginner path](/docs/get-started/tutorial/mental-model).
+### Clone the repository
 
-## Tutorial track
+Start by cloning the 10xGraph repository:
 
-```mermaid
-flowchart LR
-    A[Agent Class] --> B[Custom State]
-    A --> C[Tool Decorator]
-    A --> D[ReAct Agent]
-    A --> E[Google GenAI Adapter]
-    D --> F[ReAct Agent with Validation]
-    D --> G[React Streaming]
-    G --> H[Synchronous Streaming]
-    H --> I[Stop Stream]
-    I --> J[Dependency Injection]
-    J --> K[MCP Server]
-    K --> L[MCP Client]
-    L --> M[MCP ReAct Agent]
-    M --> N[GitHub MCP]
-    N --> O[MCP File Download]
-    O --> P[Memory]
-    P --> Q[Qdrant Memory]
-    Q --> R[Multimodal]
-    R --> S[Multiagent]
-    S --> T[Handoff]
-    T --> U[Skills]
-    U --> V[Skills Chat]
-    V --> W[Testing]
-    W --> X[Evaluation]
-    X --> Y[Graceful Shutdown]
+```bash
+git clone https://github.com/10xGraph/10xGraph.git
+cd 10xGraph/agentflow
 ```
 
-## From examples
+### Install with example dependencies
 
-These tutorials are based on code in `examples/`:
+Most examples need a provider SDK. Install 10xGraph with the providers your examples require:
 
-- [Agent Class Pattern](/docs/examples/agent-class)
-- [Custom State](/docs/examples/custom-state)
-- [Google GenAI Adapter](/docs/examples/google-genai)
-- [Tool Decorator](/docs/examples/tool-decorator)
-- [ReAct Agent](/docs/examples/react-agent)
-- [ReAct Agent with Validation](/docs/examples/react-agent-validation)
-- [React Streaming](/docs/examples/react-streaming)
-- [Stop Stream](/docs/examples/stop-stream)
+```bash
+# Google Gemini examples
+pip install "10xgraph[google-genai]"
 
-## Advanced integrations
+# OpenAI examples
+pip install "10xgraph[openai]"
 
-- [Dependency Injection](/docs/examples/dependency-injection)
-- [MCP Server](/docs/examples/mcp-server)
-- [MCP Client](/docs/examples/mcp-client)
-- [MCP ReAct Agent](/docs/examples/mcp-react-agent)
-- [GitHub MCP](/docs/examples/github-mcp)
-- [Memory](/docs/examples/memory)
-- [Multimodal](/docs/examples/multimodal)
-- [Multiagent](/docs/examples/multiagent)
-- [Handoff](/docs/examples/handoff)
-- [Skills](/docs/examples/skills)
-- [Testing](/docs/examples/testing)
-- [Evaluation](/docs/examples/evaluation)
-- [Graceful Shutdown](/docs/examples/graceful-shutdown)
+# Anthropic (Claude) examples
+pip install "10xgraph[anthropic]"
 
-## How to use this section
+# MCP, memory, and other integrations
+pip install "10xgraph[mcp,qdrant,pg_checkpoint]"
+```
 
-If you are new to 10xGraph, follow the pages in the order shown above. The tutorials are designed to build on each other:
+For complete functionality, install everything:
 
-- Start with `Agent Class Pattern` to learn the smallest useful graph.
-- Move to `Custom State` and `Tool Decorator` to understand how state and tools are modeled.
-- Use `ReAct Agent` to assemble the core graph loop.
-- Add `ReAct Agent with Validation` for safer input handling.
-- Finish with the streaming tutorials to learn real-time output and cancellation patterns.
-- Continue into the advanced section for MCP, memory, multimodal input, and multi-agent coordination.
-- Finish with the sprint 9 tutorials to learn skills, testing, evaluation, and clean shutdown behavior.
+```bash
+pip install "10xgraph[all]"
+```
+
+### Set environment variables
+
+Each example requires API keys for the model provider. Create a `.env` file in the `agentflow/` directory:
+
+```bash
+# For Google Gemini
+GEMINI_API_KEY=your-key-here
+
+# For OpenAI
+OPENAI_API_KEY=your-key-here
+
+# For Anthropic
+ANTHROPIC_API_KEY=your-key-here
+```
+
+Load these in your script or shell:
+
+```bash
+export $(cat .env | xargs)
+```
+
+### Run an example
+
+Navigate to any example directory and run its main script:
+
+```bash
+cd examples/agent-class
+python main.py
+```
+
+Some examples have additional setup (MCP servers, database initialization). Check the example's `README.md` for instructions.
+
+## What you'll learn
+
+The examples are organized in five groups that build on each other. Start with the Foundations group to understand the core patterns, then move into advanced integrations, streaming, multi-agent coordination, and production-ready testing and evaluation.
+
+### Foundations
+
+The basics: how to define agents and tools, custom state, and the ReAct loop. These examples form the foundation for all other patterns.
+
+- [Agent Class Pattern](/docs/examples/agent-class): The smallest useful agent, showing the Agent class and how to invoke it
+- [Custom State](/docs/examples/custom-state): Define application-specific state beyond messages
+- [Tool Decorator](/docs/examples/tool-decorator): Create tools with type hints and automatic schema generation
+- [ReAct Agent](/docs/examples/react-agent): Multi-turn agent loop with tool calling and routing
+- [ReAct Agent with Validation](/docs/examples/react-agent-validation): Input validation and error handling in agents
+- [Google GenAI](/docs/examples/google-genai): Using Google's Gemini model as the LLM provider
+
+### Streaming
+
+Real-time output and cancellation. Essential for interactive applications.
+
+- [React Streaming](/docs/examples/react-streaming): Token-by-token streaming from the agent
+- [Stop Stream](/docs/examples/stop-stream): Cancel a running agent mid-execution
+
+### Tools and MCP
+
+Integrating external systems via tools and the Model Context Protocol.
+
+- [Dependency Injection](/docs/examples/dependency-injection): Pass database connections, config and user context into tools
+- [MCP Server](/docs/examples/mcp-server): Implement a Model Context Protocol server
+- [MCP Client](/docs/examples/mcp-client): Connect to an MCP server and use its tools
+- [MCP ReAct Agent](/docs/examples/mcp-react-agent): Combine ReAct with MCP tools
+- [GitHub MCP](/docs/examples/github-mcp): Real-world example using GitHub's MCP server
+
+### Multi-agent
+
+Patterns for agents calling other agents and handling handoffs.
+
+- [Multiagent](/docs/examples/multiagent): Multiple agents in one graph, routing between them
+- [Handoff](/docs/examples/handoff): Agent handoff patterns with context transfer
+
+### Memory and media
+
+Persistent agent memory and multimodal input (images, audio, documents).
+
+- [Memory](/docs/examples/memory): Store and retrieve long-term agent memory
+- [Multimodal](/docs/examples/multimodal): Process images and other media alongside text
+
+### Production
+
+Testing, evaluation, and graceful operation.
+
+- [Skills](/docs/examples/skills): Give agents coding abilities with Agent Skills
+- [Testing](/docs/examples/testing): Unit tests and mocked LLM calls for agent logic
+- [Evaluation](/docs/examples/evaluation): Define eval sets and run evaluations against a dataset
+- [Graceful Shutdown](/docs/examples/graceful-shutdown): Clean shutdown handling and resource cleanup
+
+### Use cases
+
+Complete reference architectures for five common agent patterns. Each one shows the graph topology, the tools needed, and what to monitor in production.
+
+- [Customer Support Agent](/docs/examples/customer-support-agent): Multi-tool support flow with human handoff and refund handling
+- [Data Extraction Agent](/docs/examples/data-extraction-agent): Structured data extraction from unstructured documents and text
+- [Coding Agent](/docs/examples/coding-agent): Code generation, review, and tool-based execution
+- [Research Agent](/docs/examples/research-agent): Web search combined with synthesis and citations
+- [RAG Agent](/docs/examples/rag-agent): Chat-with-your-docs with retrieval, grounding and citations
+
+## Learning path
+
+If you are new to 10xGraph, follow this recommended order:
+
+1. **Start with the Foundations group.** Begin with Agent Class Pattern to see the smallest useful graph. Continue with Custom State and Tool Decorator to understand state and tools, then build the ReAct Agent to assemble the core loop.
+
+2. **Add real-time interaction.** Move to the Streaming group to learn token-by-token output and cancellation, essential for interactive UIs.
+
+3. **Integrate external systems.** The Tools and MCP group shows how to connect APIs, databases and the Model Context Protocol.
+
+4. **Coordinate multiple agents.** The Multi-agent group covers routing and handoff patterns.
+
+5. **Persist and enrich data.** Memory and media examples demonstrate long-term memory and multimodal input.
+
+6. **Ship to production.** The Production group covers testing, evaluation and clean shutdown.
+
+7. **Pick your use case.** Once you understand the patterns, the Use cases group shows how to apply them end-to-end.
 
 ## Before you start
 
-Most tutorials assume:
+Most examples assume:
 
 - Python 3.12 or later
-- 10xGraph installed (`pip install 10xgraph`)
-- Environment variables loaded from `.env`
-- A provider key such as `GEMINI_API_KEY` for Google-based examples
+- 10xGraph installed with the appropriate provider extra (google-genai, openai, or anthropic)
+- Environment variables set for API keys
+- For MCP and some advanced examples, additional system dependencies (see example README)
 
 ## Related docs
 
-- [First Python Agent](/docs/get-started/first-agent)
-- [State Graph](/docs/concepts/state-graph)
-- [Agents and Tools](/docs/concepts/agents-and-tools)
-- [Streaming](/docs/concepts/streaming)
+- [Get started](/docs/get-started): The quickstart and tutorial path
+- [Concepts](/docs/concepts): Deep dives into state graphs, agents, tools and more
+- [Guides](/docs/guides): Task-focused how-tos for building agents
+- [Reference](/docs/reference): Complete API documentation

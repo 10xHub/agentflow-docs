@@ -1,76 +1,78 @@
 ---
-title: Skills
-seoTitle: "10xGraph skills for Codex, Claude and Copilot"
-description: Install the bundled 10xGraph skill for Codex, Claude or GitHub Copilot so your coding assistant knows the framework, or give your own agents skills.
+title: Coding assistants
+seoTitle: "10xGraph skills for Codex, Claude, Copilot"
+description: Install the bundled 10xGraph skill for Codex, Claude, or GitHub Copilot so they understand the framework and write correct code.
 section: Integrations
 group: "Coding assistants"
 order: 90
-updated: "2026-10-06"
+updated: "2026-10-08"
+faq:
+  - question: "Do I need to install the skill?"
+    answer: "No. The skill is optional. If your coding assistant already knows 10xGraph, you do not need it. Install the skill when you want better suggestions and fewer mistakes in generated 10xGraph code."
+  - question: "How is this different from Agent Skills?"
+    answer: "This page is about teaching your coding assistant (Claude Code, Codex, Copilot). Agent Skills are a runtime feature your agents load on demand. See the [Agent Skills guide](/docs/guides/use-skills) for that."
+  - question: "What if I upgrade the CLI?"
+    answer: "Run `10xgraph skills --agent claude --force` to update the installed skill to the latest version bundled with your CLI."
 ---
 
-Skills are folders of instructions, scripts and references that follow the Agent Skills specification. 10xGraph uses them in two places: a bundled skill that teaches your coding assistant (Codex, Claude or GitHub Copilot) how to build with 10xGraph, and a runtime feature that lets your own agents load skills on demand. This page is for developers who want an assistant to write correct 10xGraph code, and for those packaging reusable agent behavior.
+The 10xGraph CLI ships with bundled coding-assistant skills that teach your coding assistant (Claude Code, Codex, GitHub Copilot) how to build with 10xGraph. A skill is a folder of instructions and reference documentation following the [Agent Skills specification](https://agentskills.io/specification). When you install a 10xGraph skill, your assistant gains knowledge of the framework's graph model, tool patterns, API routes, CLI commands, and production best practices without explaining them every session.
 
-## Start here
+## Why install a coding-assistant skill
 
-To teach an assistant, run `10xgraph skills --agent claude` (or `codex`, `github`) from your project root. The sections below list exactly which files get installed. For the command itself, see [Install skills](/docs/integrations/coding-assistants) and the [CLI commands reference](/docs/reference/api-cli/commands).
+When you run `10xgraph skills --agent claude`, the CLI copies a folder into your project containing a `SKILL.md` entry point and 33 reference documents. Your assistant reads `SKILL.md` to understand when to use the 10xGraph skill, which packages exist, and which reference to consult before changing each subsystem. The reference documents cover architecture, agents and tools, state graphs, checkpointing, dependency injection, media handling, streaming, the API server, CLI commands, TypeScript client conventions, and testing. This makes your assistant much more likely to generate correct code that follows 10xGraph patterns.
 
-To give your own agents skills, read [How to give an agent skills](/docs/guides/use-skills), then the [Skills reference](/docs/reference/python/skills). The tutorial [Skills](/docs/examples/skills) walks through a working example from the repository.
+Install the skill when you want:
 
-10xGraph uses skills in two places. Both follow the [Agent Skills specification](https://agentskills.io/specification), so a skill folder is portable between them:
+- Fewer mistakes in generated 10xGraph code (correct imports, API usage, patterns)
+- Better autocomplete and suggestions inside your IDE
+- Quick answers about framework concepts without leaving your editor
+- Consistent guidance across multiple team members' assistants
 
-| You want to | Go to |
-|---|---|
-| Give **your own 10xGraph agents** skills they load on demand, with bundled scripts and references | [How to give an agent skills](/docs/guides/use-skills) and the [Skills reference](/docs/reference/python/skills) |
-| Teach **your coding assistant** (Codex, Claude, GitHub Copilot) how to build with 10xGraph | The rest of this page |
+## Install the skill for your assistant
 
-## The 10xGraph skill for coding assistants
-
-10xGraph skills are bundled assistant instructions for coding agents such as Codex, Claude, and GitHub Copilot. They are copied from:
-
-```text
-tenxgraph_api/cli/templates/skills
-```
-
-Use these skills when you want an assistant to understand 10xGraph package boundaries, graph patterns, CLI behavior, API routes, TypeScript client conventions, testing, and production guidance while editing a 10xGraph project.
+Run from your project root:
 
 ```bash
-10xgraph skills --agent codex
 10xgraph skills --agent claude
+10xgraph skills --agent codex
 10xgraph skills --agent github
 ```
 
-## What gets installed
+The `--agent` flag accepts the agent name (case-insensitive). If you omit it and your terminal is interactive, the CLI shows a numbered menu and prompts you to choose an agent:
 
-The same base skill bundle is copied into the assistant-specific location.
+```text
+Which agent?
+- 1. Codex
+- 2. Claude
+- 3. GitHub
+```
 
-| Assistant | Installed files |
+In non-interactive environments (CI, pipes), always pass `--agent` explicitly:
+
+```bash
+10xgraph skills --agent claude  # Non-interactive mode
+```
+
+## Where the skill gets installed
+
+The same base skill bundle is copied into the assistant-specific directory. Each assistant looks for skills in a different location, so one 10xGraph installation works with all three.
+
+| Assistant | Install path |
 |---|---|
+| Claude Code | `.claude/skills/10xgraph/` |
 | Codex | `.agents/skills/10xgraph/` |
-| Claude | `.claude/skills/10xgraph/` |
-| GitHub Copilot | `.github/instructions/10xgraph.instructions.md` and `.github/skills/10xgraph/` |
+| GitHub Copilot | `.github/skills/10xgraph/` and `.github/instructions/10xgraph.instructions.md` |
 
-Every assistant gets the same folder, copied from:
+The CLI also writes a manifest file (`.10xgraph-skill.json`) into the installed directory, recording the target agent, CLI version, and installation timestamp.
 
-```text
-tenxgraph_api/cli/templates/skills/10xgraph
-```
-
-The bundle follows the [Agent Skills specification](https://agentskills.io/specification). Paths inside `SKILL.md` are relative to the skill folder, so one copy works in every install location. Check it, or your own skills, with `10xgraph skills --validate <path>`.
-
-For GitHub Copilot, 10xGraph also copies:
-
-```text
-tenxgraph_api/cli/templates/skills/copilot/10xgraph.instructions.md
-```
-
-That file points Copilot at the installed skill bundle under `.github/skills/10xgraph/`.
+For GitHub Copilot, the `.github/instructions/10xgraph.instructions.md` file is a single instruction file that points Copilot at the full skill bundle under `.github/skills/10xgraph/`. This lets Copilot understand the 10xGraph skill even if it does not read all the reference documents.
 
 ## What the skill contains
 
-The base bundle contains:
+Every skill installation contains a `SKILL.md` entry point and a `references/` directory with 33 topic-specific documents. The structure is identical regardless of which assistant you are installing for.
 
 ```text
-agentflow/
+10xgraph/
 +-- SKILL.md
 +-- references/
     +-- architecture.md
@@ -82,105 +84,140 @@ agentflow/
     +-- media-and-files.md
     +-- memory-and-store.md
     +-- streaming.md
-    +-- production-runtime.md
-    +-- api-client.md
-    +-- remote-tools.md
+    +-- stream-emitter.md
     +-- callbacks-and-command.md
     +-- prebuilt-agents-and-tools.md
-    +-- testing-and-evaluation.md
     +-- publishers-and-runtime-protocols.md
     +-- context-id-background.md
     +-- providers-and-adapters.md
     +-- security-and-validators.md
+    +-- realtime.md
     +-- cli-commands.md
     +-- api-configuration.md
     +-- auth-and-authorization.md
+    +-- rate-limiting.md
     +-- api-settings-and-middleware.md
     +-- rest-api-and-errors.md
     +-- id-and-thread-name-generators.md
+    +-- production-runtime.md
+    +-- api-client.md
+    +-- remote-tools.md
     +-- client-auth-and-errors.md
     +-- client-messages-invoke-stream.md
     +-- client-threads-memory-files.md
+    +-- unit-testing.md
+    +-- evaluation.md
+    +-- testing-and-evaluation.md
 ```
 
-`SKILL.md` is the entry point. It tells the assistant when to use the 10xGraph skill, which packages exist, where the public docs live, and which reference file to read before changing a subsystem.
+`SKILL.md` serves as the entry point. It tells your coding assistant when to use the 10xGraph skill, which packages and repositories exist, where the public docs live (https://10xgraph.com/), and which reference file to read before changing a subsystem. The SKILL.md uses relative paths, so the same folder works in all installation locations.
 
-The reference files cover:
+The reference files are grouped by domain:
 
-| Area | What the assistant learns |
-|---|---|
-| Architecture | Package layout across `agentflow`, `agentflow-api`, `agentflow-client`, docs, and playground |
-| Agents and graphs | `Agent`, `ToolNode`, `StateGraph`, prebuilt agents, state, messages, tools, and handoffs |
-| Runtime behavior | Checkpointing, dependency injection, memory, media, streaming, publishers, and protocols |
-| API and CLI | `10xgraph init`, `api`, `play`, `build`, `skills`, `10xgraph.json`, auth, settings, middleware, routes, and errors |
-| TypeScript client | Auth, invoke, stream, messages, threads, memory, files, and client-side tool execution |
-| Quality and safety | Testing, evaluation, provider adapters, validators, and prompt-injection safeguards |
+- **Core Python SDK**: Architecture, agents, tools, state graphs, messages, checkpointing, dependency injection, media, memory, streaming, callbacks, prebuilt agents, publishers, context and ID generation, provider internals, security, and realtime audio
+- **API and CLI**: Commands, `10xgraph.json` configuration, auth, authorization, rate limiting, settings, middleware, REST routes, error handling, ID generation, and deployment
+- **TypeScript client**: REST client, tool execution, auth, messages, invoke, stream, threads, memory, and files
+- **Testing and evaluation**: Unit testing without LLM calls, evaluation framework, and testing overview
 
-## Install for one assistant
+## Install for all assistants at once
 
-Run from the project root:
-
-```bash
-10xgraph skills --agent codex
-```
-
-Supported values are `codex`, `claude`, `github`, or menu numbers `1`, `2`, `3`.
-
-If you omit `--agent` in an interactive terminal, 10xGraph prompts you to choose:
-
-```text
-Which agent?
-- 1. Codex
-- 2. Claude
-- 3. GitHub
-```
-
-In non-interactive environments, pass `--agent` or `--all`.
-
-## Install for every assistant
+To install the skill for Codex, Claude, and GitHub Copilot in a single command:
 
 ```bash
 10xgraph skills --all
 ```
 
-If an installation already exists, `--all` skips that assistant unless you also pass `--force`.
-
-## Install into another project
+The command installs for every assistant that does not already have the skill installed. If a skill is already present, the command skips that assistant. Pass `--force` to overwrite existing installations:
 
 ```bash
-10xgraph skills --agent claude --path ./my-agent
+10xgraph skills --all --force
 ```
 
-The command refuses to install directly into the filesystem root or your home directory. Point `--path` at a project folder.
+## Install into a different project
 
-## Update an existing install
+By default, skills are installed in the current working directory. Use `--path` to target a different project:
 
 ```bash
-10xgraph skills --agent github --force
+10xgraph skills --agent claude --path ./my-other-project
 ```
 
-Use `--force` to replace an existing installed 10xGraph skill after updating the CLI.
+The CLI refuses to install skills at the filesystem root or in your home directory to prevent accidental global installations.
+
+## Update the skill after upgrading the CLI
+
+When you upgrade `10xgraph-api`, the bundled skill is updated but the existing installation in your project is not touched. To update your installed skills to the latest version:
+
+```bash
+10xgraph skills --agent claude --force
+```
+
+Use `--force` to replace the existing installation. You can update all three assistants at once:
+
+```bash
+10xgraph skills --all --force
+```
+
+## Delete old skill folders from earlier versions
+
+Versions of the CLI before 0.7.0 installed the skill under the folder name `agentflow` (for example `.claude/skills/agentflow/`). The new CLI installs under `10xgraph` instead, leaving the old folder in place to avoid data loss.
+
+If you have both folders:
+
+```bash
+# List what's in your skills directory
+ls -la .claude/skills/
+
+# If both 10xgraph/ and agentflow/ are present, delete the old one
+rm -rf .claude/skills/agentflow/
+```
+
+The CLI does not remove the old folder automatically, so delete it manually after verifying the new installation works. Do this for each assistant:
+
+```bash
+rm -rf .agents/skills/agentflow/
+rm -rf .claude/skills/agentflow/
+rm -rf .github/skills/agentflow/
+```
 
 ## List supported assistants
+
+To see which coding assistants the CLI supports:
 
 ```bash
 10xgraph skills --list
 ```
 
-## Options
+## Validate your own skills
 
-| Option | Default | Description |
-|---|---|---|
-| `--agent`, `-a` | interactive prompt | Target assistant: `codex`, `claude`, `github`, or menu number `1`, `2`, `3` |
-| `--path`, `-p` | `.` | Project directory where skills should be installed |
-| `--force`, `-f` | `false` | Overwrite an existing install |
-| `--all` | `false` | Install skills for every supported assistant |
-| `--list`, `-l` | `false` | List supported assistants and exit |
-| `--verbose`, `-v` | `false` | Enable verbose logging |
-| `--quiet`, `-q` | `false` | Suppress output except errors |
+The `--validate` flag checks skills you write yourself (for your own agents) or for a 10xGraph Agent against the [Agent Skills specification](https://agentskills.io/specification):
 
-## Related docs
+```bash
+10xgraph skills --validate ./.agents/skills
+```
 
-- [CLI commands](/docs/reference/api-cli/commands)
-- [Initialize a project](/docs/server/project-setup)
-- [Architecture](/docs/concepts)
+Validation is optional for the bundled 10xGraph skill. It is useful when you create your own skills or when you want to ensure a skill meets the spec before sharing it with your team.
+
+## Coding-assistant skills vs Agent Skills
+
+This page describes coding-assistant skills, which teach your IDE or coding assistant how to write 10xGraph code. They are different from Agent Skills, which are a runtime feature that lets your agents load skills on demand.
+
+**Coding-assistant skills** (this page):
+- Installed locally in your project (`/.claude/skills/10xgraph/`, `/.agents/skills/10xgraph/`, etc.)
+- Read by Codex, Claude Code, GitHub Copilot, and other coding assistants
+- Help your assistant generate correct 10xGraph code
+- Static documentation bundles
+
+**Agent Skills** (runtime feature):
+- Loaded by your agents at runtime when the graph executes
+- Follow the same [Agent Skills specification](https://agentskills.io/specification) so they are portable
+- Allow your agents to acquire new capabilities dynamically
+- Can be bundled, fetched from a server, or generated on the fly
+
+To add skills to your agents, read [How to give an agent Agent Skills](/docs/guides/use-skills). To validate or write your own skills, use the same `10xgraph skills --validate` command.
+
+## Related pages
+
+- [CLI reference](/docs/reference/api-cli/commands): All `10xgraph` commands and flags
+- [How to give an agent Agent Skills](/docs/guides/use-skills): Runtime skills for your agents
+- [Skills reference](/docs/reference/python/skills): API for building Agent Skills
+- [Skills example](/docs/examples/skills): Walkthrough of a working Agent Skills example

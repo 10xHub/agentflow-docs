@@ -1,28 +1,38 @@
 ---
 title: Tool Decorator
-seoTitle: "Tool decorator tutorial: @tool metadata"
-description: Use the @tool decorator to attach metadata, tags, and capabilities to Python functions before registering them with a ToolNode.
+seoTitle: Tool decorator metadata
+description: Learn how to use the @tool decorator to attach metadata, tags, and capabilities to Python tool functions, plus filter and inspect tools at runtime.
 section: Examples
-group: "Foundations"
+group: Foundations
 order: 40
 label: Tool Decorator
-updated: "2026-07-21"
+updated: '2026-10-08'
 ---
 
-**Source example:** [`examples/tool-decorator/basic_decorator_usage.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/tool-decorator/basic_decorator_usage.py)
+This example demonstrates how to use the `@tool` decorator to enrich tool functions with runtime-queryable metadata: names, descriptions, tags for filtering, capabilities, and arbitrary application data. You'll build a set of decorated tools — sync, async, stateful — and learn to filter them by tag and introspect their metadata from your graph code.
 
-## What you will build
-
-A collection of decorated tools that demonstrate every feature of the `@tool` decorator: basic usage, full metadata, tag-based filtering, metadata inspection, injectable parameters, and async tools.
+**Source example:** [`agentflow/examples/tool-decorator/basic_decorator_usage.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/tool-decorator/basic_decorator_usage.py)
 
 ## Prerequisites
 
 - Python 3.12 or later
-- `10xgraph` installed (`pip install 10xgraph`)
+- 10xGraph installed: `pip install "10xgraph[google-genai]"`
+
+## How to run the example
+
+Clone the repository and navigate to the example:
+
+```bash
+git clone https://github.com/10xGraph/10xGraph.git
+cd 10xGraph/examples/tool-decorator
+python basic_decorator_usage.py
+```
+
+You should see output demonstrating all six examples, tag filtering, and metadata inspection.
 
 ## Why use `@tool`?
 
-Without the decorator, a function registered in a `ToolNode` exposes only its name, docstring, and parameter types to the LLM. The `@tool` decorator lets you attach rich metadata — descriptions, tags, provider hints, capabilities, and arbitrary key-value metadata — that your application code can query at runtime for filtering, routing, or auditing.
+Without the decorator, a function registered in a `ToolNode` exposes only its name, docstring, and parameter types to the LLM. The `@tool` decorator lets you attach rich metadata — explicit names, descriptions, tags for runtime filtering, provider hints, capabilities, and arbitrary key-value metadata — that your application code can query at runtime for tool selection, routing, auditing, or access control.
 
 ```mermaid
 flowchart LR

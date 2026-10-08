@@ -6,14 +6,27 @@ section: "Testing and evaluation"
 group: "Evaluation"
 order: 50
 label: Eval Sets
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: "How do I specify what tool calls an agent should make?"
+    a: "Use `expected_tools` with a list of tool names or `ToolCall` objects. The evaluator will check that the agent called these tools during execution."
+  - q: "Can I check that tool arguments match exactly?"
+    a: "Yes. Include `args` in `ToolCall` objects, then enable `check_args=True` in the criterion config when running evaluations."
+  - q: "What's the difference between a single-turn and multi-turn case?"
+    a: "Single-turn cases have one user message and one expected response. Multi-turn cases contain a conversation with multiple exchanges, and criteria score the accumulated tool calls and messages across all turns."
 ---
 
-An `EvalSet` is a named collection of test cases (`EvalCase`). You build one using the fluent `EvalSetBuilder` API, load it from a JSON file, or create it inline.
+An `EvalSet` is a named collection of test cases, each defining a scenario that an agent should handle in a specific way. Each case specifies user input, expected behavior (response text, tool calls, node visits), and metadata. You build eval sets using the fluent `EvalSetBuilder` API, load them from JSON files, or construct them directly.
 
-## EvalSetBuilder
+Eval sets are the input to evaluations: you pass an `EvalSet` to the evaluator, which runs your agent against each case and compares the actual behavior to the expected behavior using criteria. The result is a report showing how many cases passed, which criteria failed, and why.
+
+## Creating eval sets with EvalSetBuilder
+
+The `EvalSetBuilder` class provides a fluent, chainable API for building eval sets incrementally. Every call to `add_case`, `add_multi_turn`, or `add_tool_test` returns the builder itself, so you can chain many calls before calling `build()`.
 
 ### Single-turn case
+
+The simplest eval case is a single user message and an expected response. Use `add_case`:
 
 ```python
 from tenxgraph.qa.evaluation import EvalSetBuilder
@@ -29,11 +42,11 @@ eval_set = (
 )
 ```
 
-`query` is the user's input. `expected` is the response the agent should produce (used by response-matching criteria). `case_id` is optional — auto-generated if omitted.
+The `query` is the user's input. The `expected` string is the response the agent should produce (used by response-matching criteria like `ExactMatchCriterion` and `RougeMatchCriterion`). The `case_id` is an optional identifier; if omitted, it is auto-generated. Other optional fields: `name` and `description` for human-readable labels in reports.
 
-### Case with expected tools
+### Adding expected tool calls
 
-Provide `expected_tools` as a list of tool names or `ToolCall` objects:
+Most agents use tools. Specify which tools the agent should call with `expected_tools`. Pass either tool names as strings or `ToolCall` objects for finer control:
 
 ```python
 from tenxgraph.qa.evaluation import EvalSetBuilder, ToolCall
@@ -43,37 +56,39 @@ eval_set = (
     .add_case(
         query="Weather in London?",
         expected="The weather in London is sunny.",
-        expected_tools=["get_weather"],          # tool names only
+        expected_tools=["get_weather"],  # tool name only, args not checked
     )
     .add_case(
         query="Weather in Tokyo?",
         expected="Raining in Tokyo.",
         expected_tools=[
             ToolCall(name="get_weather", args={"location": "Tokyo"}),
-        ],                                        # with expected args
+        ],  # with expected args
     )
     .build()
 )
 ```
 
-When `expected_tools` contains `ToolCall` objects with `args`, trajectory criteria can optionally verify the arguments too (controlled by `check_args` in `CriterionConfig`).
+When `ToolCall` objects include `args`, the trajectory matching criterion can optionally verify that the agent passed the correct arguments, controlled by setting `check_args=True` in the criterion config. By default, argument checking is off.
 
-### Case with expected node order
+### Verifying node execution order
 
-Use `expected_node_order` to verify the graph visited nodes in a specific sequence:
+Some tests require that the agent visit nodes in a specific sequence. Use `expected_node_order` to define the exact path through the graph:
 
 ```python
 .add_case(
     query="Search and summarise the latest AI news",
-    expected="Here is a summary...",
+    expected="Here is a summary of recent developments...",
     expected_tools=["search_web"],
     expected_node_order=["MAIN", "TOOL", "MAIN"],
 )
 ```
 
-### Focused tool test
+The evaluator will check that nodes were visited in this exact sequence. This is useful for ensuring graph logic is working as expected (e.g., agent -> tool -> agent -> END).
 
-`add_tool_test` is a shortcut for cases where a single tool call is the primary concern:
+### Shortcut for tool-focused tests
+
+When the primary concern is that a specific tool is called with specific arguments, use `add_tool_test`. It is a convenience method that automatically sets the expected response to a placeholder:
 
 ```python
 .add_tool_test(
@@ -85,7 +100,11 @@ Use `expected_node_order` to verify the graph visited nodes in a specific sequen
 )
 ```
 
-### Multi-turn conversation
+This is equivalent to calling `add_case` with `expected_tools=[ToolCall(name="get_weather", args={"location": "Berlin"})]`, but shorter when you do not care about the final response text.
+
+### Multi-turn conversations
+
+Eval cases can also be multi-turn conversations, where the agent receives multiple user messages and must maintain state across turns:
 
 ```python
 .add_multi_turn(
@@ -99,9 +118,11 @@ Use `expected_node_order` to verify the graph visited nodes in a specific sequen
 )
 ```
 
-The evaluator sends one user message per turn and accumulates tool calls, node visits and messages across the whole conversation. Criteria then score that accumulated execution once — not once per turn. `expected_tools` is attached to the first turn, but trajectory criteria concatenate the expectations from every turn before comparing.
+The `conversation` parameter is a list of `(user_query, expected_response)` tuples. The evaluator will send each user message in sequence and accumulate tool calls, node visits, and messages across all turns. Criteria then score that entire conversation once, not once per turn. The `expected_tools` is attached to the first turn; trajectory criteria will check for these tools to be called at any point in the conversation.
 
-### Quick builder from pairs
+### Quick builders from pairs
+
+For rapid prototyping, use `EvalSetBuilder.quick` to create eval sets from a series of `(query, expected)` pairs:
 
 ```python
 from tenxgraph.qa.evaluation import EvalSetBuilder
@@ -113,7 +134,11 @@ eval_set = EvalSetBuilder.quick(
 )
 ```
 
-### From a list of conversations
+Each pair becomes a single-turn case with auto-generated IDs. This method returns a built `EvalSet` directly (not a builder).
+
+### Creating from conversation logs
+
+If you have conversation logs in a standard format (list of dicts with `"user"` and `"assistant"` keys), use `from_conversations`:
 
 ```python
 conversations = [
@@ -123,21 +148,35 @@ conversations = [
 eval_set = EvalSetBuilder.from_conversations(conversations, name="smoke-tests")
 ```
 
----
+This method also returns a built `EvalSet` directly.
 
-## Save and load
+## Persisting eval sets to files
 
-### Save to JSON
+Eval sets are Pydantic models that serialize to JSON. You can save and load them to share across teams or version-control them.
+
+### Saving to JSON
+
+Build and save in one operation:
 
 ```python
-# Build and save in one step
-eval_set = EvalSetBuilder("weather-tests").add_case(...).save("evals/weather.json")
+eval_set = (
+    EvalSetBuilder("weather-tests")
+    .add_case(query="London weather", expected="sunny")
+    .save("evals/weather.json")
+)
+```
 
-# Or save an existing eval set
+Or save an existing eval set:
+
+```python
 eval_set.to_file("evals/weather.json")
 ```
 
-### Load from JSON
+Both methods write a JSON file with all cases and metadata. The JSON is human-readable and can be edited by hand.
+
+### Loading from JSON
+
+Load an eval set from disk:
 
 ```python
 from tenxgraph.qa.evaluation import EvalSet
@@ -145,19 +184,23 @@ from tenxgraph.qa.evaluation import EvalSet
 eval_set = EvalSet.from_file("evals/weather.json")
 ```
 
-### Load and modify
+### Loading and modifying
+
+You can also load an eval set into a builder, add more cases, and rebuild:
 
 ```python
 builder = EvalSetBuilder.from_file("evals/weather.json")
-builder.add_case(query="Weather in Seoul?", expected="Seoul")
+builder.add_case(query="Weather in Seoul?", expected="Seoul weather")
 eval_set = builder.build()
 ```
 
----
+This pattern is useful for extending existing eval sets without manually editing JSON.
 
-## EvalCase directly
+## Constructing eval cases directly
 
-You can construct `EvalCase` objects without the builder:
+For advanced use cases, construct `EvalCase` objects without the builder using the class factory methods `single_turn` and `multi_turn`. This gives you full control over all fields:
+
+### Single-turn case
 
 ```python
 from tenxgraph.qa.evaluation import EvalCase, ToolCall
@@ -173,7 +216,7 @@ case = EvalCase.single_turn(
 )
 ```
 
-Multi-turn:
+### Multi-turn case
 
 ```python
 case = EvalCase.multi_turn(
@@ -186,63 +229,116 @@ case = EvalCase.multi_turn(
 )
 ```
 
----
-
-## ToolCall reference
+You can then add these cases to an `EvalSet` manually:
 
 ```python
-from tenxgraph.qa.evaluation import ToolCall
-
-# Name only (args not checked)
-ToolCall(name="get_weather")
-
-# With args (args checked when check_args=True in CriterionConfig)
-ToolCall(name="get_weather", args={"location": "London"})
+eval_set = EvalSet(name="my-cases", eval_cases=[case])
 ```
 
-`ToolCall.args` defaults to `{}`. Argument checking is off by default — enable it per criterion with `CriterionConfig.trajectory(check_args=True)`.
+## Understanding the data model
 
----
+### EvalSet structure
 
-## EvalSet structure
+An `EvalSet` is a container of evaluation cases with metadata:
 
 | Attribute | Type | Description |
 |---|---|---|
-| `eval_set_id` | `str` | UUID auto-generated by the builder |
-| `name` | `str` | Human-readable label shown in reports |
-| `description` | `str` | Optional description of the set |
+| `eval_set_id` | `str` | Unique ID for this eval set (UUID, auto-generated) |
+| `name` | `str` | Human-readable name shown in reports |
+| `description` | `str` | Optional description of what this set tests |
 | `eval_cases` | `list[EvalCase]` | The test cases |
-| `metadata` | `dict` | Free-form metadata |
+| `metadata` | `dict[str, Any]` | Free-form metadata for your use |
 
-| EvalCase attribute | Type | Description |
+### EvalCase structure
+
+Each case in an eval set represents one test scenario:
+
+| Attribute | Type | Description |
 |---|---|---|
 | `eval_id` | `str` | Unique ID for this case |
-| `name` | `str` | Optional label shown in reports |
-| `description` | `str` | Optional details shown in reports |
-| `conversation` | `list[Invocation]` | One entry per turn — this is where the expectations live |
-| `session_input` | `SessionInput` | `app_name`, `user_id` (default `"test_user"`), `state`, `config` |
-| `tags` | `list[str]` | Used by `EvalSet.filter_by_tags()` |
-| `metadata` | `dict` | Free-form. Read by `hallucinations_v1` (`"context"`) and `factual_accuracy_v1` (`"reference_facts"`) |
+| `name` | `str` | Optional human-readable name |
+| `description` | `str` | Optional details about what the case tests |
+| `conversation` | `list[Invocation]` | One invocation per turn (single-turn case has one) |
+| `session_input` | `SessionInput` | Initial session config: `app_name`, `user_id` (default `"test_user"`), `state`, `config` |
+| `tags` | `list[str]` | Optional tags used by `EvalSet.filter_by_tags()` |
+| `metadata` | `dict[str, Any]` | Free-form metadata; read by some criteria (e.g., `hallucinations_v1` expects `"context"`) |
 
-`expected_response`, `expected_tools` and `expected_node_order` are **constructor arguments**, not attributes on the case. They are stored on the `Invocation` objects inside `conversation`:
+### Invocation structure
 
-| Invocation attribute | Type | Description |
+An `Invocation` is a single turn in a conversation. The builder's `add_case` and `add_multi_turn` methods create these automatically, but you can inspect them:
+
+| Attribute | Type | Description |
 |---|---|---|
-| `user_content` | `MessageContent` | The user message for this turn |
-| `expected_tool_trajectory` | `list[ToolCall]` | Tools expected during this turn |
-| `expected_node_order` | `list[str]` | Node sequence expected during this turn |
-| `expected_final_response` | `MessageContent \| None` | Expected reply for this turn |
+| `user_content` | `MessageContent` | The user's message for this turn |
+| `expected_tool_trajectory` | `list[ToolCall]` | Tools expected to be called during this turn |
+| `expected_node_order` | `list[str]` | Nodes expected to be visited during this turn |
+| `expected_final_response` | `MessageContent \| None` | Expected assistant response for this turn (or None) |
 
-So to read the expected response of a single-turn case:
+To read the expected response text of a single-turn case:
 
 ```python
 case.conversation[0].expected_final_response.get_text()
 ```
 
----
+### ToolCall structure
+
+`ToolCall` represents a tool invocation, either expected or actual:
+
+```python
+from tenxgraph.qa.evaluation import ToolCall
+
+# Tool name only (args not checked in evaluation)
+tool_call = ToolCall(name="get_weather")
+
+# With arguments (args can be checked when check_args=True)
+tool_call = ToolCall(name="get_weather", args={"location": "London"})
+```
+
+The `args` field defaults to `{}`. Argument checking is disabled by default; enable it per criterion in the evaluation config with `CriterionConfig.trajectory(check_args=True)`.
+
+## Common patterns
+
+### Case with tags
+
+Use tags to group related cases for filtering:
+
+```python
+builder = EvalSetBuilder("customer-support")
+for topic in ["password", "billing", "refund"]:
+    builder.add_case(
+        query=f"Help with {topic}",
+        expected="Here is how to...",
+        case_id=f"case_{topic}",
+    )
+    # Add tags to the case after building (requires manual construction)
+
+# Or build cases with tags by constructing EvalCase directly
+case = EvalCase.single_turn(
+    eval_id="support_billing",
+    user_query="How do I get a refund?",
+    expected_response="You can request a refund...",
+)
+case.tags = ["billing", "support"]
+```
+
+### Case with session state
+
+If your agent uses session state (custom fields in `AgentState`), include it in `session_input`:
+
+```python
+case = EvalCase.single_turn(
+    eval_id="user_context_test",
+    user_query="What can you tell me?",
+    expected_response="Based on your account...",
+)
+case.session_input.state = {"user_tier": "premium", "credits": 100}
+```
+
+The evaluator will initialize the agent's state with these values before running the case.
 
 ## Next steps
 
-- [Criteria reference](/docs/testing/criteria) — what gets scored and how
-- [Presets](/docs/testing/presets) — ready-made `EvalConfig` objects
-- [Running evaluations](/docs/testing/evaluation) — the `10xgraph eval` CLI
+- [Criteria reference](/docs/testing/criteria) — the scoring criteria available and how to use them
+- [Presets](/docs/testing/presets) — ready-made evaluation configurations for common patterns
+- [Running evaluations](/docs/testing/run-evals) — how to execute eval sets with `10xgraph eval` and the API
+- [Evaluation overview](/docs/testing/evaluation) — conceptual background on evaluation as a testing methodology

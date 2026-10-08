@@ -1,15 +1,22 @@
 ---
 title: Evaluation
 seoTitle: "Evaluating AI agents with 10xGraph"
-description: "Evaluate 10xGraph agents with eval sets, criteria presets, user simulation and parallel runs, then run them in CI with the 10xgraph eval command."
+description: "Run evaluations to measure agent quality: correct tool usage, accurate responses, and safety."
 section: "Testing and evaluation"
 group: "Evaluation"
 order: 40
 label: Overview
-updated: "2026-09-29"
+updated: "2026-10-08"
+faq:
+  - question: "How do evaluations differ from unit tests?"
+    answer: "Evaluations measure agent quality: whether it called the right tools, gave correct responses, and avoided hallucinations. Unit tests verify code behavior."
+  - question: "Can I run evaluations without LLM costs?"
+    answer: "Yes. Default criteria (tool names, ROUGE, node order) run free. LLM-as-judge criteria are optional."
+  - question: "Can I run evaluations from code or just the CLI?"
+    answer: "Both. Use AgentEvaluator or QuickEval for code; use `10xgraph eval` for CLI discovery and parallel runs."
 ---
 
-Evaluation runs your actual agent against a set of test cases and produces a scored report. Unlike unit tests, evaluations measure **quality** — whether the agent called the right tools, gave a semantically correct response, avoided hallucinations, and stayed safe.
+Evaluation runs your agent against test cases and scores the results. Unlike unit tests, evaluations measure **quality**: whether the agent called the right tools, gave a semantically correct response, avoided hallucinations, and stayed safe.
 
 The evaluation stack has four layers:
 
@@ -24,6 +31,8 @@ EvalSet / Scenarios  →  AgentEvaluator / UserSimulator  →  Criteria  →  Ev
 ## Quick start
 
 ### 1. Define test cases
+
+Create an `EvalSet` with test cases using `EvalSetBuilder`:
 
 ```python
 from tenxgraph.qa.evaluation import EvalSetBuilder
@@ -48,21 +57,9 @@ eval_set = (
 )
 ```
 
-### 2. Run with the CLI
+### 2. Run programmatically
 
-Put the file in `evals/` and run:
-
-```bash
-10xgraph eval
-```
-
-Reports are written to `eval_reports/` automatically. Run in parallel across all cases from all files:
-
-```bash
-10xgraph eval --parallel --max-concurrency 8
-```
-
-### 3. Or run programmatically
+Pass the eval set to `AgentEvaluator` with a config, then await the result:
 
 ```python
 from tenxgraph.qa.evaluation import AgentEvaluator
@@ -72,19 +69,21 @@ from tenxgraph.qa.evaluation.collectors.trajectory_collector import TrajectoryCo
 collector = TrajectoryCollector(capture_all_events=True)
 config = EvalPresets.tool_usage(threshold=0.6)
 
-evaluator = AgentEvaluator(app, collector, config=config)
+evaluator = AgentEvaluator(your_graph, collector, config=config)
 report = await evaluator.evaluate(eval_set)
 
 print(f"Pass rate: {report.summary.pass_rate:.0%}")
 ```
 
-### 4. One-liner with QuickEval
+### 3. Quick one-liner with QuickEval
+
+For a single test without building an `EvalSet`, use `QuickEval.check()`:
 
 ```python
 from tenxgraph.qa.evaluation import QuickEval
 
 report = await QuickEval.check(
-    graph=app,
+    graph=your_graph,
     collector=collector,
     query="Weather in London?",
     expected_response_contains="sunny",
@@ -92,23 +91,33 @@ report = await QuickEval.check(
 )
 ```
 
+### 4. Or use the CLI
+
+Put eval files in an `evals/` directory and run the command:
+
+```bash
+10xgraph eval
+```
+
+The CLI discovers `*_eval.py` and `eval_*.py` files, runs all cases, and writes HTML and JSON reports automatically. For full CLI options, see [How to run evaluations](/docs/testing/run-evals).
+
 ---
 
 ## Core concepts
 
 ### EvalSet and EvalCase
 
-An `EvalSet` is a named collection of `EvalCase` objects. Each case defines a user query (or a multi-turn conversation), the expected response, and optionally the expected tool calls and node visit order.
+An `EvalSet` is a named collection of test cases (`EvalCase` objects). Each case defines a user query (or multi-turn conversation), the expected response, and optionally the expected tool calls and node visit order.
 
-[Full EvalSet documentation](/docs/testing/eval-sets)
+See [Building eval sets](/docs/testing/eval-sets) for the full API: single-turn, multi-turn, and trajectory-based cases.
 
 ### Criteria
 
-Each evaluation case is scored against one or more criteria. A criterion takes the agent's execution trajectory and final response and produces a score between 0 and 1.
+A criterion scores one evaluation case by comparing the agent's trajectory and response against the expected outcome. Each criterion returns a score between 0 and 1. A case passes if all criteria meet their thresholds.
 
-The left column is the `CriteriaConfig` field name you set in `EvalConfig`; the criterion reports under its own name, listed in the [criteria reference](/docs/testing/criteria).
+10xGraph provides 12 criteria:
 
-| Config field | Type | What it checks |
+| Criterion | Type | What it checks |
 |---|---|---|
 | `tool_name_match` | No-LLM | Tool names called match expected |
 | `trajectory` | No-LLM | Tool sequence matches (EXACT / IN_ORDER / ANY_ORDER) |
@@ -116,157 +125,47 @@ The left column is the `CriteriaConfig` field name you set in `EvalConfig`; the 
 | `rouge_match` | No-LLM | ROUGE-1 token overlap between actual and expected response |
 | `contains_keywords` | No-LLM | Required keywords appear in the response |
 | `response_match` | LLM judge | Semantic equivalence of actual and expected response |
-| `llm_judge` | LLM judge | The same semantic check, reported separately |
+| `llm_judge` | LLM judge | Same semantic check, reported separately |
 | `rubric_based` | LLM judge | Your own written grading rules |
 | `factual_accuracy` | LLM judge | Factual correctness of stated facts |
-| `hallucination` | LLM judge | Groundedness — is the response based on actual tool results? |
-| `safety` | LLM judge | Safety across harmful content, hate speech, privacy, misinformation, manipulation |
-| `simulation_goals` | LLM judge | Goal achievement across a full multi-turn simulation transcript |
+| `hallucination` | LLM judge | Is the response grounded in tool results? |
+| `safety` | LLM judge | Safety across harmful content, hate speech, privacy, misinformation |
+| `simulation_goals` | LLM judge | Goal achievement in a multi-turn user simulation |
 
-**CLI default criteria** (used when an eval file supplies no config). All are no-LLM, so a default run costs nothing:
-
-| Config field | Threshold | Match type |
-|---|---|---|
-| `tool_name_match` | 1.0 | — |
-| `rouge_match` | 0.5 | — |
-| `node_order` | 0.8 | EXACT |
-
-Running `AgentEvaluator` directly without a config uses a different set — `EvalConfig.default()`, which is EXACT trajectory at 1.0 plus `response_match` at 0.8.
-
-[Full criteria documentation](/docs/testing/criteria)
+See [Criteria reference](/docs/testing/criteria) for details and thresholds.
 
 ### EvalConfig and EvalPresets
 
-`EvalConfig` selects which criteria to run and sets thresholds. `EvalPresets` provides ready-made configs — one line instead of writing criteria from scratch.
+`EvalConfig` specifies which criteria to run and their thresholds. `EvalPresets` offers ready-made configs:
 
 ```python
 from tenxgraph.qa.evaluation.config.presets import EvalPresets
 
-config = EvalPresets.tool_usage(threshold=0.6)       # tool names + tool sequence, no LLM
+config = EvalPresets.tool_usage(threshold=0.6)       # No LLM: tool names + sequence
 config = EvalPresets.response_quality(threshold=0.7) # LLM judge on response accuracy
-config = EvalPresets.quick_check()                   # fast ROUGE check, no LLM cost
-config = EvalPresets.comprehensive(threshold=0.8)    # all criteria combined
+config = EvalPresets.quick_check()                   # ROUGE-only, no LLM cost
+config = EvalPresets.comprehensive(threshold=0.8)    # All criteria
 ```
 
-[Full config and presets documentation](/docs/testing/presets)
+See [Presets and configuration](/docs/testing/presets) for how to build custom configs.
 
 ### User simulation
 
-`UserSimulator` uses an LLM to play the role of a user and drive real conversations with your agent. You define a `ConversationScenario` with goals; the simulator generates messages turn by turn and scores goal achievement across the full transcript with `SimulationGoalsCriterion`.
-
-[Full user simulation documentation](/docs/testing/user-simulation)
-
-### Reports
-
-Every run produces an HTML visual dashboard and a JSON file. JUnit XML output is also available for CI integrations.
-
-[Full reports documentation](/docs/testing/reports)
-
----
-
-## Eval file protocols
-
-The `10xgraph eval` CLI discovers files matching `*_eval.py` or `eval_*.py` inside the `evals/` directory. It auto-detects which protocol each file uses.
-
-### Protocol summary
-
-| Protocol | Entry point | When to use |
-|---|---|---|
-| Fixed test cases | `get_eval_set()` | Regression: known inputs and expected outputs |
-| Per-file config | `get_eval_config()` or `EVAL_CONFIG` | Override criteria or thresholds for one file |
-| Presets shortcut | `EvalPresets` inside `get_eval_config()` | Recommended — one-line ready-made configs |
-| Multiple sets | Functions annotated `-> EvalSet` | Pytest-style: several named sets in one file |
-| User simulator | `get_scenarios()` or `SCENARIOS` | Dynamic multi-turn conversations with an LLM user |
-
----
-
-### `get_eval_set()` — minimum required
+`UserSimulator` uses an LLM to play a user role and drive dynamic multi-turn conversations with your agent. You define a `ConversationScenario` with goals; the simulator generates messages turn by turn and scores goal achievement.
 
 ```python
-# evals/weather_eval.py
-from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
-
-def get_eval_set() -> EvalSet:
-    return (
-        EvalSetBuilder("weather-regression")
-        .add_tool_test(
-            query="Weather in London?",
-            tool_name="get_weather",
-            tool_args={"location": "London"},
-            expected_response="London",
-        )
-        .build()
-    )
-```
-
-The CLI loads the agent from `10xgraph.json`, applies the default no-LLM criteria shown above, runs the eval, and writes reports.
-
----
-
-### `get_eval_config()` — per-file criteria with EvalPresets
-
-```python
-from tenxgraph.qa.evaluation import EvalConfig, EvalSet, EvalSetBuilder
-from tenxgraph.qa.evaluation.config.presets import EvalPresets
-
-def get_eval_config() -> EvalConfig:
-    return EvalPresets.tool_usage(threshold=0.6)
-
-def get_eval_set() -> EvalSet:
-    return EvalSetBuilder("weather-regression").add_tool_test(...).build()
-```
-
-Use `EVAL_CONFIG` instead of a function when the config is static:
-
-```python
-from tenxgraph.qa.evaluation.config.presets import EvalPresets
-
-EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
-```
-
----
-
-### Annotated functions `-> EvalSet` — multiple sets per file
-
-Any function annotated with `-> EvalSet` is auto-discovered. Useful when you want several named eval sets in one file.
-
-```python
-from tenxgraph.qa.evaluation import EvalSet, EvalSetBuilder
-from tenxgraph.qa.evaluation.config.presets import EvalPresets
-
-def get_eval_config():
-    return EvalPresets.tool_usage(threshold=0.6)
-
-def weather_cases() -> EvalSet:
-    return EvalSetBuilder("weather").add_tool_test(...).build()
-
-def booking_cases() -> EvalSet:
-    return EvalSetBuilder("booking").add_tool_test(...).build()
-```
-
-Both `weather_cases` and `booking_cases` are discovered and run as separate eval sets.
-
----
-
-### `get_scenarios()` — user simulator
-
-Use this when you want an LLM to drive dynamic multi-turn conversations instead of fixed prompts.
-
-```python
-# evals/user_simulator_eval.py
 from tenxgraph.qa.evaluation import ConversationScenario, UserSimulatorConfig
 
 SIMULATOR_CONFIG = UserSimulatorConfig(
     model="gemini/gemini-2.5-flash",
     max_invocations=8,
-    temperature=0.7,
 )
 
 def get_scenarios() -> list[ConversationScenario]:
     return [
         ConversationScenario(
-            scenario_id="weather_travel_planning",
-            description="User planning a trip wants weather info and packing advice",
+            scenario_id="travel_planning",
+            description="User planning a trip wants weather and packing advice",
             starting_prompt="Hi! I'm planning a trip to Paris this weekend.",
             goals=[
                 "User receives weather information for Paris",
@@ -277,123 +176,27 @@ def get_scenarios() -> list[ConversationScenario]:
     ]
 ```
 
-The CLI detects `get_scenarios()` (or a `SCENARIOS` constant), runs each scenario through `UserSimulator`, scores goal achievement with `SimulationGoalsCriterion`, and produces the same report as regular eval cases. No extra code needed.
+See [User simulation](/docs/testing/user-simulation) for the full API and the `get_scenarios()` protocol.
 
-You can also use a module-level constant instead of a function:
+### Reports
 
-```python
-SCENARIOS = [
-    ConversationScenario(...),
-    ConversationScenario(...),
-]
-```
+Every evaluation run produces an **HTML visual dashboard** showing pass rates, criterion scores, and failure details. JSON output is also available for programmatic consumption, and JUnit XML for CI integrations.
 
-[Full user simulation documentation](/docs/testing/user-simulation)
+See [Reports](/docs/testing/reports) for output formats and CI setup.
 
 ---
 
-## Parallel execution
+## Running evaluations
 
-By default all cases run sequentially. Pass `--parallel` to run all cases from all files in a single flat pool under one asyncio event loop:
-
-```bash
-10xgraph eval --parallel --max-concurrency 8
-```
-
-**How the flat pool works:** cases from all files (including simulation scenarios) are collected first, then all run concurrently throttled by a single semaphore. Cases complete out of order — that is expected and shown in the progress output:
-
-```
-[  1/50] weather_eval.py::weather_london          PASSED   1.23s
-[  3/50] booking_eval.py::book_flight             PASSED   2.10s
-[  2/50] weather_eval.py::weather_tokyo           PASSED   0.98s
-...
-[ 50/50] ...
-
-Results: 47/50 passed (94.0%)
-```
-
-Regular eval cases and simulation scenarios are mixed in the same pool and appear in the same report.
-
----
-
-## 10xgraph eval CLI
-
-```bash
-# Run all eval files in evals/
-10xgraph eval
-
-# Target a single file
-10xgraph eval evals/weather_eval.py
-
-# Target a subdirectory
-10xgraph eval evals/regression/
-
-# Run in parallel with up to 8 concurrent cases
-10xgraph eval --parallel --max-concurrency 8
-
-# Open the HTML report after running
-10xgraph eval --open
-
-# Set a pass-rate threshold (exits non-zero if below)
-10xgraph eval --threshold 0.8
-
-# Write reports to a custom directory
-10xgraph eval --output ci/reports
-
-# Disable file reports (console output only)
-10xgraph eval --no-report
-```
-
-### 10xgraph.json configuration
-
-```json
-{
-  "agent": "graph.agent:app",
-  "evaluation": {
-    "directory": "evals",
-    "output_dir": "eval_reports",
-    "threshold": 0.75,
-    "parallel": false,
-    "max_concurrency": 4
-  }
-}
-```
-
-| Field | Description |
-|---|---|
-| `directory` | Directory scanned when no target is given |
-| `output_dir` | Directory where report files are written |
-| `threshold` | Minimum pass rate for a zero exit code |
-| `parallel` | Run all cases from all files in a flat parallel pool |
-| `max_concurrency` | Maximum cases running at once when `parallel` is true |
-
-Report filenames from `10xgraph eval` always carry a timestamp; `10xgraph.json` has no
-setting for it.
-
-**Config priority (highest first):** CLI flags → `10xgraph.json` → per-file `get_eval_config()` → built-in defaults
-
-CLI flags always take precedence over `10xgraph.json` values.
-
-### CI integration
-
-```yaml
-# .github/workflows/ci.yml
-- name: Run evaluations
-  run: 10xgraph eval --parallel
-  env:
-    GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # needed for LLM-judge criteria
-```
-
-Set `threshold` in `10xgraph.json`. If the pass rate drops below it, the step fails.
-
-See also: [How to run evaluations](/docs/testing/run-evals)
+For quick local evaluation, use `AgentEvaluator` or `QuickEval` as shown above. For repeatable, production evaluations with CLI commands, parallel execution, configuration, and CI integration, see [How to run evaluations](/docs/testing/run-evals).
 
 ---
 
 ## Next steps
 
-- [Building eval sets](/docs/testing/eval-sets) — define test cases with `EvalSetBuilder`
-- [Criteria reference](/docs/testing/criteria) — all criteria explained
-- [Presets and configuration](/docs/testing/presets) — ready-made configs and how to build your own
-- [User simulation](/docs/testing/user-simulation) — AI-driven dynamic conversation testing
-- [Reports](/docs/testing/reports) — HTML, JSON, JUnit XML output and CI integration
+- [Building eval sets](/docs/testing/eval-sets) — define test cases and multi-turn scenarios
+- [Criteria reference](/docs/testing/criteria) — all 12 criteria explained
+- [Presets and configuration](/docs/testing/presets) — ready-made configs and custom thresholds
+- [User simulation](/docs/testing/user-simulation) — LLM-driven multi-turn testing
+- [Reports](/docs/testing/reports) — HTML, JSON, JUnit XML output formats
+- [How to run evaluations](/docs/testing/run-evals) — CLI commands, parallel runs, CI integration

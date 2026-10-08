@@ -1,55 +1,62 @@
 ---
 title: Run Tests
 seoTitle: "Run your agent test suite from the CLI"
-description: How to run your 10xGraph project's test suite using 10xgraph test. Covers coverage, thresholds, keyword filters, and 10xgraph.json configuration.
+description: Run your 10xGraph project's test suite with 10xgraph test. Configure coverage thresholds and CI gates via 10xgraph.json.
 section: "Testing and evaluation"
 group: "Unit tests"
 order: 30
 label: Run Tests
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - question: "Do I need to write tests in a specific way for 10xgraph test?"
+    answer: "No. `10xgraph test` is a wrapper around pytest, so any pytest test works as-is. Write tests with the test-building tools described in /docs/testing/unit-tests."
+  - question: "Can I enforce coverage requirements in CI?"
+    answer: "Yes. Set `coverage_threshold` in 10xgraph.json and the command will fail if coverage drops below that percentage. The exit code ensures CI gates work correctly."
+  - question: "How do I run only specific tests?"
+    answer: "Use `-k` to filter by name: `10xgraph test -k \"weather\"` runs only tests whose name contains 'weather'. Or pass a directory/file path to run tests in that location only."
 ---
 
-The `10xgraph test` command is a thin wrapper around pytest. It runs from the project root, reads optional defaults from `10xgraph.json`, and forwards any extra arguments to pytest directly.
+The `10xgraph test` command runs your project's test suite and measures code coverage. It is a thin wrapper around pytest that reads your project configuration from `10xgraph.json`, so you can set coverage thresholds and test paths once and enforce them in CI without duplicating settings.
 
 ## Prerequisites
 
-pytest must be installed in your environment:
+Your environment needs pytest and, if you want coverage reports, pytest-cov. These are standard dependencies that belong in your project's `pyproject.toml` or `requirements.txt`:
 
 ```bash
-pip install pytest
+pip install pytest pytest-cov
 ```
 
-For coverage reports, also install pytest-cov:
+Pytest discovers tests automatically from your project root, looking for files named `test_*.py` or `*_test.py` and functions named `test_*`. You can customize discovery with a `pytest.ini` or `pyproject.toml` configuration file (see [pytest docs](https://docs.pytest.org/)); the `10xgraph test` command respects those settings.
 
-```bash
-pip install pytest-cov
-```
+## Run your tests
 
-## Quick start
-
-From the folder that contains `10xgraph.json`:
+From the folder that contains `10xgraph.json`, run all tests:
 
 ```bash
 10xgraph test
 ```
 
-No path is passed to pytest, so pytest uses its own discovery rules: it reads `testpaths` from `pytest.ini` or `pyproject.toml`, or falls back to scanning the current directory. This matches the behaviour of running `pytest` directly.
+The command runs pytest from the project root using pytest's own discovery rules: it reads `testpaths` from `pytest.ini` or `pyproject.toml`, or falls back to scanning the current directory. This behavior matches running `pytest` directly.
 
-## Target a specific path
+If the test run succeeds, `10xgraph test` exits with code 0. If any test fails, it exits with code 1. If you have set a `coverage_threshold` in `10xgraph.json` and coverage falls below that threshold, the command exits with code 1 even if all tests pass.
 
-Provide a path to restrict the run to a directory or file:
+## Target a specific test path
+
+Restrict the run to a directory or file by providing a path argument:
 
 ```bash
-# A subdirectory
+# Run all tests in a subdirectory
 10xgraph test tests/unit
 
-# A single file
+# Run a single test file
 10xgraph test tests/unit/test_graph.py
 ```
 
-When a path is given, pytest only collects tests under that path.
+When you provide a path, pytest only collects tests under that location. This is useful for running a fast subset of tests during local development before running the full suite in CI.
 
-## Run with coverage
+## Measure code coverage
+
+Add `--coverage` to enable code coverage reporting:
 
 ```bash
 10xgraph test --coverage
@@ -61,41 +68,46 @@ This adds the following flags to pytest:
 --cov=. --cov-report=term-missing --cov-report=html:htmlcov
 ```
 
-A summary is printed in the terminal and a full HTML report is written to `htmlcov/index.html`.
+The command prints a coverage summary in the terminal and writes a detailed HTML report to `htmlcov/index.html`. The HTML report shows which lines are covered, which are missing, and why: you can click into each file to see untested branches. This helps you understand coverage gaps without reading raw data.
 
-### Open the HTML report automatically
+To open the report in your default browser automatically:
 
 ```bash
 10xgraph test --coverage --html
 ```
 
-After the test run completes, the HTML coverage report opens in your default browser.
+After the test run completes, the browser opens to `htmlcov/index.html`.
 
-## Filter tests by keyword
+## Filter tests by keyword expression
+
+Run only tests matching a name pattern with the `-k` option:
 
 ```bash
 10xgraph test -k "weather"
 ```
 
-The `-k` expression is forwarded directly to pytest. Only tests whose name or node ID matches the expression are collected and run.
+This forwards the expression directly to pytest. Only tests whose name or node ID matches the expression are collected and run. Expressions support `and`, `or`, and `not`: for example, `-k "weather and not slow"` runs tests with "weather" in the name, excluding those with "slow".
 
 ## Pass raw pytest arguments
 
-Use `--` to separate `10xgraph test` options from raw pytest arguments:
+Use `--` to separate `10xgraph test` options from raw pytest arguments that you want to pass through unchanged:
 
 ```bash
-# Short output, show only failures
+# Quiet output, short tracebacks
 10xgraph test -- -q --tb=short
 
-# Combine with coverage
+# Long tracebacks, no header
 10xgraph test --coverage -- --tb=long --no-header
+
+# Run only fast tests, skip slow and integration
+10xgraph test -- -m "not slow and not integration"
 ```
 
-Everything after `--` is appended verbatim to the pytest command.
+Everything after `--` is appended to the pytest command verbatim. This lets you use any pytest feature without writing custom CLI options in `10xgraph test` itself.
 
-## Configure defaults in 10xgraph.json
+## Configure your testing defaults
 
-Add a `test` section to `10xgraph.json` to set project-level defaults. All fields are optional. CLI flags always take precedence over config values.
+Add a `test` section to `10xgraph.json` to set project-level defaults for path, coverage, and coverage threshold. CLI flags always take precedence over config values:
 
 ```json
 {
@@ -108,61 +120,80 @@ Add a `test` section to `10xgraph.json` to set project-level defaults. All field
 }
 ```
 
-| Field | Description |
-| --- | --- |
-| `path` | Default test path when no `PATH` argument is given |
-| `coverage` | Enable coverage on every run without needing `--coverage` |
-| `coverage_threshold` | Minimum coverage percentage; the run fails if coverage drops below this value |
+| Field | Type | Description |
+| --- | --- | --- |
+| `path` | string | Default test directory or file when no `PATH` argument is given. If unset, pytest auto-discovers from the current directory. |
+| `coverage` | boolean | If `true`, enable coverage reporting on every run without needing `--coverage`. Defaults to `false`. |
+| `coverage_threshold` | integer | Minimum coverage percentage (0-100). The test run fails if coverage drops below this value. When set, the threshold is enforced even if tests pass. Defaults to unset (no threshold). |
 
-With this config, a bare `10xgraph test` is equivalent to:
+With the config above, a bare `10xgraph test` is equivalent to running:
 
 ```bash
 10xgraph test tests --coverage -- --cov-fail-under=80
 ```
 
-### Enforce a coverage threshold in CI
+## Enforce coverage in CI
 
-Set `coverage_threshold` in `10xgraph.json` and run `10xgraph test` in CI. If coverage falls below the threshold, pytest exits with a non-zero code and the CI step fails.
+To fail the CI pipeline when code coverage drops below a target, set `coverage_threshold` in `10xgraph.json` and run `10xgraph test --coverage` in your CI workflow. The command exits with a non-zero code if coverage falls short, which stops the pipeline.
+
+Here is a GitHub Actions example:
 
 ```yaml
-# .github/workflows/ci.yml (example)
-- name: Run tests
-  run: 10xgraph test --coverage
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Run tests with coverage
+        run: 10xgraph test --coverage
 ```
 
-No extra flags needed in the workflow, the threshold is already declared in the config file.
+The `coverage_threshold` from `10xgraph.json` ensures the threshold is enforced without repeating it in the workflow. Other CI systems (GitLab CI, CircleCI, Jenkins, etc.) follow the same pattern: install dependencies, then run `10xgraph test --coverage`. The exit code works the same way everywhere.
 
-## Verbose and quiet modes
+## Control output verbosity
+
+By default, `10xgraph test` runs in verbose mode (`-v`), printing one line per test. You can change this:
 
 ```bash
-# Extra pytest output
+# Very detailed output with full tracebacks
 10xgraph test --verbose
 
-# Suppress everything except errors
+# Quiet output: only show errors and summary
 10xgraph test --quiet
 ```
 
-## Common scenarios
+## Common workflows
 
-**Run a fast smoke test against one file:**
+**Run a fast smoke test during development:**
 
 ```bash
 10xgraph test tests/test_smoke.py -k "health"
 ```
 
-**Full coverage check during local development:**
+This runs only tests in the smoke test file with "health" in the name. Useful for quick validation before committing.
+
+**Full coverage check with a visual report:**
 
 ```bash
 10xgraph test --coverage --html
 ```
 
-**Strict CI run with threshold:**
+This generates a detailed HTML coverage report and opens it in your browser. You can browse the report to find uncovered lines and decide which ones need tests.
+
+**Strict CI gate with a high threshold:**
 
 ```json
 {
   "test": {
     "coverage": true,
-    "coverage_threshold": 70
+    "coverage_threshold": 85
   }
 }
 ```
@@ -171,23 +202,66 @@ No extra flags needed in the workflow, the threshold is already declared in the 
 10xgraph test
 ```
 
-**Pass pytest markers:**
+In CI, this ensures both that tests pass and that coverage never drops below 85%.
+
+**Run all except slow or integration tests locally:**
 
 ```bash
-10xgraph test -- -m "not integration"
+10xgraph test -- -m "not slow and not integration"
 ```
 
-## Common issues
+This is useful when you want fast feedback during development. Mark slow tests with `@pytest.mark.slow` and integration tests with `@pytest.mark.integration` in your test code.
+
+## Troubleshoot common errors
 
 **"No module named pytest"**
-- Install pytest: `pip install pytest`
+
+Pytest is not installed. Install it in your environment:
+
+```bash
+pip install pytest
+```
+
+If you use a virtual environment or uv, activate it first.
 
 **"No module named pytest_cov"**
-- Install pytest-cov: `pip install pytest-cov`
 
-**Coverage is below threshold, run fails**
-- The exit code reflects the threshold failure. Increase test coverage or lower `coverage_threshold` in `10xgraph.json`.
+The pytest-cov plugin is not installed. Install it:
 
-**Tests directory not found**
-- Pass the correct path explicitly: `10xgraph test src/tests`
-- Or update `"path"` in the `test` section of `10xgraph.json`
+```bash
+pip install pytest-cov
+```
+
+Coverage reporting requires this plugin. If you never use `--coverage`, you do not need it.
+
+**Coverage is below threshold, tests fail**
+
+The test command exits with code 1 because coverage fell below `coverage_threshold` in `10xgraph.json`. Either increase your test coverage, or lower the threshold if the current target is unrealistic. Check the coverage report (`htmlcov/index.html` after running with `--coverage`) to see which lines are uncovered.
+
+**Tests directory not found or no tests collected**
+
+Pytest did not find any tests. Check the path:
+
+```bash
+# Explicit path
+10xgraph test tests
+
+# Or list what pytest finds
+pytest --collect-only
+```
+
+If the path is correct, ensure your test files are named `test_*.py` or `*_test.py`, and test functions are named `test_*`. You can customize this in `pytest.ini` or `pyproject.toml`.
+
+**Import errors in tests**
+
+If your tests import your agent code, ensure the project is installed in editable mode:
+
+```bash
+pip install -e .
+```
+
+This makes your source code importable from tests.
+
+## Next steps
+
+Once your test suite is running, explore the unit testing tools in `/docs/testing/unit-tests` to write tests more effectively. For evaluation (checking whether an agent answers questions correctly), see `/docs/testing/evaluation` instead.

@@ -6,15 +6,19 @@ section: Integrations
 group: "Models"
 order: 40
 label: Google
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-Run Gemini models (`gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`) through Google. The same provider supports two backends:
+Run Gemini models through Google GenAI. The same models and features work through two backends, so you choose based on your infrastructure: a single API key for quick development, or Google Cloud integration for enterprise security and compliance.
 
-- **Gemini API** (Google AI Studio) — fastest path to get started, single API key.
-- **Vertex AI** — same models, but routed through Google Cloud with IAM, audit logs, regional data residency, and VPC Service Controls.
+## Choosing Your Backend
 
-You pick the backend with one flag: `use_vertex_ai=True` on the `Agent`, or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment.
+Gemini models (`gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`, and experimental `gemini-3-*` models) run on two backends:
+
+- **Gemini API** (Google AI Studio) — fastest path to get started; authentication is a single API key.
+- **Vertex AI** — same models routed through Google Cloud; includes IAM-scoped access, audit logs, regional data residency, and VPC Service Controls.
+
+Both backends support the same advanced features: context caching, extended thinking, and structured output. Switch between them with a single flag: `use_vertex_ai=True` on the `Agent`, or `GOOGLE_GENAI_USE_VERTEXAI=true` in the environment. If both are set, the explicit argument on `Agent` wins.
 
 ## Setup
 
@@ -36,6 +40,8 @@ You pick the backend with one flag: `use_vertex_ai=True` on the `Agent`, or `GOO
 
 ## Basic usage
 
+Create an agent with a Gemini model. You need only the model name and provider; the SDK loads your `GEMINI_API_KEY` from the environment automatically.
+
 ```python
 from tenxgraph.core.graph import Agent
 
@@ -47,6 +53,8 @@ agent = Agent(
 ```
 
 ## Full example with tools
+
+Build a complete agent with tools that the model can call to fetch information. This example uses the `ReactAgent` prebuilt agent, which handles the tool loop automatically.
 
 ```python
 from dotenv import load_dotenv

@@ -1,14 +1,14 @@
 ---
 title: Evaluation Criteria
-description: "The 10xGraph evaluation criteria: tool and node matching, ROUGE, semantic response, LLM-as-judge, rubrics, factual accuracy, hallucination, and safety."
+description: "Score agent outputs with deterministic criteria or LLM judges: tools, nodes, ROUGE, accuracy, safety."
 section: "Testing and evaluation"
 group: "Evaluation"
 order: 60
 label: Criteria
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-Each `EvalCase` is scored against one or more criteria. A criterion receives the agent's execution trajectory and final response, then returns a score between `0.0` (fail) and `1.0` (pass). A case passes when every enabled criterion meets its threshold.
+Each `EvalCase` is scored against one or more criteria. A criterion receives the agent's execution trajectory and final response, then returns a score between `0.0` (fail) and `1.0` (pass). A case passes when every enabled criterion meets its threshold. Choose from deterministic criteria (free, instant) that check tool sequences and token overlap, or LLM-judge criteria (cost API calls) that assess semantic quality, factual accuracy, safety, and custom requirements.
 
 The built-in criteria split into two groups: **no-LLM** (deterministic, free, instant) and **LLM-judge** (semantic, costs API calls). Each heading below is the criterion's reported name — the key you will see in the report and in `EvalSummary.criterion_stats`.
 

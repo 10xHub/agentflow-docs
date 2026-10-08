@@ -1,28 +1,30 @@
 ---
-title: "10xGraph with FastAPI: Embed an Agent in Your App"
-description: How to embed a 10xGraph agent in your existing FastAPI service. Mount the runtime, add custom routes, share auth, and stream responses.
+title: Embed a graph in FastAPI
+description: Run a 10xGraph agent directly in your FastAPI service with shared auth, streaming, and dependency injection.
 section: Integrations
-group: "Frameworks"
+group: Frameworks
 order: 60
 label: with FastAPI
-updated: "2026-07-27"
+updated: "2026-10-08"
 ---
 
-`10xgraph api` is the fastest path from a compiled graph to an HTTP endpoint. But many teams already run a FastAPI service with auth, middleware, and routes they cannot rewrite. Embedding 10xGraph inside that service is straightforward.
+`10xgraph api` is the fastest path from a compiled graph to an HTTP endpoint. But many production teams already run a FastAPI service with auth, middleware, and routes they cannot rewrite. Embedding 10xGraph directly into that service lets you share business logic, authentication, and database connections without HTTP hops.
+
+This guide covers both approaches, how to stream responses, manage resources with FastAPI lifespan, and test your embedded routes.
 
 ## Two approaches
 
-1. **Run `10xgraph api` as a separate service.** Your FastAPI app proxies to it. Cleanest separation; one extra hop.
-2. **Embed the graph in your existing FastAPI app.** Direct calls into Python. Fewer hops; more code.
+**1. Run `10xgraph api` as a separate service.** Your FastAPI app proxies to it. Cleanest separation, independent scaling, separate deployments. One extra network hop. Best for most teams.
 
-For most production teams, option 1 is the default. Option 2 makes sense when you have shared business logic.
+**2. Embed the graph directly in your FastAPI app.** Call the compiled graph from your routes. Fewer hops, zero network latency, shared Python objects (databases, ML models). More code, tighter coupling. Best when you have shared business logic.
 
-## Option 1: `10xgraph api` as a sidecar
+For most production teams, option 1 is the default. Option 2 makes sense when the agent and your service share state that is expensive to pass over HTTP (like an active database session or an ML model in memory).
 
-Run 10xGraph as its own process behind the same load balancer:
+## Option 1: Sidecar with proxying
 
-```yaml
-# docker-compose.yml
+Run 10xGraph as its own process behind the same load balancer or in a separate container:
+
+```yaml title="docker-compose.yml"
 services:
   api:
     build: ./api
@@ -36,13 +38,15 @@ services:
     command: 10xgraph api --host 0.0.0.0 --port 8001
 ```
 
-Your FastAPI app proxies the `/agent/*` routes:
+Your FastAPI app proxies requests to the agent service:
 
-```python
+```python title="api/main.py"
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 import httpx
+import os
 
+AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 app = FastAPI()
 
 @app.post("/agent/invoke")
@@ -60,150 +64,364 @@ async def proxy_stream(req: Request):
             async with client.stream("POST", f"{AGENT_URL}/v1/graph/stream", content=body) as r:
                 async for chunk in r.aiter_bytes():
                     yield chunk
-    return StreamingResponse(gen(), media_type="text/event-stream")
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no"}
+    )
 ```
 
-Add auth, rate limiting, and validation in the proxy layer; let 10xGraph handle agent execution.
+Add auth, rate limiting, and validation in the proxy layer; let 10xGraph handle agent execution. This pattern scales well because the agent service can be replicated independently.
 
 ## Option 2: Embed the graph directly
 
-Import your compiled graph and call it from a FastAPI route:
+Import your compiled graph and call it from FastAPI routes. This is the right choice when your agent needs direct access to shared resources.
 
-```python
+### Basic invoke and stream
+
+```python title="api/main.py"
 from fastapi import FastAPI, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
 
 from tenxgraph.core.state import Message
-from tenxgraph.utils import ResponseGranularity
+from tenxgraph.utils.constants import ResponseGranularity
 from tenxgraph.core.state.stream_chunks import StreamEvent
 
-from my_app.graph import app as agent_app  # your compiled graph
+from my_app.graph import compiled_graph
 from my_app.auth import current_user
 
-api = FastAPI()
+app = FastAPI()
 
-class AgentRequest(BaseModel):
+class InvokeRequest(BaseModel):
     text: str
+    thread_id: str | None = None
 
-@api.post("/agent/invoke")
-async def invoke(body: AgentRequest, user = Depends(current_user)):
-    result = await agent_app.ainvoke(
+@app.post("/agent/invoke")
+async def invoke(body: InvokeRequest, user = Depends(current_user)):
+    thread_id = body.thread_id or f"user-{user.id}"
+    result = await compiled_graph.ainvoke(
         {"messages": [Message.text_message(body.text)]},
-        config={"thread_id": f"user-{user.id}", "recursion_limit": 25},
+        config={
+            "thread_id": thread_id,
+            "user_id": user.id,
+            "recursion_limit": 25,
+        },
     )
-    return {"text": result["messages"][-1].text()}
+    last_message = result["messages"][-1]
+    return {"role": last_message.role, "content": last_message.text()}
 
-@api.post("/agent/stream")
-async def stream(body: AgentRequest, user = Depends(current_user)):
+@app.post("/agent/stream")
+async def stream(body: InvokeRequest, user = Depends(current_user)):
+    thread_id = body.thread_id or f"user-{user.id}"
+    
     async def gen():
-        async for chunk in agent_app.astream(
+        async for chunk in compiled_graph.astream(
             {"messages": [Message.text_message(body.text)]},
-            config={"thread_id": f"user-{user.id}", "recursion_limit": 25},
+            config={
+                "thread_id": thread_id,
+                "user_id": user.id,
+                "recursion_limit": 25,
+            },
             response_granularity=ResponseGranularity.LOW,
         ):
             if chunk.event == StreamEvent.MESSAGE and chunk.message:
-                payload = {"role": chunk.message.role, "content": chunk.message.text()}
-                yield f"event: message_chunk\ndata: {json.dumps(payload)}\n\n"
-        yield "event: done\ndata: {}\n\n"
+                payload = {
+                    "role": chunk.message.role,
+                    "content": chunk.message.text(),
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
+        yield "data: {\"done\": true}\n\n"
 
-    return StreamingResponse(gen(), media_type="text/event-stream", headers={
-        "Cache-Control": "no-cache",
-        "X-Accel-Buffering": "no",
-    })
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
 ```
 
-This is the lower-friction version when:
+The config dict is passed through to your nodes and tools. Keys like `user_id`, `thread_id`, and `recursion_limit` are standard; add your own for custom behavior. Tools receive config via an injectable `config` parameter.
 
-- You want auth via existing FastAPI middleware
-- The agent shares Python objects (DB sessions, ML models) with your service
-- You only need one or two endpoints
-
-## Auth patterns
+## Authentication patterns
 
 ### JWT from your existing service
 
-If your FastAPI app already validates JWTs:
+If your FastAPI app validates JWTs, the `sub` claim (subject) typically contains the user ID or email. Extract it and pass it to `thread_id` or `user_id`:
 
 ```python
 from fastapi import Header, HTTPException
+import jwt
+from typing import Annotated
 
-async def current_user(authorization: str = Header(...)):
-    token = authorization.removeprefix("Bearer ").strip()
-    payload = jwt.decode(token, key=SECRET, algorithms=["HS256"])
-    return User(id=payload["sub"])
+SECRET_KEY = "your-secret"
+
+async def current_user(authorization: Annotated[str, Header()]):
+    try:
+        token = authorization.removeprefix("Bearer ").strip()
+        payload = jwt.decode(token, key=SECRET_KEY, algorithms=["HS256"])
+        user_id = payload["sub"]  # the sub claim is the user identity
+        return {"id": user_id, "email": payload.get("email")}
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Then in your route:
+@app.post("/agent/invoke")
+async def invoke(body: InvokeRequest, user = Depends(current_user)):
+    thread_id = f"user-{user['id']}"  # or user['email'] if preferred
+    # ...
 ```
 
-Pass `user.id` into `thread_id` so each user gets their own conversation.
+The `sub` claim is the standard JWT claim for subject (the authenticated principal). Use it directly as the user identifier; it avoids the need for a lookup.
 
 ### API keys for service-to-service
 
-For machine clients:
+For non-browser clients, validate API keys:
 
 ```python
-from fastapi import Depends
-from fastapi.security import APIKeyHeader
+from fastapi import Depends, Header, HTTPException
+from typing import Annotated
 
-api_key_header = APIKeyHeader(name="X-API-Key")
+VALID_KEYS = {"sk_prod_abc123": "service-a"}
 
-async def verify_key(key: str = Depends(api_key_header)):
-    if not is_valid_key(key):
-        raise HTTPException(403)
-    return key
+async def verify_api_key(x_api_key: Annotated[str, Header()]):
+    if x_api_key not in VALID_KEYS:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    return VALID_KEYS[x_api_key]
+
+@app.post("/agent/invoke")
+async def invoke_from_service(body: InvokeRequest, service = Depends(verify_api_key)):
+    thread_id = f"service-{service}"
+    # ...
 ```
 
-See [Auth and authorization](/docs/server/auth) for 10xGraph-side auth.
+## Streaming responses in detail
 
-## Streaming gotchas
+Server-sent events (SSE) require careful handling of headers, timeouts, and buffering.
 
-- **`X-Accel-Buffering: no`** disables nginx buffering; without it, SSE events sit in the proxy buffer.
-- **ALB / Cloudflare idle timeout.** Default 60s is shorter than many agent runs. Bump to 300s.
-- **`Cache-Control: no-cache`** prevents browsers from caching the stream.
-- **Trailing `\n\n`** terminates SSE events. Required by spec.
+**Headers:**
+- `text/event-stream` tells the client to interpret the response as a stream of events.
+- `X-Accel-Buffering: no` disables nginx buffering so events arrive immediately, not in a buffer.
+- `Cache-Control: no-cache` prevents browsers from caching the stream.
 
-For more on SSE, see [streaming agent responses with FastAPI and SSE](/docs/concepts/streaming).
-
-## Sharing dependencies
-
-Embed mode lets the agent share a database session with your service. 10xGraph uses [InjectQ](https://github.com/10xHub/injectq) for dependency injection: bind the shared service in the container, then declare it in the tool signature with `Inject[T]` as its default. The LLM never sees the injected parameter.
+**SSE format:**
+- Each event is one or more lines.
+- Lines starting with `data:` contain the payload.
+- A blank line (`\n\n`) terminates the event.
 
 ```python
-from injectq import InjectQ, Inject
+# Correct SSE format:
+yield "data: {\"content\": \"hello\"}\n\n"
+
+# JSON payloads must be on one line and properly escaped:
+payload = {"content": "multi-line\ntext"}
+yield f"data: {json.dumps(payload)}\n\n"
+```
+
+**Timeouts:**
+- Default load balancer idle timeouts (ALB, Cloudflare) are often 60 seconds, shorter than a long agent run. Increase to 300+ seconds in production.
+- Set `timeout=None` on the httpx client when proxying streams.
+
+**Testing streams:**
+- SSE streams are hard to test with standard HTTP clients. Use a stream-aware client or read line-by-line.
+
+See [streaming concepts](/docs/concepts/streaming) for more on transports and granularity.
+
+## Lifespan and shared resources
+
+FastAPI's lifespan context manager runs code at startup and shutdown. Use it to initialize and close shared resources that the agent uses:
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from injectq import InjectQ
+
+class Database:
+    def __init__(self, engine):
+        self.engine = engine
+
+    async def close(self):
+        await self.engine.dispose()
+
+database: Database | None = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: initialize shared resources
+    global database
+    engine = create_async_engine("postgresql+asyncpg://user:pass@localhost/db")
+    database = Database(engine)
+    
+    # Make it available to the graph via dependency injection
+    container = InjectQ.get_instance()
+    container.bind_instance(Database, database)
+    
+    print("App started. Database ready.")
+    yield
+    
+    # Shutdown: clean up
+    await database.close()
+    print("App stopped. Database closed.")
+
+app = FastAPI(lifespan=lifespan)
+```
+
+Tools can now receive the database:
+
+```python
+from injectq import Inject
+
+def query_order(order_id: str, db: Database = Inject[Database]) -> dict:
+    """Look up an order from the database."""
+    # Use db to query; it is resolved from the container
+    return db.query(order_id)
+```
+
+The same tool works whether the graph is embedded or served as a sidecar because injected parameters are filled from the container, not the HTTP request.
+
+## Testing embedded routes
+
+Use `TestClient` from FastAPI to test your routes without spinning up a server. This approach tests the real auth, middleware, and dependency injection:
+
+```python title="tests/test_agent_routes.py"
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from injectq import InjectQ
+from injectq.integrations.fastapi import setup_fastapi
+
+from my_app.graph import compiled_graph
+from my_app.auth import current_user
+from api.main import app, lifespan
+
+@pytest.fixture
+def client():
+    """Create a test client with the real app and lifespan."""
+    app_test = FastAPI(lifespan=lifespan)
+    setup_fastapi(app_test)
+    
+    # Include your routes
+    @app_test.post("/agent/invoke")
+    async def invoke(body, user=Depends(current_user)):
+        # ... your invoke logic
+        pass
+    
+    return TestClient(app_test)
+
+def test_invoke_success(client):
+    """Test a successful invoke."""
+    response = client.post(
+        "/agent/invoke",
+        json={"text": "Hello, agent!"},
+        headers={"Authorization": "Bearer fake-token"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "role" in data
+    assert "content" in data
+
+def test_stream_success(client):
+    """Test streaming."""
+    response = client.post(
+        "/agent/stream",
+        json={"text": "Hello, agent!"},
+        headers={"Authorization": "Bearer fake-token"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/event-stream"
+    
+    # Collect all events
+    events = []
+    for line in response.iter_lines():
+        if line.startswith("data: "):
+            import json
+            event_data = json.loads(line[6:])
+            events.append(event_data)
+    
+    assert len(events) > 0
+    assert any(e.get("done") for e in events), "Stream should end with done event"
+
+def test_auth_required(client):
+    """Test that auth is enforced."""
+    response = client.post(
+        "/agent/invoke",
+        json={"text": "Hello, agent!"},
+    )
+    assert response.status_code == 401
+```
+
+**For more realistic auth testing**, create a test auth backend:
+
+```python
+from fastapi import Request, Response
+from tenxgraph_api import BaseAuth
+
+class TestAuth(BaseAuth):
+    def authenticate(self, request: Request, response: Response, credential):
+        # Extract user from a test header
+        user_id = request.headers.get("X-Test-User")
+        if not user_id:
+            return None
+        return {"id": user_id, "email": f"{user_id}@test.local"}
+```
+
+Then configure your test app to use it.
+
+## Dependency injection and shared state
+
+When embedding, your tools and nodes can request dependencies from the InjectQ container. This lets the agent share database sessions, ML models, or configuration with your FastAPI app.
+
+**In your FastAPI lifespan:**
+
+```python
+from injectq import InjectQ
 
 container = InjectQ.get_instance()
-container.bind_instance(Database, Database(DSN))
+container.bind_instance(Database, database_instance)
+container.bind_instance(ModelCache, model_cache_instance)
+```
 
-# In your tools — `db` is resolved from the container, `order_id` comes from the LLM
+**In your tools:**
+
+```python
+from injectq import Inject
+
 def lookup_order(
     order_id: str,
-    config: dict = None,
+    config: dict,
     db: Database = Inject[Database],
-) -> str:
-    """Look up an order for the current user."""
-    user_id = config["user"]["user_id"]
+) -> dict:
+    """Look up an order. `config` arrives at runtime; `db` is resolved from the container."""
+    user_id = config["user_id"]
     return db.query(Order).filter_by(id=order_id, user_id=user_id).first()
 ```
 
-Per-request values such as the caller's identity arrive on the run `config` rather than through a bound object, so the same tool works under both the sidecar and embedded layouts.
+The graph passes `config` at runtime (thread_id, user_id, custom fields); injected parameters are resolved once at startup and cached. This pattern works the same way whether the graph is embedded or served separately.
 
-See [the dependency injection guide](/docs/guides/use-dependency-injection).
+See [dependency injection guide](/docs/guides/use-dependency-injection) for the full list of injectable parameters and patterns.
 
-## When to choose which
+## Sidecar vs. embedded: when to choose each
 
 | Concern | Sidecar | Embedded |
 |---|---|---|
-| Independent deploys | ✅ | ❌ |
-| Shared DB sessions | ❌ (over HTTP) | ✅ |
-| Scale agent independently | ✅ | ❌ |
-| Single Docker image | ❌ | ✅ |
-| Hot reload during dev | ✅ | ✅ |
+| **Independent deploys** | ✅ | ❌ |
+| **Shared DB session** | ❌ (over HTTP) | ✅ |
+| **Scale agent independently** | ✅ | ❌ |
+| **Single Docker image** | ❌ | ✅ |
+| **Simpler setup** | ❌ | ✅ |
+| **Less coupling** | ✅ | ❌ |
+| **Direct Python calls** | ❌ | ✅ |
 
-Default to sidecar; embed when you have a real reason.
+**Default to sidecar.** It decouples your app from the agent, scales independently, and lets you deploy them on different schedules. Embed only when you have shared state that is expensive to serialize (a database connection pool, a large model).
 
 ## Further reading
 
-- [Run with API](/docs/get-started/tutorial/serve-and-inspect).`10xgraph api` standalone
-- [Streaming agent responses with SSE](/docs/concepts/streaming)
-- [Deployment guide](/docs/server/deploy)
-- [Get started](/docs/get-started)
+- [Run the API server](/docs/server/run-the-server): `10xgraph api` as a standalone service
+- [Configure the server](/docs/server/configure): `10xgraph.json` options
+- [Streaming concepts](/docs/concepts/streaming): transports, granularity, and event model
+- [Dependency injection](/docs/guides/use-dependency-injection): injectable parameters and InjectQ
+- [Deployment guide](/docs/server/deploy): containers, Kubernetes, and production checklist

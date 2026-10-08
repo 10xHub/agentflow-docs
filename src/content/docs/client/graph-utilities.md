@@ -1,23 +1,23 @@
 ---
-title: How to use graph utilities
-description: "Use graph(), graphTools(), graphStateSchema(), observability(), stopGraph(), and fixGraph() on the TypeScript client to inspect and control graphs."
-section: "TypeScript client"
-group: "Features"
+title: Graph utilities and human-in-the-loop
+description: "Inspect graph topology and state, stop execution, repair broken threads, view execution traces, and handle interrupts for human approval workflows."
+section: TypeScript client
+group: Features
 order: 90
 label: Graph utilities
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-`AgentFlowClient` exposes six utility methods for inspecting and controlling the graph:
+The `@10xgraph/client` TypeScript client exposes utility methods for inspecting graph metadata, controlling execution, repairing state, and handling human-in-the-loop workflows. Use these methods to build observability dashboards, debugging tools, and approval interfaces.
 
-| Method | What it does |
+| Method | Purpose |
 |---|---|
-| `graph()` | Fetch graph topology, node list, and server capabilities |
-| `graphTools()` | List the tools each tool node exposes, tagged by source |
-| `graphStateSchema()` | Fetch the JSON Schema of `AgentState` (the graph's state type) |
-| `observability(threadId, runId?)` | Fetch the reconstructed trace for a run: spans, events, and token usage |
-| `stopGraph(threadId)` | Signal a running graph to stop after the current node |
-| `fixGraph(threadId)` | Remove broken tool-call messages from a thread's history |
+| `graph()` | Fetch graph topology, nodes, edges, and server capabilities. |
+| `graphTools()` | List all tools each tool node exposes, tagged by source (local, MCP, remote). |
+| `graphStateSchema()` | Fetch the JSON Schema describing all fields in the graph's state. |
+| `observability(threadId, runId?)` | Reconstruct and fetch the execution trace: spans, events, and token usage. |
+| `stopGraph(threadId)` | Signal a running graph to stop after the current node. |
+| `fixGraph(threadId)` | Remove incomplete tool-call messages that may have broken a thread. |
 
 ## Prerequisites
 
@@ -101,7 +101,7 @@ try {
 
 ## graphTools()
 
-Fetches every tool the graph's tool nodes expose from `GET /v1/graph/tools`, grouped by node. Each tool carries a `source` tag, so you can tell a locally defined Python tool from one discovered on an MCP server or one registered by a client via `setup()`.
+Fetches every tool the graph's tool nodes expose from `GET /v1/graph/tools`, grouped by node. Each tool carries a `source` tag that identifies where it comes from: a Python tool in the graph, an MCP server, or a client-side remote tool.
 
 ```ts
 const result = await client.graphTools();
@@ -499,50 +499,162 @@ async function invokeWithRecovery(threadId: string, message: string) {
 
 ---
 
-## Complete example: graph health dashboard
+## Human-in-the-loop: checking and resuming after interrupts
+
+Graph execution can be paused at designated nodes for human review or approval. When an interrupt occurs, the graph stops and stores the pause reason and node in the execution state. The client detects this via `execution_meta.interrupt` returned in stream chunks or state queries.
+
+### Detecting an interrupt in a stream
+
+When you stream execution, each chunk's `state?.execution_meta` field contains interrupt data if the graph has paused:
 
 ```ts
-import { AgentFlowClient, AgentFlowError } from '10xgraph-client';
+const stream = client.stream(
+  [Message.text_message('Proceed with the high-cost operation.')],
+  { config: { thread_id: 'approval-thread' } }
+);
+
+for await (const chunk of stream) {
+  // Check if execution was paused at a node
+  if (chunk.state?.execution_meta?.interrupt) {
+    const { node, reason, status } = chunk.state.execution_meta.interrupt;
+    console.log(`Paused at "${node}": ${reason} (${status})`);
+    console.log('No further action required; graph is waiting.');
+    break;
+  }
+
+  // Process normal streaming responses...
+  if (chunk.event === 'message' && chunk.message?.content) {
+    console.log('Response:', chunk.message.content);
+  }
+}
+```
+
+### Resuming after human approval
+
+To resume execution after an interrupt, invoke the same thread again with a new user message. The graph resumes from the paused node, preserving all prior state and context:
+
+```ts
+// User reviews the decision and approves
+const approval = await client.invoke(
+  [Message.text_message('Approved. Proceed.')],
+  { config: { thread_id: 'approval-thread' } }
+);
+
+console.log('Final result:', approval.messages[approval.messages.length - 1]);
+```
+
+### Querying interrupt status outside of streaming
+
+Use `threadState()` to check if a thread is currently paused:
+
+```ts
+const state = await client.threadState('approval-thread');
+
+if (state.data.execution_meta?.interrupt) {
+  const { node, reason } = state.data.execution_meta.interrupt;
+  console.log(`Thread paused at "${node}": ${reason}`);
+} else {
+  console.log('Thread is not paused.');
+}
+```
+
+### Notes
+
+- Interrupts are only possible if the graph was compiled with `interrupt_before` or `interrupt_after` configuration. Check `graph().data.info.interrupt_before` and `.interrupt_after` to see which nodes support pausing.
+- Interrupted state is preserved in the checkpointer, so resumption is safe across server restarts.
+- The `interrupt` object contains `node` (the name of the paused node), `reason` (human-readable message), `status` (e.g., `waiting`), and optional `data` (caller-provided context).
+- After a paused graph resumes, the next invoke or stream call continues from the paused node and executes the remainder of the graph.
+
+---
+
+## Complete example: observability and approval dashboard
+
+This example brings together graph inspection, execution monitoring, and interrupt handling:
+
+```ts
+import { AgentFlowClient, Message } from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
-async function printGraphDashboard() {
-  // 1. Topology
+async function runWithApprovalGate(threadId: string, userMessage: string) {
+  // 1. Inspect the graph capabilities
   const graphInfo = await client.graph();
-  const g = graphInfo.data;
-  console.log('=== Graph ===');
-  console.log('Nodes:', g.nodes.map(n => n.name).join(', '));
-  console.log('Checkpointer:', g.info.checkpointer ? g.info.checkpointer_type : 'none');
-  console.log('Store:', g.info.store);
+  console.log(`Graph: ${graphInfo.data.nodes.length} nodes, ` +
+    `checkpointer: ${graphInfo.data.info.checkpointer_type || 'none'}`);
 
-  // 2. State schema
-  const schemaInfo = await client.graphStateSchema();
-  const fields = Object.keys(schemaInfo.data.properties);
-  console.log('\n=== State fields ===');
-  console.log(fields.join(', '));
+  const supportsApproval = graphInfo.data.info.interrupt_before.length > 0;
+  console.log(`Approval gates available: ${supportsApproval}`);
 
-  // 3. Optional: repair a broken thread
-  const brokenThread = process.env.BROKEN_THREAD;
-  if (brokenThread) {
-    console.log('\n=== Repairing thread:', brokenThread, '===');
-    const fix = await client.fixGraph(brokenThread);
-    console.log('Removed messages:', fix.data.removed_count);
-    console.log('Success:', fix.data.success);
+  // 2. Stream the execution
+  console.log(`\nExecuting on thread: ${threadId}`);
+  const stream = client.stream(
+    [Message.text_message(userMessage)],
+    { config: { thread_id: threadId } }
+  );
+
+  let executionMeta = null;
+  let finalMessages = [];
+
+  for await (const chunk of stream) {
+    // Check for interrupt (approval gate paused execution)
+    if (chunk.state?.execution_meta?.interrupt) {
+      const { node, reason } = chunk.state.execution_meta.interrupt;
+      console.log(`\nExecution paused at "${node}"`);
+      console.log(`Reason: ${reason}`);
+      executionMeta = chunk.state.execution_meta;
+      break;
+    }
+
+    // Accumulate messages and state
+    if (chunk.event === 'message' && chunk.message?.content) {
+      finalMessages.push(chunk.message);
+    }
+    if (chunk.state) {
+      executionMeta = chunk.state.execution_meta;
+    }
   }
+
+  // 3. If paused, show observability and resume
+  if (executionMeta?.interrupt) {
+    const threadState = await client.threadState(threadId);
+    const obs = await client.observability(threadId);
+
+    console.log(`\nObservability: ${obs.data.run?.llm_calls || 0} LLM calls, ` +
+      `${obs.data.run?.tool_calls || 0} tool calls, ` +
+      `${obs.data.run?.duration_ms || 0}ms total`);
+
+    console.log('\nWaiting for approval...');
+    // In a real app, this would be a user button click or external webhook
+    // For now, we simulate a 2-second approval delay
+    await new Promise(r => setTimeout(r, 2000));
+
+    console.log('Approval granted. Resuming...');
+    const resumed = await client.invoke(
+      [Message.text_message('Approved. Continue.')],
+      { config: { thread_id: threadId } }
+    );
+    finalMessages.push(...resumed.messages);
+  }
+
+  return finalMessages;
 }
 
-printGraphDashboard().catch(console.error);
+// Run the example
+runWithApprovalGate('approval-demo-123', 'Process this high-cost operation.')
+  .then(msgs => console.log(`\nFinal: ${msgs.length} messages in thread`))
+  .catch(console.error);
 ```
 
 ---
 
-## Common errors
+## Common errors and debugging
 
-| Error | Cause | Fix |
+| Symptom | Cause | Solution |
 |---|---|---|
-| `AgentFlowError` status `404` on `stopGraph` | Thread not found. | Verify the `threadId`. |
-| `AgentFlowError` status `404` on `fixGraph` | Thread not found or no checkpointer configured. | Check that the graph is compiled with a checkpointer (`compile(checkpointer=...)`). |
-| `AgentFlowError` status `403` | Caller does not have permission to stop/fix this thread. | Check the `AuthorizationBackend` on the server. |
-| `fixGraph` returns `removed_count: 0` | Thread was already in a valid state. | No action needed. |
-| `graphTools` returns an empty `nodes` array | The graph has no tool nodes. | Not an error. Add a `ToolNode` if the agent is meant to call tools. |
-| `observability` returns `run: null` | The thread has no recorded runs, or telemetry recording is off on the server. | Invoke the thread once, and check the server's telemetry configuration. |
+| `stopGraph` returns `404` | Thread ID not found on the server. | Verify the `threadId` matches an active thread. Use `threads()` to list threads. |
+| `fixGraph` returns `404` | Thread not found or the graph has no checkpointer. | Ensure the graph is compiled with a checkpointer and the thread has been invoked at least once. |
+| `403` error on `stopGraph` or `fixGraph` | Caller lacks permission to modify the thread. | Check the `AuthorizationBackend` configured on the server; the caller may have read-only access. |
+| `observability` returns `run: null` | No runs have been recorded for the thread, or telemetry is disabled. | Invoke the thread at least once to generate a run. Check the server's telemetry configuration. |
+| Stream does not trigger interrupt even though `interrupt_before` is set | Interrupt logic is not configured in the graph or the paused node is unreachable. | Verify that `graph().data.info.interrupt_before` includes the expected node name. Ensure the graph's control flow reaches that node. |
+| `graphTools` returns empty `nodes` array | The graph has no `ToolNode`s. | Not an error if the agent doesn't need external tools. Add a `ToolNode` if you expect to see tools. |
+| `fixGraph` returns `removed_count: 0` | No orphaned tool calls found; the thread is already valid. | No action needed. The thread can proceed with the next invoke. |

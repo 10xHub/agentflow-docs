@@ -1,81 +1,108 @@
 ---
-title: Eval Presets & Configuration
-description: "Ready-made EvalPresets (tool_usage, response_quality, conversation_flow, comprehensive, safety_check, quick_check) and how to build a custom EvalConfig."
+title: Evaluation Presets and Configuration
+description: "Ready-made evaluation presets for common scenarios and how to build custom EvalConfig for specific needs."
 section: "Testing and evaluation"
 group: "Evaluation"
 order: 70
 label: Presets & Config
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-`EvalConfig` defines which criteria run and at what thresholds. `EvalPresets` provides ready-made configs so you can get meaningful results without writing config from scratch.
+`EvalConfig` is the central configuration object that determines which criteria run and at what thresholds. `EvalPresets` provides factory methods to create ready-made `EvalConfig` objects for common scenarios, saving you from building configurations from scratch. Most teams start with a preset and customize it as their eval suite matures.
 
----
+This page covers when to use each preset, how to combine them, and how to build fully custom configurations when the presets do not fit your needs.
 
-## Built-in presets
+## Quick decisions
 
-All presets are factory class methods on `EvalPresets`. Every preset that calls an LLM accepts an optional `judge_model` parameter (default: `"gemini-2.5-flash"`).
+If you are evaluating:
 
-### quick_check — Fastest, no LLM
+- **A tool-calling agent** (search, database, API calls): start with `EvalPresets.tool_usage()`
+- **A Q&A or FAQ agent**: start with `EvalPresets.response_quality()`
+- **A multi-turn dialogue agent**: start with `EvalPresets.conversation_flow()`
+- **Before shipping to production**: use `EvalPresets.comprehensive()`
+- **During active development** (no LLM cost): use `EvalPresets.quick_check()`
 
-Uses ROUGE-1 token overlap only. No API calls, instant feedback. Good for a smoke test during active development.
+## EvalPresets factory methods
+
+All `EvalPresets` methods are class methods that return an `EvalConfig` instance. Every preset that uses an LLM accepts an optional `judge_model` parameter (defaults to `"gemini-2.5-flash"`).
+
+### quick_check — Fastest, no cost
+
+Evaluates response text using ROUGE-1 token overlap. No LLM API calls, instant results. Ideal for smoke tests during active development and continuous integration pipelines where latency matters.
 
 ```python
 from tenxgraph.qa.evaluation import EvalPresets
 
 config = EvalPresets.quick_check()
+
+# Run evaluation with this config
+result = evaluator.evaluate(eval_set, config)
 ```
 
-Criteria included:
-- `rouge_match` (threshold 0.5)
+**Includes:**
+- `rouge_match` (threshold 0.5): token-level overlap between agent response and expected response
+
+**Limitations:** ROUGE measures word overlap, not semantic correctness. It will miss cases where the agent says the right thing in different words.
 
 ---
 
-### tool_usage — Verify tool selection
+### tool_usage — Verify tool correctness
 
-Checks that the agent called the right tools with the right arguments. No LLM required.
+Ensures the agent calls the right tools in the right order with correct arguments. No LLM required; this is the fastest semantic check. Ideal for agents with deterministic tool requirements.
 
 ```python
 config = EvalPresets.tool_usage(
-    threshold=1.0,
-    strict=True,      # EXACT match; set False for IN_ORDER
-    check_args=True,
+    threshold=1.0,          # All tools must match (1.0 = 100%)
+    strict=True,            # Require exact tool sequence (False = in-order)
+    check_args=True,        # Validate tool arguments
 )
 ```
 
-Criteria included:
-- `tool_name_match_score` — tool names match
-- `tool_trajectory_avg_score` — tool sequence matches
+**Parameters:**
+- `threshold`: Score for trajectory and tool name matching (0.0-1.0)
+- `strict`: If `True`, requires exact tool sequence match (EXACT). If `False`, allows extra tools as long as required tools appear in order (IN_ORDER)
+- `check_args`: If `True`, compares tool arguments; if `False`, only checks tool names
 
-**When to use:** any agent that must call specific tools (weather, search, database lookups). This is the most common first-pass eval.
+**Includes:**
+- `tool_name_match`: Agent calls the required tools
+- `trajectory`: Tools are called in the correct sequence with correct arguments
+
+**When to use:** Any agent with deterministic tool requirements (weather lookups, database queries, API calls). This is the most common first-pass eval for tool-calling agents.
+
+**Example:** If your expected run calls `[search, summarize]` and the agent called `[search, search, summarize]`, then `strict=False` passes, but `strict=True` fails.
 
 ---
 
-### response_quality — Semantic accuracy
+### response_quality — Check semantic accuracy
 
-Uses an LLM to evaluate whether the agent's response is correct and relevant.
+Uses an LLM judge to evaluate whether the agent's response is semantically correct and relevant, independent of exact wording. Ideal for Q&A, FAQ, and retrieval agents where responses have legitimate variation.
 
 ```python
 config = EvalPresets.response_quality(
-    threshold=0.7,
-    use_llm_judge=True,
+    threshold=0.7,          # Minimum score to pass
+    use_llm_judge=True,     # Add LLM-as-judge criterion
     judge_model="gemini-2.5-flash",
 )
 ```
 
-Criteria included:
-- `response_match_score` — semantic match with expected response
-- `final_response_match_v2` — the `llm_judge` slot, added when `use_llm_judge=True` (single sample)
+**Parameters:**
+- `threshold`: Minimum score (0.0-1.0) for passing
+- `use_llm_judge`: If `True`, adds an extra LLM-based evaluation as a secondary check
+- `judge_model`: Which LLM to use as judge (defaults to Gemini 2.5 Flash)
 
-**When to use:** Q&A agents, FAQ bots, or any agent where response accuracy matters but exact wording varies.
+**Includes:**
+- `response_match`: LLM evaluates whether the agent's response is semantically correct
+- `llm_judge` (optional): A secondary LLM evaluation as corroboration (1 sample by default)
 
-Both criteria run the same semantic check; the second gives you a corroborating score under a separate name.
+**When to use:** Q&A systems, FAQ bots, summarization agents, or any scenario where the agent's answer matters more than exact wording.
+
+**Example:** For a Q&A agent answering "What is the capital of France?", both "Paris" and "The capital of France is Paris" count as correct, even though the text differs.
 
 ---
 
-### conversation_flow — Multi-turn quality
+### conversation_flow — Multi-turn dialogue validation
 
-Validates both response quality and tool sequencing in multi-turn conversations.
+Validates both response quality and tool sequencing in conversation scenarios where the agent must maintain context across multiple turns and call tools in a logical sequence.
 
 ```python
 config = EvalPresets.conversation_flow(
@@ -84,17 +111,23 @@ config = EvalPresets.conversation_flow(
 )
 ```
 
-Criteria included:
-- `response_match_score` — semantic match with the expected response
-- `tool_trajectory_avg_score` — tool sequence with IN_ORDER matching
+**Parameters:**
+- `threshold`: Minimum score to pass
+- `judge_model`: LLM model for semantic evaluation
 
-**When to use:** agents with multi-turn dialogue where the conversation follows a predictable flow.
+**Includes:**
+- `response_match`: Each response is semantically correct in context
+- `trajectory`: Tools are called in-order (allows extra tools, not just exact sequence)
+
+**When to use:** Customer support agents, assistant agents, or any multi-turn dialogue where the agent must maintain coherence and follow a logical flow.
+
+**Example:** A customer support agent should answer clarifying questions before making a decision, not jump to a solution immediately.
 
 ---
 
-### safety_check — Safety and hallucination
+### safety_check — Production safety gate
 
-Focused on what the agent outputs rather than whether it answers correctly.
+Focuses on what the agent outputs, not whether it answers correctly. Detects hallucinations, unsafe content, and guardrail violations. Essential before shipping to production.
 
 ```python
 config = EvalPresets.safety_check(
@@ -103,17 +136,23 @@ config = EvalPresets.safety_check(
 )
 ```
 
-Criteria included:
-- `hallucinations_v1` — groundedness check
-- `safety_v1` — harmful content, hate speech, privacy, misinformation, manipulation
+**Parameters:**
+- `threshold`: Minimum score to pass
+- `judge_model`: LLM model for evaluation
 
-**When to use:** customer-facing agents, regulated industries, or any agent you are about to put in production.
+**Includes:**
+- `hallucination`: Detects unsupported claims (are statements grounded in the provided data?)
+- `safety`: Detects harmful content, hate speech, privacy violations, misinformation, manipulation
+
+**When to use:** Any customer-facing agent, regulated industries (finance, healthcare), or before major releases. Pair this with `response_quality()` or `tool_usage()` for a complete gate.
+
+**Example:** Detects when a financial advisor agent makes unsupported claims or recommends unsafe products.
 
 ---
 
 ### comprehensive — All criteria
 
-Runs every available criterion. Use this before a major release or for a thorough regression check.
+Runs all available criteria including no-LLM checks and full LLM-based evaluation. Use before major releases or for thorough regression testing.
 
 ```python
 config = EvalPresets.comprehensive(
@@ -123,48 +162,66 @@ config = EvalPresets.comprehensive(
 )
 ```
 
-Criteria included (no-LLM):
-- `tool_name_match_score`
-- `tool_trajectory_avg_score`
-- `rouge_match`
+**Parameters:**
+- `threshold`: Minimum score for all criteria
+- `use_llm_judge`: If `True`, includes all LLM-based criteria
+- `judge_model`: LLM model for evaluation
 
-Criteria included (LLM-judge, when `use_llm_judge=True`):
-- `final_response_match_v2` (the `llm_judge` slot)
-- `factual_accuracy_v1`
-- `hallucinations_v1`
-- `safety_v1`
+**Includes (no-LLM):**
+- `tool_name_match`: Tool names match
+- `trajectory`: Tool sequence and arguments match
+- `rouge_match`: Token-level response overlap
 
-Note that `comprehensive` uses `rouge_match` rather than `response_match_score` for response comparison.
+**Includes (LLM, when `use_llm_judge=True`):**
+- `llm_judge`: General semantic evaluation
+- `factual_accuracy`: Are facts correct?
+- `hallucination`: Are statements grounded?
+- `safety`: Is the response safe?
 
-Note: `contains_keywords` is not included in `comprehensive` because keywords are domain-specific. Add it manually if needed (see [Criteria — contains_keywords](/docs/testing/criteria#contains_keywords--keyword-presence-contains_keywords)).
+**When to use:** Pre-release gates, comprehensive regression testing, or as a baseline for new eval pipelines. The trade-off is higher LLM cost and longer evaluation time.
+
+**Note:** `contains_keywords` is not included because keywords are domain-specific. Add it manually to check for required phrases like "consult a professional" (see [Custom configuration](#build-custom-configuration-from-scratch) below).
 
 ---
 
-### custom — Build from parameters
+### custom — Build from individual parameters
 
-`EvalPresets.custom()` lets you enable exactly the criteria you need by passing threshold values. Any criterion whose threshold is `None` is excluded.
+Fine-tune evaluation by enabling exactly the criteria you need. Any threshold set to `None` excludes that criterion.
 
 ```python
 from tenxgraph.qa.evaluation import EvalPresets, MatchType
 
 config = EvalPresets.custom(
-    response_threshold=0.7,
-    tool_threshold=1.0,
-    llm_judge_threshold=None,           # excluded
-    hallucination_threshold=0.8,
-    safety_threshold=0.8,
-    factual_accuracy_threshold=None,    # excluded
-    tool_match_type=MatchType.IN_ORDER,
-    check_tool_args=True,
-    judge_model="gpt-4o",
+    response_threshold=0.7,              # Enable response matching
+    tool_threshold=1.0,                  # Enable tool matching at 100%
+    llm_judge_threshold=None,            # Exclude LLM judge
+    hallucination_threshold=0.8,         # Enable hallucination check
+    safety_threshold=0.8,                # Enable safety check
+    factual_accuracy_threshold=None,     # Exclude factual accuracy
+    tool_match_type=MatchType.IN_ORDER,  # Allow extra tools, not just exact
+    check_tool_args=True,                # Validate tool arguments
+    judge_model="gpt-4o",                # Use OpenAI as judge
 )
 ```
 
+**Parameters:**
+- `response_threshold`: Enable response matching at this threshold (or `None` to skip)
+- `tool_threshold`: Enable tool matching at this threshold
+- `llm_judge_threshold`: Enable LLM-as-judge at this threshold
+- `tool_match_type`: `MatchType.EXACT` (strict sequence) or `MatchType.IN_ORDER` (loose sequence)
+- `check_tool_args`: Whether to validate tool arguments
+- `hallucination_threshold`: Enable hallucination detection
+- `safety_threshold`: Enable safety checking
+- `factual_accuracy_threshold`: Enable factual accuracy checking
+- `judge_model`: Which LLM to use
+
+**When to use:** When presets are too rigid. For example, you might want tool checking without response checking, or hallucination detection without safety checking.
+
 ---
 
-### combine — Merge presets
+### combine — Merge multiple presets
 
-`EvalPresets.combine()` merges multiple configs. Later configs overwrite earlier ones when keys conflict.
+Combine multiple preset configurations. Later arguments override earlier ones when criteria conflict.
 
 ```python
 config = EvalPresets.combine(
@@ -173,45 +230,59 @@ config = EvalPresets.combine(
 )
 ```
 
+This combines tool validation and safety checks into a single config. If both presets defined the same criterion, the second would win.
+
+**When to use:** You want multiple concerns (tools + safety, responses + hallucinations) in one evaluation run.
+
 ---
 
-## EvalConfig built-in presets
+## EvalConfig class-method presets
 
-`EvalConfig` also ships three class-method presets:
+In addition to `EvalPresets`, the `EvalConfig` class itself has three presets for structured evaluation:
 
 ```python
 from tenxgraph.qa.evaluation import EvalConfig
 
-config = EvalConfig.default()   # EXACT trajectory + semantic response match
-config = EvalConfig.strict()    # EXACT trajectory with args + high-threshold judges
-config = EvalConfig.relaxed()   # IN_ORDER trajectory + lower response threshold
+config1 = EvalConfig.default()   # Balanced: exact tools + semantic responses
+config2 = EvalConfig.strict()    # Maximum strictness: exact tools + high thresholds
+config3 = EvalConfig.relaxed()   # Loose: in-order tools + lower thresholds
 ```
 
-| Preset | Trajectory | Response | Extra |
-|---|---|---|---|
-| `default()` | EXACT, threshold 1.0 | `response_match_score`, threshold 0.8 | — |
-| `strict()` | EXACT + `check_args=True`, threshold 1.0 | `response_match_score`, threshold 0.9 | `final_response_match_v2`, threshold 0.9, 5 samples |
-| `relaxed()` | IN_ORDER, `check_args=False`, threshold 0.8 | `response_match_score`, threshold 0.6 | — |
+| Preset | Trajectory | Threshold | Response | LLM Judge |
+|---|---|---|---|---|
+| `default()` | EXACT, args not checked | 1.0 | `response_match` threshold 0.8 | No |
+| `strict()` | EXACT, args checked | 1.0 | `response_match` threshold 0.9 | Yes, 5 samples, threshold 0.9 |
+| `relaxed()` | IN_ORDER, args not checked | 0.8 | `response_match` threshold 0.6 | No |
 
-All three use `response_match`, which is LLM-based. None of them use ROUGE — for a no-LLM config use `EvalPresets.quick_check()`.
+All three use `response_match`, which is LLM-based semantic comparison. None use ROUGE. For a fully no-LLM config, use `EvalPresets.quick_check()` instead.
 
 ---
 
-## Save and load config
+## Save and load configurations
+
+Configurations can be serialized to JSON and loaded back, making it easy to version and share eval configurations.
 
 ```python
-# Save to JSON
-config.to_file("eval_config.json")
+from tenxgraph.qa.evaluation import EvalConfig
 
-# Load from JSON
-config = EvalConfig.from_file("eval_config.json")
+# Create and save
+config = EvalPresets.tool_usage(threshold=1.0)
+config.to_file("my_eval_config.json")
+
+# Load from file
+loaded_config = EvalConfig.from_file("my_eval_config.json")
+
+# Both configs are identical
+assert config.criteria.tool_name_match.threshold == loaded_config.criteria.tool_name_match.threshold
 ```
+
+**Use case:** Store your eval configurations in version control alongside your agent code. Different branches can have different strictness levels, and you can compare eval results across releases using the same config.
 
 ---
 
-## Building a custom EvalConfig from scratch
+## Build custom configuration from scratch
 
-`EvalConfig.criteria` is a typed `CriteriaConfig` model with one named slot per criterion. It forbids unknown fields, so you cannot invent your own keys such as `"tone_check"` — each criterion goes in the slot that belongs to it.
+For full control, construct an `EvalConfig` directly by specifying criteria and their configuration. This is how to enable domain-specific checks like keyword presence.
 
 ```python
 from tenxgraph.qa.evaluation import (
@@ -224,14 +295,14 @@ from tenxgraph.qa.evaluation import (
 
 config = EvalConfig(
     criteria=CriteriaConfig(
-        # No-LLM: tool correctness
+        # No-LLM: verify tool usage
         trajectory=CriterionConfig.trajectory(
             threshold=1.0,
             match_type=MatchType.EXACT,
             check_args=True,
         ),
 
-        # No-LLM: response overlap
+        # No-LLM: token overlap as sanity check
         rouge_match=CriterionConfig.rouge_match(threshold=0.5),
 
         # LLM: semantic accuracy
@@ -241,67 +312,114 @@ config = EvalConfig(
             num_samples=3,
         ),
 
-        # LLM: hallucination
-        hallucination=CriterionConfig.hallucination(threshold=0.9),
+        # LLM: hallucination detection
+        hallucination=CriterionConfig.hallucination(
+            threshold=0.9,
+            judge_model="gemini-2.5-flash",
+        ),
 
-        # LLM: domain-specific rubrics — all rubrics share the one slot
+        # LLM: domain-specific rubric (all rubrics share one slot)
         rubric_based=CriterionConfig.rubric_based(
             rubrics=[
                 Rubric(
                     rubric_id="professional_tone",
                     content=(
                         "The response must use professional, formal language. "
-                        "Avoid colloquialisms and slang."
+                        "Avoid colloquialisms, slang, and casual phrasing."
                     ),
+                    weight=1.0,
+                ),
+                Rubric(
+                    rubric_id="conciseness",
+                    content="The response must be under 150 words.",
+                    weight=0.5,
                 ),
             ],
             threshold=0.8,
         ),
 
-        # Keyword check
+        # No-LLM: keyword presence check
         contains_keywords=CriterionConfig.contains_keywords(
             keywords=["consult a professional", "not financial advice"],
-            threshold=1.0,
+            threshold=1.0,  # All keywords must be present
         ),
     ),
-    parallel=True,
-    max_concurrency=4,
-    timeout=120.0,
+    parallel=True,           # Run criteria in parallel
+    max_concurrency=4,       # Maximum concurrent evaluations
+    timeout=120.0,           # 120-second timeout per case
 )
 ```
 
-Available slots: `tool_name_match`, `trajectory`, `node_order`, `response_match`, `rouge_match`, `contains_keywords`, `llm_judge`, `rubric_based`, `factual_accuracy`, `hallucination`, `safety`, `simulation_goals`. Because there is exactly one `rubric_based` slot, multiple named rubrics all go into the same `rubrics` list rather than into separate criteria.
+**Criterion slots available:**
+`tool_name_match`, `trajectory`, `node_order`, `response_match`, `rouge_match`, `contains_keywords`, `llm_judge`, `rubric_based`, `factual_accuracy`, `hallucination`, `safety`, `simulation_goals`.
+
+**Key point:** There is exactly one `rubric_based` slot. If you have multiple rubrics, they all go into a single `rubrics` list rather than separate criteria (as shown above).
 
 ### Add rubrics to an existing config
+
+Instead of building from scratch, you can add rubrics to an existing config:
 
 ```python
 from tenxgraph.qa.evaluation import Rubric
 
+# Start with a preset
+config = EvalPresets.response_quality()
+
+# Add domain-specific rubrics
 config = config.with_rubrics([
-    Rubric(rubric_id="concise", content="Response must be under 50 words.", weight=1.0),
+    Rubric(
+        rubric_id="compliance",
+        content="The response must mention compliance with SEC regulations.",
+        weight=2.0,
+    ),
 ])
 ```
 
 ---
 
-## Choosing criteria for your use case
+## Choosing a strategy for your agent
 
-| Agent type | Recommended criteria |
-|---|---|
-| Tool-calling (search, API) | `tool_usage` preset |
-| Q&A / FAQ | `response_quality` preset |
-| RAG / retrieval | `response_quality` + `hallucinations_v1` |
-| Customer support | `response_quality` + `safety_check` |
-| Multi-turn dialogue | `conversation_flow` preset |
-| Pre-production gate | `comprehensive` preset |
-| CI fast check | `quick_check` preset |
+Different agents require different evaluation strategies. Use this table to pick a starting point:
 
-Start fast (no-LLM criteria) and add LLM-judge criteria incrementally as your eval suite matures.
+| Agent type | Primary concern | Recommended preset | Add to it |
+|---|---|---|---|
+| Tool-calling (search, API, database) | Tools are called correctly | `tool_usage()` | `safety_check()` for production |
+| Q&A / FAQ | Answers are accurate | `response_quality()` | nothing needed |
+| RAG / document retrieval | Answers are grounded in sources | `response_quality()` | `hallucination` criterion |
+| Customer support | Accurate, safe, helpful | `conversation_flow()` | `safety_check()` |
+| Multi-turn dialogue | Coherent conversation flow | `conversation_flow()` | keyword checks for tone |
+| Before shipping | Comprehensive check | `comprehensive()` | nothing needed |
+| During development (fast feedback) | Sanity check, no cost | `quick_check()` | upgrade to other presets as coverage matures |
+
+**Recommended approach:** Start with no-LLM criteria (`quick_check` or `tool_usage`) to get fast feedback during development. As your eval set grows and you need higher confidence, add LLM-based criteria (`response_quality`, `safety_check`). Run `comprehensive` before releases.
+
+---
+
+## Configuration reference
+
+### EvalConfig fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `criteria` | `CriteriaConfig` | empty | Which criteria to run and their thresholds |
+| `parallel` | bool | `False` | Run criteria in parallel |
+| `max_concurrency` | int | `4` | Max concurrent evaluations when `parallel=True` |
+| `timeout` | float | `300.0` | Timeout per evaluation case (seconds) |
+| `verbose` | bool | `False` | Print detailed logging |
+| `mock_mode` | bool | `False` | Run without actual execution (testing) |
+| `reporter` | `ReporterConfig` | default | Report generation settings (see [Reports](/docs/testing/reports)) |
+
+### MatchType
+
+Controls how tool trajectories are compared:
+- `MatchType.EXACT`: Required tools must appear in exact order; no extra tools allowed
+- `MatchType.IN_ORDER`: Required tools must appear in order, but extra tools are permitted
 
 ---
 
 ## Next steps
 
-- [Reports](/docs/testing/reports) — how scores are presented in HTML, JSON, and JUnit XML
-- [Criteria reference](/docs/testing/criteria) — full details on each criterion
-- [Eval sets](/docs/testing/eval-sets) — building test cases
+- [Run evaluations](/docs/testing/run-evals) — execute configs with `10xgraph eval` or inside pytest
+- [Criteria reference](/docs/testing/criteria) — detailed explanation of each criterion and how scores are calculated
+- [Eval sets](/docs/testing/eval-sets) — structure test cases for your agent
+- [Reports](/docs/testing/reports) — view and share evaluation results in HTML, JSON, or JUnit format
