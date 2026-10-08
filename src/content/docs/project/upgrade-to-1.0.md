@@ -6,11 +6,10 @@ description: Migration guide from 10xGraph 0.8 and 0.9 to 1.0, covering the four
 section: Project
 order: 20
 label: Upgrade to 1.0
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-1.0 is the first release covered by the [deprecation
-policy](/changelog). It contains four breaking changes and
+1.0 is the first release covered by our deprecation policy. It contains four breaking changes and
 several new defaults that change runtime behaviour without changing any API you
 call. Work through this page before upgrading a running deployment.
 
@@ -62,7 +61,7 @@ If a routing function raises, the run now stops with a `GraphError`
 (`GRAPH_ROUTING_001`). Previously the exception was swallowed and execution fell
 through to the first static edge or `END`, silently taking a path nobody chose.
 
-**Who is affected:** graphs whose routing functions can raise — most often a
+**Who is affected:** graphs whose routing functions can raise: most often a
 `KeyError` or `AttributeError` when reading a state field that is not set yet.
 
 **What to do:** make the routing function total.
@@ -154,7 +153,7 @@ concurrent workers cannot race the DDL.
 
 ```bash
 # Back up first.
-pg_dump "$DATABASE_URL" > agentflow-pre-1.0.sql
+pg_dump "$DATABASE_URL" > 10xgraph-pre-1.0.sql
 
 # Migrations apply on first startup of the upgraded server.
 10xgraph api --no-reload
@@ -181,6 +180,5 @@ After upgrading, before sending production traffic:
 
 ## Related
 
-- [Changelog](/changelog) for the full 1.0 release notes
-- [Checkpointing](/docs/server/production-checklist)
+- [Production checklist](/docs/server/production-checklist)
 - [Deployment](/docs/server/deploy)

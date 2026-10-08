@@ -1,260 +1,316 @@
 ---
 title: Tools
 seoTitle: "ToolNode API reference (Python)"
-description: ToolNode — the unified tool registry and executor for local functions, MCP, Composio, and LangChain tools.
+description: "ToolNode, ToolResult, and utilities for tool registration and execution."
 section: Reference
 group: "Python library"
 order: 40
 label: Tools
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
+ToolNode is a unified registry and executor for Python functions and MCP tools. It automatically generates JSON schemas from type annotations, executes tool calls in parallel, handles errors, and publishes events. Pair it with `Agent` to give LLMs access to callable tools, or use the utilities and decorators to define, inspect, and manage tool metadata.
 
-Use `ToolNode` when you want to expose Python functions (or MCP/Composio/LangChain tools) to an LLM agent. `ToolNode` generates JSON schemas automatically, executes calls, handles errors, and publishes execution events.
-
-## Import path
+## Import paths
 
 ```python
 from tenxgraph.core.graph import ToolNode
+from tenxgraph.core.state import ToolResult
+from tenxgraph.core.graph.tool_node import UnsupportedToolParameterError, HAS_MCP, HAS_FASTMCP
+from tenxgraph.utils import tool, get_tool_metadata, has_tool_decorator
 ```
 
 ---
 
-## `ToolNode`
+## ToolNode
 
-A unified registry and executor for callable tools from multiple sources.
+A unified registry and executor for callable tools from multiple sources (local functions, MCP servers).
 
 ### Constructor
 
 ```python
-tools = ToolNode([my_function, another_function])
+ToolNode(tools, client=None, pass_user_info_to_mcp=False)
 ```
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `tools` | `Iterable[Callable]` | **required** | Local Python functions to register. Each is registered under its `__name__`. |
+| `tools` | `Iterable[Callable]` | **required** | Local Python functions to register. Each is registered under its `__name__`. Pass an empty list when only serving MCP tools. |
 | `client` | `fastmcp.Client \| None` | `None` | MCP client for remote tool access. Requires `pip install "10xgraph[mcp]"`. |
-| `pass_user_info_to_mcp` | `bool` | `False` | Forward the run config's `user` dict to MCP tool calls as request metadata, readable on the server via `ctx.request_context.meta`. |
+| `pass_user_info_to_mcp` | `bool` | `False` | Forward the run config's `user` dict to MCP tool calls as request metadata, readable on the server. |
 
-Pass an empty list when the node only serves MCP tools: `ToolNode([], client=client)`.
+**Raises:** `TypeError` when an item in `tools` is not callable; `ImportError` when a `client` is given but the MCP packages are not installed.
 
-**Raises:** `TypeError` when an item in `tools` is not callable, `ImportError` when a `client` is given but the MCP packages are not installed.
+### Methods
 
----
+| Method | Signature | Returns | Description |
+|---|---|---|---|
+| `invoke` | `await invoke(name: str, args: dict, tool_call_id: str, config: dict, state: AgentState)` | `Message` | Execute a single tool call by name. Returns a `Message` with the result or error information (the signature also allows a dict). |
+| `all_tools` | `await all_tools(tags: set[str] \| None = None, config: dict \| None = None)` | `list[dict]` | Async method returning JSON schemas for all registered tools, optionally filtered by tags. |
+| `all_tools_sync` | `all_tools_sync(tags: set[str] \| None = None, config: dict \| None = None)` | `list[dict]` | Synchronous version of `all_tools`. |
+| `add_tool` | `add_tool(tool: Callable)` | `None` | Register one more function after construction. Raises `TypeError` if it is not callable. |
 
-## Defining local tools
+### Example
 
-Any Python function can be a tool. Use docstrings and type annotations to generate accurate JSON schemas:
+```python title="tool_node_example.py"
+from tenxgraph.core.graph import Agent, ToolNode
 
-```python
-def lookup_order(order_id: str) -> dict:
-    """Look up an order by ID.
-
-    Args:
-        order_id: The order identifier, for example "A1001".
-
-    Returns:
-        A dict with the order status and line items.
-    """
-    # ... query the order system
-    return {"order_id": order_id, "status": "shipped"}
-
-def refund_order(order_id: str, amount: float, reason: str = "") -> dict:
-    """Refund an order, fully or partially.
-
-    Args:
-        order_id: The order identifier.
-        amount: Amount to refund in the order currency.
-        reason: Optional reason recorded on the refund.
-
-    Returns:
-        A dict with the refund ID and the refunded amount.
-    """
-    # ... call the payment provider
-    return {"refund_id": "R-1", "amount": amount}
-
-tools = ToolNode([lookup_order, refund_order])
-```
-
-### Supported annotation types
-
-`ToolNode` reads Python type annotations to produce the `parameters` section of each tool's JSON Schema:
-
-| Python type | JSON Schema type |
-|---|---|
-| `str` | `string` |
-| `int` | `integer` |
-| `float` | `number` |
-| `bool` | `boolean` |
-| `list` / `list[T]` | `array` |
-| `dict` | `object` |
-| `T \| None` | `T` with `nullable: true` |
-
----
-
-## Using ToolNode in a graph (React pattern)
-
-```python
-from tenxgraph.core.graph import StateGraph, Agent, ToolNode
-from tenxgraph.utils import START, END
 
 def lookup_order(order_id: str) -> dict:
     """Look up an order by ID."""
     return {"order_id": order_id, "status": "shipped"}
 
+
 def refund_order(order_id: str, amount: float) -> dict:
     """Refund an order."""
     return {"refund_id": "R-1", "amount": amount}
 
+
+# Register local functions; each is exposed under its __name__
 tool_node = ToolNode([lookup_order, refund_order])
 
-agent = Agent(
-    model="gpt-4o",
-    system_prompt=[{"role": "system", "content": "You are a support agent for an online store."}],
-    tool_node=tool_node,
+# Inspect the JSON schemas the model will see
+schemas = tool_node.all_tools_sync()
+print(len(schemas))  # 2
+
+# Add another tool after construction
+def cancel_order(order_id: str) -> dict:
+    """Cancel an order."""
+    return {"order_id": order_id, "status": "cancelled"}
+
+tool_node.add_tool(cancel_order)
+
+# Give the tools to an agent; also add tool_node to your StateGraph as a node
+agent = Agent(model="gpt-4o", provider="openai", tool_node=tool_node)
+```
+
+To wire the agent, the tool node and the routing edges into a graph, see [Define custom tools with @tool](/docs/guides/use-tool-decorator).
+
+---
+
+## ToolResult
+
+Return type for tool functions that need to update graph state and return a message to the AI.
+
+### Constructor
+
+```python
+ToolResult(message=None, state=None, is_error=False, *, content=None)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `message` | `Any` | `None` | The text response to return to the AI. `content` is accepted as an alias. |
+| `state` | `dict[str, Any] \| None` | `None` | Dict mapping state field names to new values. Only fields present are updated. |
+| `is_error` | `bool` | `False` | If True, marks the result as a failed tool call (status="failed"). |
+| `content` | `Any` | `None` | Alias for `message`; ignored if `message` is provided. |
+
+### Example
+
+```python
+from tenxgraph.core.state import ToolResult, AgentState
+
+class MyState(AgentState):
+    jd_name: str = ""
+
+def update_context(state: MyState, jd_name: str) -> ToolResult:
+    return ToolResult(
+        message=f"JD name updated to '{jd_name}'",
+        state={"jd_name": jd_name},
+    )
+```
+
+---
+
+## tool decorator
+
+Mark a function as a tool with metadata for schema generation and filtering.
+
+### Signature
+
+```python
+@tool(
+    _func=None,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    tags: list[str] | set[str] | None = None,
+    provider: str | None = None,
+    capabilities: list[str] | None = None,
+    metadata: dict[str, Any] | None = None,
+    parameters: dict[str, Any] | None = None,
 )
-
-graph = StateGraph()
-graph.add_node("MAIN", agent)
-graph.add_node("TOOL", tool_node)
-graph.set_entry_point("MAIN")
-
-def should_use_tools(state, config):
-    last = state.context[-1]
-    if any(b.type == "tool_call" for b in last.content):
-        return "TOOL"
-    return END
-
-graph.add_conditional_edges("MAIN", should_use_tools)
-graph.add_edge("TOOL", "MAIN")
-
-app = graph.compile()
 ```
 
----
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `name` | `str \| None` | `None` | Tool name. If None, uses the function's `__name__`. |
+| `description` | `str \| None` | `None` | Tool description. If None, uses the function's docstring, or "No description provided." when there is none. |
+| `tags` | `list[str] \| set[str] \| None` | `None` | Tags for categorizing and filtering tools. Examples: `["search", "web"]`. |
+| `provider` | `str \| None` | `None` | Provider or source of the tool (e.g., "local", "mcp", "composio"). |
+| `capabilities` | `list[str] \| None` | `None` | Capabilities or permissions required by the tool. Examples: `["read_files", "network_access"]`. |
+| `metadata` | `dict[str, Any] \| None` | `None` | Additional arbitrary metadata for the tool. |
+| `parameters` | `dict[str, Any] \| None` | `None` | Explicit JSON Schema dict for parameters. Bypasses automatic schema generation. |
 
-## MCP integration
+**Returns:** The decorated function with metadata attached as private attributes (`_py_tool_*`). The function behaves identically to the original.
 
-`ToolNode` talks to MCP servers through a `fastmcp.Client`. Install the extra with `pip install "10xgraph[mcp]"`, then pass the client to `ToolNode`:
+**Raises:** `ValueError` if the decorated object is not callable or if `parameters` is provided but not a dict.
 
-```python
-from fastmcp import Client
-from tenxgraph.core.graph import StateGraph, ToolNode
-
-client = Client({
-    "mcpServers": {
-        "local": {"url": "http://localhost:8080/mcp", "transport": "streamable-http"},
-    }
-})
-
-tools = ToolNode([], client=client)
-# tools.mcp_tools contains the list of available MCP tool names
-
-graph = StateGraph()
-graph.add_node("TOOL", tools)
-```
-
-See [Use MCP servers](/docs/guides/use-mcp) for the full setup.
-
-When `client` is provided, `ToolNode` fetches available tool schemas from the MCP server on startup and routes calls matching MCP tool names to the remote server.
-
----
-
-## Filtering tools by tag
-
-Use the `tools_tags` parameter on `Agent` to present only a subset of tools to the LLM:
+### Example
 
 ```python
+from tenxgraph.core.graph import ToolNode
 from tenxgraph.utils import tool
 
-@tool(tags=["safe", "orders"])
-def lookup_order(order_id: str) -> dict:
+@tool(name="lookup_order", tags=["search", "orders"])
+def find_order(order_id: str) -> dict:
     """Look up an order by ID."""
-    ...
+    return {"order_id": order_id, "status": "shipped"}
 
 @tool(tags=["write", "payments"])
-def refund_order(order_id: str, amount: float) -> dict:
+async def refund_order(order_id: str, amount: float) -> dict:
     """Refund an order."""
-    ...
+    return {"refund_id": "R-1", "amount": amount}
 
-tool_node = ToolNode([lookup_order, refund_order])
-
-# Agent only sees tools tagged "safe"
-agent = Agent(
-    model="gpt-4o",
-    tool_node=tool_node,
-    tools_tags={"safe"},
-)
+tool_node = ToolNode([find_order, refund_order])
 ```
 
-The `@tool` decorator also accepts `name`, `description`, `provider`, `capabilities`, `metadata` and `parameters`. Setting a `__tags__` attribute by hand is not supported.
-
 ---
 
-## Tool execution result
+## get_tool_metadata
 
-When `ToolNode` executes a tool, it:
+Extract all tool metadata from a decorated function.
 
-1. Calls the function with the arguments from `ToolCallBlock.args`.
-2. Wraps the return value as the block's `output`.
-3. Returns a message carrying a `ToolResultBlock(call_id=..., output=..., is_error=False)`.
-
-If the function raises an exception, the exception message is captured and `is_error=True` is set. The error is reported to the LLM so it can recover gracefully.
-
----
-
-## Async tools
-
-`ToolNode` supports both sync and async tool functions:
+### Signature
 
 ```python
-import httpx
-
-async def fetch_data(url: str) -> str:
-    """Fetch content from a URL asynchronously."""
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        return resp.text
-
-tools = ToolNode([fetch_data])
+get_tool_metadata(func: Callable) -> dict[str, Any]
 ```
 
----
-
-## `invoke` method (direct use)
-
-In most cases you do not call `ToolNode.invoke` directly — the graph handles this. But for testing:
-
-```python
-result = await tool_node.invoke(
-    name="lookup_order",
-    args={"order_id": "A1001"},
-    tool_call_id="call_abc123",
-    config={"thread_id": "test"},
-    state=AgentState(),
-)
-```
-
----
-
-## Getting tool schemas
-
-`ToolNode` exposes the JSON schemas it will send to the LLM through the async `all_tools` method, optionally filtered by tags:
-
-```python
-schemas = await tool_node.all_tools(tags={"safe"}, config=config)
-# [{"type": "function", "function": {"name": "lookup_order", "description": "...", "parameters": {...}}}, ...]
-```
-
-There is also a synchronous `all_tools_sync()` for non-async code.
-
----
-
-## Common errors
-
-| Error | Cause | Fix |
+| Parameter | Type | Description |
 |---|---|---|
-| Tool failure result (`is_error=True`) | The function raised an exception. | Check the tool implementation. The error is returned to the LLM so it can recover. |
-| Tool-not-found result | The LLM requested a tool name that is not registered. | Verify the function is in the `tools` list and that the name matches exactly. |
-| `TypeError` | Tool called with wrong argument types. | Add type annotations and docstrings to improve schema accuracy. |
+| `func` | `Callable` | A function that may have been decorated with `@tool`. |
+
+**Returns:** Dict with keys: `name`, `description`, `tags` (set), `provider`, `capabilities`, `metadata`, `parameters`. Unset values are `None`; `tags` is an empty set when unset.
+
+### Example
+
+```python
+from tenxgraph.utils import tool, get_tool_metadata
+
+@tool(name="my_tool", tags=["test"])
+def example():
+    """Example function."""
+    pass
+
+metadata = get_tool_metadata(example)
+print(metadata["name"])  # "my_tool"
+print(metadata["tags"])  # {"test"}
+```
+
+---
+
+## has_tool_decorator
+
+Check if a function has been decorated with `@tool`.
+
+### Signature
+
+```python
+has_tool_decorator(func: Callable) -> bool
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `func` | `Callable` | The function to check. |
+
+**Returns:** True if the function has been decorated with `@tool`, False otherwise.
+
+### Example
+
+```python
+from tenxgraph.utils import tool, has_tool_decorator
+
+@tool
+def decorated():
+    pass
+
+def not_decorated():
+    pass
+
+print(has_tool_decorator(decorated))      # True
+print(has_tool_decorator(not_decorated))  # False
+```
+
+---
+
+## UnsupportedToolParameterError
+
+Raised when a tool parameter annotation cannot be expressed as a portable JSON Schema.
+
+Supported annotations are `str`, `int`, `float`, `bool`, common stdlib scalars (`datetime`, `date`, `time`, `UUID`, `Path`, `Decimal`, `bytes`), `Optional`, `list`, `dict`, `Literal`, `Enum` subclasses, pydantic models and dataclasses, and nestings of those. Anything else, including `TypedDict`, raises this error when schemas are built. Pass `@tool(parameters=...)` to supply a hand-written schema instead.
+
+Subclasses `TypeError` so existing `except TypeError` handlers around tool registration continue to work.
+
+### Example
+
+```python
+from tenxgraph.core.graph.tool_node import UnsupportedToolParameterError
+
+from typing import TypedDict
+
+from tenxgraph.core.graph import ToolNode
+
+
+class Options(TypedDict):
+    verbose: bool
+
+
+def bad_tool(options: Options) -> str:
+    """A tool whose parameter (a TypedDict) is not supported."""
+    return "ok"
+
+
+try:
+    # Schemas are built from annotations; unsupported ones raise this error
+    schemas = ToolNode([bad_tool]).all_tools_sync()
+except UnsupportedToolParameterError as e:
+    print(f"Cannot register tool: {e}")
+```
+
+---
+
+## HAS_MCP and HAS_FASTMCP
+
+Boolean flags indicating whether the Model Context Protocol and FastMCP packages are installed.
+
+Use these to conditionally enable MCP features without importing optional dependencies:
+
+```python
+from tenxgraph.core.graph import ToolNode
+from tenxgraph.core.graph.tool_node import HAS_MCP, HAS_FASTMCP
+
+
+def my_function(text: str) -> str:
+    """Echo text."""
+    return text
+
+
+if HAS_FASTMCP and HAS_MCP:
+    from fastmcp import Client
+
+    client = Client("http://localhost:8000/mcp")  # replace with your MCP server
+    tools = ToolNode([my_function], client=client)
+else:
+    print('MCP support requires: pip install "10xgraph[mcp]"')
+    tools = ToolNode([my_function])
+```
+
+---
+
+## Related guides
+
+For task-focused guidance on using tools, see:
+- [Define custom tools with @tool](/docs/guides/use-tool-decorator)
+- [Use MCP servers](/docs/guides/use-mcp)
+- [Emit tool progress updates](/docs/guides/emit-tool-progress)
+- [Prebuilt tools](/docs/guides/prebuilt-tools)

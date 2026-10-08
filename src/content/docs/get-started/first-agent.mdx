@@ -4,21 +4,21 @@ seoTitle: "10xGraph quickstart: agent, API and TS client"
 description: Install 10xGraph, build a support agent in Python, serve it with the API server, then call it with curl and the TypeScript client.
 section: "Get started"
 order: 40
-updated: 2026-10-08
+updated: "2026-10-08"
 faq:
   - q: Do I need ReactAgent, or should I write a StateGraph myself?
     a: Start with ReactAgent. It builds the standard reason-and-act graph for you (one agent node, one tool node, a conditional edge between them) and returns a normal compiled graph. Move to StateGraph when you need custom routing or several agents.
   - q: Can I use OpenAI or Anthropic instead of Google?
     a: Yes. Change the model string and the provider argument, and install the matching extra. The graph, the tools and the API server stay the same.
   - q: Which Node.js version does the TypeScript client need?
-    a: Node.js 18 or newer. Install the client with npm install and point AgentFlowClient at the baseUrl of your running 10xgraph api server.
+    a: Node.js 18 or newer. Install the client with npm and point AgentFlowClient at the baseUrl of your running 10xgraph api server.
   - q: How do I authenticate the TypeScript client?
     a: Pass an auth option to the AgentFlowClient constructor, for example bearerAuth("your-token"). The client also exports basicAuth(username, password) and headerAuth(name, value).
   - q: Why does the second curl call remember the first one?
     a: Both calls send the same thread_id, and the compiled graph has a checkpointer. The checkpointer stores the conversation per thread, so the next call on that thread continues it.
 ---
 
-This page walks you through building a complete support agent with two tools, running it locally from Python, serving it with the 10xGraph API server, and then calling it via curl and from TypeScript. By the end, you will have a working three-layer stack: a Python agent, a REST API, and a typed TypeScript client.
+To build your first 10xGraph agent, install the packages, define a ReactAgent with two tools, run it from Python, serve it with `10xgraph api`, and call it with curl and the TypeScript client. This page takes you through all of it with one support agent.
 
 You need Python 3.12 or newer and an API key for your chosen model provider (Google, OpenAI, or Anthropic).
 
@@ -157,7 +157,7 @@ You will create two Python files: one that defines the agent, and one that runs 
 
 
    agent = ReactAgent(
-       model="claude-3-5-sonnet-20241022",
+       model="claude-haiku-4-5",
        provider="anthropic",
        system_prompt=[
            {
@@ -175,20 +175,30 @@ You will create two Python files: one that defines the agent, and one that runs 
 
    </Tabs>
 
-   `ReactAgent` builds a standard reason-and-act graph for you: it has an agent node that calls the model, a tool node that runs tools, and conditional routing between them. `compile()` returns a `CompiledGraph`—the object you run and the server will load.
+   `ReactAgent` builds a standard reason-and-act graph for you: it has an agent node that calls the model, a tool node that runs tools, and conditional routing between them. `compile()` returns a `CompiledGraph`, the object you run and the server loads.
 
 2. **Test the agent locally**
 
-   Create `run.py` next to `agent.py`:
+   Create `run.py` next to `agent.py`. It sends two requests on the same thread:
 
    ```python title="run.py"
    from tenxgraph.core.state import Message
 
    from agent import app
 
+   config = {"thread_id": "quickstart-1"}
+
+   # First turn: the agent calls lookup_order
    result = app.invoke(
        {"messages": [Message.text_message("Where is order 1042?")]},
-       config={"thread_id": "quickstart-1"},
+       config=config,
+   )
+   print(result["messages"][-1].text())
+
+   # Second turn on the same thread: the agent calls refund_order
+   result = app.invoke(
+       {"messages": [Message.text_message("Refund order 1042 for 59.00")]},
+       config=config,
    )
    print(result["messages"][-1].text())
    ```
@@ -199,15 +209,7 @@ You will create two Python files: one that defines the agent, and one that runs 
    python run.py
    ```
 
-   Expected output: the agent looks up the order and replies with its status and total.
-
-   Try another request on the same thread:
-
-   ```bash
-   python -c "from agent import app; from tenxgraph.core.state import Message; result = app.invoke({'messages': [Message.text_message('Refund order 1042 for 59.00')]}, config={'thread_id': 'quickstart-1'}); print(result['messages'][-1].text())"
-   ```
-
-   The agent calls `refund_order` and returns confirmation. Notice that it reused thread `quickstart-1`—the checkpointer remembered the earlier conversation.
+   The exact wording varies by model. The first reply gives the order status and total, and the second confirms the refund. Both turns use thread `quickstart-1`, so the checkpointer keeps the first conversation available to the second.
 
 3. **Create the server config file**
 
@@ -235,7 +237,7 @@ You will create two Python files: one that defines the agent, and one that runs 
    INFO: Uvicorn running on http://127.0.0.1:8000
    ```
 
-   The server listens on `127.0.0.1:8000` by default. Use `--host 0.0.0.0` to accept connections from other machines and `--port` to use a different port.
+   The server listens on `127.0.0.1:8000` by default. Use `--host 0.0.0.0` to accept connections from other machines and `--port` to use a different port. The server needs the same provider API key in its environment, so run it from the shell where you exported the key.
 
 5. **Call the agent over HTTP**
 
@@ -285,57 +287,69 @@ You will create two Python files: one that defines the agent, and one that runs 
 
 The 10xGraph client for TypeScript wraps the HTTP API with types and helper methods. It handles graph execution, thread management, long-term memory, and file uploads. It requires Node.js 18 or newer.
 
-Install the client (the package name is `@10xscale/agentflow-client` until the 10xGraph renaming is complete):
+Install the client. If the `@10xgraph/client` name is not published yet, [Installation](/docs/get-started/installation) lists the current npm name.
 
 ```bash
-npm install @10xscale/agentflow-client
+npm install @10xgraph/client
 ```
 
 Create a file named `client.ts`:
 
 ```typescript title="client.ts"
-import { AgentFlowClient, Message } from "@10xscale/agentflow-client";
+import { AgentFlowClient, Message } from "@10xgraph/client";
 
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
 });
 
-const result = await client.invoke(
-  [Message.text_message("Where is order 1042?")],
-  {
-    config: { thread_id: "quickstart-3" },
-    recursion_limit: 10,
-  }
-);
+async function main() {
+  // Send one user message on thread quickstart-3
+  const result = await client.invoke(
+    [Message.text_message("Where is order 1042?")],
+    {
+      config: { thread_id: "quickstart-3" },
+      recursion_limit: 10,
+    }
+  );
 
-console.log(result.messages.at(-1)?.text());
+  console.log(result.messages.at(-1)?.text());
+}
+
+main();
 ```
 
-Run it with Node:
+Run it with a TypeScript runner such as `tsx`:
 
 ```bash
-npx ts-node client.ts
+npx tsx client.ts
 ```
 
-The client call is much simpler than curl: it wraps the HTTP request, parses the response, and gives you back a typed object.
+The client wraps the HTTP request, parses the response, and returns a typed object.
 
 ### Stream the agent response
 
 To see the agent reasoning in real time, use `stream()` instead of `invoke()`. It returns an async iterable of stream events:
 
-```typescript
-import { StreamEventType } from "@10xscale/agentflow-client";
+```typescript title="stream.ts"
+import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
 
-const stream = client.stream(
-  [Message.text_message("Refund order 1042 for 59.00")],
-  { config: { thread_id: "quickstart-4" } }
-);
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
 
-for await (const chunk of stream) {
-  if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
-    process.stdout.write(chunk.message.text());
+async function main() {
+  const stream = client.stream(
+    [Message.text_message("Refund order 1042 for 59.00")],
+    { config: { thread_id: "quickstart-4" } }
+  );
+
+  // Print each message chunk as it arrives
+  for await (const chunk of stream) {
+    if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+      process.stdout.write(chunk.message.text());
+    }
   }
 }
+
+main();
 ```
 
 ### Authentication
@@ -343,6 +357,8 @@ for await (const chunk of stream) {
 If your API server has authentication enabled, pass `auth` to the client constructor:
 
 ```typescript
+import { AgentFlowClient, bearerAuth } from "@10xgraph/client";
+
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
   auth: bearerAuth("your-api-token"),
@@ -363,7 +379,7 @@ When you call `/v1/graph/invoke`, you send a `GraphInputSchema` and get back a `
 | `config` | object | null | Run settings. `thread_id` selects which thread (conversation) to run. |
 | `initial_state` | object | null | Initial values for custom state fields. |
 | `recursion_limit` | number | 25 | Maximum steps the graph can take. Allowed: 1 to 100. |
-| `response_granularity` | string | `low` | Response detail level: `low` (messages only), `partial` (+ context, summary), or `full` (+ full state). |
+| `response_granularity` | string | `low` | Response detail level: `low` (messages only), `partial` (messages, context and summary), or `full` (messages and full state). |
 | `resume` | any | null | Answer for a paused thread. Send it (even as `null`) only to resume an interrupted run. |
 
 **Response fields** (in `data`):
@@ -371,9 +387,9 @@ When you call `/v1/graph/invoke`, you send a `GraphInputSchema` and get back a `
 | Field | Type | Meaning |
 |---|---|---|
 | `messages` | Message[] | Final message list after the run. |
-| `state` | object | Full state (only if `response_granularity` is `partial` or `full`). |
-| `context` | Message[] | Recent context window (only if `response_granularity` is `partial` or `full`). |
-| `summary` | string | Conversation summary (only if `response_granularity` is `partial` or `full`). |
+| `state` | object | Full state (only when `response_granularity` is `full`). |
+| `context` | Message[] | Context window (only when `response_granularity` is `partial`). |
+| `summary` | string | Conversation summary (only when `response_granularity` is `partial`). |
 | `meta` | object | Custom metadata from your agent. |
 
 **Message format**: A message is an object with `role` (user, assistant, or tool) and `content` (a list of typed blocks). A text block is `{"type": "text", "text": "..."}`. Images, audio, and documents use other types (see [Send media](/docs/guides/send-media)).
@@ -392,7 +408,7 @@ If you omit `thread_id` from `config`, the server creates a new thread for each 
 
 <Callout type="warning" title="Idempotency matters for refunds">
 
-The `refund_order` tool moves money. If the process crashes mid-run, without a checkpointer the tool might run twice. 10xGraph checksums each tool call and replays only once, protecting against that. But `InMemoryCheckpointer` only protects within a single server process. For crash recovery across restarts, use `PgCheckpointer`. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
+The `refund_order` tool moves money. If a run is interrupted and later resumed, a tool with side effects can be called again. Make such tools safe to repeat, and use a durable checkpointer in production so state survives restarts. See [Replay-safe tools](/docs/concepts/replay-safe-tools).
 
 </Callout>
 
@@ -402,7 +418,7 @@ You now have a working agent, API server, and TypeScript client. Here is what to
 
 <CardGrid>
 
-<LinkCard title="Understand the mental model" href="/docs/get-started/tutorial/mental-model" description="Messages, state, nodes, edges, graphs, and threads—the core concepts." eyebrow="Tutorial" />
+<LinkCard title="Understand the mental model" href="/docs/get-started/tutorial/mental-model" description="Messages, state, nodes, edges, graphs, and threads: the core concepts." eyebrow="Tutorial" />
 <LinkCard title="Build a graph by hand" href="/docs/get-started/tutorial/build-a-graph" description="Create nodes and edges yourself to understand how ReactAgent works." eyebrow="Tutorial" />
 <LinkCard title="Create a client" href="/docs/client/create-client" description="Client configuration, authentication, and options." eyebrow="How-to" />
 <LinkCard title="Project structure" href="/docs/get-started/project-structure" description="What 10xgraph init generates for a production project." eyebrow="Get started" />

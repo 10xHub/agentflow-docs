@@ -1,18 +1,22 @@
 ---
-title: "stream()"
-seoTitle: "stream() in the TypeScript client"
-description: Reference for the AgentFlowClient.stream() method — receive real-time streaming chunks from the agent.
+title: stream()
+seoTitle: stream() in the TypeScript client
+description: "Reference for AgentFlowClient.stream(): send messages and receive StreamChunk objects in real time, with options, event types and examples."
 section: Reference
-group: "TypeScript client"
+group: TypeScript client
 order: 500
-label: "stream()"
-updated: "2026-07-21"
+label: stream()
+updated: '2026-10-08'
 ---
 
-`client.stream()` sends a list of messages to the agent graph and returns an `AsyncGenerator` that yields `StreamChunk` objects in real time as the server produces them. Use streaming when you want to show incremental output to the user — token by token, update by update — instead of waiting for the full response.
+`client.stream()` sends a list of messages to the agent graph and returns an `AsyncGenerator` that yields `StreamChunk` objects as the server produces them. Use it to show incremental output (token by token, update by update) instead of waiting for the full response. For a single final result, use `invoke()`.
 
 **Endpoint:** `POST /v1/graph/stream`  
 **Source:** `src/endpoints/stream.ts`
+
+```ts
+import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
+```
 
 ---
 
@@ -25,7 +29,7 @@ client.stream(
 ): AsyncGenerator<StreamChunk, void, unknown>
 ```
 
-`stream()` is synchronous — it returns the generator immediately without making a network call. The HTTP request starts when you begin iterating with `for await`.
+`stream()` is synchronous: it returns the generator immediately without making a network call. The HTTP request starts when you begin iterating with `for await`.
 
 ---
 
@@ -42,7 +46,7 @@ Same as [`invoke()`](/docs/reference/client/invoke#parameters). An array of `Mes
 | `initial_state` | `Record<string, any>` | `undefined` | Initial state values to seed the graph. |
 | `config` | `Record<string, any>` | `undefined` | Run config. Set `thread_id` at the top level of this object for persistent state. |
 | `recursion_limit` | `number` | `25` | Maximum recursion depth for the graph. |
-| `response_granularity` | `'full' \| 'partial' \| 'low'` | `'low'` | Controls how much data is included in state/update events. Default is `'low'` for streaming (unlike invoke where the default is `'full'`). |
+| `response_granularity` | `'full' \| 'partial' \| 'low'` | `'low'` | How much data the server returns: `'full'` is state plus latest messages, `'partial'` is context, summary and latest messages, `'low'` is latest messages only. Streaming defaults to `'low'`, unlike `invoke()` which defaults to `'full'`. |
 
 ---
 
@@ -80,8 +84,8 @@ The `event` field on a `StreamChunk` is a string matching one of these values (e
 | Event | Enum value | Description |
 |---|---|---|
 | `'message'` | `StreamEventType.MESSAGE` | A new or updated `Message` from the agent. The `message` field contains the full `Message` object. On streaming models this fires multiple times with partial token content (`message.delta = true`), followed by a final chunk with `delta = false`. |
-| `'updates'` | `StreamEventType.UPDATES` | The graph state was updated. The `state` field contains the updated `AgentState`. Only emitted when `response_granularity` is `'partial'` or `'full'`. |
-| `'state'` | `StreamEventType.STATE` | The complete current state snapshot. Only emitted when `response_granularity` is `'full'`. |
+| `'updates'` | `StreamEventType.UPDATES` | A graph execution update, such as a node starting or finishing. Inspect `chunk.data`, `chunk.state` and `chunk.metadata` for details. |
+| `'state'` | `StreamEventType.STATE` | A state snapshot in the `state` field. Use `'full'` granularity if you need state in your responses. |
 | `'error'` | `StreamEventType.ERROR` | An error occurred during graph execution. The `data` field contains the error details. |
 
 ---
@@ -91,7 +95,7 @@ The `event` field on a `StreamChunk` is a string matching one of these values (e
 ### Basic streaming
 
 ```ts
-import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -125,10 +129,10 @@ for await (const chunk of stream) {
   switch (chunk.event) {
     case StreamEventType.MESSAGE:
       if (chunk.message?.delta) {
-        // Partial token — append to UI
+        // Partial token: append to UI
         appendTokenToUI(chunk.message);
       } else if (chunk.message) {
-        // Final message — replace partial content
+        // Final message: replace partial content
         setFinalMessage(chunk.message);
       }
       break;
@@ -152,7 +156,7 @@ for await (const chunk of stream) {
 
 ```tsx
 import { useState } from 'react';
-import { AgentFlowClient, Message, StreamEventType } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message, StreamEventType } from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -185,7 +189,7 @@ function ChatBox() {
 
 ### Collecting the full response from a stream
 
-If you want to wait for the complete stream but still use streaming internally:
+This helper reads only the final (`delta: false`) messages, so partial tokens are not counted twice:
 
 ```ts
 async function streamToString(messages: Message[]): Promise<string> {
@@ -193,9 +197,9 @@ async function streamToString(messages: Message[]): Promise<string> {
   let fullText = '';
 
   for await (const chunk of stream) {
-    if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+    if (chunk.event === StreamEventType.MESSAGE && chunk.message && !chunk.message.delta) {
       for (const block of chunk.message.content) {
-        if (block.type === 'text') {
+        if (block.type === 'text' && 'text' in block) {
           fullText += block.text;
         }
       }
@@ -208,10 +212,14 @@ async function streamToString(messages: Message[]): Promise<string> {
 
 ### Stopping a stream mid-way
 
-The generator supports early exit via `break` or `return`. The server keeps running until the `stopGraph()` call is sent:
+Breaking out of the loop stops reading locally, but the server keeps running the graph until you call `stopGraph()` with the thread ID:
 
 ```ts
-const stream = client.stream([Message.text_message('Tell me a very long story')]);
+const threadId = 'story-001';
+const stream = client.stream(
+  [Message.text_message('Tell me a very long story')],
+  { config: { thread_id: threadId } }
+);
 let wordCount = 0;
 
 for await (const chunk of stream) {
@@ -223,8 +231,7 @@ for await (const chunk of stream) {
   }
 
   if (wordCount > 500) {
-    // Stop iterating locally and request server-side stop
-    const threadId = '...'; // from chunk.thread_id or your config
+    // Request a server-side stop, then stop iterating locally
     await client.stopGraph(threadId);
     break;
   }
@@ -253,7 +260,7 @@ interface StreamRequest {
 
 The server sends the stream as **NDJSON** (newline-delimited JSON) over HTTP. Each line is a JSON object matching the `StreamChunk` shape. The client's parser also handles concatenated JSON objects (no newlines) for compatibility with some proxy configurations.
 
-Response header: `Content-Type: text/event-stream`
+The server sets the response header `Content-Type: text/event-stream`, but the body is NDJSON, not Server-Sent Events framing.
 
 Example raw stream output:
 
@@ -261,7 +268,7 @@ Example raw stream output:
 {"event":"message","message":{"role":"assistant","content":[{"type":"text","text":"The"}],"delta":true},"thread_id":"abc123"}
 {"event":"message","message":{"role":"assistant","content":[{"type":"text","text":" capital"}],"delta":true},"thread_id":"abc123"}
 {"event":"message","message":{"role":"assistant","content":[{"type":"text","text":" of France is Paris."}],"delta":false},"thread_id":"abc123"}
-{"event":"updates","state":{"messages":[...]},"thread_id":"abc123"}
+{"event":"updates","data":{"node":"MAIN"},"thread_id":"abc123"}
 ```
 
 ### Using curl
@@ -282,10 +289,10 @@ curl --no-buffer -X POST http://localhost:8000/v1/graph/stream \
 
 | Aspect | `invoke()` | `stream()` |
 |---|---|---|
-| Network requests | One per loop iteration | One streaming connection |
+| Network requests | One per loop iteration | One streaming connection per loop iteration |
 | When result arrives | After full graph execution | Token by token in real time |
 | Default `response_granularity` | `'full'` | `'low'` |
-| Remote tool handling | Automatic loop | Manual — check for `RemoteToolCallBlock` in message chunks |
+| Remote tool handling | Automatic loop | Automatic loop, chunks are still yielded as they arrive |
 | Return type | `Promise<InvokeResult>` | `AsyncGenerator<StreamChunk>` |
 | Best for | Background tasks, batch | Chat UIs, real-time displays |
 
@@ -295,7 +302,8 @@ curl --no-buffer -X POST http://localhost:8000/v1/graph/stream \
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `401` | Missing or invalid auth. | Set `auth` in config. |
+| `AgentFlowError` status `401` | Missing or invalid auth. | Set `auth` in the client config. See [auth](/docs/reference/client/auth). |
+| `Request timeout after Nms` | The connection exceeded the client `timeout`. | Raise `timeout` in the client config or retry. |
 | Stream stops mid-response | Server timeout or network issue. | Wrap the `for await` loop in try/catch and retry. |
 | `event: 'error'` chunks | Graph execution error. | Read `chunk.data` for the error message and check server logs. |
 
@@ -303,10 +311,10 @@ curl --no-buffer -X POST http://localhost:8000/v1/graph/stream \
 
 ## What you learned
 
-- `stream()` returns an `AsyncGenerator` — iterate it with `for await`.
+- `stream()` returns an `AsyncGenerator`: iterate it with `for await`.
 - `StreamEventType.MESSAGE` with `delta: true` is a partial token; `delta: false` is the final message.
-- `StreamEventType.UPDATES` and `STATE` require `response_granularity: 'partial'` or `'full'`.
-- Use `response_granularity: 'low'` for the best streaming performance in chat UIs.
+- `response_granularity` defaults to `'low'` for streaming; use `'full'` when you need state.
+- Remote tool calls are executed automatically between stream iterations, up to `recursion_limit`.
 - Use `stopGraph()` to cancel a running stream on the server.
 
 ## Next step

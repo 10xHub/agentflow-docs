@@ -4,23 +4,23 @@ seoTitle: Install 10xGraph (Python and TypeScript)
 description: Install 10xGraph and the API server with pip on Python 3.12 or newer, add provider extras and a checkpointer, verify the CLI, and install the TypeScript client.
 section: "Get started"
 order: 30
-updated: 2026-10-08
+updated: "2026-10-08"
 faq:
   - q: "Which Python version does 10xGraph need?"
     a: "Python 3.12 or newer. Both the core package and the API package declare requires-python >=3.12, so pip refuses to install them on an older interpreter."
   - q: "Do I need to install a provider extra?"
     a: "Yes, for the provider you use. The base 10xgraph install does not include the OpenAI, Google GenAI, or Anthropic SDKs; install the matching extra (e.g., pip install \"10xgraph[openai]\") and set that provider's API key in an environment variable."
   - q: "Which extra do I need to run in production?"
-    a: "Add pg_checkpoint, which brings in asyncpg and redis for PgCheckpointer. A durable checkpointer is required for production, enables replay-safe tools across process restarts, and lets you resume interrupted runs."
+    a: "Add pg_checkpoint, which brings in asyncpg and redis for PgCheckpointer. Use a durable checkpointer in production so conversation state survives process restarts."
   - q: "Is the Python import name different from the package name?"
-    a: "Yes. Install 10xgraph from PyPI, but import from tenxgraph (e.g., from tenxgraph.prebuilt.agent import ReactAgent). The agentflow import alias still works until 2.0 but triggers a deprecation warning."
+    a: "Yes. Install 10xgraph from PyPI, but import from tenxgraph (e.g., from tenxgraph.prebuilt.agent import ReactAgent). The agentflow import alias still works until 2.0 but is deprecated."
 ---
 
-10xGraph is a production-grade framework for building multi-agent AI systems. It requires Python 3.12 or newer and works on macOS, Linux, and Windows. This page covers installing the Python core, the API server, the TypeScript client, and verifying your setup.
+Install 10xGraph with `pip install 10xgraph` on Python 3.12 or newer, adding the extra for your model provider, then add `10xgraph-api` for the server and CLI. Import the library as `tenxgraph`. This page also covers optional extras, API keys, verifying the install, and the TypeScript client.
 
 ## What are the requirements?
 
-Start with Python 3.12 or newer and a package manager like pip or uv. You will also need API keys from the LLM provider you plan to use, and PostgreSQL and Redis if you deploy to production.
+Start with Python 3.12 or newer and a package manager like pip or uv. You also need an API key from the LLM provider you plan to use, and PostgreSQL and Redis if you deploy to production.
 
 | Requirement | What it is | When you need it |
 |---|---|---|
@@ -54,26 +54,26 @@ uv pip install 10xgraph 10xgraph-api
 
 ### Upgrading from the old names?
 
-If you previously installed `10xscale-agentflow` or `10xscale-agentflow-cli`, uninstall them first because they provide conflicting `agentflow` modules:
+If you previously installed `10xscale-agentflow` or `10xscale-agentflow-cli`, uninstall them first because the new packages also ship an `agentflow` alias module:
 
 ```bash
 pip uninstall 10xscale-agentflow-cli 10xscale-agentflow
 pip install 10xgraph 10xgraph-api
 ```
 
-The old names are not compatible with the new ones and will cause import errors.
+Keeping both sets installed can leave you importing the wrong copy.
 
 ## Which provider extra should I install?
 
 10xGraph does not include LLM provider SDKs by default. You must install the extra for the provider you use. Choose one based on which model you want to call:
 
-| Provider | Extra | Models |
+| Provider | Extra | SDK it installs |
 |---|---|---|
-| OpenAI | `openai` | GPT-4o, GPT-4 Turbo, o1 |
-| Google GenAI | `google-genai` | Gemini 2.0, Gemini 1.5 Flash, Gemini 1.5 Pro |
-| Anthropic | `anthropic` | Claude 3.7 Sonnet, Claude 3 Opus, Claude 3 Haiku |
-| Anthropic via Vertex AI | `anthropic-vertex` | Same, called through Google Cloud |
-| Anthropic via Bedrock | `anthropic-bedrock` | Same, called through AWS |
+| OpenAI | `openai` | `openai` |
+| Google GenAI | `google-genai` | `google-genai` |
+| Anthropic | `anthropic` | `anthropic` (1.x) |
+| Anthropic via Vertex AI | `anthropic-vertex` | `anthropic[vertex]` |
+| Anthropic via Bedrock | `anthropic-bedrock` | `anthropic[bedrock]` |
 
 Install the extra in the same pip command or add it later:
 
@@ -81,7 +81,7 @@ Install the extra in the same pip command or add it later:
 pip install "10xgraph[openai]" 10xgraph-api
 ```
 
-Combine extras with commas if you need more than one (e.g., for MCP tools, production state, and multimodal):
+Combine extras with commas if you need more than one (here OpenAI, a Postgres and Redis checkpointer, and MCP tools):
 
 ```bash
 pip install "10xgraph[openai,pg_checkpoint,mcp]" 10xgraph-api
@@ -93,19 +93,20 @@ Beyond model providers, optional extras unlock advanced features:
 
 | Extra | Includes | Use it for |
 |---|---|---|
-| `pg_checkpoint` | asyncpg, redis (production durable state) | Production deployments; enables replay-safe tools |
+| `pg_checkpoint` | asyncpg, redis (production durable state) | Production deployments with durable state |
 | `mcp` | fastmcp, mcp | Tools served by Model Context Protocol servers |
-| `sqlite_checkpoint` | SQLite checkpointer | Single-machine persistence without PostgreSQL or Redis |
-| `qdrant` | Qdrant vector store | Long-term semantic memory and retrieval |
-| `mem0` | Mem0 SDK | Managed vector memory store |
-| `kafka` | kafka-python | Stream execution events to Apache Kafka |
-| `rabbitmq` | pika | Stream execution events to RabbitMQ |
+| `sqlite_checkpoint` | aiosqlite | Single-machine persistence without PostgreSQL or Redis |
+| `qdrant` | qdrant-client | Long-term semantic memory and retrieval |
+| `mem0` | mem0ai | Managed vector memory store |
+| `kafka` | aiokafka | Stream execution events to Apache Kafka |
+| `rabbitmq` | aio-pika | Stream execution events to RabbitMQ |
 | `redis` | redis | Streaming and pub/sub without the checkpointer |
-| `otel` | opentelemetry-api, -sdk, instrumentations | Traces, metrics, and logs to observability backends |
-| `logfire` | logfire | Send traces to Pydantic's Logfire |
+| `otel` | opentelemetry-api, opentelemetry-sdk | Traces, metrics, and logs to observability backends |
+| `logfire` | logfire | Send traces to Logfire |
+| `images` | Pillow | Image handling in multimodal messages |
 | `langsmith` | langsmith | Send traces to LangSmith |
 
-The `all` extra installs most features and is useful for local development and CI, but pin specific versions before shipping to production.
+The `all` extra installs every other extra at once and is useful for local development and CI, but pin specific versions before shipping to production.
 
 Version pinning matters: 10xGraph is pre-1.0, so minor version updates may include breaking changes. Example of a safe lock:
 
@@ -124,14 +125,16 @@ Run both commands to confirm everything is set up:
 python -c "import tenxgraph; print(tenxgraph.__file__)"
 ```
 
-The first prints the CLI version (for `10xgraph-api`) and the installed core framework version. The second confirms the Python library (`tenxgraph`) is importable from your virtual environment and shows where it is installed.
+The first prints the `10xgraph-api` version and the installed core framework version. The second confirms the Python library (`tenxgraph`) is importable from your virtual environment and shows where it is installed.
 
-Expected output:
+Example output (the exact formatting and versions vary by release):
 
-```bash
+```text
 $ 10xgraph version
-CLI Version: 0.7.0
-Core Version: 0.10.1
+10xgraph-api
+  Version: 0.7.0
+10xgraph (core)
+  Version: 0.10.1
 
 $ python -c "import tenxgraph; print(tenxgraph.__file__)"
 /path/to/.venv/lib/python3.12/site-packages/tenxgraph/__init__.py
@@ -141,7 +144,7 @@ If the `10xgraph` command is not found, make sure your virtual environment is ac
 
 ## How do I set LLM provider API keys?
 
-Each provider reads its API key from an environment variable. You can export the variable in your shell session, or store it in a `.env` file that 10xGraph reads automatically.
+Each provider reads its API key from an environment variable. You can export the variable in your shell session, or store it in a `.env` file that `10xgraph api` loads at startup.
 
 Export the key in your shell:
 
@@ -153,17 +156,16 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 Or create a `.env` file in your project and point to it in `10xgraph.json`:
 
-```json
+```json title="10xgraph.json"
 {
-  "env": ".env",
-  "agent": "graph:app"
+  "agent": "graph.react:app",
+  "env": ".env"
 }
 ```
 
 Then define the variables in `.env` (do not commit this file):
 
-```bash
-# .env
+```bash title=".env"
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 ```
@@ -178,8 +180,7 @@ The variables 10xGraph recognizes are:
 
 Never commit `.env` or API keys to version control. Use `.gitignore` to exclude it:
 
-```bash
-# .gitignore
+```text title=".gitignore"
 .env
 .env.local
 ```
@@ -192,9 +193,9 @@ If you are building a JavaScript or TypeScript application that calls the 10xGra
 npm install @10xgraph/client
 ```
 
-The TypeScript client is currently published under the name `@10xscale/agentflow-client` and will be renamed to `@10xgraph/client` in an upcoming release. Check [the client documentation](/docs/client) for usage examples and the full API.
+Until the renamed package is published, install it as `@10xscale/agentflow-client`. It requires Node.js 18 or newer. The main class is `AgentFlowClient`; see the [client documentation](/docs/client) for usage.
 
-The client talks to a running `10xgraph api` server over HTTP and WebSocket. You call the server from your app using the client, passing a thread ID to maintain conversation history across multiple runs. See [Quickstart](/docs/get-started/first-agent) for a complete example.
+The client talks to a running `10xgraph api` server over HTTP, and you pass a thread ID to keep conversation history across runs. See the [Quickstart](/docs/get-started/first-agent) for a complete example.
 
 ## What if something goes wrong?
 

@@ -1,24 +1,22 @@
 ---
 title: Evaluation harness
 seoTitle: "Evaluation harness API reference (Python)"
-description: EvaluationRunner, ReporterManager, ExecutionResult and the pytest helpers for writing 10xGraph eval tests, with real signatures and defaults.
+description: "Pytest helpers, data models, batch runners and reporters for evaluating 10xGraph agents."
 section: Reference
 group: "Python library"
 order: 290
 label: Evaluation harness
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
-
-Use this page when you are wiring evaluations into a test suite or a CI job: batch
-runs across several agents, report file generation, pytest decorators and
-assertions, and the data objects a criterion receives.
+The evaluation harness is the set of pytest decorators, one-line runners, batch runners, reporters and result models in `tenxgraph.qa.evaluation` that put agent evaluations into unit tests and CI. Use this page for signatures, defaults and short examples of each helper.
 
 - [Evaluation](/docs/reference/python/evaluation) covers `AgentEvaluator`, `EvalSet` and `EvalCase`.
 - [Evaluation criteria](/docs/reference/python/evaluation-criteria) covers the criterion classes.
 
 ## Import paths
+
+The main evaluation classes and helpers are exported from `tenxgraph.qa.evaluation` and re-exported from `tenxgraph.qa`:
 
 ```python
 from tenxgraph.qa.evaluation import (
@@ -32,9 +30,12 @@ from tenxgraph.qa.evaluation import (
     EventCollector,
     ExecutionResult,
     NodeResponseData,
+    NodeDetail,
+    TokenUsage,
     SessionInput,
     MessageContent,
     PublisherCallback,
+    QuickEval,
     eval_test,
     parametrize_eval_cases,
     assert_eval_passed,
@@ -42,10 +43,145 @@ from tenxgraph.qa.evaluation import (
     create_eval_app,
     create_simple_eval_set,
     run_eval,
+    print_report,
 )
 ```
 
-Every one of these is also re-exported from `tenxgraph.qa`.
+---
+
+## Quick-start helpers
+
+### `QuickEval`
+
+Class with classmethods for rapid evaluation patterns without boilerplate. Each method takes a compiled graph and collector, runs evaluation with a preset or custom config, and returns an `EvalReport`. Every method accepts `print_results` (default `True`) to print the report to the console.
+
+#### `check`: quick single-test check
+
+```python
+@classmethod
+async def check(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    query: str,
+    expected_response_contains: str | None = None,
+    expected_response_equals: str | None = None,
+    expected_tools: list[str] | None = None,
+    threshold: float = 0.7,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Evaluates a single query against expected response text and/or tools. `expected_response_equals` takes precedence over `expected_response_contains`; if neither is given, the expected response defaults to the placeholder `"response"`. `expected_tools` takes tool names only (arguments are not compared). With `expected_tools` the tool threshold is `1.0` and `threshold` is the response threshold; without it the `quick_check` preset is used. Returns `EvalReport`.
+
+```python
+from tenxgraph.qa.evaluation import QuickEval, create_eval_app
+
+app, collector = create_eval_app(build_my_graph())
+report = await QuickEval.check(
+    app,
+    collector,
+    query="What is 2+2?",
+    expected_response_contains="4",
+    threshold=0.8,
+)
+```
+
+#### `batch`: batch evaluation from query/response pairs
+
+```python
+@classmethod
+async def batch(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    test_pairs: list[tuple[str, str]],
+    threshold: float = 0.7,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Runs multiple `(query, expected_response)` pairs. Each pair becomes one test case, scored with the `quick_check` preset where `threshold` is applied to the ROUGE match criterion.
+
+#### `preset`: evaluation using a preset config
+
+```python
+@classmethod
+async def preset(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    preset: EvalConfig,
+    eval_set: EvalSet | str,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Evaluates using a preset from `EvalPresets` (e.g. `EvalPresets.tool_usage()`) or a custom `EvalConfig`. `eval_set` may be an `EvalSet` object or a path to an eval set JSON file.
+
+#### `tool_usage`: evaluate tool invocation patterns
+
+```python
+@classmethod
+async def tool_usage(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    test_cases: list[tuple[str, str, list[str]]],
+    strict: bool = True,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Tests `(query, expected_response, expected_tools)` triples. Uses `EvalPresets.tool_usage(strict=strict)`. With `strict=True` the trajectory match type is `EXACT`; with `False` it is `IN_ORDER`, which allows extra tool calls between the expected ones.
+
+#### `conversation_flow`: evaluate a multi-turn conversation
+
+```python
+@classmethod
+async def conversation_flow(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    conversation: list[tuple[str, str]],
+    threshold: float = 0.8,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Builds one multi-turn case from `(user_query, expected_response)` pairs and scores it with `EvalPresets.conversation_flow(threshold=threshold)`.
+
+#### `from_builder`: evaluate an `EvalSetBuilder`
+
+```python
+@classmethod
+async def from_builder(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    builder: EvalSetBuilder,
+    config: EvalConfig | None = None,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Calls `builder.build()` and evaluates the result. `config` defaults to `EvalPresets.quick_check()`.
+
+#### `run_sync`: synchronous wrapper
+
+```python
+@classmethod
+def run_sync(
+    graph: CompiledGraph,
+    collector: TrajectoryCollector,
+    eval_set: EvalSet | str,
+    config: EvalConfig | None = None,
+    verbose: bool = True,
+    print_results: bool = True,
+) -> EvalReport
+```
+
+Runs the evaluation with `asyncio.run`, so it cannot be called from inside a running event loop. `config` defaults to `EvalPresets.quick_check()`.
 
 ---
 
@@ -57,10 +193,7 @@ Every one of these is also re-exported from `tenxgraph.qa`.
 def create_eval_app(graph, *, capture_all_events: bool = True) -> tuple[Any, Any]
 ```
 
-Compiles an **uncompiled** `StateGraph` with an `InMemoryCheckpointer` and a
-`TrajectoryCollector` already wired in, and returns `(compiled_app, collector)` —
-exactly the pair `AgentEvaluator` expects. This is the shortest correct way to set
-up evaluation.
+Compiles an uncompiled `StateGraph` with an `InMemoryCheckpointer` and `TrajectoryCollector` already wired in. Returns `(compiled_app, collector)`, the pair `AgentEvaluator` expects. This is the shortest way to set up evaluation.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -86,8 +219,7 @@ def create_simple_eval_set(
 ) -> EvalSet
 ```
 
-Builds an `EvalSet` from `(user_query, expected_response, name)` tuples. Each case
-gets the id `case_{index}`; a `None` name becomes `"Case {index}"`.
+Builds an `EvalSet` from `(user_query, expected_response, name)` tuples. Each case gets id `case_{index}`; a `None` name becomes `"Case {index}"`.
 
 ```python
 from tenxgraph.qa.evaluation import create_simple_eval_set
@@ -113,8 +245,7 @@ async def run_eval(
 ) -> EvalReport
 ```
 
-Constructs an `AgentEvaluator` and runs one eval set file. `config` defaults to
-`EvalConfig.default()`. `eval_set_path` is a path to an eval set JSON file.
+Constructs an `AgentEvaluator` and runs one eval set file. `config` defaults to `EvalConfig.default()`. `eval_set_path` is a path to an eval set JSON file.
 
 ```python
 from tenxgraph.qa.evaluation import create_eval_app, run_eval
@@ -135,10 +266,7 @@ def eval_test(
 ) -> Callable
 ```
 
-Decorator for an **async** test function. The decorated function must return a
-`(graph, collector)` tuple; the decorator then runs the eval set and calls
-`pytest.fail()` when `report.summary.pass_rate` is below `threshold`, listing every
-failed case.
+Decorator for an **async** test function. The decorated function must return a `(graph, collector)` tuple; the decorator then runs the eval set and calls `pytest.fail()` when `report.summary.pass_rate` is below `threshold`, listing every failed case.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -146,8 +274,7 @@ failed case.
 | `config` | `EvalConfig \| None` | `None` | Defaults to `EvalConfig.default()`. |
 | `threshold` | `float` | `1.0` | Required pass rate. |
 
-Returning `None` from the function skips the test; returning anything that is not a
-2-tuple fails it.
+Returning `None` from the function skips the test; returning anything that is not a 2-tuple fails it.
 
 ```python
 from tenxgraph.qa.evaluation import create_eval_app, eval_test
@@ -165,10 +292,7 @@ The decorator always runs the evaluation with `verbose=True`.
 def parametrize_eval_cases(eval_file: str) -> Callable
 ```
 
-Loads the eval set **at decoration time** and returns
-`pytest.mark.parametrize("eval_case", cases, ids=[...])`, one parameter per
-`EvalCase`, with `eval_id` used as the test id. The file must exist during test
-collection.
+Loads the eval set at decoration time and returns `pytest.mark.parametrize("eval_case", cases, ids=[...])`, one parameter per `EvalCase`, with `eval_id` used as the test id. The file must exist during test collection.
 
 ```python
 from tenxgraph.qa.evaluation import AgentEvaluator, parametrize_eval_cases
@@ -187,8 +311,7 @@ async def test_single_case(eval_case, trajectory_app):
 def assert_eval_passed(report: EvalReport, min_pass_rate: float = 1.0) -> None
 ```
 
-Raises `AssertionError` when `report.summary.pass_rate < min_pass_rate`. The message
-lists the name (or id) of every failed case.
+Raises `AssertionError` when `report.summary.pass_rate < min_pass_rate`. The message lists the name (or id) of every failed case.
 
 ### `assert_criterion_passed`
 
@@ -200,10 +323,7 @@ def assert_criterion_passed(
 ) -> None
 ```
 
-Looks `criterion` up in `report.summary.criterion_stats` and asserts its
-`avg_score` is at least `min_score`. Raises `AssertionError` if the criterion is
-absent from the report. `criterion` is the criterion's `name` attribute, for example
-`"tool_trajectory_avg_score"` or `"hallucinations_v1"`.
+Looks `criterion` up in `report.summary.criterion_stats` and asserts its `avg_score` is at least `min_score`. Raises `AssertionError` if the criterion is absent from the report. `criterion` is the criterion's `name` attribute, for example `"tool_trajectory_avg_score"` or `"hallucinations_v1"`.
 
 ```python
 from tenxgraph.qa.evaluation import assert_criterion_passed, assert_eval_passed
@@ -214,8 +334,7 @@ assert_criterion_passed(report, "tool_trajectory_avg_score", min_score=0.95)
 
 ### `EvalTestCase`
 
-Lightweight descriptor for a case in a pytest suite. It carries metadata only — it
-does not run anything and is not the same type as `EvalCase`.
+Lightweight descriptor for a case in a pytest suite. It carries metadata only; it does not run anything and is not the same type as `EvalCase`.
 
 | Parameter | Type | Default |
 |---|---|---|
@@ -231,9 +350,7 @@ Container for pytest fixtures, intended for `conftest.py`.
 |---|---|---|---|
 | `default_config` | `EvalConfig \| None` | `None` | Config used when the factory is called without one. |
 
-`evaluator_factory()` returns a callable
-`factory(graph, collector, config=None) -> AgentEvaluator`, falling back to
-`default_config` and then to `EvalConfig.default()`.
+`evaluator_factory()` returns a callable `factory(graph, collector, config=None) -> AgentEvaluator`, falling back to `default_config` and then to `EvalConfig.default()`.
 
 ```python
 # conftest.py
@@ -248,9 +365,7 @@ def make_evaluator():
 
 ### `EvalPlugin`
 
-Pytest plugin scaffold with `pytest_configure` and
-`pytest_collection_modifyitems` hooks. Both hooks are currently no-ops; subclass it
-if you need custom collection behaviour.
+Pytest plugin scaffold with `pytest_configure` and `pytest_collection_modifyitems` hooks. Both hooks are currently no-ops; subclass it if you need custom collection behaviour.
 
 ---
 
@@ -258,8 +373,7 @@ if you need custom collection behaviour.
 
 ### `EvaluationRunner`
 
-Runs several `(graph, collector, eval_set)` triples in sequence and keeps every
-report.
+Runs several `(graph, collector, eval_set)` triples in sequence and keeps every report.
 
 ```python
 class EvaluationRunner:
@@ -284,10 +398,7 @@ async def run(
 ) -> dict[str, EvalReport]
 ```
 
-Each tuple is `(compiled_graph, collector, eval_set_or_path)`, and each graph must
-have been compiled with its own collector's callback manager. After all runs,
-`run()` calls `ReporterManager.run_all()` once per report unless
-`config.reporter.enabled` is `False`; reporter failures are logged, never raised.
+Each tuple is `(compiled_graph, collector, eval_set_or_path)`, and each graph must have been compiled with its own collector's callback manager. After all runs, `run()` calls `ReporterManager.run_all()` once per report unless `config.reporter.enabled` is `False`; reporter failures are logged, never raised.
 
 ```python
 from tenxgraph.qa.evaluation import EvaluationRunner, create_eval_app
@@ -310,6 +421,20 @@ Reports sharing an `eval_set_id` overwrite each other in `results`.
 ---
 
 ## Reporting
+
+### `print_report`
+
+```python
+def print_report(report: EvalReport, verbose: bool = False, use_color: bool = True) -> None
+```
+
+Convenience function to print a report to console. `verbose=True` shows detailed per-case output; `use_color=True` enables ANSI colors.
+
+```python
+from tenxgraph.qa.evaluation import print_report
+
+print_report(report, verbose=True)
+```
 
 ### `ReporterManager`
 
@@ -337,11 +462,8 @@ def run_all(report: EvalReport, output_dir: str | None = None) -> ReporterOutput
 Behaviour worth knowing:
 
 - Returns an empty `ReporterOutput()` immediately when `config.enabled` is `False`.
-- Runs console, JSON, HTML and JUnit XML in that order. One reporter raising does
-  not stop the others; the failure is appended to `ReporterOutput.errors`.
-- Filenames are `{sanitised_eval_set_id}_{YYYYmmdd_HHMMSS}` when
-  `config.timestamp_files` is `True` (the default), otherwise just the sanitised id.
-  The JUnit file gets a `_junit.xml` suffix.
+- Runs console, JSON, HTML and JUnit XML in that order. One reporter raising does not stop the others; the failure is appended to `ReporterOutput.errors`.
+- Filenames are `{sanitised_eval_set_id}_{YYYYmmdd_HHMMSS}` when `config.timestamp_files` is `True` (the default), otherwise just the sanitised id. The JUnit file gets a `_junit.xml` suffix.
 
 ### `ReporterOutput`
 
@@ -362,12 +484,11 @@ Dataclass returned by `run_all()`.
 
 ---
 
-## Result and input data models
+## Result and token data models
 
 ### `ExecutionResult`
 
-Pydantic model built from the collector after each case and handed to every
-criterion as the `actual` argument.
+Pydantic model built from the collector after each case and handed to every criterion as the `actual` argument.
 
 | Field / property | Type | Description |
 |---|---|---|
@@ -382,11 +503,35 @@ criterion as the `actual` argument.
 | `tool_trajectory` | property `list[TrajectoryStep]` | Only the `StepType.TOOL` steps. |
 | `get_tool_names()` | `list[str]` | Tool names in call order. |
 
-`to_dict()` still exists but is deprecated — use `model_dump()`.
+### `TokenUsage`
+
+Dataclass tracking token counts from a single LLM call or aggregated group of calls. Supports addition via `__add__` for summing across calls.
+
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `input_tokens` | `int` | `0` | Prompt / context tokens. |
+| `output_tokens` | `int` | `0` | Completion tokens. |
+| `cache_read_tokens` | `int` | `0` | Tokens read from prompt cache. |
+| `cache_creation_tokens` | `int` | `0` | Tokens written to create cache. |
+
+| Property / Method | Type | Description |
+|---|---|---|
+| `total_tokens` | `int` (property) | Sum of input and output tokens. |
+| `__add__(other)` | `TokenUsage` | Combine two instances field-by-field. |
+| `to_dict()` | `dict[str, int]` | Serialise all fields plus `total_tokens` to a plain dict. |
+
+```python
+from tenxgraph.qa.evaluation import TokenUsage
+
+usage = TokenUsage(input_tokens=100, output_tokens=50)
+print(usage.total_tokens)  # 150
+total = usage + TokenUsage(input_tokens=50, output_tokens=25)
+print(total.to_dict())  # {'input_tokens': 150, 'output_tokens': 75, ...}
+```
 
 ### `NodeResponseData`
 
-One AI-node invocation, as stored in `ExecutionResult.node_responses`.
+One AI-node invocation snapshot stored inside `ExecutionResult.node_responses`.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -399,10 +544,21 @@ One AI-node invocation, as stored in `ExecutionResult.node_responses`.
 | `timestamp` | `float` | `0.0` | Completion time. |
 | `token_usage` | `TokenUsage` | empty | Tokens for this call. |
 
+### `NodeDetail`
+
+Per-node LLM I/O snapshot for transparent debugging and per-node token accounting. Captures exactly what was sent to the model and what it returned. It is a Pydantic model stored in the `node_details` list of `EvalCaseResult`; `token_usage` serialises through `TokenUsage.to_dict()`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `node_name` | `str` | `""` | Name of the graph node that ran. |
+| `input_messages` | `list[dict[str, Any]]` | `[]` | Conversation history sent to the LLM. |
+| `response_text` | `str` | `""` | LLM text output; empty on tool-call turns. |
+| `token_usage` | `TokenUsage` | empty | Tokens consumed by this LLM call. |
+| `timestamp` | `float` | `0.0` | Wall-clock time when invocation completed. |
+
 ### `EvalSummary`
 
-Aggregate statistics on `EvalReport.summary`. Build one from case results with
-`EvalSummary.from_results(results)`.
+Aggregate statistics on `EvalReport.summary`. Build one from case results with `EvalSummary.from_results(results)`.
 
 | Field | Type | Description |
 |---|---|---|
@@ -418,9 +574,7 @@ Aggregate statistics on `EvalReport.summary`. Build one from case results with
 | `per_case_token_usage` | `dict[str, TokenUsage]` | Keyed by `eval_id`. |
 | `avg_tokens_per_case` | `float` | Mean total tokens per case. |
 
-The counting invariant is
-`total_cases == passed_cases + failed_cases + error_cases`; errored cases are never
-also counted as failed.
+The counting invariant is `total_cases == passed_cases + failed_cases + error_cases`; errored cases are never also counted as failed.
 
 ### `SessionInput`
 
@@ -435,8 +589,7 @@ Initial session configuration on `EvalCase.session_input`.
 
 ### `MessageContent`
 
-Simplified message used for the user turn and the expected response of an
-`Invocation`.
+Simplified message used for the user turn and the expected response of an `Invocation`.
 
 | Field | Type | Default |
 |---|---|---|
@@ -463,8 +616,7 @@ session = SessionInput(user_id="alice", state={"locale": "fr"})
 
 ### `EventCollector`
 
-Stores every raw `EventModel` fired during a run, including events
-`TrajectoryCollector` ignores. Use it for debugging, not for scoring.
+Stores every raw `EventModel` fired during a run, including events `TrajectoryCollector` ignores. Use it for debugging, not for scoring.
 
 | Member | Kind | Description |
 |---|---|---|
@@ -488,20 +640,14 @@ node_events = collector.filter_by_event(Event.NODE_EXECUTION)
 
 ### `PublisherCallback`
 
-Adapts any `BasePublisher` (typically a `TrajectoryCollector`) into an
-`AfterInvokeCallback`. It builds an `EventModel` per invocation and awaits
-`publisher.publish()` directly, avoiding the background-task race of the standard
-publish path. `create_eval_app` and `make_trajectory_callback` wire this up for you;
-use it directly only for custom callback setups.
+Adapts any `BasePublisher` (typically a `TrajectoryCollector`) into an `AfterInvokeCallback`. It builds an `EventModel` per invocation and awaits `publisher.publish()` directly, avoiding the background-task race of the standard publish path. `create_eval_app` and `make_trajectory_callback` wire this up for you; use it directly only for custom callback setups.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `publisher` | `BasePublisher` | required | Destination for the built events. |
 | `config` | `dict \| None` | `None` | Reads `thread_id` and `run_id`, stamped onto every event. |
 
-Registered for `InvocationType.AI` it emits `Event.NODE_EXECUTION`; for
-`InvocationType.TOOL` and `InvocationType.MCP` it emits `Event.TOOL_EXECUTION`.
-Other invocation types produce no event.
+Registered for `InvocationType.AI` it emits `Event.NODE_EXECUTION`; for `InvocationType.TOOL` and `InvocationType.MCP` it emits `Event.TOOL_EXECUTION`. Other invocation types produce no event.
 
 ```python
 from tenxgraph.qa.evaluation import PublisherCallback, TrajectoryCollector

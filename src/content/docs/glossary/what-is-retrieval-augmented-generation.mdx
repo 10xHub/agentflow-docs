@@ -1,14 +1,14 @@
 ---
 title: What Is RAG (Retrieval-Augmented Generation)? Python Guide
-seoTitle: "What is RAG? Retrieval-augmented generation"
+seoTitle: What is RAG? Retrieval-augmented generation
 description: RAG (Retrieval-Augmented Generation) has an agent retrieve relevant documents before it answers. Learn how it works and build a RAG agent in Python.
 section: Glossary
 order: 80
 label: What is RAG?
-updated: "2026-07-21"
+updated: '2026-07-21'
 faq:
   - q: What is the difference between RAG and a database query?
-    a: A database query retrieves rows that exactly match a condition (WHERE user_id = 123). RAG retrieves documents by semantic similarity — it finds passages that are conceptually related to a query even if they don't share exact keywords. This is done by embedding both the query and the documents as vectors and finding the nearest neighbors in vector space.
+    a: A database query retrieves rows that exactly match a condition (WHERE user_id = 123). RAG retrieves documents by semantic similarity; it finds passages that are conceptually related to a query even if they don't share exact keywords. This is done by embedding both the query and the documents as vectors and finding the nearest neighbors in vector space.
   - q: What is a vector store?
     a: A vector store is a database optimized for storing and searching dense vector embeddings. When you add a document to a vector store, it is first converted to a numerical vector (embedding) by an embedding model. Search finds documents whose vectors are closest to the query vector. Popular vector stores include Qdrant, Pinecone, Weaviate, and PgVector.
   - q: How many documents should I retrieve in a RAG query?
@@ -16,7 +16,7 @@ faq:
   - q: Can RAG work with 10xGraph's multi-turn conversations?
     a: Yes. When using 10xGraph's checkpointer for thread persistence, each turn builds on previous turns. The RAG retrieval can use both the current query and the conversation history to retrieve more relevant documents for follow-up questions.
   - q: What is the difference between RAGAgent and a ReAct agent with a search tool?
-    a: A ReAct agent with a search tool retrieves documents on demand — the LLM decides when to search. RAGAgent retrieves documents at the start of every turn as a mandatory first step, then generates with the context pre-loaded. RAGAgent is better for Q&A over a fixed knowledge base; a ReAct agent with a search tool is better for open-ended tasks where search is one of many possible actions.
+    a: A ReAct agent with a search tool retrieves documents on demand; the LLM decides when to search. RAGAgent retrieves documents at the start of every turn as a mandatory first step, then generates with the context pre-loaded. RAGAgent is better for Q&A over a fixed knowledge base; a ReAct agent with a search tool is better for open-ended tasks where search is one of many possible actions.
 ---
 
 **Retrieval-Augmented Generation (RAG) is an AI pattern where an agent searches a knowledge base for documents relevant to the user's query and includes them in the LLM's context before generating a response.** This lets the agent answer questions about private data, real-time information, or large document sets that could not fit in the model's context window.
@@ -59,34 +59,50 @@ The retrieval step turns a potentially infinite knowledge base into a focused, q
 
 10xGraph ships a prebuilt `RAGAgent` that handles retrieval, context injection, and generation:
 
-```python
-from tenxgraph.prebuilt import RAGAgent
-from tenxgraph.core.state import AgentState, Message
+```python title="rag_agent.py"
+import asyncio
 
-agent = RAGAgent(
-    model="google/gemini-2.5-flash",
-    store_url="qdrant://localhost:6333",
-    collection_name="company_docs",
-    system_prompt=[{
-        "role": "system",
-        "content": "Answer questions using the retrieved documents. Cite your sources."
-    }],
+from tenxgraph.core.graph.agent import Agent
+from tenxgraph.core.state.message import Message
+from tenxgraph.prebuilt.agent.rag import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+
+# Search and indexing must use the same user_id, because QdrantStore filters by it
+CONFIG = {"user_id": "kb"}
+
+store = create_local_qdrant_store(
+    path="./knowledge_base",
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
 )
 
-app = agent.compile()
 
-result = app.invoke(
-    {"messages": [Message.text_message("What is the refund policy?")]},
-    config={"thread_id": "support-123"},
-)
-print(result["messages"][-1].text())
+async def main():
+    # Index a document chunk once; skip this step on later runs
+    await store.astore(config=CONFIG, content="Returns are accepted within 30 days with a receipt.")
+
+    rag = RAGAgent(
+        store=store,
+        agent=Agent(model="gpt-4o-mini", provider="openai"),
+        top_k=5,
+        store_config=CONFIG,  # passed to every store.asearch call
+    )
+    app = rag.compile()
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("What is the refund policy?", role="user")]},
+        config={"thread_id": "support-123"},
+    )
+    print(result["messages"][-1].text())
+
+
+asyncio.run(main())
 ```
 
 For a custom RAG pipeline with full control over the retrieval and injection steps, build the graph manually:
 
 ```python
 from tenxgraph.core.graph import Agent, StateGraph, ToolNode
-from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state import AgentState
 from tenxgraph.utils import END
 
 # Retrieval as a tool
@@ -97,8 +113,9 @@ def search_docs(query: str) -> str:
 
 tool_node = ToolNode([search_docs])
 agent_node = Agent(
-    model="google/gemini-2.5-flash",
-    tool_node="RETRIEVE",
+    model="gemini-2.5-flash",
+    provider="google",
+    tool_node=tool_node,
     system_prompt=[{
         "role": "system",
         "content": "Always search for relevant documents before answering. Cite what you find."
@@ -128,7 +145,7 @@ Teams often debate whether to fine-tune a model or use RAG to add domain knowled
 | | RAG | Fine-tuning |
 |--|-----|------------|
 | Knowledge update | Real-time (update the vector store) | Requires retraining |
-| Private documents | Yes — documents never leave your infra | Bakes data into model weights |
+| Private documents | Yes: documents never leave your infra | Bakes data into model weights |
 | Cost | Inference + retrieval | High upfront training cost |
 | Accuracy for facts | High (cites sources) | Can hallucinate memorized facts |
 | Best for | Dynamic, growing, or private knowledge | Style, format, and domain-specific reasoning patterns |
@@ -143,7 +160,6 @@ Most production systems use RAG for facts and optionally fine-tune for tone or d
 |-------|--------------|---------|
 | Qdrant | `10xgraph[qdrant]` | Self-hosted or Qdrant Cloud |
 | Mem0 | `10xgraph[mem0]` | User-level long-term memory with Mem0 |
-| PgVector | `10xgraph[pg_checkpoint]` | Postgres-native vector search |
 
 ## Next steps
 

@@ -1,24 +1,23 @@
 ---
 title: Memory
-seoTitle: "Memory store methods in the TS client"
-description: Reference for all memory store methods on AgentFlowClient, store, search, list, update, and delete memories.
+seoTitle: Memory store methods in the TypeScript client
+description: 'Reference for memory store methods in the 10xGraph TypeScript client: store, search, retrieve, update and delete memories with type-based filtering and vector similarity.'
 section: Reference
-group: "TypeScript client"
+group: TypeScript client
 order: 530
 label: Memory
-updated: "2026-07-21"
+updated: '2026-10-08'
 ---
 
-The memory API lets you store and retrieve long-term memories across threads. Memories are typed (episodic, semantic, procedural, etc.) and support vector similarity search, temporal retrieval, and hybrid strategies.
+The memory methods on `AgentFlowClient` store, search, read, update, delete and bulk-forget long-term memories on the server's configured store. Each memory has a type, a category and optional metadata, and you retrieve memories by similarity, time, relevance or a hybrid strategy. For a task-oriented walkthrough, see [Use the memory API](/docs/client/use-memory-api).
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
-The memory endpoints require the `store` field to be configured in `10xgraph.json`. Without a store, endpoints return empty results.
+The memory endpoints require the `store` field to be configured in `10xgraph.json`. Without a store, the server answers memory requests with status `503` ("Store is not configured").
 
 </aside>
 
-**Endpoints base path:** `/v1/store`  
-**Source:** `src/endpoints/storeMemory.ts`, `src/endpoints/searchMemory.ts`, `src/endpoints/getMemory.ts`, `src/endpoints/updateMemory.ts`, `src/endpoints/deleteMemory.ts`, `src/endpoints/listMemories.ts`, `src/endpoints/forgetMemories.ts`
+All endpoints live under the base path `/v1/store`. Every method also accepts store-level `config` and `options` objects that the server forwards to the store backend.
 
 ---
 
@@ -29,7 +28,7 @@ import {
   MemoryType,
   RetrievalStrategy,
   DistanceMetric,
-} from '10xgraph-client';
+} from '@10xgraph/client';
 ```
 
 ### `MemoryType`
@@ -86,12 +85,12 @@ console.log('Stored memory ID:', response.data.memory_id);
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `content` | `string` | ✅ | The text content to store as a memory. |
-| `memory_type` | `MemoryType` | ✅ | The type of memory. Controls how the store indexes and retrieves it. |
-| `category` | `string` | ✅ | Arbitrary category string for grouping related memories. |
-| `metadata` | `Record<string, any>` | ❌ | Optional key-value metadata stored alongside the memory. |
-| `config` | `Record<string, any>` | ❌ | Optional store-level config (backend-specific). |
-| `options` | `Record<string, any>` | ❌ | Optional store-level options (backend-specific). |
+| `content` | `string` | Yes | The text content to store as a memory. |
+| `memory_type` | `MemoryType` | Yes | The type of memory. Controls how the store indexes and retrieves it. |
+| `category` | `string` | Yes | Arbitrary category string for grouping related memories. |
+| `metadata` | `Record<string, any>` | No | Optional key-value metadata stored alongside the memory. |
+| `config` | `Record<string, any>` | No | Optional store-level config (backend-specific). |
+| `options` | `Record<string, any>` | No | Optional store-level options (backend-specific). |
 
 ### `StoreMemoryResponse`
 
@@ -138,7 +137,7 @@ for (const result of response.data.results) {
 | `memory_type` | `MemoryType` | `EPISODIC` | Filter by memory type. |
 | `category` | `string` | `''` | Filter by category. Empty string returns all categories. |
 | `limit` | `number` | `10` | Maximum number of results to return. |
-| `score_threshold` | `number` | `0` | Minimum similarity score (0–1). Results below this threshold are excluded. |
+| `score_threshold` | `number` | `0` | Minimum similarity score (0 to 1). Results below this threshold are excluded. |
 | `filters` | `Record<string, any>` | `{}` | Additional key-value filters matched against memory metadata. |
 | `retrieval_strategy` | `RetrievalStrategy` | `SIMILARITY` | Which retrieval algorithm to use. |
 | `distance_metric` | `DistanceMetric` | `COSINE` | Which distance metric to use for vector search. |
@@ -159,7 +158,7 @@ interface SearchMemoryResponse {
 interface MemoryResult {
   id: string;
   content: string;
-  score: number;              // Similarity score (0–1, higher is more similar)
+  score: number;              // Similarity score (0 to 1, higher is more similar)
   memory_type: string;
   metadata: Record<string, any>;
   vector: number[];           // The embedding vector (may be empty in some backends)
@@ -173,9 +172,9 @@ interface MemoryResult {
 
 ## `getMemory(memoryId, options?)`
 
-Fetch a single memory by its ID.
+Fetch a single memory by its ID. It returns the memory as a `MemoryResult` (the same shape search returns).
 
-**Endpoint:** `GET /v1/store/memories/{memoryId}`
+**Endpoint:** `POST /v1/store/memories/{memoryId}`
 
 ```ts
 const response = await client.getMemory('mem-abc123');
@@ -195,7 +194,7 @@ console.log(response.data.memory.score);
 
 ## `updateMemory(memoryId, content, options?)`
 
-Replace the content of an existing memory. The memory's type, category, and metadata can also be updated via `options`.
+Replace the content of an existing memory. You can pass new metadata through `options.metadata`; the memory's type and category cannot be changed with this method.
 
 **Endpoint:** `PUT /v1/store/memories/{memoryId}`
 
@@ -217,7 +216,7 @@ await client.updateMemory(
 | `content` | `string` | The new text content. Replaces the previous content. |
 | `options.config` | `Record<string, any>` | Optional store-level config. |
 | `options.options` | `Record<string, any>` | Optional store-level options. |
-| `options.metadata` | `Record<string, any>` | Updated metadata. Merged with or replaces existing metadata (backend-dependent). |
+| `options.metadata` | `Record<string, any>` | Updated metadata. Sent as `{}` when omitted. Whether it merges with or replaces existing metadata depends on the store backend. |
 
 ### `UpdateMemoryResponse`
 
@@ -225,7 +224,7 @@ await client.updateMemory(
 interface UpdateMemoryResponse {
   data: {
     success: boolean;
-    data?: any;
+    data: Record<string, any>;
   };
   metadata: ResponseMetadata;
 }
@@ -252,13 +251,25 @@ console.log('Deleted:', response.data.success);
 | `options.config` | `Record<string, any>` | Optional store-level config. |
 | `options.options` | `Record<string, any>` | Optional store-level options. |
 
+### `DeleteMemoryResponse`
+
+```ts
+interface DeleteMemoryResponse {
+  data: {
+    success: boolean;
+    data: string;
+  };
+  metadata: ResponseMetadata;
+}
+```
+
 ---
 
 ## `listMemories(options?)`
 
-List all stored memories (optionally with a limit).
+List stored memories, up to a limit that defaults to 100. It returns `response.data.memories`, an array of `MemoryResult`.
 
-**Endpoint:** `GET /v1/store/memories`
+**Endpoint:** `POST /v1/store/memories/list`
 
 ```ts
 const response = await client.listMemories({ limit: 100 });
@@ -273,7 +284,7 @@ for (const mem of response.data.memories) {
 
 | Parameter | Type | Description |
 |---|---|---|
-| `options.limit` | `number` | Maximum number of memories to return. |
+| `options.limit` | `number` | Maximum number of memories to return. Default `100`. |
 | `options.config` | `Record<string, any>` | Optional store-level config. |
 | `options.options` | `Record<string, any>` | Optional store-level options. |
 
@@ -281,9 +292,9 @@ for (const mem of response.data.memories) {
 
 ## `forgetMemories(options?)`
 
-Bulk-delete memories matching a filter. More efficient than calling `deleteMemory()` in a loop.
+Bulk-delete memories matching a type, category or metadata filter. It is one request instead of a `deleteMemory()` call per memory. Only the fields you pass are sent.
 
-**Endpoint:** `DELETE /v1/store/memories`
+**Endpoint:** `POST /v1/store/memories/forget`
 
 ```ts
 // Delete all episodic memories in the 'session_temp' category
@@ -314,6 +325,7 @@ await client.forgetMemories({
 interface ForgetMemoriesResponse {
   data: {
     success: boolean;
+    data: Record<string, any>;
   };
   metadata: ResponseMetadata;
 }
@@ -323,13 +335,15 @@ interface ForgetMemoriesResponse {
 
 ## Complete example: memory-enhanced agent
 
-```ts
+This example searches memory before each call, passes the hits to the agent as a system message, then stores the question as an episodic memory. It assumes a running server with a configured store.
+
+```ts title="memory-agent.ts"
 import {
   AgentFlowClient,
   Message,
   MemoryType,
   RetrievalStrategy,
-} from '10xgraph-client';
+} from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -369,26 +383,32 @@ async function invokeWithMemory(userInput: string) {
 
   return result;
 }
+
+const result = await invokeWithMemory('What theme should the dashboard use?');
+console.log(result.messages);
 ```
 
 ---
 
 ## Common errors
 
+Failed requests from every method except `forgetMemories()` throw `AgentFlowError` with a `statusCode`. `forgetMemories()` throws a plain `Error` with the message `Forget memories failed: <status> <statusText>`. See [Client errors](/docs/reference/client/errors) for the full error class.
+
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `404` | Memory not found (wrong ID or deleted). | Check the ID is correct. |
-| `AgentFlowError` status `503` | Store not configured or unavailable. | Check `store` field in `10xgraph.json` and the store backend status. |
+| status `404` | Memory not found (wrong ID or already deleted). | Check the ID returned by `storeMemory()`. |
+| status `422` | `searchMemory()` was called with an empty `query`. | Pass a non-empty query string. |
+| status `503` | Store not configured or unavailable. | Check the `store` field in `10xgraph.json` and the store backend status. |
 
 ---
 
 ## What you learned
 
-- Use `MemoryType` to categorise memories for efficient retrieval.
-- `searchMemory()` with `RetrievalStrategy.SIMILARITY` performs vector search, the store must support embeddings.
-- `listMemories()` returns everything (use `limit` to paginate).
-- `forgetMemories()` bulk-deletes by type, category, or filter.
+- Use `MemoryType` to categorize memories and filter on it when searching.
+- `searchMemory()` with `RetrievalStrategy.SIMILARITY` performs vector search, so the store must support embeddings.
+- `listMemories()` returns up to `limit` memories (default 100); it has no offset.
+- `forgetMemories()` bulk-deletes by type, category or filter.
 
 ## Next step
 
-See [`reference/client/files`](/docs/reference/client/files) to learn how to upload and reference media files in multimodal messages.
+See [Files](/docs/reference/client/files) to learn how to upload and reference media files in multimodal messages.

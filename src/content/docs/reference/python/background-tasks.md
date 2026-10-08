@@ -1,39 +1,44 @@
 ---
 title: Background Task Manager
-description: BackgroundTaskManager — launch and track asyncio tasks from node functions without blocking the graph response.
+description: "Reference for BackgroundTaskManager: create, track, wait for, cancel and shut down fire-and-forget asyncio tasks from node functions."
 section: Reference
 group: "Python library"
 order: 160
 label: Background Task Manager
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
-
-Use `BackgroundTaskManager` when a node needs to do slow I/O (send a webhook, update a CRM, flush telemetry) without delaying the response to the caller. The graph returns immediately; the background task runs concurrently and is cleaned up on shutdown.
+`BackgroundTaskManager` launches fire-and-forget async operations from inside a node without blocking the graph response. It tracks each task, applies an optional timeout, logs failures, caps the number of in-flight tasks, and cancels everything on shutdown. Use it for slow I/O such as webhook posts or telemetry flushes. For worked examples, see [Run background tasks](/docs/guides/run-background-tasks).
 
 ## Import path
 
 ```python
 from tenxgraph.utils.background_task_manager import BackgroundTaskManager, TaskMetadata
-# also available from the top-level package:
+# also available from:
 from tenxgraph.utils import BackgroundTaskManager
 ```
 
----
+## Getting the instance
 
-## Getting the instance in a node
-
-`BackgroundTaskManager` is registered in the dependency container automatically by `StateGraph`. Declare it as a parameter and the framework injects it:
+`StateGraph` creates one `BackgroundTaskManager` and binds it in the dependency container, so you receive it by declaring a parameter annotated with the class in any node function:
 
 ```python
+import asyncio
+
 from tenxgraph.utils.background_task_manager import BackgroundTaskManager
+
+
+async def send_webhook(user_id: str | None) -> None:
+    # Stand-in for slow I/O such as an HTTP POST
+    await asyncio.sleep(2)
+
 
 async def my_node(
     state,
     config: dict,
-    task_manager: BackgroundTaskManager,  # auto-injected
-) -> ...:
+    task_manager: BackgroundTaskManager,  # injected by type annotation
+):
+    # Fire and forget: the node returns without waiting for the webhook
     task_manager.create_task(
         send_webhook(config.get("user_id")),
         name="send_webhook",
@@ -58,23 +63,14 @@ manager = BackgroundTaskManager(
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `default_shutdown_timeout` | `float` | `30.0` | Seconds to wait when draining tasks during `shutdown()`. |
-| `max_pending_tasks` | `int` | `1000` | Cap on in-flight tasks. Beyond this, new tasks are dropped rather than queued. Set to `0` to disable the cap and restore unbounded growth. |
+| `max_pending_tasks` | `int` | `1000` | Cap on in-flight tasks. Beyond this, new tasks are dropped rather than queued. Set to `0` to disable the cap (unbounded). |
 
-### Backpressure
+### Properties
 
-Background tasks are fire-and-forget telemetry: publisher writes, webhook posts, memory syncs. When the sink cannot keep up, an unbounded queue grows until the process runs out of memory. `max_pending_tasks` bounds it instead.
-
-Once `max_pending_tasks` tasks are in flight, `create_task` drops the **newest** task and returns `None`. Dropping the newest is deliberate: cancelling an already-running task would throw away work that is mid-flight, while shedding a new event only loses one event. The coroutine is closed so Python does not emit a "coroutine was never awaited" warning.
-
-Drops are counted on the `background_task_manager.tasks_dropped` metric and logged at warning level, rate-limited so a sustained overload does not flood the log.
-
-Because a task can be dropped, treat the return value as optional:
-
-```python
-task = manager.create_task(send_webhook(user_id), name="send_webhook")
-if task is None:
-    ...  # shed under backpressure
-```
+| Property | Type | Description |
+|---|---|---|
+| `pending_count` | `int` | Number of tasks currently in flight. |
+| `dropped_count` | `int` | Number of tasks dropped so far because of backpressure. |
 
 ### `create_task`
 
@@ -87,39 +83,53 @@ task = manager.create_task(
 )
 ```
 
+Create and track an async task. Returns the created `asyncio.Task`, or `None` if dropped due to backpressure. `name`, `timeout` and `context` are keyword-only. Call it from a running event loop.
+
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `coro` | `Coroutine` | required | The coroutine to execute in the background. |
-| `name` | `str` | `"background_task"` | Human-readable label. Appears in logs and `get_task_info()`. |
-| `timeout` | `float \| None` | `None` | Cancel the task after this many seconds. Logs a warning on timeout. |
-| `context` | `dict \| None` | `None` | Extra key/value pairs attached to log entries and task info for debugging. |
+| `coro` | `Coroutine` | required | The coroutine to execute in the background. Must be a coroutine object, not a function. |
+| `name` | `str` | `"background_task"` | Human-readable label appearing in logs and task info. |
+| `timeout` | `float or None` | `None` | Cancel the task after this many seconds. `None` (or `0`) means no timeout. A warning is logged on timeout. |
+| `context` | `dict or None` | `None` | Extra key/value pairs attached to debug logs and returned by `get_task_info()`. |
 
-Returns the created `asyncio.Task`, or `None` when the task was dropped because `max_pending_tasks` was already in flight.
+#### Backpressure and task dropping
+
+Background tasks are fire-and-forget, so an unbounded queue can grow until the process runs out of memory if the sink is slow. `max_pending_tasks` bounds this. Once that limit is reached, `create_task` drops the newest task and returns `None`. The coroutine is closed to avoid a "coroutine was never awaited" warning.
+
+Treat the return value as optional:
+
+```python
+task = manager.create_task(send_webhook(user_id), name="send_webhook")
+if task is None:
+    ...  # task was dropped due to backpressure
+```
+
+Drops are counted on the `background_task_manager.tasks_dropped` metric and logged at warning level, at most once every 5 seconds. The newest task is dropped on purpose: cancelling running tasks would lose work already in progress.
 
 ### `get_task_count`
 
 ```python
-n = manager.get_task_count()  # → int
+n = manager.get_task_count()  # returns int
 ```
 
-Number of tasks that are still running.
+Number of tracked tasks still in flight. Same value as `pending_count`.
 
 ### `get_task_info`
 
 ```python
-infos = manager.get_task_info()  # → list[dict]
+infos = manager.get_task_info()  # returns list[dict]
 ```
 
-Each dict contains:
+Information about all active tasks. Each dict contains:
 
 | Key | Type | Description |
 |---|---|---|
 | `name` | `str` | Task name. |
-| `age_seconds` | `float` | Seconds since the task was created. |
-| `timeout` | `float \| None` | Configured timeout. |
+| `age_seconds` | `float` | Seconds elapsed since creation. |
+| `timeout` | `float or None` | Configured timeout. |
 | `context` | `dict` | Context passed at creation. |
 | `done` | `bool` | Whether the task has finished. |
-| `cancelled` | `bool` | Whether the task was cancelled (only meaningful when `done=True`). |
+| `cancelled` | `bool` | Whether the task was cancelled (meaningful only when `done=True`). |
 
 ### `wait_for_all`
 
@@ -127,12 +137,12 @@ Each dict contains:
 await manager.wait_for_all(timeout=30.0, return_exceptions=False)
 ```
 
-Wait for all tracked tasks to complete. Logs a warning if `timeout` is exceeded.
+Wait for all tracked tasks to complete. Returns `None`. If the timeout is exceeded, it logs a warning and returns without raising; the tasks keep running.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `timeout` | `float \| None` | `None` | Max seconds to wait. `None` means wait forever. |
-| `return_exceptions` | `bool` | `False` | If `True`, exceptions are returned as results rather than raised. |
+| `timeout` | `float or None` | `None` | Max seconds to wait, or `None` to wait forever. |
+| `return_exceptions` | `bool` | `False` | If `True`, a task's exception does not propagate out of the wait. If `False`, the first exception is raised to the caller. |
 
 ### `cancel_all`
 
@@ -140,7 +150,7 @@ Wait for all tracked tasks to complete. Logs a warning if `timeout` is exceeded.
 await manager.cancel_all()
 ```
 
-Cancel every tracked task immediately. Does not wait for cancellation to propagate.
+Request cancellation of every tracked task, then sleep 0.1 seconds so cancellations can start to propagate. It does not wait for the tasks to finish.
 
 ### `shutdown`
 
@@ -148,49 +158,72 @@ Cancel every tracked task immediately. Does not wait for cancellation to propaga
 stats = await manager.shutdown(timeout=30.0)
 ```
 
-Graceful shutdown: cancels all tasks, waits up to `timeout` seconds, then force-cancels any remaining. Returns a stats dict:
+Shut the manager down: cancels all tasks, waits up to `timeout` seconds (default `default_shutdown_timeout`), then cancels any that remain. Only the first call does work. Returns a stats dict:
 
 | Key | Type | Description |
 |---|---|---|
-| `status` | `str` | `"completed"` or `"timed_out"`. |
+| `status` | `str` | `"completed"`, `"timeout"`, or `"already_shutdown"`. |
 | `initial_tasks` | `int` | Number of tasks at shutdown start. |
 | `completed_tasks` | `int` | Tasks that finished cleanly. |
-| `remaining_tasks` | `int` | Tasks still alive after timeout. |
+| `remaining_tasks` | `int` | Tasks still in flight after timeout. |
 | `duration_seconds` | `float` | Total shutdown duration. |
+
+A repeat call returns only `{"status": "already_shutdown", "tasks_remaining": 0}`.
+
+### Async context manager
+
+The manager supports `async with`. On exit it calls `shutdown()` and does not suppress exceptions.
+
+```python
+import asyncio
+
+from tenxgraph.utils.background_task_manager import BackgroundTaskManager
+
+
+async def main() -> None:
+    async with BackgroundTaskManager(max_pending_tasks=10) as manager:
+        manager.create_task(asyncio.sleep(1), name="demo")
+        print(manager.get_task_count())  # 1
+    # shutdown() has run here
+
+
+asyncio.run(main())
+```
 
 ---
 
 ## `TaskMetadata`
 
-Dataclass holding per-task tracking info. Available via `get_task_info()`.
+Dataclass holding per-task tracking info. The manager stores one per task; `get_task_info()` exposes its values as dicts.
 
 | Field | Type | Description |
 |---|---|---|
 | `name` | `str` | Task name. |
 | `created_at` | `float` | Unix timestamp of creation. |
-| `timeout` | `float \| None` | Configured timeout. |
-| `context` | `dict \| None` | Extra context. |
+| `timeout` | `float or None` | Configured timeout. |
+| `context` | `dict or None` | Extra context. Defaults to `None`; the manager stores `{}` when none is given. |
 
 ---
 
 ## Lifecycle and shutdown
 
-`BackgroundTaskManager` is created once per `StateGraph` during `__init__`. It is passed to `CompiledGraph` at `compile()`. When you call `app.aclose()`, the graph calls `task_manager.shutdown(timeout=shutdown_timeout)`, which drains or cancels any running background tasks before the process exits.
+`BackgroundTaskManager` is created once per `StateGraph` and passed to the compiled graph at `compile()`. When you call `aclose()`, the first step of the shutdown sequence is `task_manager.shutdown(timeout=shutdown_timeout)`, which cancels outstanding background tasks and waits for them. Tasks are cancelled, not drained, so do not rely on a pending task finishing during shutdown. Use `wait_for_all()` first if it must complete.
 
 ```python
-app = graph.compile(shutdown_timeout=30.0)  # shutdown_timeout flows to BackgroundTaskManager
+app = graph.compile(shutdown_timeout=30.0)
 
 # In your process teardown:
-await app.aclose()   # or await app.astop()
+stats = await app.aclose()  # cancels background tasks, waits up to 30 s
+# stats["background_tasks"] holds the shutdown stats dict from above
 ```
 
 ---
 
-## Common errors
+## Common errors and fixes
 
 | Error | Cause | Fix |
 |---|---|---|
-| Background task never starts | Coroutine function passed instead of coroutine object. | `create_task(send(x))` not `create_task(send)`. |
-| `task_manager` is `None` in node | Node is not inside a compiled graph. | Ensure the node function runs inside a graph that was compiled. |
-| Task silently fails, no log | Exception swallowed. | Check for `background_task_manager.tasks_failed` metric; errors are logged at `ERROR` level. |
-| Tasks run after graph has conceptually "finished" | `aclose()` not called. | Always call `await app.aclose()` on process exit. |
+| Background task never starts | Coroutine function passed instead of coroutine object. | Use `create_task(send(x))` not `create_task(send)`. |
+| Task fails and nothing seems to happen | Exceptions in fire-and-forget tasks are not raised to your node. | Look for `ERROR` log lines from the `tenxgraph.utils` logger and the `background_task_manager.tasks_failed` metric. |
+| `create_task` returns `None` | The `max_pending_tasks` cap was reached and the task was dropped. | Check `dropped_count`, speed up the sink, or raise the cap. |
+| Tasks still running at process exit | `aclose()` was not called. | Call `await app.aclose()` during process exit. |

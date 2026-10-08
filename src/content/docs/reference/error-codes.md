@@ -1,620 +1,372 @@
 ---
 title: Error Codes Reference
-description: Complete reference for all 10xGraph error codes, exception hierarchy, and structured error responses.
+description: Every 10xGraph exception, its error code, whether it is retryable, the HTTP status the API server returns, and how to handle it in code.
 group: "Errors"
 section: Reference
 order: 570
-label: Error Codes Reference
-updated: "2026-07-21"
+label: Error Codes
+updated: "2026-10-08"
+faq:
+  - q: "Which 10xGraph errors can I retry?"
+    a: "TransientStorageError (STORAGE_TRANSIENT_000) is retryable with backoff. StaleStateError (STORAGE_CONFLICT_000) is retryable after you reload the latest state. NodeTimeoutError is sometimes retryable, depending on whether the hang was transient."
+  - q: "Do all 10xGraph exceptions have an error code?"
+    a: "No. GraphError, NodeError, GraphRecursionError, NodeTimeoutError, the storage errors and MetricsError carry an error_code. GraphStopRequested, UnsupportedMediaInputError and ValidationError do not."
+  - q: "What HTTP status does the API server return for a 10xGraph error?"
+    a: "Validation and schema version errors return 422, TransientStorageError returns 503, and the other graph, node, recursion, storage and metrics errors return 500."
 ---
 
-All 10xGraph exceptions use structured error codes for programmatic handling and observability.
+10xGraph raises typed exceptions. Most carry a stable `error_code` such as `NODE_TIMEOUT_000` and a `context` dictionary, so you can branch on the code in your own handlers, filter logs by it, and know which errors are safe to retry. This page lists every exception, its code, and its fix.
 
-## Exception Hierarchy
+## Exception hierarchy
+
+Graph and storage errors share a base class that carries `error_code`, `message` and `context`. Media, validation and stop signals are separate `Exception` subclasses with their own attributes.
 
 ```mermaid
 graph TD
-    subgraph Base["Base Exceptions"]
-        Exception["Exception (Python built-in)"]
-    end
-    
-    subgraph Graph["Graph Exceptions"]
-        GraphError["GraphError<br/>Base for graph errors"]
-        NodeError["NodeError<br/>Node-specific errors"]
-        GraphRecursionError["GraphRecursionError<br/>Recursion limit exceeded"]
-        NodeTimeoutError["NodeTimeoutError<br/>Node or tool deadline exceeded"]
-    end
-    
-    subgraph Storage["Storage Exceptions"]
-        StorageError["StorageError<br/>Base for storage errors"]
-        TransientStorageError["TransientStorageError<br/>Retryable errors"]
-        SerializationError["SerializationError<br/>(De)serialization failures"]
-        SchemaVersionError["SchemaVersionError<br/>Schema migration errors"]
-        ResourceNotFoundError["ResourceNotFoundError<br/>Resource not found"]
-        StaleStateError["StaleStateError<br/>Optimistic concurrency conflict"]
-        MetricsError["MetricsError<br/>Metrics emission errors"]
-    end
-    
-    subgraph Media["Media Exceptions"]
-        UnsupportedMediaInputError["UnsupportedMediaInputError<br/>Unsupported media format"]
-    end
-    
-    subgraph Control["Control Flow"]
-        GraphStopRequested["GraphStopRequested<br/>Stop requested mid-node"]
-    end
-
-    subgraph Validation["Validation Exceptions"]
-        ValidationError["ValidationError<br/>Input validation failures"]
-    end
-    
+    Exception["Exception (built-in)"]
     Exception --> GraphError
     Exception --> StorageError
+    Exception --> MetricsError
     Exception --> UnsupportedMediaInputError
     Exception --> ValidationError
     Exception --> GraphStopRequested
-    
+
     GraphError --> NodeError
     NodeError --> NodeTimeoutError
     GraphError --> GraphRecursionError
-    
+
     StorageError --> TransientStorageError
     StorageError --> SerializationError
     StorageError --> SchemaVersionError
     StorageError --> ResourceNotFoundError
     StorageError --> StaleStateError
-    StorageError --> MetricsError
 ```
 
----
+Note that `MetricsError` derives from `Exception` directly, not from `StorageError`.
 
-## Graph Errors
+## Import paths
 
-### GRAPH_000 — Generic Graph Error
+All coded exceptions and `GraphStopRequested` come from `tenxgraph.core.exceptions`. The media and validation exceptions live elsewhere.
 
-**Base error code for general graph operations.**
+```python title="imports.py"
+from tenxgraph.core.exceptions import (
+    GraphError,
+    GraphRecursionError,
+    GraphStopRequested,
+    MetricsError,
+    NodeError,
+    NodeTimeoutError,
+    ResourceNotFoundError,
+    SchemaVersionError,
+    SerializationError,
+    StaleStateError,
+    StorageError,
+    TransientStorageError,
+)
+from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
+from tenxgraph.utils import ValidationError
+```
 
-| Field | Value |
-|-------|-------|
-| Code | `GRAPH_000` |
-| Retryable | No |
-| Category | Graph |
+## Quick reference
 
-**Raised by**: Any graph operation failure.
+Use this table to find an exception by its code prefix. Codes ending in `_000` are the defaults; a raiser may pass a higher number (for example `NODE_TIMEOUT_001` or `STORAGE_CONFLICT_001`) for a specific case.
 
-**Example**:
-```python
+| Code | Class | Retryable | API status |
+|---|---|---|---|
+| `GRAPH_000` | `GraphError` | No | 500 |
+| `NODE_000` | `NodeError` | Depends on cause | 500 |
+| `NODE_TIMEOUT_000` | `NodeTimeoutError` | Sometimes | 500 |
+| `RECURSION_000` | `GraphRecursionError` | No, needs a config change | 500 |
+| `STORAGE_000` | `StorageError` | No | 500 |
+| `STORAGE_TRANSIENT_000` | `TransientStorageError` | Yes, with backoff | 503 |
+| `STORAGE_SERIALIZATION_000` | `SerializationError` | No | 500 |
+| `STORAGE_SCHEMA_000` | `SchemaVersionError` | No, needs migration | 422 |
+| `STORAGE_NOT_FOUND_000` | `ResourceNotFoundError` | No | 500 |
+| `STORAGE_CONFLICT_000` | `StaleStateError` | Yes, after reloading state | 500 |
+| `METRICS_000` | `MetricsError` | No | 500 |
+| none | `UnsupportedMediaInputError` | No | not mapped by the server |
+| none | `ValidationError` | No | 422 |
+| none | `GraphStopRequested` | Not applicable | never reaches the server |
+
+## Graph errors
+
+`GraphError` is the base for failures in graph execution. Its default code is `GRAPH_000`, it is not retryable, and everything below it in the hierarchy is a `GraphError` too, so one `except GraphError` catches them all.
+
+```python title="raise_graph_error.py"
 from tenxgraph.core.exceptions import GraphError
 
 raise GraphError(
     message="Graph failed to initialize",
     error_code="GRAPH_000",
-    context={"graph_name": "my_agent"}
+    context={"graph_name": "my_agent"},
 )
 ```
 
-**Common causes**:
-- Invalid graph configuration
-- Node initialization failure
-- Edge routing error
+Common causes: invalid graph configuration, node initialization failure, an edge routing error. Other codes such as `GRAPH_001` are conventions you pass in when you raise your own `GraphError`; the library does not assign meaning to them.
 
----
+## Node errors
 
-### GRAPH_001+ — Extended Graph Errors
+`NodeError` (default `NODE_000`) reports a failure inside one node. Whether it is retryable depends on the cause, so read `context` and the message before retrying.
 
-**Extended error codes for specific graph failures.**
-
-| Field | Value |
-|-------|-------|
-| Codes | `GRAPH_001`, `GRAPH_002`, etc. |
-| Retryable | No |
-| Category | Graph |
-
----
-
-## Node Errors
-
-### NODE_000 — Generic Node Error
-
-**Base error code for node-specific errors.**
-
-| Field | Value |
-|-------|-------|
-| Code | `NODE_000` |
-| Retryable | Depends on cause |
-| Category | Graph / Node |
-
-**Raised by**: Node execution failures.
-
-**Example**:
-```python
+```python title="raise_node_error.py"
 from tenxgraph.core.exceptions import NodeError
 
 raise NodeError(
     message="Node execution failed",
     error_code="NODE_000",
-    context={"node_name": "process_data", "input_size": 100}
+    context={"node_name": "process_data", "input_size": 100},
 )
 ```
 
-**Common causes**:
-- Tool execution failure
-- Invalid node input
-- Node timeout
-- Node resource exhaustion
+Common causes: a tool that raised, invalid node input, resource exhaustion.
 
----
+### Node or tool timeout
 
-### NODE_001+ — Extended Node Errors
+`NodeTimeoutError` (default `NODE_TIMEOUT_000`, a subclass of `NodeError`) is raised when a node or tool call exceeds its deadline. Defaults are 900 seconds per node and 300 seconds per tool call. A transient hang is worth a retry; a genuinely slow operation is not.
 
-**Extended error codes for specific node failures.**
+Without a deadline, a node that hangs on a half-open socket or an unresponsive MCP server blocks the graph forever: the loop never advances a step, so the recursion limit never trips and the between-nodes stop check is never reached. The timeout turns that hang into a normal node error the execution loop can persist and report.
 
-| Field | Value |
-|-------|-------|
-| Codes | `NODE_001`, `NODE_002`, etc. |
-| Retryable | Depends on cause |
+Common causes: a custom tool that never returns, an unresponsive MCP server, or a node that legitimately works longer than its deadline.
 
----
+Fix: raise `node_timeout` or `tool_timeout` in the run config, or fix the hanging call. Pass `None` or a non-positive number to disable a deadline. See [execution deadlines](/docs/reference/python/graph#execution-deadlines).
 
-### NODE_TIMEOUT_000 — Node or Tool Timeout
+## Recursion errors
 
-**A node or a tool call exceeded its allotted execution time.**
+`GraphRecursionError` (default `RECURSION_000`) is raised when a run takes more steps than `recursion_limit`, which defaults to 25. It is not retryable because the same input will loop the same way.
 
-| Field | Value |
-|-------|-------|
-| Code | `NODE_TIMEOUT_000` (default), `NODE_TIMEOUT_001` and above for specific cases |
-| Retryable | Sometimes (a transient hang is; a genuinely slow operation is not) |
-| Category | Node |
-| Base class | `NodeError` |
-
-```python
-from tenxgraph.core.exceptions import NodeTimeoutError
-```
-
-Without a deadline, a node that hangs on a half-open socket or an unresponsive MCP server blocks the graph forever: the loop never advances a step, so the recursion limit never trips and the between-nodes stop check is never reached. Timing the call out converts an indefinite hang into a normal node error the execution loop can persist, report, and recover from.
-
-**Common causes**:
-- A custom tool that never returns
-- An unresponsive MCP server
-- A node deliberately doing work longer than the 900s default
-
-**Fix**: Raise the relevant deadline through the `node_timeout` or `tool_timeout` run-config key, or fix the hanging call. Pass `None` or `0` to disable a deadline entirely. See the [graph reference](/docs/reference/python/graph#execution-deadlines).
-
----
-
-## Recursion Errors
-
-### RECURSION_000 — Recursion Limit Exceeded
-
-**Raised when graph execution exceeds the configured recursion limit.**
-
-| Field | Value |
-|-------|-------|
-| Code | `RECURSION_000` |
-| Retryable | No (requires config change) |
-| Category | Graph |
-
-**Example**:
-```python
+```python title="raise_recursion_error.py"
 from tenxgraph.core.exceptions import GraphRecursionError
 
 raise GraphRecursionError(
     message="Recursion limit exceeded in graph execution",
     error_code="RECURSION_000",
-    context={"recursion_depth": 100, "max_depth": 50}
+    context={"recursion_depth": 100, "max_depth": 50},
 )
 ```
 
-**Common causes**:
-- Infinite loop in graph routing
-- Tool repeatedly calling itself
-- Missing termination condition
-- Tool selection cycling
+Common causes: a routing loop with no path to `END`, a tool the model keeps calling, a missing termination condition.
 
-**Fix**: Check your graph for loops, add recursion limits, or increase `recursion_limit` in config.
+Fix: make sure every path reaches `END`, or raise `recursion_limit` in the run config if the work genuinely needs more steps.
 
----
+## Storage errors
 
-## Storage Errors
+`StorageError` (default `STORAGE_000`) is the base for persistence failures in checkpointers and stores. It is not retryable; the subclasses below say which failures are.
 
-### STORAGE_000 — Generic Storage Error
+### Transient storage error
 
-**Base error code for storage layer errors.**
+`TransientStorageError` (`STORAGE_TRANSIENT_000`) marks a temporary failure that may succeed on retry: a connection timeout, a network interruption, lock contention. Retry with exponential backoff (see the helper below).
 
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_000` |
-| Retryable | No |
-| Category | Storage |
-
-**Raised by**: General storage operation failures.
-
----
-
-### STORAGE_TRANSIENT_000 — Transient Storage Error
-
-**Temporary storage failures that may succeed on retry.**
-
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_TRANSIENT_000` |
-| Retryable | Yes |
-| Category | Storage |
-
-**Common causes**:
-- Database connection timeout
-- Network interruption
-- Lock contention
-- Temporary resource unavailability
-
-**Example**:
-```python
+```python title="raise_transient_error.py"
 from tenxgraph.core.exceptions import TransientStorageError
 
 raise TransientStorageError(
     message="Database connection timeout",
     error_code="STORAGE_TRANSIENT_000",
-    context={"operation": "read_thread", "timeout_ms": 5000}
+    context={"operation": "read_thread", "timeout_ms": 5000},
 )
 ```
 
-**Recovery**: Implement exponential backoff retry logic.
+### Serialization error
 
----
+`SerializationError` (`STORAGE_SERIALIZATION_000`) means state or a message could not be encoded or decoded. It is not retryable because the data itself is the problem: an invalid state schema, corrupt checkpoint data, or a value that is not JSON-serializable. Keep state to serializable types.
 
-### STORAGE_SERIALIZATION_000 — Serialization Error
+### Schema version error
 
-**Failed to serialize or deserialize data.**
+`SchemaVersionError` (`STORAGE_SCHEMA_000`) means schema version detection or migration failed. The usual cause is upgrading 10xGraph without migrating the database, or a database out of sync with the installed version. It is not retryable. Check the stored schema version against the installed version and migrate.
 
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_SERIALIZATION_000` |
-| Retryable | No (data is corrupt/invalid) |
-| Category | Storage |
+### Resource not found
 
-**Common causes**:
-- Invalid state schema
-- Corrupt checkpoint data
-- Incompatible schema version
-- Invalid message format
+`ResourceNotFoundError` (`STORAGE_NOT_FOUND_000`) means the requested thread, checkpoint or other resource does not exist in storage. Check the `thread_id`, whether the thread was deleted, and that the graph was compiled with a `checkpointer`. It is not retryable.
 
-**Example**:
-```python
-from tenxgraph.core.exceptions import SerializationError
-
-raise SerializationError(
-    message="Failed to deserialize state",
-    error_code="STORAGE_SERIALIZATION_000",
-    context={"thread_id": "abc123", "schema_version": "2"}
-)
-```
-
----
-
-### STORAGE_SCHEMA_000 — Schema Version Error
-
-**Schema version detection or migration failed.**
-
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_SCHEMA_000` |
-| Retryable | No (requires migration) |
-| Category | Storage |
-
-**Common causes**:
-- Upgrading 10xGraph without running migrations
-- Database schema out of sync with code version
-- Corrupt schema version table
-
-**Fix**: Run database migrations after upgrading 10xGraph.
-
----
-
-### STORAGE_NOT_FOUND_000 — Resource Not Found
-
-**Requested resource does not exist in storage.**
-
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_NOT_FOUND_000` |
-| Retryable | No (resource doesn't exist) |
-| Category | Storage |
-
-**Common causes**:
-- Invalid `thread_id`
-- Thread was deleted
-- Checkpoint expired
-- Missing required resource
-
-**Example**:
-```python
+```python title="raise_not_found.py"
 from tenxgraph.core.exceptions import ResourceNotFoundError
 
 raise ResourceNotFoundError(
     message="Thread not found",
     error_code="STORAGE_NOT_FOUND_000",
-    context={"thread_id": "abc123"}
+    context={"thread_id": "abc123"},
 )
 ```
 
----
+### Stale state
 
-### METRICS_000 — Metrics Error
+`StaleStateError` (`STORAGE_CONFLICT_000`; the Postgres checkpointer raises `STORAGE_CONFLICT_001` for a version mismatch on write) means a state write lost its optimistic-concurrency check. Another execution committed a newer state for the same thread first, and committing anyway would silently discard that work, so the write is rejected.
 
-**Non-critical metrics emission failure.**
+The `context` holds `thread_id`, `expected_version` and `current_version`. Common causes: two requests processing the same `thread_id` at once, several replicas serving one thread, or a retried request racing the original.
 
-| Field | Value |
-|-------|-------|
-| Code | `METRICS_000` |
-| Retryable | No (metrics are non-critical) |
-| Category | Observability |
+Fix: reload the latest state and retry the turn rather than overwriting blindly. On conflict the checkpointer invalidates its cache for the thread, so the next read comes from Postgres. The API server has no dedicated handler for this error, so it surfaces as a 500 from the generic `StorageError` handler. See [Durability and concurrency](/docs/guides/durability-and-concurrency#optimistic-concurrency-and-stalestateerror).
 
-**Note**: This error is typically logged but not raised, as metrics failures should not interrupt operations.
+### Metrics error
 
----
+`MetricsError` (`METRICS_000`) reports a failed metrics emission. It is not retryable and is non-critical: a metrics failure should not interrupt a run.
 
-### STORAGE_CONFLICT_000 — Stale State
+## Control flow signals
 
-**A durable state write lost its optimistic-concurrency check.**
+`GraphStopRequested` is not a failure. It is raised inside a node when a stop is requested mid-run. The execution loop catches it, marks the run stopped, persists that, and returns normally. It has no error code and one attribute, `node_name`, the node that was running when the stop arrived.
 
-| Field | Value |
-|-------|-------|
-| Code | `STORAGE_CONFLICT_000` (default), `STORAGE_CONFLICT_001` for a version mismatch on write |
-| Retryable | Yes, after reloading the latest state |
-| Category | Storage |
-| Base class | `StorageError` |
+Do not catch it in node code or in a broad `except Exception` around `invoke`, or you turn a clean stop into an error.
 
-```python
-from tenxgraph.core.exceptions import StaleStateError
-```
+## Media errors
 
-The writer based its update on a state version that is no longer current: another execution committed a newer state for the same thread in the meantime. Committing anyway would silently discard that other execution's work, so the write is rejected instead.
+`UnsupportedMediaInputError` is raised before the provider call when the model does not support the media type or no transport path exists. It has no error code.
 
-**Context keys**: `thread_id`, `expected_version`, `current_version`.
-
-**Common causes**:
-- Two requests processing the same `thread_id` concurrently
-- Several server replicas serving the same thread
-- A retried request racing the original
-
-**Fix**: Treat it as a conflict (HTTP 409). Reload the latest state and retry the turn rather than overwriting blindly. On conflict the checkpointer invalidates its cache for the thread, so the next read comes from Postgres. See [Set up checkpointing](/docs/guides/set-up-checkpointing#optimistic-concurrency-and-stalestateerror).
-
----
-
-## Control Flow Signals
-
-### GraphStopRequested
-
-**A stop was requested while a node was still running.**
-
-| Field | Value |
-|-------|-------|
-| Code | None (plain `Exception` subclass, no error code) |
-| Retryable | Not applicable |
-| Category | Control flow |
-| Base class | `Exception` |
-
-```python
-from tenxgraph.core.exceptions import GraphStopRequested
-```
-
-This is control flow, not a failure. The execution loop catches it, marks the run stopped, persists that, and returns normally. It exists because a stop observed *during* a node cannot be handled by the between-nodes stop check: the node has to be cancelled first, and the loop needs to tell that cancellation apart from a genuine error.
-
-**Attributes**: `node_name` — the node that was running when the stop arrived.
-
-**Fix**: Nothing to fix. Do not catch it in node code or in a broad `except Exception` around `invoke`, or you will convert a clean stop into an error.
-
----
-
-## Media Errors
-
-### MEDIA_000 — Unsupported Media Input
-
-**Model cannot accept the given media input type.**
-
-| Field | Value |
-|-------|-------|
-| Code | `MEDIA_000` (via exception) |
-| Retryable | No (requires model change) |
-| Category | Media |
-
-**Raised by**: `UnsupportedMediaInputError`
-
-**Attributes**:
 | Attribute | Type | Description |
-|-----------|------|-------------|
-| `provider` | string | Provider identifier (e.g., "openai", "google") |
-| `model` | string | Model name (e.g., "gpt-4o", "gemini-1.5-pro") |
-| `media_type` | string | Type of media (e.g., "image", "document", "audio") |
-| `source_kind` | string | How media was provided ("url", "file_id", "data", "internal_ref") |
-| `transports_attempted` | list | Transport modes tried before failure |
-
-**Common causes**:
-- Model doesn't support vision but image was provided
-- Model doesn't support document input
-- External URL not allowed for provider
-
-**Import path**: `UnsupportedMediaInputError` is **not** re-exported from `tenxgraph.core.exceptions`. Import it from its own module:
-
-```python
-from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
-```
-
-**Example**:
-```python
-from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
-
-raise UnsupportedMediaInputError(
-    provider="openai",
-    model="gpt-4o-mini",
-    media_type="image",
-    source_kind="url",
-    transports_attempted=["inline", "url"]
-)
-```
-
-**Fix**: Use a vision-capable model (e.g., gpt-4o, gemini-1.5-pro) or remove media inputs.
-
----
-
-## Validation Errors
-
-### VALIDATION_000 — Input Validation Failed
-
-**Input validation detected a policy violation.**
-
-| Field | Value |
-|-------|-------|
-| Code | `VALIDATION_000` (via exception) |
-| Retryable | No (input is invalid) |
-| Category | Security |
-
-**Raised by**: `ValidationError`
-
-**Attributes**:
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `message` | string | Human-readable error message |
-| `violation_type` | string | Type of violation |
-| `details` | dict | Additional violation details |
-
-**Common violation types**:
-
-| Violation Type | Description |
-|----------------|-------------|
-| `prompt_injection` | Direct or indirect prompt injection detected |
-| `jailbreak` | Jailbreak attempt detected |
-| `content_policy` | Content policy violation |
-| `encoding_attack` | Obfuscation via encoding detected |
-| `delimiter_confusion` | Conflicting delimiters in input |
-| `payload_splitting` | Attack distributed across inputs |
-| `system_leak` | Attempt to extract system prompt |
-
-**Example**:
-```python
-from tenxgraph.utils.validators import ValidationError
-
-raise ValidationError(
-    message="Prompt injection detected",
-    violation_type="prompt_injection",
-    details={"pattern": "ignore previous instructions"}
-)
-```
-
-**Fix**: Sanitize user input, use input validators, enable strict mode for production.
-
----
-
-## Symptom Lookup
-
-| Symptom | Error code | What to do |
 |---|---|---|
-| Graph runs until it stops on a step limit, repeated tool calls | `RECURSION_000` | Fix routing so every path reaches `END`, or raise `recursion_limit` in the run config |
-| A node or tool hangs, then fails with a deadline error | `NODE_TIMEOUT_000` | Fix the hanging call or set `node_timeout` / `tool_timeout` in the run config |
-| 404 or empty history for a thread | `STORAGE_NOT_FOUND_000` | Check `thread_id` and that the graph was compiled with `checkpointer=` |
+| `provider` | `str` | Provider identifier, for example `openai` |
+| `model` | `str` | Model name |
+| `media_type` | `str` | Kind of media, for example `image` or `document` |
+| `source_kind` | `str` | How the media was supplied, for example `url` or `file_id` |
+| `transports_attempted` | `list[MediaTransportMode]` | Transport modes tried before failing |
+
+Its `to_dict()` returns `error_type`, `provider`, `model`, `media_type`, `source_kind`, `transports_attempted` and `message`; it has no `error_code` or `context`.
+
+```python title="handle_media_error.py"
+from tenxgraph.core.exceptions.media_exceptions import UnsupportedMediaInputError
+
+
+async def run(app, messages):
+    try:
+        return await app.ainvoke({"messages": messages})
+    except UnsupportedMediaInputError as e:
+        # Switch to a model that accepts this media type, or drop the attachment
+        print(f"{e.provider}/{e.model} does not support {e.media_type} inputs")
+        raise
+```
+
+Fix: use a model that supports the media type, or remove the media input.
+
+## Validation errors
+
+`ValidationError` is raised by input validators when a message violates a policy. It has no error code. It carries `violation_type` (a string), `details` (a dict) and the message as its text.
+
+Violation types raised by the built-in validators:
+
+| `violation_type` | Raised by | Meaning |
+|---|---|---|
+| `length_exceeded` | `PromptInjectionValidator` | Input longer than `max_length` |
+| `injection_pattern` | `PromptInjectionValidator` | Input matched a blocked injection pattern |
+| `encoding_attack` | `PromptInjectionValidator` | Obfuscation through encoding detected |
+| `suspicious_keywords` | `PromptInjectionValidator` | Too many attack-related keywords |
+| `payload_splitting` | `PromptInjectionValidator` | Attack split across inputs |
+| `invalid_role` | `MessageContentValidator` | Message role not in `allowed_roles` |
+| `too_many_blocks` | `MessageContentValidator` | More content blocks than `max_content_blocks` |
+
+Custom validators can raise any `violation_type` string. In `strict_mode=True` the prompt injection validator raises; otherwise it logs a warning and sanitizes.
+
+```python title="handle_validation_error.py"
+from tenxgraph.utils import ValidationError
+
+
+async def run(app, messages):
+    try:
+        return await app.ainvoke({"messages": messages})
+    except ValidationError as e:
+        # Reject the input and report why
+        print(f"Rejected: {e} (type={e.violation_type}, details={e.details})")
+        raise
+```
+
+Fix: inspect `violation_type`, change the input, or tune the validator. Register validators on a `CallbackManager` passed to `compile(callback_manager=...)`.
+
+## Symptom lookup
+
+Start from what you see and jump to the code that explains it.
+
+| Symptom | Likely error | What to do |
+|---|---|---|
+| Run stops on a step limit, repeated tool calls | `RECURSION_000` | Give every path a route to `END`, or raise `recursion_limit` |
+| A node or tool hangs, then fails with a deadline error | `NODE_TIMEOUT_000` | Fix the hanging call, or set `node_timeout` / `tool_timeout` |
+| Empty history or not-found for a thread | `STORAGE_NOT_FOUND_000` | Check the `thread_id` and that the graph has a `checkpointer` |
 | Intermittent connection errors under load | `STORAGE_TRANSIENT_000` | Retry with backoff, check connection pool limits |
-| Checkpoint save or restore fails to encode or decode | `STORAGE_SERIALIZATION_000` | Keep state to JSON-serializable types |
-| Errors after upgrading the package | `STORAGE_SCHEMA_000` | Check the stored schema version against the installed version |
-| User input rejected | `VALIDATION_000` | Inspect the violation type, then tune the validator |
-| Media input rejected | `MEDIA_000` | Use a model that supports the media type, or another source type |
-| Tool or node raised | `NODE_000` | Read the tool error in the logs, test the tool alone |
+| Checkpoint fails to encode or decode | `STORAGE_SERIALIZATION_000` | Keep state to JSON-serializable types |
+| Errors after upgrading the package | `STORAGE_SCHEMA_000` | Migrate the database |
+| Concurrent writes to one thread fail | `STORAGE_CONFLICT_000` | Reload state and retry |
+| User input rejected | `ValidationError` | Inspect `violation_type`, tune the validator |
+| Media input rejected | `UnsupportedMediaInputError` | Use a model that supports the media type |
+| A tool or node raised | `NODE_000` | Read the tool error in the logs, test the tool alone |
 
 Run limits are run-config keys, not `compile()` arguments:
 
-```python
+```python title="run_config.py"
 config = {
     "thread_id": "support-42",
-    "recursion_limit": 50,   # max steps before GraphRecursionError
-    "node_timeout": 60,      # seconds per node
-    "tool_timeout": 30,      # seconds per tool call
+    "recursion_limit": 50,  # max steps before GraphRecursionError (default 25)
+    "node_timeout": 60,     # seconds per node (default 900)
+    "tool_timeout": 30,     # seconds per tool call (default 300)
 }
 result = await app.ainvoke({"messages": [...]}, config)
 ```
 
-`compile()` accepts only `checkpointer`, `store`, `media_store`, `interrupt_before`, `interrupt_after`, `callback_manager` and `shutdown_timeout`.
+## HTTP status from the API server
 
-### HTTP status from the API server
-
-The server maps exceptions to responses in `tenxgraph_api/src/app/core/exceptions/handle_errors.py`:
+The server maps exceptions to responses in `tenxgraph_api/src/app/core/exceptions/handle_errors.py`. In production mode the message is sanitized.
 
 | Exception | Status |
 |---|---|
 | `ValidationError` (input validators), `SchemaVersionError` | 422 |
-| `GraphError`, `NodeError`, `GraphRecursionError`, `StorageError`, `SerializationError`, `MetricsError` | 500 |
+| `GraphError`, `NodeError`, `GraphRecursionError`, `StorageError` (including `StaleStateError`, `ResourceNotFoundError`), `SerializationError`, `MetricsError` | 500 |
 | `TransientStorageError` | 503 |
 
----
+## Structured error responses
 
-## Error Code Quick Reference
+Every coded exception has `to_dict()`, returning `error_type`, `error_code`, `message` and `context`. Use it for structured logs and API responses.
 
-| Code Prefix | Category | Retryable | Base Class |
-|-------------|----------|-----------|------------|
-| `GRAPH_000+` | Graph operations | No | `GraphError` |
-| `NODE_000+` | Node execution | Depends | `NodeError` |
-| `RECURSION_000` | Recursion limits | No | `GraphRecursionError` |
-| `NODE_TIMEOUT_000+` | Node or tool deadline exceeded | Sometimes | `NodeTimeoutError` |
-| `STORAGE_000` | Generic storage | No | `StorageError` |
-| `STORAGE_TRANSIENT_000+` | Retryable storage | Yes | `TransientStorageError` |
-| `STORAGE_SERIALIZATION_000` | Serialization | No | `SerializationError` |
-| `STORAGE_SCHEMA_000` | Schema/migration | No | `SchemaVersionError` |
-| `STORAGE_NOT_FOUND_000` | Resource not found | No | `ResourceNotFoundError` |
-| `STORAGE_CONFLICT_000+` | Optimistic concurrency conflict | Yes, after reloading state | `StaleStateError` |
-| `METRICS_000` | Metrics | No | `MetricsError` |
-| `MEDIA_000` | Media input | No | `UnsupportedMediaInputError` |
-| `VALIDATION_000` | Validation | No | `ValidationError` |
+```python title="structured_error.py"
+from tenxgraph.core.exceptions import GraphRecursionError
 
----
-
-## Structured Error Responses
-
-All 10xGraph errors include a `to_dict()` method for structured logging and API responses:
-
-```python
 try:
-    await agent.process(message)
-except GraphError as e:
-    error_response = e.to_dict()
-    # {
-    #     "error_type": "GraphRecursionError",
-    #     "error_code": "RECURSION_000",
-    #     "message": "Recursion limit exceeded",
-    #     "context": {"recursion_depth": 100, "max_depth": 50}
-    # }
+    raise GraphRecursionError(
+        message="Recursion limit exceeded",
+        context={"recursion_depth": 100, "max_depth": 50},
+    )
+except GraphRecursionError as e:
+    print(e.to_dict())
+    # {'error_type': 'GraphRecursionError', 'error_code': 'RECURSION_000',
+    #  'message': 'Recursion limit exceeded',
+    #  'context': {'recursion_depth': 100, 'max_depth': 50}}
 ```
 
----
+## Handle errors in your code
 
-## Handling Errors
+Catch the most specific class first, because subclasses must precede their bases.
 
-### Basic Error Handling
-
-```python
+```python title="handle_errors.py"
 from tenxgraph.core.exceptions import (
     GraphError,
     GraphRecursionError,
+    StaleStateError,
     StorageError,
     TransientStorageError,
 )
 
-try:
-    result = await agent.process(message)
-except GraphRecursionError as e:
-    # Recursion limit exceeded - increase limit or fix loop
-    print(f"Recursion error: {e.error_code}")
-except TransientStorageError as e:
-    # Retry with backoff
-    await retry_with_backoff(operation)
-except StorageError as e:
-    # Non-retryable storage error
-    print(f"Storage error: {e.error_code}")
-except GraphError as e:
-    # Generic graph error
-    print(f"Graph error: {e.error_code}")
+
+async def run_turn(app, messages, config):
+    try:
+        return await app.ainvoke({"messages": messages}, config)
+    except GraphRecursionError as e:
+        print(f"Loop detected: {e.error_code}")  # fix routing or raise recursion_limit
+        raise
+    except StaleStateError:
+        raise  # reload the thread state and retry the turn
+    except TransientStorageError:
+        raise  # safe to retry, see the backoff helper below
+    except StorageError as e:
+        print(f"Storage error: {e.error_code}")
+        raise
+    except GraphError as e:
+        print(f"Graph error: {e.error_code}")
+        raise
 ```
 
-### Retry Logic for Transient Errors
+### Retry transient errors with backoff
 
-```python
+This helper retries only `TransientStorageError`, doubling the delay each attempt, and re-raises after the last one.
+
+```python title="retry.py"
 import asyncio
+
+from tenxgraph.core.exceptions import TransientStorageError
+
 
 async def retry_with_backoff(func, max_retries=3, base_delay=1.0):
     for attempt in range(max_retries):
@@ -623,14 +375,15 @@ async def retry_with_backoff(func, max_retries=3, base_delay=1.0):
         except TransientStorageError:
             if attempt == max_retries - 1:
                 raise
-            delay = base_delay * (2 ** attempt)
-            await asyncio.sleep(delay)
+            await asyncio.sleep(base_delay * (2**attempt))
+
+
+# Usage: result = await retry_with_backoff(lambda: app.ainvoke({"messages": msgs}, config))
 ```
 
----
+## Related docs
 
-## Related Docs
-
-- [Production Troubleshooting](/docs/troubleshooting/api-server)
-- [Checkpointing Guide](/docs/server/production-checklist)
-- [Validation Reference](/docs/reference/python/testing)
+- [API server troubleshooting](/docs/troubleshooting/api-server): common server errors and fixes
+- [Durability and concurrency](/docs/guides/durability-and-concurrency): handling `StaleStateError` and thread isolation
+- [Production checklist](/docs/server/production-checklist): production hardening and error recovery
+- [Testing reference](/docs/reference/python/testing): test utilities and validation helpers

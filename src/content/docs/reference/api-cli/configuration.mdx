@@ -1,9 +1,10 @@
 ---
-title: 10xgraph.json reference
-description: Every 10xgraph.json key the server and CLI read, with types, defaults and examples, the rate_limit sub-keys, and the environment variables the API server uses.
+title: 10xgraph.json configuration reference
+description: Every key the 10xgraph.json config file accepts, with defaults, types, purposes, and complete examples for rate limiting, auth, and servers.
 section: Reference
 order: 420
-updated: 2026-10-03T00:00:00.000Z
+updated: "2026-10-08"
+group: "CLI and configuration"
 faq:
   - q: Which key is required in 10xgraph.json?
     a: Only agent, a string in module:attribute form that points at your compiled graph. Every other key is optional.
@@ -11,12 +12,11 @@ faq:
     a: It searches the working directory and its parents for the path you pass with --config (default 10xgraph.json). With the default name, each directory is checked for 10xgraph.json first and the older agentflow.json second. Without a path, test and eval also try .agentflow.json and agentflow.config.json.
   - q: Does agentflow.json still work?
     a: Yes, until 2.0. When 10xgraph.json is missing, the CLI and the server read agentflow.json from the same directory. Rename the file to 10xgraph.json when convenient; the keys are identical.
-group: "CLI and configuration"
 ---
 
-`10xgraph.json` tells the 10xGraph API server which graph to serve and how to secure it. Only `agent` is required. The file is plain JSON, and the server also reads settings from environment variables, listed at the end of this page. Edit it by hand or with `10xgraph config`.
+`10xgraph.json` is the configuration file for the 10xGraph API server and CLI. It specifies which graph to serve, how to authenticate, where state lives, and server behavior. Only the `agent` key is required; every other key is optional. The file is plain JSON. Edit it by hand or with `10xgraph config` (a browser editor).
 
-Projects created before 0.7.0 have `agentflow.json`. It keeps working until 2.0: the CLI and the server read it when `10xgraph.json` is missing from the same directory. The keys are identical, so moving over is a rename (`mv agentflow.json 10xgraph.json`) or a save from `10xgraph config`.
+Projects created before 0.7.0 use `agentflow.json`. It still works until 2.0: the CLI and the server read it when `10xgraph.json` is missing from the same directory. The keys are identical, so migration is a rename (`mv agentflow.json 10xgraph.json`) or a save from `10xgraph config`.
 
 ## Which keys does it accept?
 
@@ -49,7 +49,7 @@ Import paths use `module:attribute`. Unknown top-level keys are kept in the file
 | `"jwt"` | Verify bearer JWTs. Needs `JWT_SECRET_KEY` and `JWT_ALGORITHM` |
 | `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` | Load a `BaseAuth` subclass. Both `method` and `path` are required |
 
-See [Add JWT authentication](/docs/server/auth).
+See [Server authentication](/docs/server/auth) for the full guide.
 
 ### authorization
 
@@ -132,54 +132,9 @@ Each entry declares a tool the model can call that runs in the client. Unknown f
 | `evaluation.parallel` | boolean | `false` | Run cases concurrently |
 | `evaluation.max_concurrency` | integer | `4` | Concurrent cases when parallel |
 
-## Which environment variables does the server read?
+## Environment variables
 
-Set these in the process environment or in the file named by `env`.
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `MODE` | `development` | `production` disables the local telemetry store and the docs pages, and defaults authorization to ownership |
-| `IS_DEBUG` | `true` | Set `false` in production |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `LOGGER_NAME` | `10xgraph-api` | Logger name |
-| `APP_NAME`, `APP_VERSION`, `SUMMARY` | `MyApp`, `0.1.0`, `10xGraph Backend` | Application metadata |
-| `ORIGINS` | `*` | Comma-separated CORS origins. Wildcard with credentials is refused in production |
-| `ALLOWED_HOST` | `*` | Allowed hosts. `*` warns in production |
-| `CORS_ALLOW_CREDENTIALS` | `true` | Allow credentialed cross-origin requests |
-| `ROOT_PATH`, `DOCS_PATH`, `REDOCS_PATH` | `/`, `/docs`, `/redocs` | URL paths. The docs paths are empty in production unless set |
-| `MAX_REQUEST_SIZE` | `10485760` | Maximum request body in bytes |
-| `REDIS_URL` | none | Redis for the ownership cache when `redis` is not set |
-| `JWT_SECRET_KEY` | none | Signing secret. 32 bytes or more for HS* algorithms |
-| `JWT_ALGORITHM` | `HS256` | Signing algorithm. Must be set for `auth: "jwt"` |
-| `JWT_ISSUER`, `JWT_AUDIENCE` | none | When set, tokens must carry matching `iss` or `aud` |
-| `SENTRY_DSN` | none | Enables Sentry in production, staging or development modes |
-| `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE` | `0.1`, `0.0` | Sampling rates from 0 to 1 |
-| `OTEL_ENABLED` | `false` | Enable OpenTelemetry |
-| `OTEL_SERVICE_NAME` | `10xgraph-api` | Service name |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | none | OTLP endpoint |
-| `OTEL_LEVEL` | `standard` | `spans`, `standard` or `full` |
-| `SECURITY_HEADERS_ENABLED` | `true` | Add security headers |
-| `HSTS_ENABLED`, `HSTS_MAX_AGE`, `HSTS_INCLUDE_SUBDOMAINS`, `HSTS_PRELOAD` | `true`, `31536000`, `true`, `false` | Strict-Transport-Security |
-| `FRAME_OPTIONS`, `CONTENT_TYPE_OPTIONS`, `XSS_PROTECTION`, `REFERRER_POLICY` | `DENY`, `nosniff`, `1; mode=block`, `strict-origin-when-cross-origin` | Other security headers |
-| `PERMISSIONS_POLICY`, `CSP_POLICY` | none | Header values. Built-in defaults apply when unset |
-| `GRAPH_PATH` | `10xgraph.json` | Config file path used by the server. `10xgraph api` sets it for you |
-| `WEB_CONCURRENCY` | `2` in generated Dockerfile | Gunicorn worker count |
-| `TENXGRAPH_FULLSCREEN` | unset | CLI only. Set to `1` to pin the full-screen frame, like `--fullscreen` |
-| `TENXGRAPH_NO_FULLSCREEN`, `TENXGRAPH_NO_SPINNER`, `TENXGRAPH_ASCII` | unset | CLI only. Force the frame off, drop animation, or use ASCII symbols. The old `AGENTFLOW_*` names still work until 2.0 |
-
-Media upload settings:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `MEDIA_STORAGE_TYPE` | `local` | `memory`, `local` or `cloud` |
-| `MEDIA_STORAGE_PATH` | `./uploads` | Local storage directory |
-| `MEDIA_MAX_SIZE_MB` | `25.0` | Maximum upload size |
-| `MEDIA_ALLOWED_CONTENT_TYPES` | empty (all) | Comma-separated allowlist, for example `image/*,application/pdf` |
-| `MEDIA_REQUIRE_OWNER` | `false` | Deny files with no recorded owner |
-| `DOCUMENT_HANDLING` | `extract_text` | `extract_text`, `pass_raw` or `skip` |
-| `MEDIA_CLOUD_PROVIDER`, `MEDIA_CLOUD_BUCKET`, `MEDIA_CLOUD_REGION`, `MEDIA_CLOUD_PREFIX` | `aws`, empty, `us-east-1`, `10xgraph-media` | Used when storage is `cloud` |
-
-Snowflake ID generation reads `SNOWFLAKE_EPOCH` (`1723323246031`), `SNOWFLAKE_TOTAL_BITS` (`64`), `SNOWFLAKE_TIME_BITS` (`39`), `SNOWFLAKE_NODE_BITS` (`7`), `SNOWFLAKE_NODE_ID` (`0`), `SNOWFLAKE_WORKER_ID` (`0`) and `SNOWFLAKE_WORKER_BITS` (`5`). Give each instance a unique node and worker id in distributed deployments.
+The server reads configuration from environment variables, which are listed in full in the [environment variables reference](/docs/reference/api-cli/environment). Common ones include `MODE`, `IS_DEBUG`, `JWT_SECRET_KEY`, `JWT_ALGORITHM`, `ORIGINS`, `MAX_REQUEST_SIZE`, `REDIS_URL`, `SENTRY_DSN`, and OTEL/observability settings. Set them as process environment variables or in a `.env` file referenced by the `env` key in `10xgraph.json`.
 
 ## What does a complete config look like?
 

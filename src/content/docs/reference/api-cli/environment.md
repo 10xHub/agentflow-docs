@@ -4,14 +4,14 @@ seoTitle: "API server environment variables reference"
 description: "Reference for every environment variable the 10xGraph API server recognizes, grouped by area such as auth, CORS, logging, and Snowflake ID settings."
 section: Reference
 group: "CLI and configuration"
-order: 430
+order: 1770
 label: Environment Variables
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-The API server reads configuration from environment variables. Set them in a `.env` file referenced by `10xgraph.json` or as process environment variables.
+The 10xGraph API server and CLI read configuration from environment variables. This page lists every variable with its default and effect, grouped by area. Set server variables in a `.env` file referenced by `10xgraph.json` or in the process environment. CLI variables control terminal output.
 
-## Setting variables
+## Setting server variables
 
 ### Via .env file
 
@@ -53,8 +53,7 @@ MODE=production 10xgraph api --no-reload
 | `LOGGER_NAME` | `10xgraph-api` | Name of the root logger the server writes under. Read at import time, so it must be a process environment variable; setting it in `.env` is too late. |
 | `GRAPH_PATH` | `10xgraph.json` | Path to the config file the ASGI app loads. `10xgraph api --config` sets this for you; set it directly when running the app under an external server such as Gunicorn or Uvicorn. |
 
-The settings model allows extra variables, so unknown names in the environment are tolerated
-rather than rejected.
+The settings model allows extra variables, so unknown names in the environment are tolerated rather than rejected.
 
 ---
 
@@ -88,13 +87,9 @@ Applied by the security-headers middleware when `SECURITY_HEADERS_ENABLED` is tr
 
 <aside class="callout callout-danger" role="note"><p class="callout-title">Wildcard origins plus credentials refuses to start in production</p>
 
-`ORIGINS=*` on its own is a legitimate choice for a public, token-less API. The dangerous
-combination is wildcard origins **together with** credentials: Starlette reflects the caller's
-`Origin` back alongside `Access-Control-Allow-Credentials: true`, which turns every origin into a
-trusted, credentialed one.
+`ORIGINS=*` on its own is a legitimate choice for a public, token-less API. The dangerous combination is wildcard origins **together with** credentials: Starlette reflects the caller's `Origin` back alongside `Access-Control-Allow-Credentials: true`, which turns every origin into a trusted, credentialed one.
 
-With `MODE=production`, that combination raises `InsecureCorsConfigError` at startup and the
-server does not boot. There are exactly two ways forward:
+With `MODE=production`, that combination raises `InsecureCorsConfigError` at startup and the server does not boot. There are exactly two ways forward:
 
 ```bash
 # 1. Name the origins explicitly (the usual answer)
@@ -104,8 +99,7 @@ ORIGINS=https://yourapp.com,https://api.yourapp.com
 CORS_ALLOW_CREDENTIALS=false
 ```
 
-In development the same combination only logs a warning, which tells you the deploy will fail
-before it does.
+In development the same combination only logs a warning, which tells you the deploy will fail before it does.
 
 </aside>
 
@@ -120,9 +114,7 @@ before it does.
 | `JWT_ISSUER` | Required `iss` claim. Unset means not checked. | Optional |
 | `JWT_AUDIENCE` | Required `aud` claim. Unset means not checked. | Optional |
 
-Both must be set when `10xgraph.json` has `"auth": "jwt"`; the config load raises a `ValueError`
-otherwise and the server does not start. JWT support also needs the extra:
-`pip install "10xgraph-api[jwt]"`.
+Both must be set when `10xgraph.json` has `"auth": "jwt"`; the config load raises a `ValueError` otherwise and the server does not start. JWT support also needs the extra: `pip install "10xgraph-api[jwt]"`.
 
 ---
 
@@ -134,16 +126,10 @@ otherwise and the server does not start. JWT support also needs the extra:
 
 `REDIS_URL` is **optional everywhere**. Two things use it:
 
-- **The ownership authorization cache (L2).** The `ownership` and `rbac` backends resolve their
-  Redis URL from the `redis` key in `10xgraph.json` first, falling back to `REDIS_URL`. With
-  neither set, or with the `redis` package not installed, the cache runs in-process only (L1) and
-  the server logs a warning at startup. Nothing breaks; each worker just pays its own first lookup
-  per thread.
-- **`PgCheckpointer`.** It can use Redis as a hot cache layer in front of Postgres. This is a
-  performance choice, not a requirement: `PgCheckpointer` runs without it.
+- **The ownership authorization cache (L2).** The `ownership` and `rbac` backends resolve their Redis URL from the `redis` key in `10xgraph.json` first, falling back to `REDIS_URL`. With neither set, or with the `redis` package not installed, the cache runs in-process only (L1) and the server logs a warning at startup. Nothing breaks; each worker just pays its own first lookup per thread.
+- **`PgCheckpointer`.** It can use Redis as a hot cache layer in front of Postgres. This is a performance choice, not a requirement: `PgCheckpointer` runs without it.
 
-The rate limiter does **not** read `REDIS_URL`. Configure its connection under
-`rate_limit.redis.url` in `10xgraph.json`.
+The rate limiter does **not** read `REDIS_URL`. Configure its connection under `rate_limit.redis.url` in `10xgraph.json`.
 
 ---
 
@@ -163,15 +149,9 @@ Read only by `SnowFlakeIdGenerator`, and only when it is constructed with no arg
 
 <aside class="callout callout-warning" role="note"><p class="callout-title">Two different sets of SNOWFLAKE_* defaults exist</p>
 
-The settings model also declares `SNOWFLAKE_*` fields, with **different** defaults
-(`SNOWFLAKE_EPOCH=1609459200000`, `SNOWFLAKE_NODE_ID=1`, `SNOWFLAKE_WORKER_ID=2`,
-`SNOWFLAKE_NODE_BITS=5`, `SNOWFLAKE_WORKER_BITS=8`, and no `SNOWFLAKE_TOTAL_BITS` at all). The
-generator never reads that model; it reads `os.environ` directly. The table above is what actually
-takes effect.
+The settings model also declares `SNOWFLAKE_*` fields, with **different** defaults (`SNOWFLAKE_EPOCH=1609459200000`, `SNOWFLAKE_NODE_ID=1`, `SNOWFLAKE_WORKER_ID=2`, `SNOWFLAKE_NODE_BITS=5`, `SNOWFLAKE_WORKER_BITS=8`, and no `SNOWFLAKE_TOTAL_BITS` at all). The generator never reads that model; it reads `os.environ` directly. The table above is what actually takes effect.
 
-The practical consequence: reading a default off `get_settings()` will not tell you what ids the
-generator produces. Set every variable explicitly in any deployment that runs more than one node
-or worker, and never rely on either set of defaults.
+The practical consequence: reading a default off `get_settings()` will not tell you what ids the generator produces. Set every variable explicitly in any deployment that runs more than one node or worker, and never rely on either set of defaults.
 
 </aside>
 
@@ -188,11 +168,21 @@ See [ID Generator](/docs/reference/python/id-generator) for the constructor cont
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `null` | OTLP collector endpoint |
 | `OTEL_LEVEL` | `standard` | Trace detail: `spans`, `standard`, or `full` |
 
-OpenTelemetry needs the extra: `pip install "10xgraph-api[otel]"`, which also brings the
-FastAPI instrumentation and the OTLP exporter.
+OpenTelemetry needs the extra: `pip install "10xgraph-api[otel]"`, which also brings the FastAPI instrumentation and the OTLP exporter.
 
-Logfire and LangSmith are configured through the `observability` block in `10xgraph.json`; their
-secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
+Logfire and LangSmith are configured through the `observability` block in `10xgraph.json`; their secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
+
+---
+
+## Error tracking and sampling
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SENTRY_DSN` | `null` | Sentry DSN for error tracking (optional) |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` | Fraction of requests to trace. Range: 0.0 to 1.0. A value of 0.1 means 10% of requests are traced. Set to 0.0 to disable tracing without disabling error tracking. |
+| `SENTRY_PROFILES_SAMPLE_RATE` | `0.0` | Fraction of traced requests to profile. Range: 0.0 to 1.0. Profiling is expensive; most deployments use 0.0 or a very low rate like 0.01. Requires `SENTRY_TRACES_SAMPLE_RATE > 0`. |
+
+For Sentry integration, install: `pip install "10xgraph-api[sentry]"`.
 
 ---
 
@@ -205,6 +195,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 | `MEDIA_MAX_SIZE_MB` | `25.0` | Maximum upload size in megabytes |
 | `DOCUMENT_HANDLING` | `extract_text` | `extract_text`, `pass_raw`, or `skip` |
 | `MEDIA_ALLOWED_CONTENT_TYPES` | `""` | Comma-separated MIME allowlist for uploads. **Empty means allow every type.** Entries may be exact (`image/png`) or wildcard subtype (`image/*`). |
+| `MEDIA_REQUIRE_OWNER` | `false` | Deny access to files with no recorded owner (uploaded before ownership tracking was enabled, or while auth was disabled). Set to `true` for deployments that require a hard guarantee of ownership isolation. |
 | `MEDIA_CLOUD_PROVIDER` | `aws` | `aws` or `gcp`. Cloud storage only. |
 | `MEDIA_CLOUD_BUCKET` | `""` | Bucket name |
 | `MEDIA_CLOUD_REGION` | `us-east-1` | Bucket region |
@@ -219,8 +210,7 @@ secrets (`LOGFIRE_TOKEN`, `LANGSMITH_API_KEY`) come from the environment.
 
 Document text extraction needs the extra: `pip install "10xgraph-api[media]"`.
 
-See [Multimodal and vision](/docs/server/files-and-multimodal) for how these fit
-together.
+See [Files and multimodal](/docs/server/files-and-multimodal) for how these fit together.
 
 ---
 
@@ -230,9 +220,7 @@ together.
 | --- | --- | --- |
 | `MAX_REQUEST_SIZE` | `10485760` (10MB) | Maximum request body size in bytes |
 
-`MAX_REQUEST_SIZE` is enforced by HTTP middleware and applies to requests that declare a
-`Content-Length`. It does not cover WebSocket frames (bounded separately at 1 MiB per frame on
-`/v1/graph/live`) or chunked uploads (bounded by `MEDIA_MAX_SIZE_MB` as the body is read).
+`MAX_REQUEST_SIZE` is enforced by HTTP middleware and applies to requests that declare a `Content-Length`. It does not cover WebSocket frames (bounded separately at 1 MiB per frame on `/v1/graph/live`) or chunked uploads (bounded by `MEDIA_MAX_SIZE_MB` as the body is read).
 
 ---
 
@@ -246,9 +234,10 @@ together.
 
 <aside class="callout callout-tip" role="note"><p class="callout-title">Disable docs in production</p>
 
-Consider disabling API docs in production by clearing `DOCS_PATH` and `REDOCS_PATH`:
+With `MODE=production`, both paths default to empty (docs off) unless you set them explicitly. In development you can disable them by clearing the variables:
 
 ```bash
+# Turn off Swagger UI and ReDoc
 DOCS_PATH=
 REDOCS_PATH=
 ```
@@ -257,11 +246,13 @@ REDOCS_PATH=
 
 ---
 
-## Error tracking
+## Server concurrency
 
-| Variable | Description |
-| --- | --- |
-| `SENTRY_DSN` | Sentry DSN for error tracking (optional) |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `WEB_CONCURRENCY` | Unset (`2` in the generated Dockerfile) | Number of Gunicorn workers. Gunicorn reads this variable natively; without it Gunicorn runs one worker. The Dockerfile from `10xgraph build` sets `ENV WEB_CONCURRENCY=2`; override it at deploy time, for example `docker run -e WEB_CONCURRENCY=8 ...`. |
+
+Only Gunicorn reads this variable, for example when started as `gunicorn -k uvicorn.workers.UvicornWorker tenxgraph_api.src.app.main:app`. The development server (`10xgraph api`) does not use it.
 
 ---
 
@@ -283,7 +274,7 @@ Set these based on the `provider` you use on your `Agent`. They are read at clie
 
 ### Google Gemini (`provider="google"`)
 
-The Google provider supports two backends: the Gemini API (default) and Vertex AI. See [Using Vertex AI](/docs/integrations/google#using-vertex-ai).
+The Google provider supports two backends: the Gemini API (default) and Vertex AI. See [Google integration](/docs/integrations/google#using-vertex-ai).
 
 **Gemini API (Google AI Studio):**
 
@@ -296,13 +287,36 @@ The Google provider supports two backends: the Gemini API (default) and Vertex A
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `GOOGLE_GENAI_USE_VERTEXAI` | — | Set to `true` to route the Google provider through Vertex AI process-wide |
-| `GOOGLE_CLOUD_PROJECT` | — | **Required.** GCP project ID with the Vertex AI API enabled |
+| `GOOGLE_GENAI_USE_VERTEXAI` | unset | Set to `true` to route the Google provider through Vertex AI process-wide |
+| `GOOGLE_CLOUD_PROJECT` | unset | **Required.** GCP project ID with the Vertex AI API enabled |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | GCP region for Vertex AI calls |
-| `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to a service-account JSON key (Application Default Credentials) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | unset | Path to a service-account JSON key (Application Default Credentials) |
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Vertex AI authentication</p>
 
 Vertex AI authenticates via [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), not an API key. In local development point `GOOGLE_APPLICATION_CREDENTIALS` at a service-account key file. On GCP runtimes (Cloud Run, GKE, Compute Engine) the attached service account is picked up automatically.
 
 </aside>
+
+### Anthropic (`provider="anthropic"` or `provider="anthropic_vertex"` or `provider="anthropic_bedrock"`)
+
+| Variable | Description |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | API key from https://console.anthropic.com |
+
+For Vertex AI models, see [Anthropic integration](/docs/integrations/anthropic#vertex-ai-and-bedrock).
+
+---
+
+## CLI variables
+
+These variables control how the `10xgraph` command-line interface renders output: animation, the full-screen frame, and Unicode symbols. A flag is on when the value is `1`, `true`, `yes`, or `on` (case-insensitive). There is no `TENXGRAPH_THEME` variable; the CLI theme is fixed.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TENXGRAPH_NO_SPINNER` | `false` | Disable the animated spinner and other command animation. Set to `1`, `true`, `yes`, or `on` to disable animation. Falls back to `AGENTFLOW_NO_SPINNER` if set. |
+| `TENXGRAPH_FULLSCREEN` | `false` | Opt in to the full-screen terminal frame (pinned header and footer, branded intro). Off by default: output goes to normal scrollback. Same as the `--fullscreen` flag. |
+| `TENXGRAPH_NO_FULLSCREEN` | `false` | Force the full-screen frame off even when `TENXGRAPH_FULLSCREEN` is set. Falls back to `AGENTFLOW_NO_FULLSCREEN` if set. |
+| `TENXGRAPH_ASCII` | `false` | Disable Unicode symbols in output; use ASCII equivalents instead. Set to `1`, `true`, `yes`, or `on` for ASCII-only mode. Falls back to `AGENTFLOW_ASCII` if set. Useful in terminals with poor Unicode support. |
+
+Each CLI variable has a deprecated `AGENTFLOW_*` equivalent that is used only when the `TENXGRAPH_*` name is not set. The `AGENTFLOW_*` names will be removed in 10xGraph 2.0.

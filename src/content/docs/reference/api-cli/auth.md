@@ -1,15 +1,15 @@
 ---
 title: Authentication
-seoTitle: "API server authentication (JWT, custom)"
-description: How to configure JWT auth or a custom auth backend for the 10xGraph API.
+seoTitle: "API server authentication and authorization"
+description: Configure JWT, custom auth backends, and authorization for the 10xGraph API server.
 section: Reference
 group: "CLI and configuration"
 order: 440
 label: Authentication
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-By default, the 10xGraph API accepts all requests without authentication (suitable for local development). For production, configure either JWT or a custom auth backend.
+By default, the 10xGraph API accepts all requests without authentication (suitable for local development). For production, configure either JWT or a custom `BaseAuth` backend to verify identity, and optionally set authorization rules via `AuthorizationBackend` to control what authenticated users may do.
 
 ## No authentication (default)
 
@@ -22,8 +22,6 @@ By default, the 10xGraph API accepts all requests without authentication (suitab
 
 All endpoints are publicly accessible. Only use this locally or behind a secure gateway.
 
----
-
 ## JWT authentication
 
 Set `auth` to `"jwt"` in `10xgraph.json`:
@@ -35,7 +33,7 @@ Set `auth` to `"jwt"` in `10xgraph.json`:
 }
 ```
 
-JWT support needs an extra:
+Install the JWT extra:
 
 ```bash
 pip install "10xgraph-api[jwt]"
@@ -48,9 +46,11 @@ JWT_SECRET_KEY=your-secret-key
 JWT_ALGORITHM=HS256
 ```
 
-Both are validated when the config loads: `"auth": "jwt"` with either missing raises a `ValueError` and the server does not start.
+Both are validated at startup. Missing either one raises `ValueError` and the server does not start.
 
-Requests must include a `Bearer` token in the `Authorization` header:
+### Using JWT
+
+Send a Bearer token in the `Authorization` header:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
@@ -59,39 +59,38 @@ curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -d '{"messages": [...], "config": {"thread_id": "t1"}}'
 ```
 
-The server decodes and validates the JWT on every request. The decoded payload becomes the `user` context, and flows into `config["user"]` for every downstream call.
+The server decodes and validates the JWT on every request. The decoded payload becomes the `user` context, available to your graph as `config["user"]`.
 
-### Required claims
+### Required JWT claims
 
-The built-in backend rejects a token that does not carry both of these:
+The built-in backend requires:
 
-| Claim | Why |
-| --- | --- |
-| `exp` | Decoding uses `options={"require": ["exp"]}`. A token with no expiry is refused outright, not treated as non-expiring. |
-| `user_id` | The identity key the whole authorization layer is built on. `sub` is **not** accepted as a substitute. |
+| Claim | Notes |
+|---|---|
+| `exp` | Expiry time, required. No token is treated as permanently valid; a missing `exp` is rejected with 401. |
+| `user_id` | Identity key. The `sub` claim is not accepted; you must use `user_id`. |
 
-Everything else in the payload is passed through untouched, so `roles`, `scopes`, `email`, and any custom claims reach your tools and authorization backend as-is.
+If `JWT_ISSUER` or `JWT_AUDIENCE` is set, the matching `iss` or `aud` claim is also required.
 
-### Rejection codes
+Other claims (`roles`, `scopes`, `email`, custom fields) are passed through to `config["user"]` unchanged.
 
-Failures raise `UserAccountError`, which the error handler returns as HTTP **403** with the code in the body.
+### Status codes for JWT failures
 
-| `error_code` | Cause |
-| --- | --- |
-| `REVOKED_TOKEN` | No credential was presented at all: no `Authorization` header, no `10xgraph-bearer` subprotocol, no `?token=` on a WebSocket |
-| `EXPIRED_TOKEN` | `exp` is in the past |
-| `INVALID_TOKEN` | Signature or structure is invalid, or `user_id` is missing from an otherwise valid token |
-| `JWT_SETTINGS_NOT_CONFIGURED` | `JWT_SECRET_KEY` or `JWT_ALGORITHM` is unset at request time |
+| Status | `error_code` | Cause |
+|---|---|---|
+| 401 | `REVOKED_TOKEN` | No credential was presented (missing Authorization header, missing WebSocket auth, missing query param) |
+| 401 | `EXPIRED_TOKEN` | Token `exp` is in the past |
+| 401 | `INVALID_TOKEN` | Signature or structure is invalid, or `user_id` is missing |
+| 500 | `JWT_SETTINGS_NOT_CONFIGURED` | `JWT_SECRET_KEY` or `JWT_ALGORITHM` is unset at request time |
 
-On a WebSocket route these become a clean close with code `1008` instead of an HTTP response.
+On WebSocket routes, errors become a clean close with code 1008 instead of an HTTP response.
 
-### Generating tokens
+### Generating test tokens
 
-10xGraph does not issue tokens. Use your identity provider, or mint one for testing. The payload must carry `user_id` and `exp`:
+10xGraph does not issue tokens; use your identity provider or mint one locally for testing:
 
 ```python
 import datetime
-
 import jwt  # PyJWT, installed by the [jwt] extra
 
 token = jwt.encode(
@@ -105,34 +104,32 @@ token = jwt.encode(
 )
 ```
 
-A token keyed on `sub` instead of `user_id` is rejected with `INVALID_TOKEN`, and a token with no `exp` is rejected even if it is otherwise valid.
+A token using `sub` instead of `user_id` is rejected with 401. A token with no `exp` is also rejected with 401.
 
----
+## Sending auth over WebSocket
 
-## Sending the token over WebSocket
+WebSocket routes check three places in order for a credential:
 
-WebSocket routes use the same bearer credential as HTTP, but browsers cannot set an `Authorization` header on a `WebSocket` handshake. The server therefore looks in three places, in this order:
+1. **`Authorization: Bearer <token>`**: for non-browser clients.
+2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`**: preferred for browsers (the token stays in headers, never in URLs or logs). The server echoes the sentinel back on accept, which browsers require.
+3. **`?token=<jwt>`**: last resort for WebSocket only; the token appears in URLs and access logs.
 
-1. **`Authorization: Bearer <token>`** — non-browser clients.
-2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`** — the preferred browser mechanism. The token rides in a request header, so it never lands in a URL, an access log, or browser history. The server echoes the sentinel back on `accept()`, which browsers require in order to complete the handshake.
-3. **`?token=<jwt>`** — a last-resort fallback, accepted on WebSocket connections only. The token ends up in URLs and access logs.
+Example:
 
 ```javascript
 const ws = new WebSocket(
   "ws://localhost:8000/v1/graph/ws",
-  ["10xgraph-bearer", token],  // sentinel first, then the raw JWT
+  ["10xgraph-bearer", token],  // sentinel, then raw JWT
 );
 ```
 
-The offer must be exactly two entries with the sentinel first. Anything else falls through to the query parameter.
+The subprotocol offer must be exactly two entries with the sentinel first. Anything else falls through to the query parameter.
 
-The older sentinel `agentflow-bearer` is accepted the same way until 2.0, and the server echoes whichever one the client offered. The TypeScript client still sends `agentflow-bearer`.
+The older sentinel `agentflow-bearer` is still accepted until 2.0, and the server echoes whichever one you send. The TypeScript client still sends `agentflow-bearer`.
 
----
+## Custom authentication backend
 
-## Custom authentication
-
-Provide your own auth backend when you need integration with an internal identity system:
+Provide your own `BaseAuth` subclass when you need integration with an internal identity system:
 
 ```json
 {
@@ -144,32 +141,27 @@ Provide your own auth backend when you need integration with an internal identit
 }
 ```
 
-The backend must subclass `BaseAuth` and implement `authenticate`. The method is
-**synchronous** and receives three arguments: the connection, the response, and the bearer
-`credential` (or `None`).
+Subclass `BaseAuth` and implement `authenticate`. The method is **synchronous** and receives the request, response, and credential:
 
 ```python
 from typing import Any
-
 from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
-
 from tenxgraph_api import BaseAuth
 
 class MyAuthBackend(BaseAuth):
     def authenticate(
         self,
-        request: Request,          # may be a Request or a WebSocket (HTTPConnection)
+        request: Request,  # Request or WebSocket (HTTPConnection)
         response: Response,
-        credential: HTTPAuthorizationCredentials | None,  # bearer token, or None
+        credential: HTTPAuthorizationCredentials | None,  # bearer token or None
     ) -> dict[str, Any] | None:
-        """Verify the request and return the user context.
-
-        - Return a dict (with at least ``user_id``) to accept. The keys flow into
-          ``config["user"]`` for every downstream call.
-        - Return ``{}`` / ``None`` for an anonymous request.
-        - Raise ``UserAccountError`` (always 403) or ``HTTPException`` (your chosen
-          status) to reject. On a WebSocket route either becomes a clean 1008 close.
+        """Return user context dict, None for anonymous, or raise to reject.
+        
+        - Return dict (with at least 'user_id') to authenticate.
+        - Return None/{} for anonymous requests.
+        - Raise UserAccountError (401) or HTTPException (your status) to reject.
+        - On WebSocket: either becomes a clean 1008 close.
         """
         if credential is None:
             return None
@@ -177,137 +169,104 @@ class MyAuthBackend(BaseAuth):
         return {
             "user_id": claims["sub"],
             "email": claims.get("email"),
-            "roles": claims.get("roles", []),   # consumed by RBAC / custom authorization
-            "scopes": claims.get("scopes", []), # consumed by per-endpoint scope checks
+            "roles": claims.get("roles", []),
+            "scopes": claims.get("scopes", []),
         }
 ```
 
-<aside class="callout callout-warning" role="note"><p class="callout-title">`authenticate` is synchronous</p>
+<aside class="callout callout-warning" role="note"><p class="callout-title">`authenticate` must be synchronous</p>
 
-The server calls `authenticate(...)` without `await`. Declaring it `async def` returns an
-un-awaited coroutine and breaks auth silently. Keep it a plain `def`. For non-bearer schemes
-(API keys, cookies), ignore `credential` and read `request.headers` directly.
+The server calls `authenticate(...)` without `await`. If you declare it `async def`, you return an un-awaited coroutine and auth fails silently. Keep it a plain `def`. For non-Bearer schemes (API keys, cookies), ignore `credential` and read `request.headers` directly.
 
 </aside>
 
----
+## Authorization (access control)
 
-## Authorization
+Authorization decides what an authenticated user may do and whose data they can access. It is configured separately from `auth`, via the `authorization` key in `10xgraph.json`.
 
-Authorization decides *what* an authenticated user may do and *whose data* they can touch. It is
-configured separately from `auth`, via the `authorization` key.
+### Built-in backends
 
-### Built-in backends and mode-based defaults
+Two backends ship built in; choose one or write your own:
 
-You do not have to write code to get per-user isolation. Two backends ship built in:
-
-| `authorization` value | Behaviour |
+| Value | Behavior |
 |---|---|
-| `"ownership"` | Owner-only: a thread can be read, run, streamed, stopped, fixed, or deleted **only by the user who created it**. A foreign `invoke`/`stream` is rejected up front (403). |
-| `"allow_all"` (aliases `"default"`, `"none"`) | Any authenticated user may do anything. |
-| `"module:attr"` | Your own `AuthorizationBackend`. |
-| `{ ... }` (object) | RBAC config block — see below. |
-| not set (`null`) | **Mode-based**: `ownership` in production, `allow_all` in development. |
+| `"ownership"` | Owner-only threads: a thread is readable, runnable, stoppable, fixable, and deletable **only by the user who created it**. A request for another user's thread is rejected with 403 before it reaches the graph. |
+| `"allow_all"` (also `"default"`, `"none"`) | Any authenticated user may do anything. |
+| `"module:attr"` | Your custom `AuthorizationBackend`. |
+| `{ ... }` (object) | RBAC config block (see below). |
+| `null` | **Mode-based default:** `"ownership"` in production, `"allow_all"` in development. |
 
-A production build (`MODE=production`) enforces owner-only access even if you never set
-`authorization`. Development stays permissive. The developer's explicit choice always wins.
+Example:
 
 ```json
-{ "agent": "graph.react:app", "auth": "jwt", "authorization": "ownership" }
+{
+  "agent": "graph.react:app",
+  "auth": "jwt",
+  "authorization": "ownership"
+}
 ```
 
-An unrecognised built-in name raises a `ValueError` at startup listing the valid ones, so a typo
-fails loudly rather than silently falling back to something permissive.
-
-The classes behind these names are importable, so you can subclass or compose them:
+An unrecognized built-in name raises `ValueError` at startup. The classes are importable for subclassing or composition:
 
 ```python
 from tenxgraph_api.src.app.core.auth.authorization import (
-    AuthorizationBackend,             # the abstract base
+    AuthorizationBackend,             # abstract base
     DefaultAuthorizationBackend,      # "allow_all" / "default" / "none"
     OwnershipAuthorizationBackend,    # "ownership"
-    RoleBasedAuthorizationBackend,    # the RBAC config block
+    RoleBasedAuthorizationBackend,    # RBAC config block
 )
 ```
 
-### How ownership is resolved
+### Ownership model
 
-`OwnershipAuthorizationBackend` only ownership-checks the thread-scoped resources `graph` and
-`checkpointer`. `store`, `files`, and `config` pass through, because they enforce their own
-per-user scoping.
+`OwnershipAuthorizationBackend` checks ownership only for thread-scoped resources: `graph` and `checkpointer`. The `store`, `files`, and `config` resources enforce their own per-user scoping.
 
-Its decision table:
+Decision table:
 
-| Situation | Result |
-| --- | --- |
-| No `user_id` on the request | Deny |
-| No `resource_id` (list or create endpoints, for example `GET /v1/threads`) | Allow. Those paths are already user-scoped by the service layer. |
-| The thread does not exist yet | Allow. This is a new session; `invoke`/`stream` will create it owned by the caller. |
-| The thread exists and the caller owns it | Allow |
-| The thread exists and someone else owns it | **Deny, for every action**, including `invoke` and `stream` |
-| The checkpointer cannot resolve ownership (`aget_thread_owner` raises `NotImplementedError`) | Allow, with a warning. There is nothing to enforce against. |
-| The ownership lookup errors | **Deny.** A resolution failure must never silently grant access. |
+| Situation | Decision |
+|---|---|
+| No `user_id` on request | Deny |
+| No `resource_id` (list/create endpoints, e.g., `GET /v1/threads`) | Allow (already user-scoped by the service) |
+| Thread does not exist | Allow (new session; `invoke`/`stream` will create it owned by the caller) |
+| Thread exists and caller owns it | Allow |
+| Thread exists and someone else owns it | **Deny**, including on `invoke` and `stream` |
+| Checkpointer cannot resolve ownership (`aget_thread_owner` not implemented) | Allow with warning |
+| Ownership lookup fails | **Deny** (failures never grant access) |
 
-<aside class="callout callout-note" role="note"><p class="callout-title">Ownership needs a checkpointer that records owners</p>
+<aside class="callout callout-note" role="note"><p class="callout-title">Ownership requires a checkpointer that tracks owners</p>
 
-Ownership comes from `BaseCheckpointer.aget_thread_owner`. `PgCheckpointer`, SQLite, and the
-in-memory checkpointer implement it; the base class raises `NotImplementedError`. With no
-checkpointer configured at all there are no persisted threads to protect, so requests pass
-through with a warning. The in-memory checkpointer only records a thread when one is explicitly
-written, which is why ownership is the production default (backed by Postgres) while development
-defaults to `DefaultAuthorizationBackend`.
+Ownership comes from `BaseCheckpointer.aget_thread_owner`. `PgCheckpointer`, SQLite, and the in-memory checkpointer implement it; the base class raises `NotImplementedError`. With no checkpointer configured, requests pass through with a warning. The in-memory checkpointer records owners only when explicitly writing a thread, so ownership is the production default (with Postgres) but development defaults to `DefaultAuthorizationBackend`.
 
 </aside>
 
-#### `ThreadOwnershipResolver`
+### Ownership caching
 
-Ownership is immutable: it is set when a thread is created and never changes, only disappearing
-on delete. That makes it safe to cache aggressively, and `ThreadOwnershipResolver` does, so an
-authorization check is not a database round-trip per request.
+Ownership is immutable, so it is cached by `ThreadOwnershipResolver` for scalability:
 
-| Tier | What it is | Notes |
-| --- | --- | --- |
-| L1 | A bounded in-process LRU, `max_size=10_000` entries | Per worker. No expiry. |
-| L2 | An optional shared async Redis client | Key prefix `af:authz:owner`. **No expiry** is set, since ownership never changes. Redis errors degrade to the database lookup and never fail a request. |
+| Tier | Details |
+|---|---|
+| L1 | In-process LRU: 10,000 entries per worker, no expiry |
+| L2 | Optional shared Redis client (key prefix `af:authz:owner`, no expiry since ownership never changes; Redis errors degrade to database lookup and never fail the request) |
 
-**Negative results are never cached.** A `None` result means the thread does not exist yet, and
-it could become owned by the very next request. Caching that would let a later caller be treated
-as the creator of a thread someone else just made.
+Negative results are not cached (a missing thread could be created by a later request). The L2 tier is wired from `redis` in `10xgraph.json`, falling back to `REDIS_URL`. When neither is set or the `redis` package is not installed, L1 only is used and a warning is logged at startup.
 
-The L2 tier is wired automatically from `redis` in `10xgraph.json`, falling back to
-`REDIS_URL`. When neither is set, or when the `redis` package is not installed, the resolver runs
-L1-only and logs a warning at startup.
-
-#### The eviction contract
-
-Two methods are part of the backend contract, and a custom backend that caches ownership should
-honour both:
-
-| Method | When the server calls it | What it must do |
-| --- | --- | --- |
-| `evict(thread_id)` | On thread deletion, from `CheckpointerService.delete_thread` | Invalidate any cached owner for that thread, in every tier. Returns the resolver's `evict` coroutine so the caller can `await` it, or `None` when there is nothing to evict. |
-| `aclose()` | Once during lifespan shutdown | Close any client the backend opened, such as the L2 Redis connection. |
-
-Skipping `evict` leaves a deleted thread's owner cached, so the id cannot be reused by a
-different user until the process restarts.
+Cache eviction happens on thread delete via `CheckpointerService.delete_thread`. A custom caching backend should implement `evict(thread_id)` (returns the resolver's `evict` coroutine or `None`) and `aclose()` (closes any client on shutdown).
 
 ### Custom authorization backend
 
-Subclass `AuthorizationBackend`. `authorize` is required; `isolation_scope` and `scopes_for`
-are optional overrides.
+Subclass `AuthorizationBackend`. The `authorize` method is required; `isolation_scope` and `scopes_for` are optional:
 
 ```python
 from typing import Any
-
 from tenxgraph_api.src.app.core.auth.authorization import AuthorizationBackend
 
-class MyAuthorizationBackend(AuthorizationBackend):
+class MyAuthBackend(AuthorizationBackend):
     async def authorize(
         self,
         user: dict[str, Any],
-        resource: str,          # "graph" | "checkpointer" | "store" | "files" | "config"
-        action: str,            # "invoke" | "stream" | "read" | "write" | "delete" | ...
-        resource_id: str | None = None,   # thread_id / memory_id when the path carries one
+        resource: str,  # "graph" | "checkpointer" | "store" | "files" | "config"
+        action: str,    # "invoke" | "stream" | "read" | "write" | "delete" | ...
+        resource_id: str | None = None,  # thread_id / memory_id when available
         **context: Any,
     ) -> bool:
         """Return True to allow, False to deny (403)."""
@@ -318,30 +277,28 @@ class MyAuthorizationBackend(AuthorizationBackend):
         return True
 
     def isolation_scope(self) -> str:
-        """How storage partitions rows for this backend:
-        "owner" -> scope every checkpointer/store query to the caller; "none" -> no scoping.
+        """Storage partitioning: "owner" scopes rows to caller; "none" does not.
         Stamped server-side into config["user"]["authz"]; the client cannot forge it.
         """
         return "owner"
 
     def scopes_for(self, user: dict[str, Any]) -> list[str] | None:
-        """Scopes this identity carries, or None for unrestricted (the permissive default)."""
+        """Scopes this identity carries, or None for unrestricted (default)."""
         return user.get("scopes")
 ```
 
-Point `10xgraph.json` at it (no `method` wrapper — just the path):
+Point `10xgraph.json` at it (no `method` wrapper, just the path):
 
 ```json
-{ "authorization": "graph.auth:MyAuthorizationBackend" }
+{ "authorization": "graph.auth:MyAuthBackend" }
 ```
 
-### Resource and action pairs
+### Resources and actions
 
-The server passes these `(resource, action)` pairs to `authorize`. The required **scope** for an
-endpoint is `"<resource>:<action>"`.
+The server passes `(resource, action)` pairs to `authorize`. The required **scope** for an endpoint is `"<resource>:<action>"`.
 
 | Resource | Actions |
-| --- | --- |
+|---|---|
 | `graph` | `invoke`, `stream`, `stop`, `fix`, `setup`, `read` |
 | `checkpointer` | `read`, `write`, `delete` |
 | `store` | `read`, `write`, `delete` |
@@ -350,16 +307,14 @@ endpoint is `"<resource>:<action>"`.
 
 ### Role-based access control (no code)
 
-For roles to scopes, use the RBAC config block instead of writing a backend. It loads
-`RoleBasedAuthorizationBackend`, which maps roles to scopes on top of the owner-only isolation it
-inherits from `OwnershipAuthorizationBackend`:
+Use the RBAC config block instead of writing a backend to map roles to scopes. It loads `RoleBasedAuthorizationBackend`, which inherits owner-only isolation from `OwnershipAuthorizationBackend`:
 
 ```json
 {
   "authorization": {
     "backend": "rbac",
     "roles": {
-      "admin":  ["*"],
+      "admin": ["*"],
       "member": ["graph:invoke", "graph:stream", "graph:read", "checkpointer:read"]
     },
     "default_scopes": ["graph:read"],
@@ -369,16 +324,13 @@ inherits from `OwnershipAuthorizationBackend`:
 ```
 
 | Key | Alias | Meaning |
-| --- | --- | --- |
-| `backend` | `type` | `"rbac"`, `"role_based"`, or `"roles"`. All three select the same backend. |
-| `roles` | `role_scopes` | Role (from the user's `roles` or `role` claim) to the scopes it grants. `"*"` grants every scope. |
-| `default_scopes` | — | Granted to everyone, even a user with no role. Defaults to empty. |
-| `isolation` | — | `"owner"` (owner-only storage, the default) or `"none"` (see all rows). Any other value falls back to `"owner"`. |
+|---|---|---|
+| `backend` | `type` | `"rbac"`, `"role_based"`, or `"roles"` (all select the same backend) |
+| `roles` | `role_scopes` | Map role (from user's `roles` or `role` claim) to scopes. `"*"` grants all scopes. |
+| `default_scopes` | none | Scopes for users with no role. Defaults to empty. |
+| `isolation` | none | `"owner"` (owner-only, default) or `"none"` (all rows). Any other value falls back to `"owner"`. |
 
-An `authorization` object whose `backend`/`type` is not one of the three RBAC names raises a
-`ValueError` at startup.
-
-The same behaviour is available in code when you want to compute the role table at runtime:
+An unrecognized `backend`/`type` value raises `ValueError` at startup. The same backend is available in code:
 
 ```python
 from tenxgraph_api.src.app.core.auth.authorization import RoleBasedAuthorizationBackend
@@ -393,55 +345,36 @@ backend = RoleBasedAuthorizationBackend(
 )
 ```
 
-Point `10xgraph.json` at it with `"authorization": "module:backend"`. Subclass it when you need
-to derive roles from something other than a claim: override `scopes_for` and everything else,
-including owner-only thread isolation, still applies.
+Point `10xgraph.json` at it with `"authorization": "module:backend"`. Subclass it when you need to compute roles at runtime: override `scopes_for`, and owner-only isolation still applies.
 
-### Scope precedence
+### Scope resolution
 
-A request is allowed only if the identity's scopes include the endpoint's
-`"<resource>:<action>"`. The server resolves that list in a fixed order:
+A request is allowed only if the identity's scopes include the endpoint's `"<resource>:<action>"`. Scopes are resolved in order:
 
-1. `authz.scopes_for(user)` on the configured authorization backend, when it defines one.
-2. `user["scopes"]` from the authenticated identity, but **only** when step 1 returned `None`.
+1. `authz.scopes_for(user)` from your backend (if it defines the method).
+2. `user["scopes"]` from the authenticated identity (only if step 1 returns `None`).
 
 A backend that returns a list wins outright; the identity's own `scopes` claim cannot widen it.
 
-The resolved value has three distinct meanings:
+| Resolved value | Effect |
+|---|---|
+| `None` | **Unrestricted.** Scope check is skipped; nothing breaks until scopes are actually issued. |
+| Non-empty list | Only listed `"<resource>:<action>"` pairs are allowed; anything else is 403. |
+| Empty list (`[]`) | **Denies everything.** Not the same as `None`: no endpoint passes the check. |
 
-| Resolved scopes | Effect |
-| --- | --- |
-| `None` | **Unrestricted.** The scope check is skipped entirely. This is the permissive default, so nothing breaks until you actually issue scopes. |
-| A non-empty list | Only the listed `"<resource>:<action>"` pairs are allowed. Anything else is `403 Missing required scope: <resource>:<action>`. |
-| An empty list (`[]`) | **Denies everything.** An empty list is not the same as `None`: no required scope can be a member of it, so every endpoint returns `403`. |
+The base `AuthorizationBackend.scopes_for` passes through `user["scopes"]` if it is a list/tuple/set, otherwise returns `None` (why an identity with no `scopes` claim stays unrestricted).
 
-The base `AuthorizationBackend.scopes_for` passes through `user["scopes"]` when it is a list,
-tuple, or set, and returns `None` otherwise, which is why an identity with no scopes claim stays
-unrestricted.
+After a successful check, the resolved list is stamped into `user["authz"]["scopes"]` server-side, so downstream code reads the trusted value.
 
-After a successful check the resolved list is stamped into `user["authz"]["scopes"]` server-side,
-so downstream code reads the trusted value rather than anything the client sent.
+### Data isolation contract
 
-### Data isolation (the `config["authz"]` contract)
+The API layer enforces object-level `authorize` and scope checks. The data layer (checkpointer, store) enforces isolation separately via a trusted policy stamped by the server after a successful check: `user["authz"] = {user_id, scope, scopes}`, where `scope` comes from `isolation_scope()`. Every service copies that trusted `user` into `config["user"]`, so the policy reaches the graph and cannot be forged by the client. With `scope: "owner"`, checkpointer and store queries are scoped to the caller; with `scope: "none"`, they are not.
 
-Object-level `authorize` and scope checks run at the API layer. The **data layer** (checkpointer,
-store) enforces isolation separately, driven by a trusted policy: after a successful check the
-server stamps `user["authz"] = {user_id, scope, scopes}` where `scope` comes from the backend's
-`isolation_scope()`. Every service copies that trusted `user` into `config["user"]`, so the
-policy reaches the core library and cannot be forged by the client. With `scope: "owner"` the
-checkpointer and store scope every row to the caller; with `scope: "none"` they do not.
+## Boot-time route guard
 
----
+Authorization is applied per handler with `Depends(RequirePermission(resource, action))`. To prevent forgotten guards from shipping open endpoints, `assert_all_routes_protected` runs at startup and walks every `APIRoute` and `APIWebSocketRoute` to check that the entire dependency subtree includes a `RequirePermission` instance.
 
-## The boot-time route guard
-
-Authorization is applied per handler with `Depends(RequirePermission(resource, action))`. That is
-precise, but it is also easy to forget on a new endpoint, and a forgotten guard ships an open
-endpoint. `assert_all_routes_protected` turns that into a startup failure instead: it runs after
-the routers are mounted and walks every `APIRoute` and `APIWebSocketRoute`, checking the whole
-dependency subtree for a `RequirePermission` instance.
-
-If any non-public route lacks one, the server raises and refuses to start:
+If any non-public route lacks one, the server refuses to start:
 
 ```
 RuntimeError: Refusing to start: the following routes are not protected by RequirePermission.
@@ -449,43 +382,36 @@ Add the dependency, or add the path to the public allowlist if it is intentional
   - POST /v1/my-new-endpoint
 ```
 
-The check costs nothing per request. Starlette infrastructure routes (`/docs`, `/redoc`,
-`/openapi.json`) are not `APIRoute`s and are skipped automatically.
+The check is free per request. Starlette infrastructure routes (`/docs`, `/redoc`, `/openapi.json`) are not `APIRoute`s and are skipped automatically.
 
 ### Public paths
 
-`DEFAULT_PUBLIC_PATHS` is exactly three entries:
+These three paths are publicly accessible:
 
-| Path | Why it is public |
-| --- | --- |
-| `/ping` | Health check. Load balancers and orchestrators need it without credentials. |
+| Path | Purpose |
+|---|---|
+| `/ping` | Health check (for load balancers and orchestrators) |
 | `/v1/evals/runs` | Eval report viewer |
 | `/v1/evals/runs/{run_id}` | Eval report viewer |
 
-<aside class="callout callout-warning" role="note"><p class="callout-title">The eval endpoints are unauthenticated</p>
+<aside class="callout callout-warning" role="note"><p class="callout-title">Eval endpoints are unauthenticated</p>
 
-The eval routes read `eval_reports/*.json` from the server's working directory and serve them to
-anyone who can reach the port, regardless of your `auth` setting. They exist as a local report
-viewer. On a deployment reachable from a network you do not control, keep `eval_reports/` out of
-the working directory or block `/v1/evals/*` at your ingress. See
-[REST API: Evals](/docs/reference/rest-api/evals).
+The eval routes read `eval_reports/*.json` from the server's working directory and serve it to anyone who reaches the port, regardless of your `auth` setting. They exist as a local report viewer. On a deployment reachable from a network you do not control, keep `eval_reports/` out of the working directory or block `/v1/evals/*` at your ingress. See [REST API: Evals](/docs/reference/rest-api/evals).
 
 </aside>
 
-Adding to the allowlist requires editing the frozenset in the source, which is deliberate: it
-makes opening a route a reviewable change rather than a config edit.
-
----
+Adding paths to the allowlist requires editing the source frozenset, which is deliberate: opening a route becomes a reviewable change.
 
 ## Using auth with the TypeScript client
 
 ```typescript
+import { AgentFlowClient } from "@10xgraph/client";
+
+// authToken is sent as a Bearer token on every request
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
+  authToken: token,
 });
 ```
 
-The `headers` object is merged into every request the client makes.
+The token is fixed per client, so create a new client to rotate it. See [Create a client](/docs/client/create-client) for all options.

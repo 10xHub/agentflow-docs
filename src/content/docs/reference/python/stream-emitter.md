@@ -1,380 +1,261 @@
 ---
 title: StreamEmitter
 seoTitle: "StreamEmitter API reference (Python)"
-description: Emit live progress, errors, and status updates from tools during streaming execution.
+description: Reference for StreamEmitter, the object injected into tools during streaming that sends live progress, error and message chunks to the caller.
 section: Reference
 group: "Python library"
 order: 110
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
+`StreamEmitter` lets a tool send live updates to the caller of `app.stream(...)` or `app.astream(...)` while the tool is still running. The runtime creates one per tool call and injects it into any tool that declares an `emit` parameter. During `invoke()` and `ainvoke()` the tool receives `emit=None`.
 
-Use `StreamEmitter` when you want your tools to send **live progress updates** back to the caller during `app.stream(...)` / `app.astream(...)` execution. Unlike traditional tool results (which return only after completion), `StreamEmitter` allows tools to report intermediate steps, retries, and errors in real-time.
-
-**Available only during streaming**. `StreamEmitter` is automatically injected into tool functions when the graph is run in streaming mode. During `invoke()` / `ainvoke()` (non-streaming), tools receive `emit=None`.
-
-## Import path
+## Import
 
 ```python
 from tenxgraph.core.state.stream_emitter import StreamEmitter
+# also exported from the package: from tenxgraph.core.state import StreamEmitter
 ```
 
----
+## Declare the emitter in a tool
 
-## Constructor
-
-`StreamEmitter` is created automatically by the graph runtime. You do not instantiate it directly. Instead, declare it as an optional parameter in your tool functions:
+You never construct `StreamEmitter` yourself. Add a parameter named `emit` with a default of `None` and guard every call, because the value is `None` when the graph runs through `invoke()` or `ainvoke()`.
 
 ```python
-def my_tool(
-    location: str,
-    emit: StreamEmitter | None = None,
-) -> str:
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+
+
+def my_tool(location: str, emit: StreamEmitter | None = None) -> str:
+    # emit is None outside streaming runs, so always check it.
     if emit:
         emit.progress("Starting work...", data={"step": 1})
-    # ... work ...
     return "result"
 ```
 
----
+`emit` is a reserved injectable name and is not exposed to the model in the tool schema. The other injectable parameters (`tool_call_id`, `state`, `config`) are covered in [Dependency Injection](/docs/concepts/dependency-injection).
 
-## Core Methods
+## Methods
 
-### `progress(message: str, data: dict | None = None) -> None`
+All four methods return `None`, take effect immediately, and never interrupt the tool. Each puts a `StreamChunk` on the stream. The first three differ in the `status` value and the stream event they use.
 
-Emit a progress update for the running tool.
+| Method | `status` in chunk data | Stream event | Use for |
+|---|---|---|---|
+| `progress(message, data=None)` | `"tool_progress"` | `StreamEvent.MESSAGE` | Steps, retries, percentages |
+| `error(message, data=None)` | `"tool_failed"` | `StreamEvent.ERROR` | Recoverable failures you want the client to see |
+| `message(message, data=None)` | `"tool_message"` | `StreamEvent.MESSAGE` | General informational text |
+| `update(data)` | none (set your own in `data`) | `StreamEvent.UPDATES` | Structured metrics without a message |
 
-**When to use:** Report intermediate steps, current progress, or status changes during tool execution.
+### progress
 
-**Characteristics:**
-- Status is set to `"tool_progress"`
-- Visible at all `ResponseGranularity` levels (default `LOW`)
-- Commonly used for retry attempts, step counts, or percentage completion
+Signature: `progress(message: str, data: dict | None = None) -> None`
 
-**Parameters:**
-- `message` (str): Human-readable description of the current step (e.g., "Fetching data...", "Attempt 2 of 3")
-- `data` (dict, optional): Extra metadata as key-value pairs (e.g., `{"attempt": 2, "max_attempts": 3}`)
+Reports an intermediate step. Because it uses the `MESSAGE` event, it is visible at every `ResponseGranularity` level, including the default `LOW`.
 
-**Example:**
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `message` | `str` | required | Human-readable description of the current step |
+| `data` | `dict \| None` | `None` | Extra keys merged into the chunk data |
 
 ```python
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+
+
 def search_with_retries(query: str, emit: StreamEmitter | None = None) -> str:
     for attempt in range(3):
         if emit:
             emit.progress(
                 f"Attempt {attempt + 1} of 3",
-                data={"attempt": attempt + 1, "max_attempts": 3}
+                data={"attempt": attempt + 1, "max_attempts": 3},
             )
-        try:
-            return _perform_search(query)
-        except TemporaryError:
-            if attempt == 2:
-                raise
+        if attempt == 2:  # stand-in for a call that eventually succeeds
+            return f"results for {query}"
+    return ""
 ```
 
----
+### error
 
-### `error(message: str, data: dict | None = None) -> None`
+Signature: `error(message: str, data: dict | None = None) -> None`
 
-Emit an error update for the running tool.
+Reports a failure or warning without stopping the tool. The tool keeps running and its result is returned normally. Raising an exception is how you actually fail a tool; `error()` only informs the client.
 
-**When to use:** Report failures, warnings, or issues during execution **without stopping the tool**. The tool continues and eventually returns a result.
-
-**Characteristics:**
-- Status is set to `"tool_failed"`
-- Purely informational; does not interrupt execution
-- The tool result is still returned normally after this call
-
-**Parameters:**
-- `message` (str): Human-readable description of the error
-- `data` (dict, optional): Extra metadata
-
-**Example:**
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `message` | `str` | required | Human-readable description of the error |
+| `data` | `dict \| None` | `None` | Extra keys merged into the chunk data |
 
 ```python
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+
+
 def fetch_data(url: str, emit: StreamEmitter | None = None) -> str:
     try:
-        return requests.get(url).text
-    except requests.ConnectTimeout:
+        raise TimeoutError("upstream timed out")  # stand-in for a real request
+    except TimeoutError:
         if emit:
-            emit.error(
-                "Connection timeout, using cached data",
-                data={"retry_count": 3, "cache_age_seconds": 3600}
-            )
-        return get_cached_data(url)
+            emit.error("Timeout, using cached data", data={"cache_age_seconds": 3600})
+        return "cached value"
 ```
 
----
+### message
 
-### `message(message: str, data: dict | None = None) -> None`
+Signature: `message(message: str, data: dict | None = None) -> None`
 
-Emit a plain message update from the running tool.
+Sends plain informational text that is neither progress nor an error.
 
-**When to use:** Send arbitrary informational messages that don't fit the "progress" or "error" categories.
-
-**Characteristics:**
-- Status is set to `"tool_message"`
-- General-purpose status/informational updates
-
-**Parameters:**
-- `message` (str): Message text
-- `data` (dict, optional): Extra metadata
-
-**Example:**
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `message` | `str` | required | Message text |
+| `data` | `dict \| None` | `None` | Extra keys merged into the chunk data |
 
 ```python
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+
+
 def process_file(filename: str, emit: StreamEmitter | None = None) -> str:
     if emit:
         emit.message(f"Processing file: {filename}")
-    # process
-    if emit:
         emit.message("File processing complete", data={"lines_processed": 1000})
     return "done"
 ```
 
----
+### update
 
-### `update(data: dict) -> None`
+Signature: `update(data: dict) -> None`
 
-Emit a generic data update from the running tool.
+Sends a data-only chunk with no `message` key and no default `status`. Include `"status"` in `data` if your client switches on it.
 
-**When to use:** Send custom metrics, counters, or structured data updates without a message.
-
-**Characteristics:**
-- Status is set via `data["status"]` if provided, otherwise omitted
-- Purely data-driven; no built-in message field
-
-**Parameters:**
-- `data` (dict): Arbitrary key-value pairs to include in the stream chunk
-
-**Example:**
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `data` | `dict` | required | Keys merged into the chunk data |
 
 ```python
-def batch_processor(items: list, emit: StreamEmitter | None = None) -> int:
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+
+
+def batch_processor(items: list[str], emit: StreamEmitter | None = None) -> int:
     processed = 0
-    for item in items:
-        _process(item)
+    for _ in items:
         processed += 1
         if emit:
-            emit.update({
-                "status": "batch_progress",
-                "processed_count": processed,
-                "total_count": len(items),
-                "percentage": (processed / len(items)) * 100,
-            })
+            emit.update(
+                {
+                    "status": "batch_progress",
+                    "processed_count": processed,
+                    "total_count": len(items),
+                }
+            )
     return processed
 ```
 
----
-
 ## Attributes
 
-`StreamEmitter` carries useful metadata about the current execution:
+The runtime fills these in when it creates the emitter. They are stored internally with a leading underscore, so treat them as informational rather than a stable public API.
 
-- `tool_name` (str): Name of the tool being executed
-- `tool_call_id` (str): Unique identifier for this tool invocation
-- `node_name` (str): Name of the graph node executing the tool
-- `thread_id` (str | None): Active thread/session identifier
-- `run_id` (str | None): Active run identifier
+| Attribute | Type | Meaning |
+|---|---|---|
+| `tool_name` | `str` | Name of the tool being executed |
+| `tool_call_id` | `str` | Identifier of this tool call |
+| `node_name` | `str` | Name of the graph node running the tool |
+| `thread_id` | `str \| None` | Thread from the run config |
+| `run_id` | `str \| None` | Run from the run config |
 
-These are automatically populated; you typically do not need to access them directly.
+## Chunk shape
 
----
-
-## Stream Chunk Output
-
-When you emit via `StreamEmitter`, a `StreamChunk` is added to the stream output with the following structure:
+Every emit becomes a `StreamChunk` whose `data` always contains `tool_name`, `tool_call_id` and `node` (the node name), then your `data` keys, then `status` and `message` for `progress`, `error` and `message`. The chunk also carries the run's `thread_id` and `run_id`. Your own `data` keys are applied before `status` and `message` for those three methods, so they cannot override them. With `update()` your keys are applied last and can override the base keys.
 
 ```python
+# Example chunk from emit.progress("Fetching...", data={"location": "Paris"})
 {
-    "event": "message" | "error" | "update",  # StreamEvent enum
+    "event": "message",
     "data": {
-        "status": "tool_progress" | "tool_failed" | "tool_message" | ...,
-        "tool_name": "my_tool",
+        "tool_name": "get_weather",
         "tool_call_id": "call_abc123",
         "node": "TOOL",
-        "message": "...",  # if progress/error/message emitted
-        "thread_id": "thread_xyz",
-        "run_id": "run_123",
-        # ... plus any extra data you passed
+        "location": "Paris",
+        "status": "tool_progress",
+        "message": "Fetching...",
     },
-    "thread_id": "thread_xyz",
+    "thread_id": "12345",
     "run_id": "run_123",
 }
 ```
 
-Frontend clients consume these chunks from `app.stream(...)` / `app.astream(...)` to display live updates.
+## Streaming versus invoke
 
----
+In `app.stream()` and `app.astream()` the stream handler creates the emitter and yields each chunk to the caller as soon as the tool emits it, before the tool returns. In `app.invoke()` and `app.ainvoke()` no emitter exists, nothing is streamed, and only the final result is returned. For the full stream chunk model see [Streaming](/docs/concepts/streaming).
 
-## Usage Patterns
+## Thread safety
 
-### Pattern 1: Retry with Progress
+Emit methods schedule work with `loop.call_soon_threadsafe`, so they are safe to call from async tools and from sync tools that run in a worker thread. You do not need locks.
 
-Track retry attempts and emit updates after each failure:
+## Complete example
 
-```python
-def call_external_api(endpoint: str, emit: StreamEmitter | None = None) -> str:
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            if emit and attempt > 0:
-                emit.progress(f"Retry attempt {attempt}", data={"attempt": attempt})
-            return requests.get(endpoint).json()
-        except requests.RequestException as e:
-            if attempt == max_retries - 1:
-                if emit:
-                    emit.error(f"All {max_retries} retries failed: {e}")
-                raise
-```
-
-### Pattern 2: Long-Running Task with Status Milestones
-
-For tasks that take time, emit updates at key milestones:
+This graph wires a tool that emits progress into a streaming run. It needs `pip install "10xgraph[google-genai]"` and a Google API key in your environment (see [Models and providers](/docs/integrations/models)). It follows `examples/react_stream/stream_sync.py` in the core repo.
 
 ```python
-def process_large_file(filepath: str, emit: StreamEmitter | None = None) -> dict:
-    if emit:
-        emit.progress("Opening file...")
-    with open(filepath) as f:
-        lines = f.readlines()
-    
-    if emit:
-        emit.progress(f"Loaded {len(lines)} lines, starting processing...")
-    
-    results = []
-    for i, line in enumerate(lines):
-        results.append(_process_line(line))
-        if (i + 1) % 100 == 0 and emit:
-            emit.progress(f"Processed {i + 1} of {len(lines)} lines")
-    
-    if emit:
-        emit.message("Processing complete", data={"total_processed": len(results)})
-    
-    return {"count": len(results), "results": results}
-```
-
-### Pattern 3: Multi-Step Tool with Conditional Branching
-
-Emit different updates based on tool behavior:
-
-```python
-def intelligent_search(query: str, emit: StreamEmitter | None = None) -> str:
-    if emit:
-        emit.progress("Analyzing query...", data={"step": 1})
-    
-    query_type = _classify_query(query)
-    
-    if query_type == "simple":
-        if emit:
-            emit.progress("Using fast path", data={"step": 2})
-        return _fast_search(query)
-    else:
-        if emit:
-            emit.progress("Using deep search path", data={"step": 2})
-        
-        # Complex search with fallbacks
-        try:
-            if emit:
-                emit.progress("Querying primary index...", data={"step": 3})
-            return _deep_search_primary(query)
-        except IndexError:
-            if emit:
-                emit.error("Primary index unavailable, falling back...", data={"step": 3})
-                emit.progress("Querying secondary index...", data={"step": 4})
-            return _deep_search_secondary(query)
-```
-
----
-
-## Behavior During `invoke()` vs `stream()`
-
-### During `app.stream()` / `app.astream()`:
-- `emit: StreamEmitter` is automatically created and injected
-- Tools can call `emit.progress()`, `emit.error()`, etc.
-- Emitted chunks appear in the stream output
-- Frontend clients see live updates in real-time
-
-### During `app.invoke()` / `app.ainvoke()`:
-- `emit: None` is injected (or the parameter is absent)
-- Tools should check `if emit:` before calling any emit methods
-- No streaming output is generated
-- Only the final tool result is returned
-
----
-
-## Thread Safety
-
-`StreamEmitter` is thread-safe. All emit methods use `loop.call_soon_threadsafe` internally, so:
-
-- **Sync tools** (running in `asyncio.to_thread`) can call emit methods safely
-- **Async tools** can call emit methods safely
-- No need for locks or explicit synchronization
-
----
-
-## Example: Complete Tool with StreamEmitter
-
-```python
-from tenxgraph.core.graph import Agent, ToolNode
-from tenxgraph.core.state import AgentState
-from tenxgraph.core.state.stream_emitter import StreamEmitter
+# stream_progress.py
 import time
 
-def get_weather(
-    location: str,
-    tool_call_id: str | None = None,
-    state: AgentState | None = None,
-    emit: StreamEmitter | None = None,
-) -> str:
-    """Get the current weather for a specific location.
-    
-    Injectable parameters: tool_call_id and state are automatically injected.
-    emit is only injected during streaming; it's None during invoke().
-    """
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.stream_emitter import StreamEmitter
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
+
+
+def get_weather(location: str, emit: StreamEmitter | None = None) -> str:
+    """Get the current weather for a location."""
     if emit:
         emit.progress("Fetching weather data...", data={"location": location})
-
-    time.sleep(1)  # Simulate API call
-
-    if emit:
-        emit.progress("Processing weather data...", data={"location": location})
-
-    if tool_call_id:
-        print(f"Tool call ID: {tool_call_id}")
-    
-    if state and hasattr(state, "context"):
-        print(f"Message count: {len(state.context)}")
-
+    time.sleep(1)  # simulate a slow API call
     if emit:
         emit.progress("Finalizing response...", data={"location": location})
-
     return f"The weather in {location} is sunny"
 
-# Use in a graph
+
 tool_node = ToolNode([get_weather])
 
-agent = Agent(
+main_agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
-    system_prompt=[{
-        "role": "system",
-        "content": "You are a helpful weather assistant. Call get_weather when asked.",
-    }],
+    system_prompt=[
+        {
+            "role": "system",
+            "content": "Always call the get_weather tool for weather questions.",
+        }
+    ],
     tool_node=tool_node,
 )
 
-# Streaming will show progress updates in real-time
-config = {"thread_id": "12345", "is_stream": True}
-for chunk in graph.stream(input_data, config=config):
-    print(chunk.model_dump())
+
+def route(state: AgentState) -> str:
+    """Go to the tool node when the last assistant message has tool calls."""
+    if not state.context:
+        return END
+    last = state.context[-1]
+    if last.role == "assistant" and getattr(last, "tools_calls", None):
+        return "TOOL"
+    return END
+
+
+graph = StateGraph(AgentState())
+graph.add_node("MAIN", main_agent)
+graph.add_node("TOOL", tool_node)
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+app = graph.compile(checkpointer=InMemoryCheckpointer())
+
+inp = {"messages": [Message.text_message("What is the weather in Paris?")]}
+config = {"thread_id": "12345", "recursion_limit": 10, "is_stream": True}
+
+for chunk in app.stream(inp, config=config):
+    print(chunk.model_dump())  # tool_progress chunks appear before the final answer
 ```
 
----
+## Related pages
 
-## See Also
-
-- [Streaming](/docs/concepts/streaming) — Overview of streaming chunks and `ResponseGranularity`
-- [Tools](/docs/reference/python/tools) — Defining and registering tools with `ToolNode`
-- [Dependency Injection](/docs/concepts/dependency-injection) — How `emit`, `tool_call_id`, `state`, and other parameters are injected into tools
+- [Streaming](/docs/concepts/streaming): stream chunks, events and `ResponseGranularity`.
+- [Tools reference](/docs/reference/python/tools): defining and registering tools with `ToolNode`.
+- [Dependency Injection](/docs/concepts/dependency-injection): how `emit`, `tool_call_id`, `state` and `config` reach tools.

@@ -1,67 +1,57 @@
 ---
 title: GitHub MCP
-seoTitle: "GitHub MCP tutorial: query repositories"
-description: Use a remote GitHub MCP server from 10xGraph so an agent can list commits and download repository files such as README.md through MCP tools.
+seoTitle: "GitHub MCP example: query GitHub repositories"
+description: "Connect an agent to a remote GitHub MCP server to list commits and download files from repositories through MCP tools."
 section: Examples
 group: "Tools and MCP"
 order: 130
 label: GitHub MCP
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: "Which tools does the agent get from the GitHub MCP server?"
+    a: "The ToolNode is created with an empty tool list, so every tool comes from the remote server. The agent sees whatever the endpoint exposes for your token."
+  - q: "Why does the graph need a routing function?"
+    a: "It sends the flow to the tool node when the assistant requests tools, and ends the run once a tool result has been handled. Without it the graph would not know when to stop."
+
 ---
 
-**Source examples:** [`examples/github-mcp/git_mcp.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/github-mcp/git_mcp.py) and [`mcp_file_download.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/github-mcp/mcp_file_download.py)
+This example connects 10xGraph to the hosted GitHub MCP (Model Context Protocol) server at `https://api.githubcopilot.com/mcp/`. A Gemini-backed agent discovers the server's tools, calls them to list commits or fetch a file, and answers from the results. The same pattern works for any authenticated remote MCP service.
 
-## What you will build
+## Run the example
 
-A ReAct agent that connects to the GitHub Copilot MCP endpoint and asks it to retrieve repository commit data through MCP tools.
-
-## Prerequisites
-
-- Python 3.12 or later
-- `10xgraph` installed
-- `fastmcp` installed
-- a Google model key such as `GEMINI_API_KEY`
-- `GITHUB_TOKEN` with access to the GitHub MCP endpoint
-
-Install:
+The code is in `agentflow/examples/github-mcp/`. `git_mcp.py` lists the commits of a repository, and `mcp_file_download.py` downloads a file. Both need a GitHub token with access to the repositories you query and a Google API key for Gemini.
 
 ```bash
-pip install fastmcp
+pip install "10xgraph[google-genai]" fastmcp python-dotenv
+export GITHUB_TOKEN=your_github_token_here
+export GEMINI_API_KEY=your_google_api_key_here
+python git_mcp.py
 ```
 
-Set environment variables:
+The script calls `load_dotenv()`, so you can put both variables in a `.env` file next to it instead of exporting them.
 
-```bash
-export GITHUB_TOKEN=your_token_here
-export GEMINI_API_KEY=your_google_key_here
-```
+## Full listing
 
-## External service requirement
+This is `git_mcp.py` in full. The sections below walk through each part.
 
-This tutorial depends on a remote hosted MCP service:
+```python title="git_mcp.py"
+import json
+import os
+from datetime import datetime
 
-```text
-https://api.githubcopilot.com/mcp/
-```
+from dotenv import load_dotenv
+from fastmcp import Client
 
-If your token is missing or invalid, the MCP tool discovery or invocation will fail.
+from tenxgraph.core import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
-## Architecture
 
-```mermaid
-flowchart LR
-    A[User prompt] --> B[10xGraph Agent]
-    B --> C[ToolNode with GitHub MCP client]
-    C --> D[GitHub Copilot MCP endpoint]
-    D --> E[GitHub repository tools]
-    E --> B
-```
+load_dotenv()
 
-## Step 1: Configure the remote MCP server
+checkpointer = InMemoryCheckpointer()
 
-The example registers a `github` server:
-
-```python
 config = {
     "mcpServers": {
         "github": {
@@ -71,148 +61,225 @@ config = {
         },
     }
 }
-```
 
-This is the same pattern as the local MCP examples, but with:
 
-- a hosted remote endpoint
-- auth headers
-
-## Step 2: Build an MCP-backed ToolNode
-
-```python
 client_http = Client(config)
-tool_node = ToolNode(tools=[], client=client_http)
-```
 
-The agent then uses that `tool_node` like any other tool source.
+tool_node = ToolNode([], client=client_http)
 
-## Step 3: Create the ReAct graph
 
-The graph is a standard `MAIN -> TOOL -> MAIN` loop:
-
-```python
 main_agent = Agent(
     model="gemini-2.0-flash",
     provider="google",
-    system_prompt=[...],
+    system_prompt=[
+        {
+            "role": "system",
+            "content": """
+                You are a helpful assistant.
+                Your task is to assist the user in finding information and answering questions.
+            """,
+        },
+    ],
     tool_node=tool_node,
     trim_context=True,
 )
+
+
+def should_use_tools(state: AgentState) -> str:
+    """Determine if we should use tools or end the conversation."""
+    if not state.context or len(state.context) == 0:
+        return "TOOL"  # No context, might need tools
+
+    last_message = state.context[-1]
+
+    # If the last message is from assistant and has tool calls, go to TOOL
+    if (
+        hasattr(last_message, "tools_calls")
+        and last_message.tools_calls
+        and len(last_message.tools_calls) > 0
+        and last_message.role == "assistant"
+    ):
+        return "TOOL"
+
+    # If last message is a tool result, we should be done (AI will make final response)
+    if last_message.role == "tool":
+        return END
+
+    # Default to END for other cases
+    return END
+
+
+graph = StateGraph()
+graph.add_node("MAIN", main_agent)
+graph.add_node("TOOL", tool_node)
+
+# Add conditional edges from MAIN
+graph.add_conditional_edges(
+    "MAIN",
+    should_use_tools,
+    {"TOOL": "TOOL", END: END},
+)
+
+# Always go back to MAIN after TOOL execution
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+
+app = graph.compile(
+    checkpointer=checkpointer,
+)
+
+
+# now run it
+
+inp = {
+    "messages": [
+        Message.text_message(
+            "Please call the list_commits function for the github repo 'https://github.com/suchith83/portfolio' of the 'suchith83' username, and give me all commits in that repo."
+        )
+    ]
+}
+config = {"thread_id": "12345", "recursion_limit": 10}
+res = app.invoke(inp, config=config)
+
+
+def pretty_print_messages(messages):
+    for i, m in enumerate(messages, 1):
+        print("=" * 60)
+        print(f"Message {i}:")
+        print(f"  ID: {getattr(m, 'message_id', None)}")
+        print(f"  Role: {m.role}")
+
+        if hasattr(m, "timestamp") and m.timestamp:
+            ts = m.timestamp
+            if isinstance(ts, datetime):
+                ts = ts.isoformat()
+            print(f"  Timestamp: {ts}")
+
+        # content
+        if m.content:
+            print("  Content:")
+            print("    " + str(m.content).replace("\n", "\n    "))
+
+        # tool calls
+        if getattr(m, "tools_calls", None):
+            print("  Tool Calls:")
+            print(json.dumps(m.tools_calls, indent=4))
+
+        # tool call id
+        if getattr(m, "tool_call_id", None):
+            print(f"  Tool Call ID: {m.tool_call_id}")
+
+        # metadata
+        if getattr(m, "metadata", None):
+            print("  Metadata:")
+            print(json.dumps(m.metadata, indent=4))
+
+
+print("printing the response")
+pretty_print_messages(res["messages"])
 ```
 
-The routing function checks whether the assistant emitted tool calls and either routes to `TOOL` or ends the run.
+## Connect to the remote MCP server
 
-## GitHub MCP execution flow
+The `fastmcp` `Client` takes a config dictionary that names each MCP server. For a remote HTTP endpoint you give the URL, an `Authorization` header built from `GITHUB_TOKEN`, and the `streamable-http` transport.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant MAIN as Agent
-    participant TOOL as ToolNode
-    participant MCP as GitHub MCP
-    participant GitHub as GitHub repo data
-
-    User->>MAIN: ask for repository commits
-    MAIN-->>TOOL: tool call selected by model
-    TOOL->>MCP: call remote GitHub tool
-    MCP->>GitHub: fetch repository data
-    GitHub-->>MCP: commits
-    MCP-->>TOOL: structured result
-    TOOL-->>MAIN: tool message
-    MAIN-->>User: summary of commits
+```python title="git_mcp.py (excerpt)"
+config = {
+    "mcpServers": {
+        "github": {
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": {"Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}"},
+            "transport": "streamable-http",
+        },
+    }
+}
+client_http = Client(config)
 ```
 
-## Step 4: Ask for repository data
+If the token is missing, the header becomes `Bearer None` and the server rejects the request.
 
-The example asks the agent to list commits:
+## Give the client to a ToolNode
 
-```python
+`ToolNode([], client=client_http)` creates a tool node whose tools all come from the MCP server. The first argument is an empty list because no local Python functions are registered. The same node is passed to the `Agent` (so the model sees the tool schemas) and added to the graph (so tool calls run).
+
+```python title="git_mcp.py (excerpt)"
+tool_node = ToolNode([], client=client_http)
+```
+
+## Build the agent and the graph
+
+The agent uses `gemini-2.0-flash` through the `google` provider, with `trim_context=True` to keep long tool output from filling the context window. The graph has two nodes, `MAIN` (the agent) and `TOOL` (the tool node), joined by a conditional edge and a plain edge back.
+
+`should_use_tools` reads the last message in the state context. An assistant message with tool calls routes to `TOOL`. Anything else, including a tool result that the agent already handled, routes to `END`. The edge `TOOL -> MAIN` always returns the tool output to the agent so it can write the final answer.
+
+```python title="git_mcp.py (excerpt)"
+graph = StateGraph()
+graph.add_node("MAIN", main_agent)
+graph.add_node("TOOL", tool_node)
+graph.add_conditional_edges("MAIN", should_use_tools, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
+
+app = graph.compile(checkpointer=checkpointer)
+```
+
+## Invoke the graph
+
+The input is a dictionary with a `messages` list. The config sets a `thread_id` (the checkpointer stores state under it) and a `recursion_limit` that caps the agent and tool loop at 10 steps.
+
+```python title="git_mcp.py (excerpt)"
 inp = {
     "messages": [
         Message.text_message(
             "Please call the list_commits function for the github repo "
             "'https://github.com/suchith83/portfolio' of the 'suchith83' username, "
-            "and give me the all commits in that repo."
+            "and give me all commits in that repo."
         )
     ]
 }
 config = {"thread_id": "12345", "recursion_limit": 10}
-
 res = app.invoke(inp, config=config)
 ```
 
-## Step 5: Print message history
+## Inspect the message history
 
-The example includes a pretty-printer to inspect:
+`res["messages"]` holds the full conversation. The `pretty_print_messages` helper in the listing prints each message's role, content, tool calls, tool call ID and metadata. Read it top to bottom: the user request, the assistant message with the `list_commits` call and the arguments the model chose, the tool message with the GitHub response, and the final assistant summary. The actual output depends on the repository and the model, so it differs between runs.
 
-- role
-- content
-- tool calls
-- metadata
+## Variant: download a file with debug logging
 
-That is useful when integrating remote MCP tools, because it helps you see:
+`mcp_file_download.py` uses the same setup with two changes. The prompt asks for a file, and the script turns on logging so you can see tool discovery and invocation.
 
-- which tool was chosen
-- how the tool call arguments were structured
-- what data came back from the server
+```python title="mcp_file_download.py (excerpt)"
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logging.getLogger("tenxgraph").setLevel(logging.DEBUG)
 
-## Verification
+tool_node = ToolNode(tools=[], client=client_http)
 
-Successful behavior should include:
-
-- the graph completes without auth errors
-- the message history contains at least one tool call
-- the final assistant message summarizes repository commit information
-
-## Common mistakes
-
-- Missing `GITHUB_TOKEN`.
-- Using a token that lacks the required access.
-- Assuming all GitHub MCP tools are always available.
-- Treating remote MCP latency like local function-call latency.
-
-## Variant: download a repository file
-
-`mcp_file_download.py` uses the same config, `ToolNode(tools=[], client=client_http)` and graph. Only the prompt changes: the agent picks a remote file-access tool instead of `list_commits`.
-
-```python
 inp = {
     "messages": [
         Message.text_message(
-            "Get Readme.md file form the github repo "
-            "'https://github.com/suchith83/portfolio' of the 'suchith83' username,."
+            "Get Readme.md file from the github repo "
+            "'https://github.com/suchith83/portfolio' of the 'suchith83' username."
         )
     ]
 }
-config = {"thread_id": "12345", "recursion_limit": 10}
-
-res = app.invoke(inp, config=config)
 ```
 
-This variant also turns on debug logging, which helps with tool discovery and remote invocation failures:
+It prints the raw response rather than using the pretty printer. Look for a tool call to a file-access tool, a tool message with the file content, and a closing assistant message.
 
-```python
-logging.basicConfig(level=logging.INFO)
-logging.getLogger("tenxgraph").setLevel(logging.DEBUG)
-```
+## Fix common problems
 
-Check that the message history contains a tool call, a tool result tied to the file, and a final assistant message that references the README content. Remote tools may return structured data rather than plain text, and the file path must match what the remote tool expects. Treat this as a remote call, not a local filesystem read.
-
-## Key concepts
-
-| Concept | Details |
+| Symptom | Cause and fix |
 |---|---|
-| hosted MCP endpoint | Remote shared tool service |
-| auth header | Required to access protected MCP tools |
-| MCP-backed ReAct graph | Standard 10xGraph loop with remote tool execution |
+| Authentication error from the MCP server | `GITHUB_TOKEN` is missing, expired or lacks repository scopes. Set a valid token. |
+| The model says it has no suitable tool | The endpoint may not expose the tool you expect. Turn on the debug logging from the variant above to see what was discovered. |
+| The run stops early with a recursion error | Remote calls can need several loops. Raise `recursion_limit` in the config. |
+| A tool call fails with a validation error | The arguments do not match the tool's JSON schema. Make the prompt name the repository and owner explicitly. |
+| Slow responses | Each tool call is a network round trip to a remote service, so expect more latency than with local functions. |
 
-## What you learned
+## Next steps
 
-- How to connect 10xGraph to a hosted MCP server.
-- How to authorize GitHub MCP requests.
-- How to inspect a graph run that depends on remote repository tooling.
-
-## Next step
-
-→ [Memory](/docs/examples/memory) to add long-term user memory to a graph.
+Read [Use MCP](/docs/guides/use-mcp) for MCP patterns and testing with a mock client, or [the memory example](/docs/examples/memory) to add memory to a graph.

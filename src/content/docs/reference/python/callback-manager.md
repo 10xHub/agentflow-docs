@@ -1,36 +1,33 @@
 ---
 title: Callback Manager
 seoTitle: "CallbackManager API reference (Python)"
-description: CallbackManager, BeforeInvokeCallback, AfterInvokeCallback, OnErrorCallback, BaseValidator, PromptInjectionValidator — hook into every LLM, tool, and MCP
+description: "Reference for CallbackManager, InvocationType, CallbackContext, the three callback base classes, and the prompt injection and message validators."
 section: Reference
 group: "Python library"
 order: 140
 label: Callback Manager
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-## When to use this
-
-Use the callback system to:
-- Block or modify inputs before the LLM/tool is called (input validation, prompt injection protection).
-- Inspect or modify outputs after the LLM/tool returns (response filtering, logging).
-- Handle errors gracefully and optionally return a recovery value.
-- Register structured validators as a simpler alternative to manual before-invoke callbacks.
-
-Pass a `CallbackManager` to `graph.compile(callback_manager=...)`.
+`CallbackManager` is the registry that runs your hooks around every model call, tool call, MCP call and skill call, and that runs input validators on incoming messages. You register callbacks per `InvocationType`, then pass the manager to `graph.compile(callback_manager=...)`. For worked patterns see [Use callbacks](/docs/guides/use-callbacks).
 
 ## Import paths
 
+All names below are exported from `tenxgraph.utils`. The validators are also available from `tenxgraph.utils.validators`.
+
 ```python
+# Callback system
 from tenxgraph.utils import (
     CallbackManager,
     InvocationType,
+    CallbackContext,
     BeforeInvokeCallback,
     AfterInvokeCallback,
     OnErrorCallback,
     BaseValidator,
-    CallbackContext,
 )
+
+# Validators
 from tenxgraph.utils.validators import (
     PromptInjectionValidator,
     MessageContentValidator,
@@ -39,129 +36,181 @@ from tenxgraph.utils.validators import (
 )
 ```
 
----
+## CallbackManager
 
-## `CallbackManager`
-
-Central registry and executor for all callbacks and validators.
+`CallbackManager()` takes no arguments and starts with empty registries. Callbacks for the same type run in registration order, each receiving the output of the previous one.
 
 ```python
 from tenxgraph.utils import CallbackManager
 
 cbm = CallbackManager()
-app = graph.compile(callback_manager=cbm)
+# app = graph.compile(callback_manager=cbm)
 ```
 
-### Methods
+### Registration methods
 
 | Method | Signature | Description |
 |---|---|---|
-| `register_before_invoke` | `(invocation_type, callback)` | Register a callback fired before an invocation. |
-| `register_after_invoke` | `(invocation_type, callback)` | Register a callback fired after an invocation. |
-| `register_on_error` | `(invocation_type, callback)` | Register an error-handler callback. |
-| `register_input_validator` | `(validator: BaseValidator)` | Register a validator (simpler than a before-invoke callback). |
-| `execute_before_invoke` | `async (context, input_data) → input_data` | Called internally by the framework. |
-| `execute_after_invoke` | `async (context, input_data, output_data) → output_data` | Called internally by the framework. |
-| `execute_on_error` | `async (context, input_data, error) → Message \| None` | Called internally by the framework. |
-| `execute_validators` | `async (messages: list[Message]) → bool` | Called internally; runs all registered validators. |
+| `register_before_invoke` | `(invocation_type, callback) -> None` | Run `callback` before an invocation of that type. |
+| `register_after_invoke` | `(invocation_type, callback) -> None` | Run `callback` after an invocation of that type. |
+| `register_on_error` | `(invocation_type, callback) -> None` | Run `callback` when an invocation of that type fails. |
+| `register_input_validator` | `(validator: BaseValidator) -> None` | Add a validator for incoming messages. |
+| `register_lifecycle_hook` | `(hook: GraphLifecycleHook) -> None` | Add a graph lifecycle hook. See [Lifecycle callbacks](/docs/reference/python/lifecycle-callbacks). |
+| `clear_callbacks` | `(invocation_type: InvocationType \| None = None) -> None` | Remove before, after and error callbacks for one type, or for all types when `None`. Validators are not cleared. |
+| `get_callback_counts` | `() -> dict[str, dict[str, int]]` | Counts per invocation type value, with keys `before_invoke`, `after_invoke` and `on_error`. |
 
----
+Each `callback` may be an instance of the matching abstract class or a plain function (sync or async) with the same arguments.
 
-## `InvocationType`
+### Execution methods
 
-Selects which invocation type a callback fires on.
+The framework calls these for you. You only call them directly in tests.
+
+| Method | Signature | Returns |
+|---|---|---|
+| `execute_before_invoke` | `async (context, input_data)` | The input after all before callbacks. |
+| `execute_after_invoke` | `async (context, input_data, output_data)` | The output after all after callbacks. |
+| `execute_on_error` | `async (context, input_data, error)` | A `Message` from an error callback, or `None`. |
+| `execute_validators` | `async (messages: list[Message], config: dict \| None = None)` | `True` when every validator passes. |
+
+If a before or after callback raises, the manager runs the error callbacks for that type and then re-raises the exception. If an error callback itself raises, the failure is logged and the next error callback runs.
+
+## InvocationType
+
+`InvocationType` is a string enum that selects which kind of call a callback fires on.
 
 | Value | Fires when |
 |---|---|
-| `InvocationType.AI` | The LLM provider is called. |
+| `InvocationType.AI` | The model provider is called. |
 | `InvocationType.TOOL` | A local Python tool function is called. |
 | `InvocationType.MCP` | An MCP tool call is made. |
-| `InvocationType.INPUT_VALIDATION` | Input validation phase (validators). |
-| `InvocationType.SKILL` | The model calls a skill tool: `activate_skill` or `read_skill_resource`. `function_name` is the tool name. Skill tools fire `SKILL` instead of `TOOL`. Session-mode preloading is not a tool call and fires nothing. |
+| `InvocationType.INPUT_VALIDATION` | Reserved type. Validators registered with `register_input_validator` do not use it. |
+| `InvocationType.SKILL` | The model calls a skill tool. `context.function_name` is the tool name. Skill tools fire `SKILL` instead of `TOOL`. |
 
----
+## CallbackContext
 
-## `CallbackContext`
+`CallbackContext` is a dataclass passed as the first argument to every callback.
 
-Passed to every callback with metadata about the current invocation.
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `invocation_type` | `InvocationType` | required | The kind of call that fired the callback. |
+| `node_name` | `str` | required | Name of the graph node that is executing. |
+| `function_name` | `str \| None` | `None` | Name of the tool or skill function, when applicable. |
+| `metadata` | `dict[str, Any] \| None` | `None` | Extra context from the framework. |
 
-| Field | Type | Description |
-|---|---|---|
-| `invocation_type` | `InvocationType` | The type of invocation that fired this callback. |
-| `node_name` | `str` | Name of the graph node executing. |
-| `function_name` | `str \| None` | Name of the tool or skill function (if applicable). |
-| `metadata` | `dict \| None` | Additional context from the framework. |
+## BeforeInvokeCallback
 
----
-
-## `BeforeInvokeCallback`
-
-Fires before the LLM/tool call. Can modify or block the input.
+`BeforeInvokeCallback` runs before the call and may modify its input. Implement `async __call__(self, context, input_data)` and return the input to use, which can be the same object. Raise an exception to stop the call.
 
 ```python
-from tenxgraph.utils.callbacks import BeforeInvokeCallback, CallbackContext
-from tenxgraph.utils import InvocationType
+from tenxgraph.utils import (
+    BeforeInvokeCallback,
+    CallbackContext,
+    CallbackManager,
+    InvocationType,
+)
 
-class UpperCaseInput(BeforeInvokeCallback):
-    async def __call__(self, context: CallbackContext, input_data) -> ...:
-        # input_data is the list of messages about to be sent to the LLM
-        for msg in input_data:
-            if hasattr(msg, "content") and isinstance(msg.content, str):
-                msg.content = msg.content.upper()
-        return input_data   # must return (possibly modified) input_data
+
+class BlockEmptyInput(BeforeInvokeCallback):
+    """Reject a model call that has no messages."""
+
+    async def __call__(self, context: CallbackContext, input_data):
+        if not input_data:
+            raise ValueError(f"Empty input at node {context.node_name}")
+        return input_data  # always return the input, modified or not
+
 
 cbm = CallbackManager()
-cbm.register_before_invoke(InvocationType.AI, UpperCaseInput())
+cbm.register_before_invoke(InvocationType.AI, BlockEmptyInput())
 ```
 
-To block execution, raise any exception from the callback.
+| Parameter | Type | Description |
+|---|---|---|
+| `context` | `CallbackContext` | Invocation metadata. |
+| `input_data` | `Any` | The data about to be sent to the model, tool or MCP server. |
 
----
+Returns the (possibly modified) input. Raises any exception to abort the invocation; the error callbacks run first.
 
-## `AfterInvokeCallback`
+## AfterInvokeCallback
 
-Fires after the LLM/tool returns. Can modify the response.
+`AfterInvokeCallback` runs after a successful call and may modify its output. Implement `async __call__(self, context, input_data, output_data)` and return the output to use.
 
 ```python
-from tenxgraph.utils.callbacks import AfterInvokeCallback, CallbackContext
+from tenxgraph.utils import (
+    AfterInvokeCallback,
+    CallbackContext,
+    CallbackManager,
+    InvocationType,
+)
+
 
 class AuditLogger(AfterInvokeCallback):
-    async def __call__(self, context: CallbackContext, input_data, output_data):
-        print(f"[AUDIT] node={context.node_name} type={context.invocation_type}")
-        return output_data   # must return (possibly modified) output_data
+    """Log every completed model call."""
 
+    async def __call__(self, context: CallbackContext, input_data, output_data):
+        print(f"[audit] node={context.node_name} type={context.invocation_type.value}")
+        return output_data  # keep the same type the framework expects
+
+
+cbm = CallbackManager()
 cbm.register_after_invoke(InvocationType.AI, AuditLogger())
 ```
 
----
+| Parameter | Type | Description |
+|---|---|---|
+| `context` | `CallbackContext` | Invocation metadata. |
+| `input_data` | `Any` | The input that was sent. |
+| `output_data` | `Any` | The result returned by the call. |
 
-## `OnErrorCallback`
+Returns the (possibly modified) output. Return the same type you received, or the graph may fail downstream.
 
-Fires when any exception occurs during an invocation. Can return a recovery `Message` or `None` (re-raise).
+## OnErrorCallback
+
+`OnErrorCallback` runs when an invocation fails. Implement `async __call__(self, context, input_data, error)`. Return a `Message` to offer a recovery value, or `None` to leave the error unhandled. Any other return value is ignored with a warning.
 
 ```python
-from tenxgraph.utils.callbacks import OnErrorCallback, CallbackContext
+from tenxgraph.core.state import Message
+from tenxgraph.utils import (
+    CallbackContext,
+    CallbackManager,
+    InvocationType,
+    OnErrorCallback,
+)
 
-class FallbackOnError(OnErrorCallback):
+
+class FriendlyFallback(OnErrorCallback):
+    """Substitute a plain message when a model call fails."""
+
     async def __call__(self, context: CallbackContext, input_data, error: Exception):
         print(f"Error in {context.node_name}: {error}")
-        return None   # return None to re-raise, or a Message to substitute
+        return Message.text_message("Sorry, something went wrong.", role="assistant")
 
-cbm.register_on_error(InvocationType.AI, FallbackOnError())
+
+cbm = CallbackManager()
+cbm.register_on_error(InvocationType.AI, FriendlyFallback())
 ```
 
----
+| Parameter | Type | Description |
+|---|---|---|
+| `context` | `CallbackContext` | Invocation metadata. |
+| `input_data` | `Any` | The input that caused the error. |
+| `error` | `Exception` | The exception that occurred. |
 
-## `BaseValidator` and the validator API
+Returns `Message | None`. When several error callbacks run, the manager keeps the result of the last one.
 
-Validators focus specifically on message content validation. They are simpler than callbacks because they only need one method.
+## BaseValidator
+
+`BaseValidator` is the abstract base for message validators. A validator needs one method, `async validate(self, messages: list[Message]) -> bool`, which returns `True` when the messages are acceptable and raises (usually `ValidationError`) when they are not. Validators run on new input messages before the graph executes.
 
 ```python
-from tenxgraph.utils import BaseValidator
+from tenxgraph.core.state import Message
+from tenxgraph.utils import BaseValidator, CallbackManager
 from tenxgraph.utils.validators import ValidationError
 
-class AllowedTopicsValidator(BaseValidator):
-    async def validate(self, messages) -> bool:
+
+class TopicPolicyValidator(BaseValidator):
+    """Reject messages that mention a blocked term."""
+
+    async def validate(self, messages: list[Message]) -> bool:
         for msg in messages:
             if "competitor" in msg.text().lower():
                 raise ValidationError(
@@ -171,84 +220,99 @@ class AllowedTopicsValidator(BaseValidator):
                 )
         return True
 
-cbm.register_input_validator(AllowedTopicsValidator())
+
+cbm = CallbackManager()
+cbm.register_input_validator(TopicPolicyValidator())
 ```
 
----
+## ValidationError
 
-## `PromptInjectionValidator`
-
-Detects OWASP LLM01:2025 prompt injection attacks.
-
-```python
-from tenxgraph.utils.validators import PromptInjectionValidator
-
-validator = PromptInjectionValidator(
-    strict_mode=True,        # raises ValidationError (default)
-    max_length=10000,        # max allowed message length
-    blocked_patterns=[],     # additional regex patterns
-    suspicious_keywords=[],  # additional keywords
-)
-cbm.register_input_validator(validator)
-```
-
-### Constructor parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `strict_mode` | `bool` | `True` | `True` raises `ValidationError`; `False` logs a warning and sanitizes. |
-| `max_length` | `int` | `10000` | Maximum message content length in characters. |
-| `blocked_patterns` | `list[str]` | `[]` | Additional regex patterns to block (merged with default patterns). |
-| `suspicious_keywords` | `list[str]` | `[]` | Additional keywords to flag. |
-
----
-
-## `MessageContentValidator`
-
-Validates message structure integrity.
-
-```python
-from tenxgraph.utils.validators import MessageContentValidator
-
-validator = MessageContentValidator(
-    allowed_roles=["user", "assistant", "system"],
-    max_content_blocks=50,
-)
-cbm.register_input_validator(validator)
-```
-
----
-
-## `ValidationError`
-
-Raised by validators when validation fails.
+`ValidationError` is the exception validators raise. Its constructor is `ValidationError(message: str, violation_type: str, details: dict[str, Any] | None = None)`.
 
 | Attribute | Type | Description |
 |---|---|---|
-| `violation_type` | `str` | Category: `"injection_pattern"`, `"length_exceeded"`, `"encoding_attack"`, `"invalid_role"`, etc. |
-| `details` | `dict` | Extra context: matched pattern, content sample, input length. |
+| `violation_type` | `str` | Category of the failure, for example `"injection_pattern"`, `"length_exceeded"`, `"encoding_attack"`, `"suspicious_keywords"`, `"payload_splitting"`, `"invalid_role"` or `"too_many_blocks"`. |
+| `details` | `dict[str, Any]` | Extra context such as the matched pattern or a content sample. Empty dict when not given. |
 
----
+The human-readable message is available through `str(error)`.
 
-## `register_default_validators`
+## PromptInjectionValidator
 
-One-call setup that registers both `PromptInjectionValidator` (strict) and `MessageContentValidator`.
+`PromptInjectionValidator` checks message text against built-in patterns for prompt injection, jailbreak phrases, role manipulation, system prompt leakage, delimiter confusion and template injection (OWASP LLM01:2025). It also checks for oversized input, encoded payloads (base64, hex, heavy non-ASCII), several suspicious keywords in one message, and payload splitting markers.
 
 ```python
+from tenxgraph.utils import CallbackManager
+from tenxgraph.utils.validators import PromptInjectionValidator
+
+validator = PromptInjectionValidator(
+    strict_mode=True,                        # raise ValidationError on a violation
+    max_length=10000,                        # longest allowed message text
+    blocked_patterns=[r"(?i)internal\s+only"],  # extra regex patterns
+    suspicious_keywords=["exfiltrate"],      # extra keywords
+)
+
+cbm = CallbackManager()
+cbm.register_input_validator(validator)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `strict_mode` | `bool` | `True` | `True` raises `ValidationError`. `False` logs a warning and lets the message through. |
+| `max_length` | `int` | `10000` | Maximum message text length in characters. |
+| `blocked_patterns` | `list[str] \| None` | `None` | Extra regex patterns, added to the built-in set. |
+| `suspicious_keywords` | `list[str] \| None` | `None` | Extra keywords, added to the built-in list. |
+
+`validate(messages)` returns `True` or raises `ValidationError`. The built-in patterns are broad, so expect some false positives on legitimate text (for example words like "sudo" or very long tokens). Test with your real traffic before enabling strict mode in production.
+
+## MessageContentValidator
+
+`MessageContentValidator` checks message structure: the role must be allowed, and list content may not exceed a block limit.
+
+```python
+from tenxgraph.utils import CallbackManager
+from tenxgraph.utils.validators import MessageContentValidator
+
+validator = MessageContentValidator(
+    allowed_roles=["user", "assistant", "system", "tool"],
+    max_content_blocks=50,
+)
+
+cbm = CallbackManager()
+cbm.register_input_validator(validator)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `allowed_roles` | `list[str] \| None` | `["user", "assistant", "system", "tool"]` | Roles accepted in input messages. |
+| `max_content_blocks` | `int` | `50` | Maximum number of content blocks in one message. |
+
+Raises `ValidationError` with `violation_type` `"invalid_role"` or `"too_many_blocks"`.
+
+## register_default_validators
+
+`register_default_validators(callback_manager, strict_mode=True)` registers a `PromptInjectionValidator` (with the given `strict_mode`) and a `MessageContentValidator` (with defaults) on the manager in one call.
+
+```python
+from tenxgraph.utils import CallbackManager
 from tenxgraph.utils.validators import register_default_validators
 
 cbm = CallbackManager()
-register_default_validators(cbm)
-app = graph.compile(callback_manager=cbm)
+register_default_validators(cbm, strict_mode=True)
+# app = graph.compile(callback_manager=cbm)
 ```
 
----
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `callback_manager` | `CallbackManager` | required | The manager to register on. |
+| `strict_mode` | `bool` | `True` | Passed to `PromptInjectionValidator`. |
 
 ## Common errors
 
-| Error | Cause | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| Callbacks never fire | `callback_manager` not passed to `compile()`. | `graph.compile(callback_manager=cbm)`. |
-| `ValidationError` brings down the server | Not caught outside the graph. | Wrap `ainvoke/astream` in `try/except ValidationError`. |
-| Before-invoke callback receives `None` as `input_data` | LLM call with an empty message list. | Check for empty messages in the callback before iterating. |
-| After-invoke callback changes return type, graph breaks | Returning wrong type from `__call__`. | Always return the same type as `output_data`. |
+| Callbacks never fire | The manager was not passed to `compile()`. | Call `graph.compile(callback_manager=cbm)`. |
+| `ValidationError` escapes to the caller | Validators raise before the graph runs. | Wrap `invoke`, `ainvoke` or `astream` in `try/except ValidationError`. |
+| Before callback sees an empty input | The call has no messages or arguments. | Check for empty `input_data` before iterating. |
+| Graph breaks after an after callback | The callback returned a different type than `output_data`. | Return the same type you received. |
+| Error callback result has no effect | It returned something other than a `Message` or `None`. | Return a `Message` to recover, or `None`. |
+| Skill calls do not reach the `TOOL` callback | Skill tools fire `InvocationType.SKILL`. | Register the callback for `SKILL` as well. |

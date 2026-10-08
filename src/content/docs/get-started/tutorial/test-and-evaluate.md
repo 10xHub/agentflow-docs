@@ -1,97 +1,119 @@
 ---
 title: "Test and evaluate"
-description: "Write unit tests with mocked models and run evaluations against your agent without live API calls."
+seoTitle: "Test and evaluate a 10xGraph agent"
+description: "Write a unit test with a mocked model, then run a small evaluation set against your weather agent with the 10xgraph eval command."
 updated: "2026-10-08"
 order: 110
 group: "Tutorial"
 section: "Get started"
+faq:
+  - q: "Do unit tests with TestAgent call a real model?"
+    a: "No. TestAgent returns the responses you give it, so the test runs offline, instantly and with the same result every time."
+  - q: "Does 10xgraph eval call a real model?"
+    a: "Yes. It runs your real graph against each case, so it needs your provider API key. Cases that use only rouge_match and tool_name_match need no extra judge model."
+  - q: "Where should eval files live?"
+    a: "By default 10xgraph eval looks in an evals/ folder (or the directory set in 10xgraph.json) for files named *_eval.py or eval_*.py. You can also pass a file or folder path."
 ---
 
-Before deploying an agent to production, you need confidence in its behavior across different inputs and edge cases. Unlike traditional software, agent behavior can be unpredictable because it depends on the LLM's responses. 10xGraph provides two complementary testing approaches: **unit tests** that verify behavior with mocked LLM responses, and **evaluations** that assess your agent on curated datasets. Unit tests let you catch graph logic errors and routing issues quickly without API calls. Evaluations measure how well your agent performs on real-world scenarios and help you catch regressions when you update the prompt or agent logic. In this step, you will write a unit test for the agent from the previous steps and run a small evaluation set to measure its quality.
+Test your agent in two layers. A unit test swaps the real model for `TestAgent`, which returns scripted replies, so you can check wiring offline in milliseconds. An evaluation runs the real graph against a small dataset and scores the results. This step adds one of each.
 
-## Unit tests with a mocked model
+## What you build in this step
 
-In unit tests, you replace the real LLM with a `TestAgent` that returns predetermined responses. This lets you test your graph logic, tool calls, and routing without making API calls.
+You write a pytest file that checks the graph without any model call, then an eval file with three cases that you run with `10xgraph eval`. Unit tests answer "is my graph wired correctly?". Evaluations answer "does my agent still behave well after I changed the prompt?".
 
-### Write a unit test
+| | Unit test | Evaluation |
+|---|---|---|
+| Model | Mocked (`TestAgent`) | Real, from your graph |
+| Needs API key | No | Yes |
+| Speed | Milliseconds | Seconds per case |
+| Checks | Wiring, routing, tool calls | Response quality and tool choice |
+| Run with | `pytest` | `10xgraph eval` |
 
-Create a test file in your project directory:
+## Prerequisites
+
+- The weather agent from [Build a graph by hand](/docs/get-started/tutorial/build-a-graph), saved as `agent_with_tools.py` with the compiled graph in a variable named `app`.
+- Test tooling: `pip install pytest pytest-asyncio`
+- The CLI from `10xgraph-api` (`pip install 10xgraph-api`) for the `10xgraph eval` command.
+
+## Unit test the graph with a mocked model
+
+`TestAgent` is a drop-in replacement for `Agent`. It returns your `responses` list in order, cycling when the list runs out, and records every call so you can assert on it.
+
+### Write the first test
+
+Create `test_agent.py`. The test builds a one-node graph around a `TestAgent`, runs it and checks the reply.
 
 ```python
 # test_agent.py
 import pytest
+
 from tenxgraph.core.graph import StateGraph
 from tenxgraph.core.state import Message
 from tenxgraph.qa.testing import TestAgent
-from tenxgraph.utils.constants import END
+from tenxgraph.utils import END
 
 
 @pytest.mark.asyncio
 async def test_agent_responds():
-    """Test that the agent can respond to a simple message."""
-    # Create a TestAgent with predefined responses
+    # The mocked model: no API call is made
     test_agent = TestAgent(
         model="test-model",
-        responses=["Hello! I'm ready to help you get the weather."]
+        responses=["Hello! I can help you with the weather."],
     )
 
-    # Build a simple graph with the test agent
+    # A minimal graph: MAIN -> END
     graph = StateGraph()
     graph.add_node("MAIN", test_agent)
     graph.set_entry_point("MAIN")
     graph.add_edge("MAIN", END)
-
-    # Compile and run
     compiled = graph.compile()
+
     result = await compiled.ainvoke(
         {"messages": [Message.text_message("Say hello")]},
-        config={}
+        config={},
     )
 
-    # Assert the response contains expected text
-    messages = result.get("messages", [])
-    last_message = messages[-1] if messages else None
-    response_text = last_message.text() if hasattr(last_message, "text") else ""
-    assert "Hello" in response_text
+    # The last message is the assistant reply
+    last_message = result["messages"][-1]
+    assert "weather" in last_message.text()
+    test_agent.assert_called_times(1)
 ```
 
-Run the test:
+Run it:
 
 ```bash
 pytest test_agent.py -v
 ```
 
-**Expected output:**
+You should see the test pass:
 
-```
+```text
 test_agent.py::test_agent_responds PASSED
 ```
 
-### Use QuickTest for rapid testing
+### Use QuickTest for common patterns
 
-For common patterns, the `QuickTest` class provides simplified one-liner assertions:
+`QuickTest` builds the graph for you. It has class methods for a single turn, a multi-turn conversation, a tool call and a custom agent, and each returns a `TestResult` with chainable assertions. Add these tests to `test_agent.py`:
 
 ```python
-# test_agent.py (expanded)
+# test_agent.py (additional tests)
 from tenxgraph.qa.testing import QuickTest
 
 
 @pytest.mark.asyncio
 async def test_single_turn():
-    """Test a single user-agent turn."""
     result = await QuickTest.single_turn(
         user_message="What's the weather?",
-        agent_response="I'll check the weather for you."
+        agent_response="I'll check the weather for you.",
     )
-    result.assert_contains("weather")
-    result.assert_message_count(1)
+    result.assert_contains("weather").assert_no_errors()
 
 
 @pytest.mark.asyncio
 async def test_multi_turn():
-    """Test a multi-turn conversation."""
+    # Each tuple is (user message, scripted agent reply)
     result = await QuickTest.multi_turn(
-        conversation=[
+        [
             ("Hi", "Hello there!"),
             ("How are you?", "I'm doing great!"),
         ]
@@ -99,247 +121,175 @@ async def test_multi_turn():
     result.assert_contains("great")
 ```
 
-Run all tests:
+Note that `single_turn` takes `agent_response` first and `user_message` second (default `"Hello"`). Use keyword arguments, as above, to avoid mixing them up.
 
-```bash
-pytest test_agent.py -v
-```
+### Test that a tool is called
 
-**Expected output:**
-
-```
-test_agent.py::test_single_turn PASSED
-test_agent.py::test_multi_turn PASSED
-```
-
-### Test tool calls
-
-If your agent calls tools, use `QuickTest.with_tools` to mock tool execution:
+`QuickTest.with_tools` wires a `TestAgent` and a `ToolNode` together. For every name in `tools` it creates a mock function that records the call and returns the text from `tool_responses` (or `"Mock result from <name>"`). The scripted agent calls each tool on its first turn, then returns `response`.
 
 ```python
+# test_agent.py (additional test)
 @pytest.mark.asyncio
 async def test_tool_call():
-    """Test that the agent calls a tool."""
     result = await QuickTest.with_tools(
         query="What's the weather in NYC?",
         response="It's sunny in New York today.",
         tools=["get_weather"],
-        tool_responses={"get_weather": "Sunny, 72°F"}
+        tool_responses={"get_weather": "Sunny, 22C"},
     )
     result.assert_tool_called("get_weather")
     result.assert_contains("sunny")
 ```
 
-### TestAgent in your own graph
+The `TestResult` assertions are `assert_contains`, `assert_not_contains`, `assert_equals`, `assert_tool_called`, `assert_tool_not_called`, `assert_message_count` and `assert_no_errors`. Each returns the result so you can chain them.
 
-You can also swap out a real Agent node with a TestAgent in an existing graph to isolate the parts you're testing:
+### Isolate a node with TestContext
+
+`TestContext` is an optional helper that gives each test its own dependency container and in-memory store. Use `ctx.create_graph()` and `ctx.create_test_agent()` to keep tests from sharing state.
 
 ```python
-from tenxgraph.qa.testing import TestAgent, TestContext
+# test_agent.py (additional test)
+from tenxgraph.qa.testing import TestContext
+
 
 @pytest.mark.asyncio
 async def test_with_context():
-    """Test using TestContext for setup."""
     with TestContext() as ctx:
-        # Create a test agent
-        test_agent = ctx.create_test_agent(
-            responses=["Test response from agent"]
-        )
+        test_agent = ctx.create_test_agent(responses=["Test response from agent"])
 
-        # Build a graph
         graph = ctx.create_graph()
         graph.add_node("MAIN", test_agent)
         graph.set_entry_point("MAIN")
         graph.add_edge("MAIN", END)
 
-        # Run and assert
         compiled = graph.compile()
-        result = await compiled.ainvoke(
+        await compiled.ainvoke(
             {"messages": [Message.text_message("Test")]},
-            config={}
+            config={},
         )
 
-        # Verify the agent was called
+        # TestAgent records how often it ran
         test_agent.assert_called()
         assert test_agent.call_count == 1
 ```
 
-## Evaluate on a dataset
+Run the whole file with `pytest test_agent.py -v`. All tests should pass without any API key set. For `MockToolRegistry`, `MockMCPClient` and `InMemoryStore`, see [Unit tests](/docs/testing/unit-tests).
 
-Unit tests verify individual behaviors with predefined LLM responses. **Evaluations** assess your agent across a curated dataset of inputs with expected outcomes, using real or mocked LLM calls. Evaluations measure quality metrics like response accuracy, tool usage correctness, and semantic similarity to expected answers. This helps you catch regressions, measure improvements, and set quality thresholds before deploying changes.
+## Evaluate the agent on a dataset
 
-### Create an evaluation file
+An evaluation runs your real graph on each case in an `EvalSet` and scores the result against what you expected. Because it uses the real model, results can vary between runs, so you set thresholds instead of exact matches. Use it to catch regressions when you change a prompt, a tool or a model.
 
-Evaluations in 10xGraph are defined in Python files ending with `_eval.py`. Create a new file:
+### Create the eval file
+
+`10xgraph eval` discovers files named `*_eval.py` or `eval_*.py` under `evals/` (or the directory set in `10xgraph.json`). Each file must expose `get_eval_set()`, and may expose `get_eval_config()`. The CLI uses a module-level `app` as the graph; if there is none, it loads the graph from the `agent` entry in `10xgraph.json`. Create `evals/weather_eval.py`:
 
 ```python
-# weather_agent_eval.py
+# evals/weather_eval.py
+from agent_with_tools import app  # the compiled graph from the previous step
 from tenxgraph.qa.evaluation import (
+    CriteriaConfig,
+    CriterionConfig,
     EvalCase,
     EvalConfig,
     EvalSet,
-    CriterionConfig,
     ToolCall,
 )
 
 
-# Define a few test cases using the factory methods
-eval_cases = [
-    EvalCase.single_turn(
-        eval_id="weather-1",
-        user_query="Weather in NYC",
-        expected_response="New York",
-        description="Should mention the city name"
-    ),
-    EvalCase.single_turn(
-        eval_id="weather-2",
-        user_query="Is it raining?",
-        expected_response="weather",
-        expected_tools=[ToolCall(name="get_weather")],
-        description="Should call weather tool"
-    ),
-    EvalCase.single_turn(
-        eval_id="weather-3",
-        user_query="Hello",
-        expected_response="hi",
-        description="Should respond to a greeting"
-    ),
-]
-
-
-# Create an evaluation set
-eval_set = EvalSet(
-    eval_set_id="weather-agent-basic",
-    name="Basic Weather Agent Tests",
-    description="Simple tests for weather querying",
-    eval_cases=eval_cases
-)
-
-
-# Optionally define evaluation configuration
-def eval_config() -> EvalConfig:
-    """Configure how the evaluation runs."""
-    return EvalConfig(
-        criteria=[
-            CriterionConfig(
-                name="response_match",
-                weight=0.7
+def get_eval_set() -> EvalSet:
+    """Three cases: a weather question, a tool call and a greeting."""
+    return EvalSet(
+        eval_set_id="weather-agent-basic",
+        name="Basic weather agent",
+        description="Simple checks for the weather agent",
+        eval_cases=[
+            EvalCase.single_turn(
+                eval_id="weather-1",
+                user_query="What is the weather in London?",
+                expected_response="The weather in London is sunny and 22C.",
+                expected_tools=[ToolCall(name="get_weather")],
+                description="Calls the weather tool and reports the result",
             ),
-            CriterionConfig(
-                name="tool_name_match",
-                weight=0.3
-            )
-        ]
+            EvalCase.single_turn(
+                eval_id="weather-2",
+                user_query="Is it nice in Paris today?",
+                expected_response="The weather in Paris is sunny and 22C.",
+                expected_tools=[ToolCall(name="get_weather")],
+                description="Calls the weather tool for a different city",
+            ),
+            EvalCase.single_turn(
+                eval_id="weather-3",
+                user_query="Hello",
+                expected_response="Hello! How can I help you?",
+                description="Answers a greeting",
+            ),
+        ],
+    )
+
+
+def get_eval_config() -> EvalConfig:
+    """Score tool choice exactly and responses by word overlap (no judge model)."""
+    return EvalConfig(
+        criteria=CriteriaConfig(
+            tool_name_match=CriterionConfig.tool_name_match(threshold=1.0),
+            rouge_match=CriterionConfig.rouge_match(threshold=0.4),
+        )
     )
 ```
+
+`tool_name_match` checks that the tools called match `expected_tools`. `rouge_match` scores token overlap with `expected_response` and needs no extra model call. For paraphrase-aware scoring, `CriterionConfig.response_match` uses an LLM judge instead (it calls a judge model, so it costs tokens). If you leave out `get_eval_config()`, the CLI uses built-in defaults (`tool_name_match` at 1.0, `rouge_match` at 0.5, `node_order` at 0.8) and a `confeval.py` next to your evals overrides them globally.
 
 ### Run the evaluation
 
-Use the `10xgraph eval` command to discover and run all `*_eval.py` files in your project:
+Point `10xgraph eval` at the folder. It runs every case, prints a summary and writes HTML and JSON reports to `eval_reports/` unless you pass `--no-report`.
 
 ```bash
-10xgraph eval
+10xgraph eval evals/
 ```
 
-**Expected output:**
+The output varies with your scores, but looks like this (example):
 
-```
-Discovering evaluations...
-Found 1 evaluation set: weather-agent-basic (3 cases)
-Running weather-agent-basic...
-  weather-1: PASS (0.95)
-  weather-2: PASS (0.88)
-  weather-3: PASS (1.0)
-
-Results: 3/3 passed (average score: 0.94)
-Report: eval_reports/weather_agent_eval.html
+```text
+Criteria  weather_eval.py  (source: per-file)
+  tool_name_match    threshold=1.0
+  rouge_match        threshold=0.4
+...
+HTML report: eval_reports/<report file>.html
 ```
 
-Each case is scored 0 to 1, with higher scores meaning better matches to expected outputs. The scoring depends on the criteria you defined: `response_match` checks if the response is semantically similar to the expected answer, `tool_name_match` verifies the agent called the right tools. A score of 1.0 means perfect match, 0.9+ is excellent, and 0.8+ is generally acceptable for production.
+Each case passes only when every criterion meets its threshold. Open the HTML report to see the conversation, tool calls and per-criterion scores of each failed case.
 
-An HTML report is generated in `eval_reports/` with detailed results, including the full agent conversation, tool calls made, scores per criterion, and which cases failed. Open it in a browser to review and debug failures.
+| Flag | Short | Default | Purpose |
+|---|---|---|---|
+| `--output` | `-o` | `eval_reports` | Directory for reports |
+| `--no-report` | | off | Print the summary only |
+| `--threshold` | `-t` | none | Exit with an error if the overall pass rate is below this value (0.0 to 1.0) |
+| `--open` | | off | Open the HTML report when done |
+| `--parallel` | `-p` | off | Run cases concurrently |
+| `--max-concurrency` | `-c` | 4 | Concurrent cases with `--parallel` |
 
-### Evaluation in pytest
-
-You can also run evaluations inside pytest using the `eval_test` decorator:
-
-```python
-# test_eval.py (same directory)
-import pytest
-from tenxgraph.qa.evaluation import AgentEvaluator, EvalConfig
-from tenxgraph.qa.evaluation.collectors.trajectory_collector import (
-    TrajectoryCollector,
-    make_trajectory_callback,
-)
-
-
-@pytest.mark.asyncio
-async def test_eval_weather_agent():
-    """Run evaluation as a pytest test."""
-    from weather_agent_eval import eval_set, eval_criteria
-
-    # Build your graph
-    from main import app  # Your compiled graph
-    graph = app  # The compiled graph
-
-    # Set up trajectory collection
-    collector = TrajectoryCollector()
-    callback_manager, _ = make_trajectory_callback(collector)
-
-    # Compile with callback
-    compiled = graph.compile(callback_manager=callback_manager)
-
-    # Run evaluator
-    evaluator = AgentEvaluator()
-    results = await evaluator.evaluate(
-        graph=compiled,
-        eval_set=eval_set,
-        config=eval_criteria()
-    )
-
-    # Assert all cases passed
-    assert all(r.passed for r in results.case_results)
-    assert results.score >= 0.8  # Average score above 80%
-```
-
-Run with pytest:
-
-```bash
-pytest test_eval.py -v
-```
+Add `--threshold 0.8` in CI so a drop in quality fails the build. To run evaluations from inside pytest instead, see [Evals in pytest](/docs/testing/evals-in-pytest).
 
 ## When to use each approach
 
-**Use unit tests** to:
-- Verify graph structure and routing (conditional edges, tool calls, node ordering)
-- Test error handling and edge cases
-- Catch regressions in graph logic when you refactor
-- Run fast CI checks without external dependencies
+Use both. They catch different failures, and the unit tests keep your feedback loop fast.
 
-**Use evaluations** to:
-- Measure response quality on real-world scenarios
-- Track improvements when you update prompts or tools
-- Set quality gates before deploying changes
-- Identify failing patterns across your agent's behavior
+- **Unit tests** cover graph structure, routing, tool wiring and error handling. They are free and deterministic, so run them on every commit.
+- **Evaluations** cover answer quality, tool choice and regressions after prompt or model changes. They cost API calls and vary slightly, so run them before a release or on a schedule.
 
-Both are complementary: unit tests ensure your graph works correctly, evaluations ensure your agent produces good results.
+Do not use evaluations to test wiring bugs: a failing case does not tell you whether the cause is the graph or the model. Do not use `TestAgent` to judge answer quality: it only returns what you scripted.
 
 ## What you learned
 
-You now know:
-
-- **Unit testing** with `TestAgent` and `QuickTest` lets you test graph logic without API calls
-- **TestResult** provides chainable assertions: `result.assert_contains()`, `assert_tool_called()`, etc.
-- **TestContext** simplifies setup of isolated test environments with mock tools and stores
-- **Evaluations** measure agent behavior across a curated dataset using `EvalCase` and `EvalSet`
-- **10xgraph eval** discovers and runs all `*_eval.py` files, generating HTML reports
-- **Eval criteria** define how to score responses (tool matching, semantic similarity, custom rubrics)
-- **Scoring** ranges from 0 to 1, where 0.8+ is generally acceptable for production quality
+- `TestAgent` replaces the model with scripted replies, and `QuickTest` builds common test graphs in one call.
+- `TestResult` assertions are chainable, and `TestContext` isolates each test.
+- An `EvalSet` of `EvalCase` objects plus an `EvalConfig` describes an evaluation, and `10xgraph eval` runs it against your real graph and writes reports.
 
 ## Next steps
 
-Now that your agent is tested, you are ready to:
+You have finished the tutorial track. Continue with:
 
-- Read the full [Testing](/docs/testing) section for detailed patterns, criteria definitions, and reporting
-- Learn how to [run the agent on a server](/docs/server/run-the-server) with `10xgraph api` and `10xgraph play`
-- Explore [prebuilt agents](/docs/guides/prebuilt-agents) and [advanced agent patterns](/docs/concepts)
+- [Testing](/docs/testing) for unit test patterns, criteria, presets and user simulation.
+- [Run the server](/docs/server/run-the-server) to serve the agent over HTTP with `10xgraph api` and `10xgraph play`.
+- [Production checklist](/docs/server/production-checklist) before you deploy.
+- [Prebuilt agents](/docs/guides/prebuilt-agents) and [Concepts](/docs/concepts) for the next level of detail.

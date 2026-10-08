@@ -1,215 +1,237 @@
 ---
 title: Memory
-seoTitle: "Memory tutorial: MemoryConfig, Qdrant, Mem0"
-description: Give a 10xGraph agent long-term memory with Agent(memory=MemoryConfig(...)), backed by QdrantStore or a Mem0 store, scoped per user.
+seoTitle: "Memory example: custom memory nodes with Mem0"
+description: Build a chatbot that remembers user preferences across conversations, using Mem0 and Qdrant for long-term memory inside custom graph nodes.
 section: Examples
 group: "Memory and media"
 order: 170
 label: Memory
-updated: "2026-10-06"
+updated: "2026-10-08"
+faq:
+  - q: "How do I use the built-in memory API instead of calling Mem0 directly?"
+    a: "Pass Agent(memory=MemoryConfig(...)) with a QdrantStore or Mem0Store, and the agent gets memory without custom nodes. See Use a memory store."
+  - q: "Can memories be stored without the model deciding?"
+    a: "Yes. In this example a graph node writes every exchange to Mem0 after the agent replies, so the model never has to call a memory tool."
+  - q: "How are memories isolated per user?"
+    a: "The user_id from the run config is copied into the state and passed to every Mem0 search and add call, so each user only sees their own memories."
 ---
 
-**Source examples:** [`examples/memory/`](https://github.com/10xGraph/10xGraph/tree/main/examples/memory) (`simple_personalized_agent.py` and `personalized_agent_qdrant.py`). Those two scripts call the Mem0 SDK directly from custom graph nodes. This tutorial uses 10xGraph's own memory path instead: `Agent(memory=MemoryConfig(...))` with a `BaseStore`.
+A chatbot that learns user preferences and recalls them in later conversations. A retrieval node searches Mem0 before the agent answers, a storage node saves each exchange afterwards, and the retrieved memories reach the model through the system prompt. This example calls the Mem0 SDK directly from custom nodes.
 
-## What you will build
+## Run the example
 
-A support agent that remembers durable facts about a customer (for example "prefers refunds to store credit") across threads and sessions. You will:
+The source is [`examples/memory/simple_personalized_agent.py`](https://github.com/10xGraph/10xGraph/tree/main/examples/memory) in the core repo. It needs a Gemini key, a Mem0 key and a Qdrant cloud cluster.
 
-- create a store (`QdrantStore`, or a Mem0-backed store)
-- attach it with `MemoryConfig`
-- pass a stable `user_id` in the run config so memory follows the customer, not the thread
-
-## Prerequisites
-
-- Python 3.12 or later
-- `10xgraph` installed with the `qdrant` extra (and `google-genai` or `openai` for embeddings)
-- a Gemini key (`GOOGLE_API_KEY`) or an OpenAI key (`OPENAI_API_KEY`) for the embedding model
+Install the packages (the `mem0` extra installs `mem0ai`):
 
 ```bash
-pip install "10xgraph[qdrant,google-genai]"
+pip install "10xgraph[google-genai,mem0]" python-dotenv
 ```
 
-For the Mem0 option, install the `mem0` extra instead (`pip install "10xgraph[mem0]"`).
+Create a `.env` file next to the script with your own values:
 
-## How it works
+```text
+GOOGLE_API_KEY=your_google_api_key
+MEM0_API_KEY=your_mem0_api_key
+QDRANT_URL=https://your-cluster.qdrant.io
+QDRANT_API_KEY=your_qdrant_api_key
+```
+
+Then run it:
+
+```bash
+python simple_personalized_agent.py
+```
+
+## How the graph is shaped
+
+The graph has three nodes in a line: retrieve memories, chat, store the exchange. Retrieval writes a string into the state, the agent's system prompt reads it, and storage runs only after the reply exists.
 
 ```mermaid
 flowchart LR
-    A[User message] --> B[Agent node]
-    B -->|search / remember| C[user_memory_tool]
-    C --> D[(BaseStore)]
-    D --> E[Qdrant or Mem0]
-    B --> F[Reply]
+    A[memory_retrieval] --> B[chat]
+    B --> C[memory_storage]
+    C --> D[END]
 ```
 
-`MemoryConfig` does three things when you pass it to an `Agent`:
+## Extend the state with user context
 
-1. optionally appends a memory instruction to the system prompt (`inject_system_prompt=True`, the default)
-2. in `postload` mode (the default), adds a model-facing `user_memory_tool` to the agent's `ToolNode`, so the model decides when to `search` or `remember`
-3. in `preload` mode, searches the store with the latest user message before each model call and injects the results as a system message
+The custom state adds two fields: `user_id` scopes every Mem0 call, and `memory_context` holds the text that retrieval builds for the system prompt.
 
-## Step 1: Create a store
-
-`QdrantStore` needs an embedding service. The factories wrap `QdrantStore(...)`:
-
-```python
-from tenxgraph.storage.store import GoogleEmbedding, create_local_qdrant_store
-
-store = create_local_qdrant_store(
-    path="./qdrant_data",
-    embedding=GoogleEmbedding(),  # reads GOOGLE_API_KEY
-    collection="support_memory",
-)
-```
-
-For a remote server or Qdrant Cloud use `create_remote_qdrant_store(host, port, embedding, collection)` or `create_cloud_qdrant_store(url, api_key, embedding, collection)`. The vector size comes from `embedding.dimension`, so changing the embedding model on an existing collection needs a new collection.
-
-### Mem0 instead of Qdrant
-
-`create_mem0_store(config, user_id="default_user", app_id="agentflow_app")` returns a `Mem0Store`. The `config` dict is Mem0's own configuration schema:
-
-```python
+```python title="simple_personalized_agent.py"
+import asyncio
 import os
-from tenxgraph.storage.store import create_mem0_store
 
-store = create_mem0_store(
-    config={
-        "vector_store": {
-            "provider": "qdrant",
-            "config": {
-                "collection_name": "support_memory",
-                "url": os.getenv("QDRANT_URL"),
-                "api_key": os.getenv("QDRANT_API_KEY"),
-                "embedding_model_dims": 768,
-            },
-        },
-        "llm": {"provider": "gemini", "config": {"model": "gemini-2.0-flash-exp"}},
-        "embedder": {"provider": "gemini", "config": {"model": "models/text-embedding-004"}},
-    },
-    app_id="support_app",
-)
-```
+from dotenv import load_dotenv
+from mem0 import Memory
 
-`create_mem0_store_with_qdrant(qdrant_url, qdrant_api_key, collection_name, embedding_model, llm_model, app_id, **kwargs)` builds the same kind of config for you with OpenAI defaults.
-
-## Step 2: Attach memory to the agent
-
-```python
-from tenxgraph.core import Agent, StateGraph, ToolNode
-from tenxgraph.storage.checkpointer import InMemoryCheckpointer
-from tenxgraph.storage.store import MemoryConfig, UserMemoryConfig
+from tenxgraph.core import Agent, StateGraph
+from tenxgraph.core.state import AgentState, Message
 from tenxgraph.utils.constants import END
 
-
-def lookup_order(order_id: str) -> str:
-    """Look up an order by id."""
-    return f"Order {order_id}: shipped, arriving Thursday."
+load_dotenv()
 
 
-agent = Agent(
-    model="gemini-2.5-flash",
+class MemoryAgentState(AgentState):
+    """State with user ID and memory context for interpolation."""
+
+    user_id: str = ""
+    memory_context: str = ""
+```
+
+## Configure Mem0 with a Qdrant cloud backend
+
+Mem0 manages embeddings and the vector store. This config points it at your Qdrant cluster and uses Gemini for both the memory-extraction model and the embeddings.
+
+```python title="simple_personalized_agent.py"
+config = {
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {
+            "collection_name": "simple_agent_memory",
+            "url": os.getenv("QDRANT_URL"),
+            "api_key": os.getenv("QDRANT_API_KEY"),
+            "embedding_model_dims": 768,  # must match the Gemini embedding size
+        },
+    },
+    "llm": {
+        "provider": "gemini",
+        "config": {"model": "gemini-2.0-flash-exp", "temperature": 0.1},
+    },
+    "embedder": {"provider": "gemini", "config": {"model": "models/text-embedding-004"}},
+}
+
+memory = Memory.from_config(config)
+```
+
+The vector size is fixed per collection. If you change the embedding model, use a new `collection_name`.
+
+## Retrieve memories before the agent answers
+
+The retrieval node searches Mem0 with the latest user message and the current `user_id`, keeps the top three hits, and writes them into `memory_context`. Failures are caught so a memory outage does not stop the chat.
+
+```python title="simple_personalized_agent.py"
+async def memory_retrieval_node(state: MemoryAgentState) -> MemoryAgentState:
+    """Search Mem0 and build the text the system prompt will interpolate."""
+    if not state.context:
+        return state
+
+    user_message = state.context[-1].text()
+
+    memories = []
+    try:
+        results = memory.search(query=user_message, user_id=state.user_id, limit=3)
+        if "results" in results:
+            memories = [m["memory"] for m in results["results"]]
+        print(f"Retrieved {len(memories)} memories")
+    except Exception as e:
+        print(f"Memory retrieval error: {e}")
+
+    if memories:
+        state.memory_context = "Relevant memories:\n" + "\n".join(f"- {m}" for m in memories)
+    else:
+        state.memory_context = ""
+    return state
+```
+
+## Inject memories through the system prompt
+
+The agent's system prompt contains the placeholder `{memory_context}`. 10xGraph fills state placeholders in the prompt from the current state before each model call, so whatever retrieval wrote appears in the prompt.
+
+```python title="simple_personalized_agent.py"
+response_agent = Agent(
+    model="gemini-2.0-flash",
     provider="google",
-    system_prompt=[{"role": "system", "content": "You are a support agent."}],
-    tool_node=ToolNode([lookup_order]),
-    memory=MemoryConfig(
-        store=store,
-        limit=5,
-        score_threshold=0.5,
-        user_memory=UserMemoryConfig(memory_type="semantic", category="customer_prefs"),
-    ),
+    system_prompt=[
+        {
+            "role": "system",
+            "content": """You are a helpful AI assistant with memory of past conversations.
+
+{memory_context}
+
+Be conversational, helpful, and reference past interactions when relevant.""",
+        },
+    ],
+    trim_context=True,  # keep long conversations within the context window
 )
 ```
 
-An `Agent` with `memory=` in `postload` mode must have a `ToolNode` (or the name of a `TOOL` node), because the memory tool is added to it. Without one, construction raises a `RuntimeError`.
+## Store each exchange after the reply
 
-`MemoryConfig` fields:
+The storage node takes the last two messages (the user turn and the agent reply) and adds them to Mem0 under the user's ID. Mem0 extracts the durable facts itself, and the model never decides whether to store.
 
-| Field | Meaning |
-|---|---|
-| `store` | Default `BaseStore` for both scopes |
-| `retrieval_mode` | `"no_retrieval"`, `"preload"` or `"postload"` (default) |
-| `limit` | Max memories per search (default 5) |
-| `score_threshold` | Minimum similarity score (default 0.0) |
-| `max_tokens` | Optional cap on retrieved memory text, applied in preload mode |
-| `inject_system_prompt` | Append the memory instruction to the system prompt (default `True`) |
-| `config` | Extra config merged into every store call |
-| `user_memory` | `UserMemoryConfig`: the model may search and write (enabled by default) |
-| `agent_memory` | `AgentMemoryConfig`: shared agent or app knowledge, search only (disabled by default) |
+```python title="simple_personalized_agent.py"
+async def memory_storage_node(state: MemoryAgentState) -> MemoryAgentState:
+    """Save the latest user/assistant exchange to long-term memory."""
+    if len(state.context) < 2:
+        return state
 
-`UserMemoryConfig` and `AgentMemoryConfig` also accept `store`, `memory_type`, `category`, `limit` and `score_threshold` to override the top-level values, plus `user_id` (user scope) or `agent_id` and `app_id` (agent scope).
+    user_message = state.context[-2]
+    ai_message = state.context[-1]
 
-## Step 3: Build the graph and pass `user_id`
-
-```python
-graph = StateGraph()
-graph.add_node("MAIN", agent)
-graph.set_entry_point("MAIN")
-graph.add_edge("MAIN", END)
-
-app = graph.compile(checkpointer=InMemoryCheckpointer(), store=store)
+    try:
+        interaction = [
+            {"role": "user", "content": user_message.content},
+            {"role": "assistant", "content": ai_message.content},
+        ]
+        memory.add(messages=interaction, user_id=state.user_id, metadata={"app_id": "simple-agent"})
+        print(f"Memory stored for user {state.user_id}")
+    except Exception as e:
+        print(f"Memory storage error: {e}")
+    return state
 ```
 
-The agent here is a single node. For tool calling, wire a `TOOL` node and a conditional edge as in [React Agent](/docs/examples/react-agent), reusing `agent.get_tool_node()`.
+## Wire the nodes into a graph
 
-```python
-import asyncio
+Entry point, edges and `END` make the three nodes run in order on every turn.
 
-from tenxgraph.core.state import Message
+```python title="simple_personalized_agent.py"
+graph = StateGraph[MemoryAgentState](MemoryAgentState())
 
+graph.add_node("memory_retrieval", memory_retrieval_node)
+graph.add_node("chat", response_agent)
+graph.add_node("memory_storage", memory_storage_node)
 
+graph.set_entry_point("memory_retrieval")
+graph.add_edge("memory_retrieval", "chat")
+graph.add_edge("chat", "memory_storage")
+graph.add_edge("memory_storage", END)
+
+app = graph.compile()
+```
+
+## Chat across turns and check recall
+
+Pass `user_id` in the run config. The example uses it as both `thread_id` and `user_id`. The last two prompts ask what the agent remembers, which is how you check the memory works.
+
+```python title="simple_personalized_agent.py"
 async def main():
-    await app.ainvoke(
-        {"messages": [Message.text_message("Remember that I prefer refunds, not store credit.")]},
-        config={"thread_id": "cust-42-a", "user_id": "cust-42"},
-    )
+    user_id = "test_user"
+    conversations = [
+        "Hi, I'm John and I love pizza!",
+        "What are some good pizza toppings?",
+        "What do you remember about my food preferences?",
+        "I also enjoy hiking on weekends",
+        "What activities do I enjoy based on our conversation?",
+    ]
 
-    # A new thread, same user_id: memory persists across threads.
-    result = await app.ainvoke(
-        {"messages": [Message.text_message("What refund preference do you have for me?")]},
-        config={"thread_id": "cust-42-b", "user_id": "cust-42"},
-    )
-    print(result["messages"][-1].text())
+    for message in conversations:
+        print(f"User: {message}")
+        inp = {"messages": [Message.text_message(message, role="user")]}
+        run_config = {"thread_id": user_id, "user_id": user_id}
+        result = await app.ainvoke(inp, config=run_config)
+        print(f"Agent: {result['messages'][-1].text()}\n")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-The user scope reads `config["user_id"]` unless `UserMemoryConfig(user_id=...)` is set. Thread state (the checkpointer) and long-term memory (the store) are separate: a new `thread_id` starts a new conversation but still finds the memories saved under the same `user_id`.
+The replies are model output and vary between runs. Expect the third answer to mention pizza and the fifth to mention hiking. To prove memory is long-term and not just thread history, run the script again with a new `thread_id` and the same `user_id`: the agent should still recall John.
 
-## Preload mode
+## What to try next
 
-Set `retrieval_mode="preload"` to search on every turn without relying on the model to call a tool:
-
-```python
-memory = MemoryConfig(store=store, retrieval_mode="preload", limit=3)
-```
-
-Before each model call, the agent searches with the latest user message and adds a `[Long-term Memory Context]` system message. In this mode the agent exposes no memory tool, so the model cannot write memories itself. Write them from your own code through the store, or use `postload` for model-driven writes.
-
-## Common mistakes
-
-- Changing `user_id` every turn and expecting shared memory.
-- Passing `memory=` without a `ToolNode` in `postload` mode.
-- Forgetting `store=` in `graph.compile(...)` when you use the store from other nodes or tools.
-- Switching the embedding model on an existing Qdrant collection, which changes the vector size.
-- Expecting keyword matching: retrieval is semantic similarity.
-
-## Key concepts
-
-| Concept | Details |
-|---|---|
-| `MemoryConfig` | Public config object for `Agent(memory=...)` |
-| `QdrantStore` | Async Qdrant-backed `BaseStore`; needs a `BaseEmbedding` |
-| `create_mem0_store` | Factory for a Mem0-backed `BaseStore` |
-| `user_memory_tool` | Model-facing tool with `search` and `remember` actions |
-| `config["user_id"]` | Partitions user memory |
-
-## What you learned
-
-- How to attach long-term memory to an agent with `MemoryConfig`.
-- How to pick a Qdrant or Mem0 store.
-- How `user_id` separates user memory from thread state.
-
-## Next step
-
-→ [Multimodal](/docs/examples/multimodal) to accept images, audio, video, and documents in a 10xGraph graph.
+- Swap Gemini for OpenAI by changing the `llm` and `embedder` providers in the Mem0 config and the agent model, then update `embedding_model_dims`.
+- Run `personalized_agent_qdrant.py` in the same folder for a larger state with session tracking and summaries.
+- Read [Long-term memory](/docs/concepts/memory-and-store) for how checkpointers (thread memory) differ from stores (long-term memory).
+- For memory built into the agent without custom nodes, read [Use a memory store](/docs/guides/use-memory-store).

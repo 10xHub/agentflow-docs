@@ -1,47 +1,71 @@
 ---
 title: Multiagent
-seoTitle: "Multi-agent tutorial: routing nodes"
-description: Route work between multiple specialized nodes in a single 10xGraph graph using conditional edges and a coordinator-style main node.
+seoTitle: "Routing between specialized nodes"
+description: "Route work between specialist nodes in one 10xGraph graph with a coordinator node and conditional edges, using a deterministic, runnable example."
 section: Examples
 group: "Multi-agent"
 order: 150
 label: Multiagent
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: "How does a conditional edge pick the next node?"
+    a: "The routing function receives the state and returns a string. The path map passed to add_conditional_edges translates that string into a node name or END."
+  - q: "Do I need an API key to run this example?"
+    a: "No. The coordinator is deterministic and reads a trail value from the config, so no model is called."
 ---
 
-**Source example:** [`examples/multiagent/multiagent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/multiagent/multiagent.py)
+This example routes work between specialist nodes in a single graph. A coordinator node produces a message, a routing function reads it, and a conditional edge sends the run to the CV specialist, the JD specialist or the end. Use it for a few clear specialists with simple rules.
 
-## What you will build
+## How to run it
 
-A small multi-node graph with:
+The example lives at `agentflow/examples/multiagent/multiagent.py`.
 
-- a `MAIN` node that decides what kind of work is needed
-- a `CV` node for CV-specific work
-- a `JD` node for job-description work
+Install the package. The example needs no provider extra because no model is called (`python-dotenv`, which the script imports, is a dependency of 10xGraph):
 
-This example is intentionally simple and deterministic. It is a good introduction to multi-agent routing before you add handoff tools or remote services.
+```bash
+pip install 10xgraph
+```
 
-## Prerequisites
+Run:
 
-- Python 3.12 or later
-- `10xgraph` installed
+```bash
+python agentflow/examples/multiagent/multiagent.py
+```
 
-## Graph layout
+The script prints three runs. The last message of each run is "CV Created Successfully", "JD Created Successfully" and "Thank you for contacting me", in that order.
+
+## Graph shape
+
+The example builds a graph with one coordinator and two specialists:
 
 ```mermaid
 flowchart TD
-    A[MAIN] -->|assistant says CV| B[CV]
-    A -->|assistant says JD| C[JD]
-    A -->|other output| D[END]
+    A[MAIN] -->|text contains 'cv'| B[CV]
+    A -->|text contains 'jd'| C[JD]
+    A -->|other| D[END]
     B --> D
     C --> D
 ```
 
-## Step 1 — Define specialized nodes
+The `MAIN` node is the coordinator. It generates a message whose text determines which specialist runs next. The routing function checks the message text and directs flow to `CV`, `JD`, or `END`.
 
-The example uses plain functions as nodes:
+## Code walkthrough
 
-```python
+**Import the pieces.** The script needs the graph class, the state and message types, and the `END` constant:
+
+```python title="agentflow/examples/multiagent/multiagent.py"
+from dotenv import load_dotenv
+
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils.constants import END
+
+load_dotenv()
+```
+
+**Define specialized worker nodes.** Each node is a plain function that takes state and an optional config, and returns a message:
+
+```python title="agentflow/examples/multiagent/multiagent.py"
 def cv_agent(state: AgentState, config: dict | None = None):
     return Message.text_message("CV Created Successfully", role="assistant")
 
@@ -49,13 +73,11 @@ def jd_agent(state: AgentState, config: dict | None = None):
     return Message.text_message("JD Created Successfully", role="assistant")
 ```
 
-These are specialized worker nodes.
+These are stateless nodes. In a real system, they might call APIs or run sub-graphs.
 
-## Step 2 — Create a coordinator-style main node
+**Create the coordinator node.** The `main_agent` function examines the `config` dictionary to decide what message to send. This makes the example deterministic and easy to test:
 
-The `MAIN` node decides which specialist should run by looking at `config["trail"]`:
-
-```python
+```python title="agentflow/examples/multiagent/multiagent.py"
 def main_agent(state: AgentState, config: dict):
     is_end = config.get("trail", 2)
     if is_end == 0:
@@ -66,49 +88,44 @@ def main_agent(state: AgentState, config: dict):
         return Message.text_message("Thank you for contacting me", role="assistant")
 ```
 
-This example is not using an LLM to decide. It uses a deterministic config flag to make routing behavior easy to test and understand.
+In a real application, you would replace this logic with an LLM call: `Agent(model="...")` would analyze the input and decide which specialist to route to.
 
-## Routing logic
+**Write the routing function.** The `should_use_tools` function inspects the last message from the coordinator and returns the name of the next node:
 
-```mermaid
-sequenceDiagram
-    participant Config
-    participant MAIN
-    participant Router
-    participant CV
-    participant JD
-
-    Config->>MAIN: trail=0 or 1 or 2
-    MAIN-->>Router: assistant message
-    Router->>CV: if text contains "cv"
-    Router->>JD: if text contains "jd"
-    Router->>MAIN: otherwise END
-```
-
-## Step 3 — Route based on the last message
-
-The routing function looks at the text from the latest assistant message:
-
-```python
+```python title="agentflow/examples/multiagent/multiagent.py"
 def should_use_tools(state: AgentState) -> str:
+    """Determine if we should use tools or end the conversation."""
+    if not state.context or len(state.context) == 0:
+        return "TOOL"  # No context, might need tools
+
     last_message = state.context[-1]
     msg = last_message.text()
     if "cv" in msg.lower():
         return "CV"
     if "jd" in msg.lower():
         return "JD"
+
     return END
 ```
 
-## Step 4 — Build the graph
+The function reads the text of the last message. If it contains "cv" or "jd", it returns that specialist's node name. Otherwise it returns `END` to finish the run. The `"TOOL"` branch only fires when the context is empty; it has no entry in the path map below, so it is a leftover guard you can drop in your own graphs.
 
-```python
+**Build and compile the graph.** Wire up the nodes and edges:
+
+```python title="agentflow/examples/multiagent/multiagent.py"
 graph = StateGraph()
 graph.add_node("MAIN", main_agent)
 graph.add_node("CV", cv_agent)
 graph.add_node("JD", jd_agent)
 
-graph.add_conditional_edges("MAIN", should_use_tools, {"CV": "CV", "JD": "JD", END: END})
+# Add conditional edges from MAIN
+graph.add_conditional_edges(
+    "MAIN",
+    should_use_tools,
+    {"CV": "CV", "JD": "JD", END: END},
+)
+
+# Each specialist finishes the run
 graph.add_edge("CV", END)
 graph.add_edge("JD", END)
 graph.set_entry_point("MAIN")
@@ -116,66 +133,30 @@ graph.set_entry_point("MAIN")
 app = graph.compile()
 ```
 
-## Step 5 — Run multiple scenarios
+The conditional edges dictionary maps routing function outputs to node names. Each specialist node connects directly to `END`, so there is no loop back to `MAIN`. The `recursion_limit` in the config caps the number of steps as a safety net.
 
-The example demonstrates three cases:
+**Run the graph with different configs.** The example invokes the graph three times with different `trail` values:
 
-```python
+```python title="agentflow/examples/multiagent/multiagent.py"
 config = {"thread_id": "12345", "recursion_limit": 10, "trail": 0}
+inp = {"messages": [Message.text_message("HI")]}
+res = app.invoke(inp, config=config)
+for message in res["messages"]:
+    print(message.role, message)
 ```
 
-Results:
+Each run produces messages appended to the state. The `trail` config determines which specialist the coordinator routes to:
 
-- `trail = 0` routes to `CV`
-- `trail = 1` routes to `JD`
-- `trail = 2` ends after `MAIN`
+- `trail = 0` produces "CV" message, routes to CV specialist
+- `trail = 1` produces "JD" message, routes to JD specialist
+- `trail = 2` produces "Thank you for contacting me", routes to END
 
-## Verification
+## What to try next
 
-Run:
+**Upgrade the coordinator to use an LLM.** Replace the deterministic `main_agent` with an `Agent` that calls a real model. The agent reads the user input and decides which specialist to invoke.
 
-```bash
-python examples/multiagent/multiagent.py
-```
+**Add handoff tools.** Let specialists themselves initiate handoff to other specialists using `create_handoff_tool`. This gives them agency. See the [Handoff example](/docs/examples/handoff).
 
-You should see three runs printed:
+**Chain multiple specialists.** Route from one specialist to another based on intermediate results, not just the initial coordinator decision.
 
-- one ending in `CV Created Successfully`
-- one ending in `JD Created Successfully`
-- one ending with the generic `MAIN` response
-
-## When to use this pattern
-
-Use this type of graph when:
-
-- you have a coordinator and a few clear specialists
-- routing rules are simple
-- you want separate nodes without tool-based handoff yet
-
-If you need agent-to-agent delegation initiated by the model itself, use the next tutorial:
-
-- [Handoff](/docs/examples/handoff)
-
-## Common mistakes
-
-- Assuming “multiagent” always means separate LLMs. It can also mean multiple graph nodes with distinct responsibilities.
-- Making routing depend on text that is too fragile or ambiguous.
-- Forgetting to explicitly connect specialist nodes to `END` or another next node.
-
-## Key concepts
-
-| Concept | Details |
-|---|---|
-| coordinator node | Chooses which specialist should run |
-| specialist node | Focused node for one type of work |
-| conditional routing | Maps node output to the next node |
-
-## What you learned
-
-- How to model multiple specialists in one graph.
-- How to route work based on the latest message.
-- How a simple multiagent graph differs from handoff-based delegation.
-
-## Next step
-
-→ [Handoff](/docs/examples/handoff) to let specialized agents transfer control between each other dynamically.
+**Add memory.** Store the thread's state across multiple invocations so that specialists can access conversation history. See the [Memory example](/docs/examples/memory) and the [Checkpointing guide](/docs/guides/set-up-checkpointing).

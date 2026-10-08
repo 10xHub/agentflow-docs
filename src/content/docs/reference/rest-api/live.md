@@ -1,11 +1,11 @@
 ---
-title: Live WebSocket endpoints
-description: "Reference for the WS /v1/graph/live WebSocket endpoint that bridges audio to a realtime AudioAgent (Gemini Live): init frame, binary and JSON frames, auth."
+title: Live WebSocket endpoint
+description: "Reference for WS /v1/graph/live: real-time audio WebSocket bridge for LiveAgent graphs. Init frame, binary and JSON frames, authentication, close codes."
 section: Reference
 group: "REST API"
 order: 320
 label: Live WebSocket
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
 `WS /v1/graph/live` is a WebSocket bridge between a client (browser, SDK, native app) and a `CompiledGraph` rooted at a `LiveAgent` (built with `AudioAgent`). It maps audio frames to `LiveInputQueue` calls and streams `RealtimeEvent` objects back.
@@ -20,11 +20,11 @@ Base URL: `ws://<host>/v1/graph/live`
 
 Uses `RequirePermission("graph", "stream")`. The server looks for a bearer token in three places, in this order:
 
-1. **`Authorization: Bearer <token>` header** — for non-browser clients (Python, server-to-server).
-2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`** — the preferred mechanism for browsers. The token rides in a request header, so it never lands in URLs, access logs, or browser history. The server echoes the sentinel back on `accept()`, which browsers require.
-3. **`?token=<jwt>` query parameter** — last-resort fallback. The token is exposed in URLs and access logs; use (2) instead when you can.
+1. **`Authorization: Bearer <token>` header** for non-browser clients (Python, server-to-server).
+2. **`Sec-WebSocket-Protocol: 10xgraph-bearer, <token>`** (preferred for browsers). The token rides in a request header, so it never lands in URLs, access logs, or browser history. The server echoes the sentinel back on `accept()`, which browsers require.
+3. **`?token=<jwt>` query parameter** as a last-resort fallback. The token is exposed in URLs and access logs; use (2) instead when you can.
 
-```javascript
+```javascript title="browser.js"
 // Browser: preferred subprotocol transport
 const ws = new WebSocket(
   "ws://localhost:8000/v1/graph/live",
@@ -32,7 +32,7 @@ const ws = new WebSocket(
 );
 ```
 
-```
+```text
 # Query fallback
 ws://localhost:8000/v1/graph/live?token=<jwt>
 ```
@@ -45,21 +45,26 @@ An authentication or authorization failure closes the handshake with code `1008`
 
 ## Connection limits
 
-WebSocket handshakes bypass the HTTP rate-limit and request-size middleware (Starlette runs `BaseHTTPMiddleware` for HTTP scopes only), so the endpoint re-applies two protections at the handshake itself:
+WebSocket handshakes bypass the HTTP rate-limit and request-size middleware (Starlette runs `BaseHTTPMiddleware` for HTTP scopes only), so the endpoint re-applies three protections at the handshake itself. Each rejection closes the handshake with code `1013` before `accept()`.
 
-- **The global rate limit.** A handshake is counted against the same bucket as REST requests, using the `rate_limit` block in `10xgraph.json`. Exceeding it rejects the handshake with close code `1013`.
-- **`websocket.max_connections`.** A per-process cap on concurrent WebSocket connections across `/v1/graph/live` and `/v1/graph/ws`. Exceeding it also rejects with `1013`.
+| Protection | Config key | Default | Behavior |
+|---|---|---|---|
+| Global rate limit | `rate_limit` | per your config | A handshake counts against the same bucket as REST requests. |
+| Concurrent connections per process | `websocket.max_connections` | `1000` | Shared across `/v1/graph/live` and `/v1/graph/ws`. |
+| Concurrent connections per user | `websocket.max_connections_per_user` | `10` | Limits how many slots one verified user can hold. |
 
 ```json
 {
   "agent": "graph.audio:app",
   "websocket": {
-    "max_connections": 100
+    "max_connections": 100,
+    "max_connections_per_user": 5,
+    "realtime_models": ["gemini-live-2.5-flash-preview"]
   }
 }
 ```
 
-Omit the block (or use `null`/`0`) for unlimited connections. The counter is per process, like the in-memory rate-limit backend, so size it per worker.
+A missing key gets the default above. Set a key to `0` or `null` for unlimited. The counters are per process, like the in-memory rate-limit backend, so size them per worker. `realtime_models` is covered under the init frame.
 
 ---
 
@@ -78,7 +83,7 @@ Omit the block (or use `null`/`0`) for unlimited connections. The counter is per
 
 The first frame from the client must be a JSON text frame. It configures the session and optionally overrides the agent's build-time `RealtimeConfig` values. All fields are optional.
 
-```json
+```json title="init frame"
 {
   "thread_id": "session-001",
   "model": "gemini-live-2.5-flash-preview",
@@ -95,17 +100,17 @@ The first frame from the client must be a JSON text frame. It configures the ses
 
 | Field | Type | Maps to | Description |
 |---|---|---|---|
-| `thread_id` | string | — | Thread identifier for persistence and resume. Reuse to resume a previous session. |
-| `model` | string | `RealtimeConfig.model` | Override the live model for this session. |
+| `thread_id` | string | (none) | Thread identifier for persistence and resume. Reuse to resume a previous session. `"new"`, blank or missing starts a fresh thread. |
+| `model` | string | `RealtimeConfig.model` | Override the live model. Honored only if listed in `websocket.realtime_models`; otherwise it is ignored and the agent's own model is used. |
 | `voice` | string | `RealtimeConfig.voice` | Override the voice (e.g. `"Puck"`). |
 | `modalities` | array or string | `RealtimeConfig.response_modalities` | Override the response modalities. Exactly one entry; `["AUDIO"]` or `["TEXT"]`. A bare string (`"AUDIO"`) is coerced to a one-element list. |
 | `system_prompt` | string | `RealtimeConfig.system_instruction` | Override the system instruction for this session. |
-| `tools_tags` | array | `RealtimeConfig.tools_tags` | Restrict the tools exposed to this session by tag. |
+| `tools_tags` | array | `RealtimeConfig.tools_tags` | Narrow the tools exposed to this session by tag. It can only narrow the agent's own tag filter, never widen it; tags outside that filter are dropped. |
 | `vad` | object | `RealtimeConfig.vad` | Override `VADConfig` fields for this session. |
 
 Fields not present in the init frame keep the agent's compiled values. An invalid init frame (not JSON, or JSON that is not an object) closes the socket with code `1003`.
 
-**Thread handling.** `thread_id` is optional. When it is absent the server generates a UUID for the session and persists the thread record before the first event is pumped; the generated id is not echoed back as a separate frame, so a client that needs to resume later should supply its own id. When `thread_id` **is** present it is ownership-checked before the session starts: a thread owned by another user is rejected with a fatal `error` event (`code: "not_authorized"`) and close code `1008`.
+**Thread handling.** `thread_id` is optional. When it is absent, blank or `"new"` the server generates an id for the session and persists the thread record before the first event is pumped; the generated id is not echoed back as a separate frame, so a client that needs to resume later should supply its own id. When `thread_id` **is** present it is ownership-checked before the session starts (only when auth is configured): a thread owned by another user is rejected with a fatal `error` event (`code: "not_authorized"`) and close code `1008`.
 
 ---
 
@@ -113,11 +118,11 @@ Fields not present in the init frame keep the agent's compiled values. An invali
 
 After the init frame, the client sends a mix of binary audio frames and JSON control frames.
 
-### Binary frame — audio input
+### Binary frame: audio input
 
 Raw PCM16 audio at 16 kHz, mono. Each frame is forwarded to `LiveInputQueue.send_audio()`.
 
-```
+```text
 Frame: <binary PCM16 bytes>
 Format: 16-bit signed integer, little-endian, mono, 16000 Hz
 ```
@@ -143,7 +148,7 @@ Send a JSON text frame with a `type` field to inject non-audio input.
 
 Injects a text turn as user input. The model responds in audio (or text if modality is `"TEXT"`).
 
-**Manual VAD — activity start**
+**Manual VAD: activity start**
 
 ```json
 {"type": "activity_start"}
@@ -151,7 +156,7 @@ Injects a text turn as user input. The model responds in audio (or text if modal
 
 Signals the start of user speech. Only meaningful when `vad.enabled=false` (push-to-talk). The model will not respond until `activity_end` is received.
 
-**Manual VAD — activity end**
+**Manual VAD: activity end**
 
 ```json
 {"type": "activity_end"}
@@ -173,11 +178,11 @@ Ends the session gracefully. The server closes the input queue and gives the mod
 
 The server sends a mix of binary audio frames and JSON event frames.
 
-### Binary frame — audio output
+### Binary frame: audio output
 
 Raw PCM16 model audio at 24 kHz, mono. Corresponds to `AudioDeltaEvent`.
 
-```
+```text
 Frame: <binary PCM16 bytes>
 Format: 16-bit signed integer, little-endian, mono, 24000 Hz
 ```
@@ -308,7 +313,7 @@ Codes the bridge itself emits, in addition to any provider code passed through:
 
 This socket carries **binary PCM16 audio frames and JSON control frames**. The upstream pump recognises binary audio plus the `text`, `activity_start`, `activity_end`, and `close` control types, and forwards nothing else. There is no image frame type in the live protocol.
 
-Image and document input belongs on the turn-based run endpoints (`POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WS /v1/graph/ws`), which accept `ImageBlock`/`DocumentBlock` content referencing an uploaded `file_id`. See [Multimodal and vision](/docs/server/files-and-multimodal).
+Image and document input belongs on the turn-based run endpoints (`POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WS /v1/graph/ws`), which accept `ImageBlock`/`DocumentBlock` content referencing an uploaded `file_id`. See [Files and multimodal](/docs/server/files-and-multimodal).
 
 Exactly one `LiveAgent` must be present in the graph; multiple live agents per graph are not supported.
 
@@ -316,7 +321,9 @@ Exactly one `LiveAgent` must be present in the graph; multiple live agents per g
 
 ## Minimal client example (Python websockets)
 
-```python
+This script sends a WAV file (16 kHz, mono, PCM16) as audio, writes the model's reply to `out.wav`, and closes after the first turn. Install the dependencies with `pip install "10xgraph" websockets`.
+
+```python title="live_client.py"
 import asyncio
 import json
 import wave

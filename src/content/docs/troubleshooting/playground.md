@@ -3,10 +3,10 @@ title: Playground Troubleshooting
 description: Symptoms, causes, and fixes for hosted playground connection issues when using 10xgraph play.
 section: Troubleshooting
 order: 60
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-This page covers `10xgraph play`, hosted playground connection issues, and the states the playground UI shows when a feature is not available for the connected agent.
+When the hosted playground opened by `10xgraph play` will not connect, fails silently, or shows a page as unavailable, the cause is usually the local API, the `backendUrl`, or a missing capability on your graph. This page lists each symptom with its likely causes and a fix, then a short checklist.
 
 ## How `10xgraph play` works
 
@@ -36,7 +36,7 @@ The playground is hosted externally. `10xgraph play` does not run a separate loc
 **Fix**
 
 - verify the server terminal shows a running API URL
-- test that URL with `curl /ping`
+- test that URL with `curl http://127.0.0.1:8000/ping` (use your own host and port)
 - verify the browser URL contains the correct `backendUrl`
 
 ## Issue: playground loads but requests fail silently
@@ -72,7 +72,7 @@ The playground is hosted externally. `10xgraph play` does not run a separate loc
 **Fix**
 
 - open Connect (`/`), confirm the backend URL, pick the auth mode that matches the server's `10xgraph.json`, and connect
-- `10xgraph play` pre-fills the URL, so this usually means the connection attempt failed rather than that it was never made — check the capability chips and the error shown on the Connect page
+- `10xgraph play` pre-fills the URL, so this usually means the connection attempt failed rather than that it was never made. Check the capability chips and the error shown on the Connect page
 
 ## Issue: the Live page will not start a session
 
@@ -83,12 +83,12 @@ The playground is hosted externally. `10xgraph play` does not run a separate loc
 
 **Cause**
 
-- the connected graph is not a realtime agent. The playground derives a `live` capability chip from `info.is_realtime` in `GET /v1/graph` and gates the page on it, rather than opening a socket the server would immediately close with code `1008`.
+- the connected graph is not a realtime agent. The playground derives a `live` capability chip from `info.is_realtime` in `GET /v1/graph` and gates the page on it, rather than opening a socket that `/v1/graph/live` would close with code `1008` for a non-live graph.
 
 **Fix**
 
 - connect an agent whose graph is rooted at a live agent (for example a Gemini live model)
-- for a turn-based graph, use Chat instead. The reverse gate also exists: connect a live agent and the **Chat** page refuses, because `WS /v1/graph/ws` and `POST /v1/graph/invoke` reject a realtime graph
+- for a turn-based graph, use Chat instead. The reverse gate also exists: connect a live agent and the **Chat** page refuses, because `WS /v1/graph/ws` rejects a realtime graph (close code `1008`) and points you to `/v1/graph/live`
 
 ## Issue: the microphone does not work on the Live page
 

@@ -1,31 +1,28 @@
 ---
 title: Evaluation criteria
-description: Constructor signatures, defaults and scoring behaviour for every built-in evaluation criterion class in tenxgraph.qa.evaluation.criteria.
+description: "Signatures, parameters, and behaviour of every evaluation criterion class"
 section: Reference
 group: "Python library"
 order: 280
 label: Evaluation criteria
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
-
-Use this page when you need the **class-level** API: constructor arguments, the
-criterion `name` that appears in reports, and what the score means. It covers the
-criterion objects themselves.
+Every criterion is a class that scores one agent run between 0.0 and 1.0 and compares it to a threshold. This page lists each class with its report name, constructor parameters, defaults, scoring rule and `details` keys, from deterministic checks to LLM-judged and custom criteria.
 
 Two related pages cover the layers above:
 
-- [Evaluation](/docs/reference/python/evaluation) — `AgentEvaluator`, `EvalSet`, `EvalCase`, reports.
-- [Criteria (concepts)](/docs/testing/criteria) — choosing thresholds and
-  configuring criteria through `CriterionConfig` factory methods.
+- [Evaluation](/docs/reference/python/evaluation): `AgentEvaluator`, `EvalSet`, `EvalCase`, and reporters.
+- [Criteria (concepts)](/docs/testing/criteria): choosing thresholds and configuring criteria through `CriterionConfig` factory methods.
 
 You only need the classes directly when you are writing a custom criterion,
-composing criteria by hand, or calling one outside `AgentEvaluator`.
+composing criteria by hand, or calling one outside `AgentEvaluator`. In the examples below, `execution` and `case` stand for the `ExecutionResult` and `EvalCase` that `AgentEvaluator` builds for each case.
 
 ## Import paths
 
-```python
+All criteria, configuration types and `LLMCallerMixin` import from `tenxgraph.qa.evaluation`. `TemplatedLLMCriterion` and `CRITERIA_REGISTRY` import only from the `criteria` submodule.
+
+```python title="imports.py"
 from tenxgraph.qa.evaluation import (
     BaseCriterion,
     SyncCriterion,
@@ -40,27 +37,27 @@ from tenxgraph.qa.evaluation import (
     FactualAccuracyCriterion,
     HallucinationCriterion,
     SafetyCriterion,
+    SimulationGoalsCriterion,
     TrajectoryMatchCriterion,
     NodeOrderMatchCriterion,
     ToolNameMatchCriterion,
     CriterionConfig,
     MatchType,
     Rubric,
+    LLMCallerMixin,
 )
+
+# Only in the criteria submodule
+from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY, TemplatedLLMCriterion
 ```
 
-The classes also live under `tenxgraph.qa.evaluation.criteria`, together with
-`CRITERIA_REGISTRY` (the name → class mapping `AgentEvaluator` uses):
-
-```python
-from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY
-```
+The criterion classes also live under `tenxgraph.qa.evaluation.criteria`. `CRITERIA_REGISTRY` is a dict mapping every criterion name (friendly and legacy) to its class; `AgentEvaluator` uses it to instantiate criteria by name. `TemplatedLLMCriterion` and `LLMCallerMixin` are the building blocks for custom LLM-based criteria.
 
 ---
 
 ## Which criterion do I want?
 
-| If you want to check… | Use | Calls an LLM |
+| If you want to check |  Use | Calls an LLM |
 |---|---|---|
 | The response is byte-for-byte the expected string | `ExactMatchCriterion` | no |
 | Specific words appear in the response | `ContainsKeywordsCriterion` | no |
@@ -109,8 +106,8 @@ result = await criterion.evaluate(execution_result, eval_case)  # CriterionResul
 | `evaluate` | **async** `(actual: ExecutionResult, expected: EvalCase) -> CriterionResult` | Abstract. Scores one case. |
 | `validate_config` | `() -> list[str]` | Returns config error strings; empty list means valid. |
 
-`evaluate()` is `async` on **every** criterion, including the deterministic ones —
-`SyncCriterion` simply awaits its own synchronous implementation.
+`evaluate()` is `async` on **every** criterion, including the deterministic ones.
+`SyncCriterion` runs its own synchronous implementation inside it.
 
 ### Configuration
 
@@ -138,6 +135,8 @@ no partial credit.
 | `config` | `CriterionConfig \| None` | `None` | Only `threshold` and `enabled` are read. |
 
 ```python
+from tenxgraph.qa.evaluation import ExactMatchCriterion
+
 criterion = ExactMatchCriterion()
 result = await criterion.evaluate(execution, case)
 print(result.score, result.details["match"])
@@ -194,13 +193,51 @@ produced nothing, otherwise `0.5`.
 
 ---
 
+## Base classes for custom criteria
+
+### `TemplatedLLMCriterion`
+
+```python
+from tenxgraph.qa.evaluation.criteria import TemplatedLLMCriterion
+```
+
+`TemplatedLLMCriterion(LLMCallerMixin, BaseCriterion)` is the base class for all LLM-as-judge criteria. It builds a prompt, calls the judge LLM `config.num_samples` times, averages the scores, aggregates extras, and returns a result, handling the sampling loop and error recovery for you.
+
+Subclasses must implement `_build_prompt(actual, expected)` to return a string prompt (the base version raises `NotImplementedError`). Override the hook methods below to customize behaviour:
+
+| Hook | Purpose |
+|---|---|
+| `_get_skip_result(actual, expected)` | Return a ready result to skip evaluation, or None to proceed. Default: skip if actual response is empty. |
+| `_build_prompt(actual, expected)` | Build the judge prompt. Required. |
+| `_collect_extras(result_dict)` | Extract criterion-specific fields from one LLM response dict. Default: nothing. |
+| `_aggregate_extras(per_sample)` | Merge per-sample extras into the final details dict. Default: nothing. |
+| `_build_details(scores, reasonings, extras, final_score)` | Construct the final details dict. Default: samples count plus reasonings. |
+| `_run_samples(prompt)` | Call the judge LLM `num_samples` times; returns `(scores, reasonings, per_sample_extras, token_usage)`. |
+
+### `LLMCallerMixin`
+
+```python
+from tenxgraph.qa.evaluation import LLMCallerMixin
+```
+
+`LLMCallerMixin` provides the shared judge-calling logic for LLM-based criteria. It detects the provider from `self.config.judge_model` and routes to Google or OpenAI, with a fixed fallback otherwise. Both calls use temperature `0.3` and JSON mode.
+
+| Method | Returns |
+|---|---|
+| `_call_google_json(prompt)` | Calls a Google model and returns `(parsed_json_dict, token_usage)` or None if unavailable. |
+| `_call_openai_json(prompt)` | Calls an OpenAI model and returns `(parsed_json_dict, token_usage)` or None if unavailable. |
+| `_call_llm_json(prompt)` | Dispatches to the provider-specific method. Falls back to `{"score": 0.5, "reasoning": "No LLM provider available"}` if the provider is unknown or unavailable. |
+| `_call_llm_score(prompt)` | Wrapper that returns `(score, reasoning, token_usage)` from the parsed JSON; a missing `score` becomes `0.0`. |
+
+---
+
 ## LLM-judged criteria
 
-These five share a base class, `TemplatedLLMCriterion`, which calls the judge model
+These six share a base class, `TemplatedLLMCriterion`, which calls the judge model
 `config.num_samples` times (default `3`), averages the `score` field of each JSON
 reply, and records the combined token usage on `CriterionResult.token_usage`.
 Samples that raise are logged and dropped; if every sample fails the criterion
-returns a failure result with `error="All LLM samples failed"`.
+returns a failure result with `error="All LLM samples failed"`. A skipped case (no response to judge) scores `1.0`.
 
 Shared constructor:
 
@@ -219,7 +256,7 @@ from tenxgraph.qa.evaluation import ResponseMatchCriterion
 ```
 
 `name = "response_match_score"`. Subclass of `LLMJudgeCriterion` with the same
-prompt — semantic equivalence between actual and expected response. This is the
+prompt: semantic equivalence between actual and expected response. This is the
 recommended default over `RougeMatchCriterion`.
 
 ```python
@@ -266,7 +303,7 @@ criterion = RubricBasedCriterion(
 )
 ```
 
-`details`: `rubrics` (the ids), `scores`, `reasonings`.
+`details`: `rubrics` (the ids), `scores`, `reasonings`. The `weight` field of `Rubric` is stored but not used in the prompt or the score.
 
 ### `FactualAccuracyCriterion`
 
@@ -309,7 +346,7 @@ the category values are averaged and reported as `category_scores` for triage.
 
 ## Trajectory criteria
 
-All three are `SyncCriterion` subclasses — deterministic, no API calls. Expected
+All three are `SyncCriterion` subclasses: deterministic, no API calls. Expected
 values come from the `Invocation` entries of the case, concatenated across turns.
 
 ### `TrajectoryMatchCriterion`
@@ -324,7 +361,7 @@ from tenxgraph.qa.evaluation import TrajectoryMatchCriterion
 
 | Config field | Default | Effect |
 |---|---|---|
-| `match_type` | `MatchType.EXACT` | `EXACT` — same tools in the same positions. `IN_ORDER` — expected tools in order, extras allowed. `ANY_ORDER` — expected tools anywhere. |
+| `match_type` | `MatchType.EXACT` | `EXACT`: same tools in the same positions. `IN_ORDER`: expected tools in order, extras allowed. `ANY_ORDER`: expected tools anywhere. |
 | `check_args` | `False` | When `True`, tool arguments must also match. An expected `ToolCall` with empty `args` accepts any arguments. |
 | `threshold` | `0.8` | Score is the fraction of expected tools matched. |
 
@@ -443,8 +480,9 @@ Subclass `SyncCriterion` when your rule is pure computation. Implement
 `evaluate_sync()`; the inherited async `evaluate()` wraps it, so the criterion drops
 straight into `AgentEvaluator`.
 
-```python
+```python title="max_length.py"
 from tenxgraph.qa.evaluation import SyncCriterion
+
 
 class MaxLengthCriterion(SyncCriterion):
     name = "max_length"
@@ -459,7 +497,23 @@ class MaxLengthCriterion(SyncCriterion):
 ```
 
 Subclass `BaseCriterion` instead when you need to await something inside the rule,
-and implement the async `evaluate()` directly.
+and implement the async `evaluate()` directly:
+
+```python title="slow_check.py"
+import asyncio
+
+from tenxgraph.qa.evaluation import BaseCriterion
+
+
+class PoliteCriterion(BaseCriterion):
+    name = "polite"
+    description = "Response must contain a courtesy word"
+
+    async def evaluate(self, actual, expected):
+        await asyncio.sleep(0)  # replace with a real async call
+        ok = "please" in actual.actual_response.lower()
+        return self._result(1.0 if ok else 0.0, {"polite": ok})
+```
 
 Two protected helpers from `BaseCriterion` build results for you:
 
@@ -468,8 +522,7 @@ Two protected helpers from `BaseCriterion` build results for you:
 | `self._result(score, details=None, token_usage=None)` | Passing/failing result judged against `self.threshold`. |
 | `self._failure(error)` | Error result with `score=0.0`, `passed=False`. |
 
-To use a custom criterion through `EvalConfig`, register it before building the
-evaluator:
+To make a custom criterion resolvable by name, add it to the registry:
 
 ```python
 from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY
@@ -477,8 +530,42 @@ from tenxgraph.qa.evaluation.criteria import CRITERIA_REGISTRY
 CRITERIA_REGISTRY["max_length"] = MaxLengthCriterion
 ```
 
-`CriteriaConfig` forbids unknown fields, so a registry-only criterion still has to
-be attached to the evaluator by hand or mapped onto an existing field name.
+`CriteriaConfig` forbids unknown fields, so `EvalConfig.criteria` cannot enable a registry-only criterion. Call `criterion.evaluate()` yourself or compose it with `CompositeCriterion` or `WeightedCriterion`.
+
+---
+
+## Simulation goals (UserSimulator only)
+
+### `SimulationGoalsCriterion`
+
+```python
+from tenxgraph.qa.evaluation import SimulationGoalsCriterion
+```
+
+`name = "simulation_goals"`. It evaluates whether specific goals were achieved across a full multi-turn conversation. It is designed for use with `UserSimulator` and expects `actual.actual_response` to contain the full conversation transcript, not just the agent's final reply. The goals are read from the last non-empty expected final response of the case.
+
+Score is the number of goals achieved divided by the total number of goals (0.0 to 1.0).
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `config` | `CriterionConfig \| None` | `None` | Only `threshold`, `judge_model`, and `num_samples` are read. `num_samples` is ignored; only one call is made for goal evaluation. |
+
+```python
+from tenxgraph.qa.evaluation import SimulationGoalsCriterion, CriterionConfig
+
+criterion = SimulationGoalsCriterion(
+    config=CriterionConfig(
+        judge_model="gemini-2.5-flash",
+        threshold=0.8,
+    ),
+)
+result = await criterion.evaluate(execution, case)
+print(result.score, result.details["achieved_goals"], result.details["unachieved_goals"])
+```
+
+`details`: `achieved_goals` (list of strings), `unachieved_goals` (list of strings), `reasoning`, `reason` (same text), `judge_model`.
+
+When the case defines no goals (empty expected final response), the criterion returns `1.0` with a `note` detail saying no goals were defined.
 
 ---
 
@@ -491,6 +578,6 @@ be attached to the evaluator by hand or mapped onto an existing field name.
 | Score is exactly `0.5` with reasoning `"No LLM provider available"` | The judge model could not be resolved to a configured provider. | Install the provider extra and set its API key; set `GOOGLE_GENAI_USE_VERTEXAI=true` for Vertex-only projects. |
 | `CriterionResult.error == "All LLM samples failed"` | Every judge call raised. | Check the `tenxgraph.evaluation` logger for the per-sample warnings. |
 | `contains_keywords` always scores `1.0` | Neither `keywords=` nor `config.keywords` was set. | Pass `CriterionConfig.contains_keywords(keywords=[...])`. |
-| `ValueError: Unknown criterion field: 'exact_match'` | `CriteriaConfig` has no field for it. | Instantiate `ExactMatchCriterion` directly. |
+| `ValueError: Unknown criterion field: 'exact_match'` | `EvalConfig.enable_criterion()` only accepts `CriteriaConfig` field names, and there is none for it. | Instantiate `ExactMatchCriterion` directly. |
 | `TrajectoryMatchCriterion` fails on correct-looking runs | `MatchType.EXACT` rejects extra tool calls. | Switch to `MatchType.IN_ORDER` or `ANY_ORDER`. |
 | `check_args=True` never matches | Expected `ToolCall.args` must equal the actual args exactly. | Leave `args={}` to accept any arguments for that call. |

@@ -8,7 +8,7 @@ label: Get Started
 updated: "2026-10-08"
 ---
 
-10xGraph is an open-source, production-grade Python framework for building, orchestrating and deploying multi-agent LLM systems. You write a Python agent graph, and 10xGraph handles everything else: generating a REST API with WebSocket and realtime audio endpoints, enforcing thread ownership and role-based access control, managing state durably across crashes, and building production-ready containers for immediate deployment. The framework keeps execution correct under failure: if a tool execution completes but the service crashes before the completion is recorded, the tool is never executed twice on replay.
+10xGraph is an open-source Python framework for building and deploying multi-agent LLM systems. You write the agent graph in Python. 10xGraph generates the REST, WebSocket and realtime audio server around it, enforces thread ownership and access control, stores state durably, and generates Docker files. A tool that finished before a crash is not run twice on replay.
 
 ## What you get
 
@@ -16,13 +16,18 @@ updated: "2026-10-08"
 
 ### The Python library
 
-The core library (`10xgraph`) provides the orchestration engine for multi-agent workflows. You write agents and tools in Python using a graph-based model where nodes represent computation (agents that call LLMs, or custom functions), edges represent flow control, and state flows through the graph as execution happens.
+The core library (`10xgraph`, imported as `tenxgraph`) is the orchestration engine. Nodes are computation (an agent that calls an LLM, or a plain function), edges control the flow, and state moves through the graph as it runs.
 
-Start with the prebuilt `ReactAgent` for the standard agent loop that reasons about which tools to use, then calls them, then reasons about the result. Alternatively, build custom graphs with `StateGraph` when you need non-linear routing, custom state types, or multi-agent handoffs. The library handles tool parallelization by default, manages memory through a 3-layer system (working state, durable checkpoints, long-term vector stores), supports the Model Context Protocol (MCP) for dynamic tool loading, and integrates with OpenAI, Google GenAI, and Anthropic without requiring adapter code.
+Start with the prebuilt `ReactAgent`, which loops between the model and its tools. Build a custom `StateGraph` when you need non-linear routing, custom state or multi-agent handoffs. Tools run in parallel by default, memory has three layers (working state, durable checkpoints, long-term vector stores), MCP tools load dynamically, and OpenAI, Google GenAI and Anthropic are supported through one interface.
 
-Example: a support agent that looks up orders and processes refunds, never executing a refund twice even if the service crashes mid-operation.
+The example below is a support agent that looks up orders and issues refunds. Run it with your provider key set, for example `GEMINI_API_KEY`.
 
-```python
+```bash
+pip install "10xgraph[google-genai]"
+```
+
+```python title="agent.py"
+# A support agent with two plain Python functions as tools
 from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
@@ -47,9 +52,9 @@ app = ReactAgent(
 
 ### The API server and CLI
 
-The API server (`10xgraph-api`) turns your compiled agent graph into a production service with zero additional code. Point a configuration file at your agent, and the server generates REST and WebSocket endpoints, enforces access control, rate-limits requests, manages user threads, and provides a memory store for long-term facts. The CLI scaffolds new projects, runs the server locally, and generates Docker and Kubernetes manifests for deployment.
+The API server (`10xgraph-api`, imported as `tenxgraph_api`) serves your compiled graph with no extra code. A config file points at the agent, and the server exposes REST and WebSocket endpoints, access control, rate limiting, thread management and a long-term memory store. The `10xgraph` CLI scaffolds projects, runs the server and generates Docker and Kubernetes files.
 
-The configuration is minimal. Create a `10xgraph.json` file pointing at your agent:
+Install it with `pip install 10xgraph-api`. Then create a `10xgraph.json` file that points at the `app` object in `agent.py`:
 
 ```json title="10xgraph.json"
 {
@@ -58,15 +63,16 @@ The configuration is minimal. Create a `10xgraph.json` file pointing at your age
 }
 ```
 
-Then start the API server:
+Start the API server from the folder that holds both files:
 
 ```bash
+# Starts on http://127.0.0.1:8000
 10xgraph api
 ```
 
-The server listens on `http://127.0.0.1:8000` with a Swagger UI at `/docs`. All requests go through three layers of security by default: the authentication layer (JWT or custom), the authorization layer (per-thread ownership and role-based scopes), and the rate limiter. The `/v1/graph/invoke` endpoint runs the agent synchronously; `/v1/graph/stream` streams the response token-by-token over NDJSON; `/v1/graph/ws` provides a WebSocket interface for real-time bidirectional communication. The `/v1/threads` API manages agent memory: list threads, fetch their execution history, and delete old ones.
+The server listens on `http://127.0.0.1:8000` with a Swagger UI at `/docs`. Requests pass through authentication (JWT or custom), authorization (thread ownership and role scopes) and rate limiting when you configure them. `POST /v1/graph/invoke` runs the agent and returns the result, `POST /v1/graph/stream` streams chunks as NDJSON, and `/v1/graph/ws` is a WebSocket for bidirectional streaming. The `/v1/threads` routes expose a thread's state and messages.
 
-You can test the server immediately with curl:
+Test the server with curl:
 
 ```bash
 curl -X POST "http://localhost:8000/v1/graph/invoke" \
@@ -85,30 +91,30 @@ Or open the interactive playground:
 
 ### The TypeScript client
 
-The TypeScript client (`@10xgraph/client`) provides a typed, streaming interface for calling the API from JavaScript or TypeScript. It handles auth tokens, reconnection, WebSocket negotiation, and streaming response parsing so you can focus on the UI. The client exports request/response types and event types, integrates with React for streaming updates, and provides helpers for managing threads and file uploads.
+The TypeScript client (`@10xgraph/client`, class `AgentFlowClient`) is a typed interface to the API. It sends the bearer token, parses the NDJSON stream into typed chunks, and covers invoke, stream, threads, memory and files. It does not ship React hooks.
 
-```typescript
-import { AgentFlowClient } from "@10xgraph/client";
+```ts title="app.ts"
+import { AgentFlowClient, Message } from "@10xgraph/client";
 
+// Omit authToken when the server runs without auth
 const client = new AgentFlowClient({
-  baseURL: "http://localhost:8000",
-  token: "your-jwt-token"
+  baseUrl: "http://localhost:8000",
+  authToken: "your-jwt-token",
 });
 
-// Invoke an agent
-const response = await client.invoke({
-  messages: [{ role: "user", content: [{ type: "text", text: "Where is order 1042?" }] }],
-  config: { thread_id: "test-001" }
-});
+// Invoke the agent and read the final messages
+const result = await client.invoke(
+  [Message.text_message("Where is order 1042?")],
+  { config: { thread_id: "test-001" } },
+);
+console.log(result.messages);
 
-// Or stream the response
-const stream = await client.stream({
-  messages: [{ role: "user", content: [{ type: "text", text: "Refund order 1042 for $50" }] }],
-  config: { thread_id: "test-001" }
-});
-
-for await (const event of stream) {
-  console.log(event.type, event.data);
+// Or stream chunks as they arrive
+for await (const chunk of client.stream(
+  [Message.text_message("Refund order 1042 for $50")],
+  { config: { thread_id: "test-001" } },
+)) {
+  console.log(chunk.event, chunk.message);
 }
 ```
 
@@ -118,14 +124,14 @@ The framework comes with production-ready features out of the box, no configurat
 
 | Feature | What you get |
 |---|---|
-| API server | REST endpoints (`/v1/graph/invoke`, `/v1/graph/stream`), WebSocket (`/v1/graph/ws`), realtime audio, Swagger UI, and a memory store API |
+| API server | REST endpoints (`/v1/graph/invoke`, `/v1/graph/stream`), WebSocket (`/v1/graph/ws`), realtime audio (`/v1/graph/live`), Swagger UI, and a memory store API |
 | Security | JWT or custom authentication, owner-only thread access, role-based access control on every endpoint, rate limiting (memory, Redis, or custom backend) |
 | Reliability | [Replay-safe tools](/docs/concepts/replay-safe-tools) ensure no double execution, versioned state writes prevent race conditions, configurable node and tool timeouts |
 | State and memory | Working state in memory, durable checkpoints in SQLite or Postgres+Redis, long-term facts in Qdrant or Mem0 vector stores |
-| Prebuilt agents | Six agents for common patterns: ReactAgent (tool-calling loop), RAGAgent (retrieval), SupervisorTeamAgent (task routing), SwarmAgent (peer handoff), PlanActReflectAgent (multi-step reasoning), StructuredOutputAgent (typed output) |
-| Deployment | `10xgraph build` generates a Dockerfile, docker-compose.yml, and Kubernetes manifest; `10xgraph init` scaffolds a production-ready project structure |
+| Prebuilt agents | Ready-made agents for common patterns: ReactAgent (tool-calling loop), RAGAgent (retrieval), SupervisorTeamAgent (task routing), SwarmAgent (peer handoff), PlanActReflectAgent (multi-step reasoning), StructuredOutputAgent (typed output), AudioAgent (audio) |
+| Deployment | `10xgraph build --docker-compose --k8s` generates a Dockerfile, docker-compose.yml and k8s.yaml; `10xgraph init` scaffolds a production-ready project structure |
 | Observability | Logs, traces (OTEL, Logfire, LangSmith), metrics, Sentry error tracking, and a callback system for custom monitoring |
-| Tools | A prebuilt tool library covering web (fetch, search), file operations, memory, and handoff, plus support for the Model Context Protocol (MCP) for dynamic tools |
+| Tools | A prebuilt tool library covering web (fetch, search), files, memory, calculator and handoff, plus support for the Model Context Protocol (MCP) for dynamic tools |
 
 ## Prerequisites
 
@@ -133,7 +139,7 @@ To get started, you need:
 
 - Python 3.12 or newer
 - An API key for one LLM provider: `OPENAI_API_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), or `ANTHROPIC_API_KEY`
-- Node 18+ and npm (optional, for the TypeScript client)
+- Node 18 or newer and npm (optional, for the TypeScript client)
 
 ## Reading order
 
@@ -150,10 +156,10 @@ Follow this path to go from zero to a deployed agent:
 | [Tutorial: Call from your app](/docs/get-started/tutorial/call-from-your-app) | 10 min | Build a front-end with the TypeScript client, handle streaming, and manage sessions |
 | [Project structure](/docs/get-started/project-structure) | 5 min | See what the production template generates and where each piece lives |
 
-After the quickstart, you can jump to whichever tutorial step interests you. The tutorial is designed to be followed in order, building on concepts from previous steps, and covers the same agent throughout so you see how pieces connect.
+The tutorial builds on one agent across its steps, so follow it in order. Skip it if you only want a running server: the quickstart is enough.
 
-The next major section, [Concepts](/docs/concepts), explains how everything works under the hood. [Guides](/docs/guides) covers task-oriented recipes (how do I add memory? How do I use MCP? How do I deploy to Kubernetes?), and [API reference](/docs/reference) documents every class, function, and route.
+The next major section, [Concepts](/docs/concepts), explains how everything works under the hood. [Guides](/docs/guides) covers task-oriented recipes (add memory, use MCP, deploy to Kubernetes), and [API reference](/docs/reference) documents every class, function, and route.
 
 ## Rename note
 
-10xGraph was published under the name "Agentflow" until 2026. The Python library now imports from `tenxgraph` (e.g., `from tenxgraph.core.graph import StateGraph`), the PyPI package is `10xgraph`, and the command is `10xgraph`. The old import path `from agentflow import StateGraph` still works as a deprecated alias until version 2.0. The old package name `10xscale-agentflow` is no longer updated; install `10xgraph` instead.
+10xGraph was published under the name "Agentflow" until 2026. The Python library now imports from `tenxgraph` (for example `from tenxgraph.core.graph import StateGraph`), the PyPI package is `10xgraph`, and the command is `10xgraph`. The old `agentflow` imports still work as a deprecated alias until version 2.0. The old package name `10xscale-agentflow` is no longer updated; install `10xgraph` instead.

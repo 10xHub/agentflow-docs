@@ -82,7 +82,7 @@ Docs frontmatter:
 ---
 title: Replay-safe tools
 description: 50-170 characters. Used for search results and llms.txt.
-section: Concepts        # one of DOC_SECTIONS in src/lib/site.ts (12 sections)
+section: Concepts        # one of DOC_SECTIONS in src/lib/site.ts (13; Glossary, Compare and Project are hidden from the docs map)
 group: In depth          # optional sub-group shown as a heading in the docs map
 label: Replay safety     # optional short name for the docs map
 order: 1                 # position within the section (migrated pages use steps of 10)
@@ -95,6 +95,8 @@ draft: false             # optional
 ```
 
 Blog frontmatter: `title`, `description`, `date`, `author`, optional `updated`, `tags`, `featured` (pins the post to the top of /blog), `faq`, `draft`.
+
+Moved pages keep working through `src/redirects.json` (old URL to new URL), which `astro.config.mjs` turns into redirect pages. Add an entry whenever you move or rename a doc.
 
 A doc at `<folder>/index.md` takes the folder URL (`concepts/index.md` is `/docs/concepts`). When the folder is a section's slug, that page becomes the intro of the section landing page.
 

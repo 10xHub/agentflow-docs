@@ -1,279 +1,342 @@
 ---
-title: "AgentFlowClient"
-seoTitle: "AgentFlowClient reference (TypeScript)"
-description: Complete reference for the AgentFlowClient class — the main entry point for calling 10xGraph from TypeScript or JavaScript.
+title: "Error handling"
+seoTitle: "Error handling reference (TypeScript)"
+description: "Every error class exported by the TypeScript client, its status and error code, when it is thrown, and how to handle it."
 section: Reference
 group: "TypeScript client"
 order: 560
-label: "AgentFlowClient"
-updated: "2026-09-29"
+label: "Error handling"
+updated: "2026-10-08"
 ---
 
-`AgentFlowClient` is the main class in the `@10xscale/agentflow-client` package. It wraps every 10xGraph REST endpoint behind a single, strongly-typed object so that TypeScript and JavaScript applications can call a 10xGraph-powered API without writing any fetch code themselves.
+When the server returns a non-2xx response, `AgentFlowClient` throws an `AgentFlowError` or one of its 14 subclasses. The class is chosen from the response's error code first, then from the HTTP status. Network failures and client timeouts are not API errors: they throw a plain `Error`.
 
-**Package:** `@10xscale/agentflow-client`  
-**Source:** `src/client.ts`
+**Import:** `import { AgentFlowError } from '@10xgraph/client';`
 
----
+For the practical guide (retries, stream errors), see [Handle errors](/docs/client/error-handling). For the codes the server can return, see [Error codes](/docs/reference/error-codes).
 
-## Installation
+## How the client picks an error class
 
-```bash
-npm install @10xscale/agentflow-client
-```
+The client reads the JSON error body, then matches the error `code` by prefix, then falls back to the HTTP status. A `GRAPH_RECURSION_ERROR` returned with status 500 therefore arrives as `GraphRecursionError`, not `ServerError`.
 
----
+| Order | Match | Class |
+|---|---|---|
+| 1 | Code starts with `GRAPH_RECURSION` | `GraphRecursionError` |
+| 2 | Code starts with `GRAPH` | `GraphError` |
+| 3 | Code starts with `NODE` | `NodeError` |
+| 4 | Code starts with `TRANSIENT_STORAGE` | `TransientStorageError` |
+| 5 | Code starts with `STORAGE` | `StorageError` |
+| 6 | Code starts with `METRICS` | `MetricsError` |
+| 7 | Code starts with `SCHEMA_VERSION` | `SchemaVersionError` |
+| 8 | Code starts with `SERIALIZATION` | `SerializationError` |
+| 9 | Status 400, 401, 403, 404, 422 | `BadRequestError`, `AuthenticationError`, `PermissionError`, `NotFoundError`, `ValidationError` |
+| 10 | Status 500, 502, 503, 504 | `ServerError` |
+| 11 | Any other status | `AgentFlowError` with code `UNKNOWN_ERROR` (unless the body gave one) |
 
-## Import
+If the body is not JSON or cannot be parsed, the same status mapping applies with `requestId` set to `'unknown'`.
 
-```ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
-```
+<aside class="callout callout-note" role="note"><p class="callout-title">Subclass-only fields are not filled by the client</p>
 
----
-
-## Constructor
-
-```ts
-new AgentFlowClient(config: AgentFlowConfig)
-```
-
-### `AgentFlowConfig`
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `baseUrl` | `string` | ✅ | — | Full base URL of your 10xGraph API server, e.g. `http://localhost:8000`. Do not include a trailing slash. |
-| `authToken` | `string \| null` | ❌ | `undefined` | Convenience shorthand for `Bearer` token auth. Setting this is equivalent to setting `auth: { type: 'bearer', token: '...' }`. If both `authToken` and `auth` are set, `auth` takes precedence for HTTP requests. See the note below for the WebSocket routes. |
-| `auth` | `AgentFlowAuth \| null` | ❌ | `undefined` | Structured auth configuration. See [`reference/client/auth`](/docs/reference/client/auth) for all supported auth types. |
-| `headers` | `HeadersInit` | ❌ | `undefined` | Additional HTTP headers appended to every request. Use this for custom tracing headers or API gateway keys. |
-| `credentials` | `RequestCredentials` | ❌ | `undefined` | The `credentials` option forwarded to the underlying `fetch` call (e.g. `'include'` for cookie-based sessions). |
-| `timeout` | `number` | ❌ | `300000` | Per-request timeout in milliseconds. Default is 5 minutes. Applies to both `invoke` and `stream` calls. Set to a lower value in latency-sensitive UIs. |
-| `debug` | `boolean` | ❌ | `false` | Enable verbose `console.debug` / `console.info` logging of every request and response. Useful during development; disable in production. |
-| `webSocketImpl` | `typeof WebSocket` | ❌ | `undefined` | WebSocket implementation for `wsStream()` and `realtime()`. Browsers and Node 21+ have a global `WebSocket` and need nothing here; on Node 18/20 pass the [`ws`](https://www.npmjs.com/package/ws) package. |
-
-<aside class="callout callout-note" role="note"><p class="callout-title">Auth precedence differs on WebSocket routes</p>
-
-For HTTP requests (`src/request.ts`), `auth` is applied first and `authToken` is only used when no `auth` is set. For the WebSocket routes (`wsStream()` and `realtime()`, via `resolveBearerToken()` in `src/ws.ts`) the order is reversed: `authToken` is checked first, and `auth.token` is only used when `authToken` is absent. If you set both to different values, HTTP calls and WebSocket calls will authenticate with different tokens. Set only one.
+`context`, `nodeName`, `recursionLimit`, `expectedVersion` and `actualVersion` exist on the classes, but the client's own response parsing never sets them. They are `undefined` on errors the client throws; they are set only if you construct these classes yourself.
 
 </aside>
 
-### Example
+## AgentFlowError (base class)
 
-```ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
-
-const client = new AgentFlowClient({
-  baseUrl: 'http://localhost:8000',
-  auth: {
-    type: 'bearer',
-    token: process.env.API_TOKEN!,
-  },
-  timeout: 120_000,   // 2 minutes
-  debug: false,
-});
-```
-
----
-
-## Method Overview
-
-The table below lists every public method on `AgentFlowClient` grouped by domain. Full details for each group are in the linked reference pages.
-
-### Graph control
-
-| Method | Returns | Description |
-|---|---|---|
-| `ping()` | `Promise<PingResponse>` | Health check. Returns `{ data, metadata }` where `data` is the server's pong string. |
-| `graph()` | `Promise<GraphResponse>` | Fetch graph metadata including `id_type`, `id_generator`, and state schema information. |
-| `graphStateSchema()` | `Promise<StateSchemaResponse>` | Fetch the JSON schema of the graph's state type. |
-| `stopGraph(threadId, config?)` | `Promise<StopGraphResponse>` | Interrupt a running graph execution for `threadId`. |
-| `fixGraph(threadId, config?)` | `Promise<FixGraphResponse>` | Remove incomplete tool-call messages from a thread's state (useful after an interrupted run). |
-| `graphTools()` | `Promise<GraphToolsResponse>` | List the tools every tool node exposes, grouped by node, each tagged `local`, `mcp`, or `remote`. |
-| `observability(threadId, runId?)` | `Promise<ObservabilityResponse>` | Fetch the reconstructed trace (spans, events, token usage) for a thread's latest run, or a specific `runId`. |
-
-See [`reference/client/graph`](/docs/reference/client/graph) for full details on the graph-control methods.
-
-### Invoke and stream
-
-| Method | Returns | Description |
-|---|---|---|
-| `invoke(messages, options?)` | `Promise<InvokeResult>` | Send messages and receive the final state. Automatically handles remote tool call loops. See [`reference/client/invoke`](/docs/reference/client/invoke). |
-| `stream(messages, options?)` | `AsyncGenerator<StreamChunk>` | Send messages and receive a stream of real-time chunks. See [`reference/client/stream`](/docs/reference/client/stream). |
-| `wsStream(messages, options?)` | `AsyncGenerator<StreamChunk>` | Same streaming contract as `stream()` but over a single persistent WebSocket (`WS /v1/graph/ws`), eliminating the per-tool-call HTTP round trip for remote tools. |
-
-### Realtime audio
-
-| Method | Returns | Description |
-|---|---|---|
-| `realtime(init, options?)` | `RealtimeSession` | Open a transport-only audio-to-audio session over `WS /v1/graph/live`. Send PCM16 in, receive PCM16 out, with transcripts, tool calls, and auto reconnect/resume. See [`reference/client/realtime`](/docs/reference/client/realtime). |
-
-### Threads and state
-
-| Method | Returns | Description |
-|---|---|---|
-| `threads(request?)` | `Promise<ThreadsResponse>` | List all threads with optional search and pagination. |
-| `threadDetails(threadId)` | `Promise<ThreadDetailsResponse>` | Fetch metadata for a single thread. |
-| `threadState(threadId)` | `Promise<ThreadStateResponse>` | Fetch the full state snapshot for a thread. |
-| `updateThreadState(threadId, config, state)` | `Promise<UpdateThreadStateResponse>` | Write a new state snapshot for a thread. |
-| `clearThreadState(threadId)` | `Promise<ClearThreadStateResponse>` | Delete all checkpointed state for a thread. |
-| `threadMessages(threadId, request?)` | `Promise<ThreadMessagesResponse>` | List messages in a thread with optional search and pagination. |
-| `addThreadMessages(threadId, messages, config?, metadata?)` | `Promise<AddThreadMessagesResponse>` | Append messages to a thread's history. |
-| `singleMessage(threadId, messageId)` | `Promise<ThreadMessageResponse>` | Fetch a single message by ID. |
-| `deleteMessage(threadId, messageId, config?)` | `Promise<DeleteThreadMessageResponse>` | Delete a message by ID. |
-| `deleteThread(threadId, config?)` | `Promise<DeleteThreadResponse>` | Delete a thread and all its state and messages. |
-
-See [`reference/client/threads`](/docs/reference/client/threads) for full details.
-
-### Memory store
-
-| Method | Returns | Description |
-|---|---|---|
-| `storeMemory(request)` | `Promise<StoreMemoryResponse>` | Store a new memory entry. |
-| `searchMemory(request)` | `Promise<SearchMemoryResponse>` | Vector or keyword search over stored memories. |
-| `getMemory(memoryId, options?)` | `Promise<GetMemoryResponse>` | Fetch a single memory by ID. |
-| `updateMemory(memoryId, content, options?)` | `Promise<UpdateMemoryResponse>` | Update an existing memory. |
-| `deleteMemory(memoryId, options?)` | `Promise<DeleteMemoryResponse>` | Delete a memory by ID. |
-| `listMemories(options?)` | `Promise<ListMemoriesResponse>` | List all stored memories with optional pagination. |
-| `forgetMemories(options?)` | `Promise<ForgetMemoriesResponse>` | Bulk-delete memories by type, category, or filter. |
-
-See [`reference/client/memory`](/docs/reference/client/memory) for full details.
-
-### Files and media
-
-| Method | Returns | Description |
-|---|---|---|
-| `uploadFile(file)` | `Promise<FileUploadResponse>` | Upload an image, audio, or document file. Returns `file_id` and access URL. |
-| `getFile(fileId)` | `Promise<Blob>` | Download a file by ID as a raw `Blob`. |
-| `getFileInfo(fileId)` | `Promise<FileInfoResponse>` | Fetch metadata (MIME type, size, extracted text) for a stored file. |
-| `getFileAccessUrl(fileId)` | `Promise<FileAccessUrlResponse>` | Get the best access URL for a file (signed URL for cloud storage, or a direct API URL). |
-| `getMultimodalConfig()` | `Promise<MultimodalConfigResponse>` | Fetch the server's multimodal configuration (storage backend, max size, etc.). |
-
-See [`reference/client/files`](/docs/reference/client/files) for full details.
-
-### Remote tools
-
-| Method | Returns | Description |
-|---|---|---|
-| `registerToolHandler(name, handler)` | `void` | Register the client-side implementation for a schema declared in server `10xgraph.json`. |
-| `registerTool(registration)` | `void` | Compatibility form; schema metadata remains local and is not sent to the server. |
-
-See [Register remote tools](/docs/client/remote-tools) for full details.
-
----
-
-## Error handling
-
-Every method throws an `AgentFlowError` when the server returns a non-2xx response. `AgentFlowError` extends the built-in `Error`, so `message` and `stack` are available as usual, plus:
+`AgentFlowError` extends the built-in `Error`; every other class on this page extends it. Check it last in an `instanceof` chain, after the specific subclasses.
 
 | Property | Type | Description |
 |---|---|---|
-| `statusCode` | `number` | HTTP status code returned by the server. |
-| `errorCode` | `string` | Machine-readable code from the server's error body, e.g. `VALIDATION_ERROR`, `GRAPH_RECURSION_ERROR`. |
-| `requestId` | `string` | Server-generated request id, taken from `metadata.request_id`. `'unknown'` when the body could not be parsed. |
-| `timestamp` | `string` | ISO timestamp of the failure. |
-| `details` | `ErrorDetail[]` | Field-level details, each `{ loc?, msg?, type? }`. Populated for validation failures. |
-| `context` | `Record<string, any> \| undefined` | Extra server-supplied context, set by the graph/node/storage error subclasses. |
-| `endpoint` | `string \| undefined` | API path that failed. Set on unmapped status codes. |
-| `method` | `string \| undefined` | HTTP method that failed. Set on unmapped status codes. |
-| `recoverySuggestion` | `string \| undefined` | Human-readable hint attached by the specific error subclasses. |
+| `message` | `string` | Server error message, or the fallback message. |
+| `statusCode` | `number` | HTTP status code. |
+| `errorCode` | `string` | Machine-readable code, e.g. `VALIDATION_ERROR`. |
+| `requestId` | `string` | `metadata.request_id` from the response, or `'unknown'`. |
+| `timestamp` | `string` | `metadata.timestamp`, or the client's ISO 8601 time when missing. |
+| `details` | `ErrorDetail[]` | Field-level details from the server. Empty array by default. |
+| `context` | `Record<string, any> \| undefined` | Extra context (see the note above). |
+| `endpoint` | `string \| undefined` | API path. Set only for unmapped status codes, and only if passed in. |
+| `method` | `string \| undefined` | HTTP method. Same condition as `endpoint`. |
+| `recoverySuggestion` | `string \| undefined` | Hint on how to fix the error. Set by the graph, node, storage, metrics, schema and serialization classes. |
 
-Two helper methods are available on every error:
+Two methods are available on every error:
 
 | Method | Returns | Description |
 |---|---|---|
-| `getUserMessage()` | `string` | The message with `recoverySuggestion` appended as `"\n\nSuggestion: ..."` when one is present. Safe to show in a UI. |
-| `toJSON()` | `Record<string, any>` | Every field above plus `name` and `stack`. Use it for structured logging. |
+| `getUserMessage()` | `string` | `message`, plus `"\n\nSuggestion: ..."` when `recoverySuggestion` is set. |
+| `toJSON()` | `Record<string, any>` | `name`, `message`, `statusCode`, `errorCode`, `requestId`, `timestamp`, `details`, `context`, `endpoint`, `method`, `recoverySuggestion` and `stack`. |
 
-```ts
-import { AgentFlowError } from '@10xscale/agentflow-client';
+`toJSON()` includes the stack trace, so log it on the server but do not send it to end users.
+
+```ts title="log-error.ts"
+import { AgentFlowClient, AgentFlowError, Message } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
 try {
-  const result = await client.invoke([userMessage]);
+  await client.invoke([Message.text_message('Hi')]);
 } catch (err) {
   if (err instanceof AgentFlowError) {
-    console.error(`API error ${err.statusCode} (${err.errorCode}) request ${err.requestId}`);
-    console.error(err.getUserMessage());
-    logger.error(err.toJSON());
+    // Log structured details, show a safe message to the user.
+    console.error(`Error ${err.statusCode} (${err.errorCode}): ${err.getUserMessage()}`);
+    console.error(JSON.stringify(err.toJSON()));
+  } else {
+    throw err; // network failure or client-side timeout
+  }
+}
+```
+
+## HTTP status errors
+
+These five classes map to one status each. They carry no recovery suggestion, so read `message` and `details`.
+
+| Class | Status | Error code | Thrown when |
+|---|---|---|---|
+| `BadRequestError` | 400 | `BAD_REQUEST` | The server rejects the request as malformed. |
+| `AuthenticationError` | 401 | `AUTHENTICATION_FAILED` | Credentials are missing, invalid or expired. |
+| `PermissionError` | 403 | `PERMISSION_ERROR` | The caller is authenticated but not allowed to perform the action. |
+| `NotFoundError` | 404 | `RESOURCE_NOT_FOUND` | The thread, message, memory or file does not exist. |
+| `ValidationError` | 422 | `VALIDATION_ERROR` | The request body fails schema validation. `details` lists the failing fields. |
+
+```ts title="http-status-errors.ts"
+import {
+  AgentFlowClient,
+  AuthenticationError,
+  NotFoundError,
+  ValidationError,
+} from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+try {
+  await client.threadDetails('thread-123');
+} catch (err) {
+  if (err instanceof AuthenticationError) {
+    window.location.href = '/login'; // token missing or expired
+  } else if (err instanceof NotFoundError) {
+    console.error('Thread not found.');
+  } else if (err instanceof ValidationError) {
+    // Each detail is { loc?, msg?, type? }.
+    for (const detail of err.details) {
+      console.error(`Field ${detail.loc?.join('.')}: ${detail.msg}`);
+    }
   } else {
     throw err;
   }
 }
 ```
 
-### Error taxonomy
+### ServerError
 
-`createErrorFromResponse()` picks the most specific subclass it can. It matches `errorCode` first, then falls back to the HTTP status. Every class below extends `AgentFlowError`, so `instanceof AgentFlowError` always catches them.
+`ServerError` covers status 500, 502, 503 and 504 when the error code does not match a more specific class. Its `errorCode` is the server's code, or `INTERNAL_SERVER_ERROR` when absent, and `statusCode` is the actual status.
 
-| Class | Status | `errorCode` | Raised when |
+Treat 502, 503 and 504 as usually transient and retry them with backoff. Do not retry a 500 blindly: it is often a bug in a node or tool.
+
+```ts title="server-error.ts"
+import { AgentFlowClient, Message, ServerError } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+try {
+  await client.invoke([Message.text_message('Hi')]);
+} catch (err) {
+  if (err instanceof ServerError && [502, 503, 504].includes(err.statusCode)) {
+    console.warn('Gateway or availability problem, retry later.');
+  } else {
+    throw err;
+  }
+}
+```
+
+## Graph and node errors
+
+These classes mean the graph failed while running. Each has status 500 and its own recovery suggestion.
+
+| Class | Error code | Extra property | Recovery suggestion |
 |---|---|---|---|
-| `BadRequestError` | 400 | `BAD_REQUEST` | The request is malformed. |
-| `AuthenticationError` | 401 | `AUTHENTICATION_FAILED` | Credentials are missing or invalid. |
-| `PermissionError` | 403 | `PERMISSION_ERROR` | The caller is authenticated but not allowed. |
-| `NotFoundError` | 404 | `RESOURCE_NOT_FOUND` | The thread, message, memory, or file does not exist. |
-| `ValidationError` | 422 | `VALIDATION_ERROR` | The body failed schema validation. Read `details`. |
-| `ServerError` | 500, 502, 503, 504 | `INTERNAL_SERVER_ERROR` (or the server's code) | Any unmapped server-side failure. |
-| `GraphError` | 500 | `GRAPH_*` | Graph execution failed. |
-| `NodeError` | 500 | `NODE_*` | A node failed. Adds `nodeName`. |
-| `GraphRecursionError` | 500 | `GRAPH_RECURSION_*` | The run hit `recursion_limit`. Adds `recursionLimit`. |
-| `StorageError` | 500 | `STORAGE_*` | The checkpointer or store could not be reached. |
-| `TransientStorageError` | 503 | `TRANSIENT_STORAGE_*` | A temporary storage failure. Safe to retry. |
-| `MetricsError` | 500 | `METRICS_*` | Metrics collection failed. Usually not fatal to the run. |
-| `SchemaVersionError` | 422 | `SCHEMA_VERSION_*` | Client and server schema versions disagree. Adds `expectedVersion` and `actualVersion`. |
-| `SerializationError` | 500 | `SERIALIZATION_*` | A payload could not be serialized or deserialized. |
+| `GraphError` | `GRAPH_ERROR` | none | Check your graph configuration and ensure all nodes are properly connected. |
+| `NodeError` | `NODE_ERROR` | `nodeName?: string` | Review the node implementation and ensure all required inputs are provided. |
+| `GraphRecursionError` | `GRAPH_RECURSION_ERROR` | `recursionLimit?: number` | Consider increasing the recursion_limit parameter or check for infinite loops in your graph. |
 
-Because `errorCode` is matched before the status, a `GRAPH_RECURSION_ERROR` returned with a 500 arrives as `GraphRecursionError`, not `ServerError`.
+`GraphRecursionError` means a run exceeded its step limit. `invoke` sends `recursion_limit` (default 25) with each request, so raise it in the options if the graph legitimately needs more steps.
 
-```ts
+```ts title="graph-errors.ts"
+import { AgentFlowClient, GraphRecursionError, Message, NodeError } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+try {
+  await client.invoke([Message.text_message('Plan my trip')], { recursion_limit: 50 });
+} catch (err) {
+  if (err instanceof GraphRecursionError) {
+    console.error('Run exceeded its step limit. Check the graph for loops.');
+  } else if (err instanceof NodeError) {
+    console.error('A node failed:', err.message);
+  } else {
+    throw err;
+  }
+}
+```
+
+## Storage errors
+
+Storage errors mean the checkpointer or memory store failed. The two classes differ in whether a retry helps.
+
+| Class | Status | Error code | Retry | Recovery suggestion |
+|---|---|---|---|---|
+| `StorageError` | 500 | `STORAGE_ERROR` | No | Check your storage configuration and ensure the storage backend is accessible. |
+| `TransientStorageError` | 503 | `TRANSIENT_STORAGE_ERROR` | Yes, with backoff | This is a temporary issue. Please retry your request after a short delay. |
+
+`TransientStorageError` is matched before `StorageError` because its code starts with `TRANSIENT_STORAGE`.
+
+```ts title="storage-errors.ts"
+import { AgentFlowClient, StorageError, TransientStorageError } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+async function loadState(threadId: string) {
+  try {
+    return await client.threadState(threadId);
+  } catch (err) {
+    if (err instanceof TransientStorageError) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return client.threadState(threadId); // one retry after a short delay
+    }
+    if (err instanceof StorageError) {
+      console.error('Storage backend is unavailable:', err.message);
+    }
+    throw err;
+  }
+}
+```
+
+## Serialization, schema and metrics errors
+
+These three classes cover data format, version and telemetry failures.
+
+| Class | Status | Error code | Thrown when | Recovery suggestion |
+|---|---|---|---|---|
+| `SerializationError` | 500 | `SERIALIZATION_ERROR` | A payload cannot be serialized or deserialized. | Ensure your data format is compatible with the API schema. |
+| `SchemaVersionError` | 422 | `SCHEMA_VERSION_ERROR` | Client and server schema versions disagree. Has `expectedVersion?` and `actualVersion?` (`string`). | Update your client to match the server schema version or contact support. |
+| `MetricsError` | 500 | `METRICS_ERROR` | Metrics collection or reporting failed. | Check your metrics configuration. This error typically doesn't affect core functionality. |
+
+`SchemaVersionError` shares status 422 with `ValidationError`; the code prefix is what separates them. A `MetricsError` may mean the operation itself worked, so log it and decide per call whether to treat it as fatal.
+
+```ts title="schema-errors.ts"
+import { AgentFlowClient, MetricsError, SchemaVersionError } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+try {
+  await client.updateThreadState('thread-1', {}, { context: [] });
+} catch (err) {
+  if (err instanceof SchemaVersionError) {
+    console.error('Client and server schemas differ. Update the client.');
+  } else if (err instanceof MetricsError) {
+    console.warn('Metrics failed; the request may have succeeded.');
+  } else {
+    throw err;
+  }
+}
+```
+
+## A complete recovery strategy
+
+Check specific subclasses first and the base class last. This handler routes each failure to the right response: log in again, show field errors, retry once, or surface a safe message.
+
+```ts title="handle-errors.ts"
 import {
+  AgentFlowClient,
   AgentFlowError,
   AuthenticationError,
   GraphRecursionError,
+  Message,
   TransientStorageError,
-} from '@10xscale/agentflow-client';
+  ValidationError,
+} from '@10xgraph/client';
 
-try {
-  await client.invoke([userMessage], { config: { thread_id: 'thread-1' } });
-} catch (err) {
-  if (err instanceof AuthenticationError) {
-    redirectToLogin();
-  } else if (err instanceof GraphRecursionError) {
-    showError(`Run exceeded ${err.recursionLimit ?? 'the'} step limit.`);
-  } else if (err instanceof TransientStorageError) {
-    await retryWithBackoff();
-  } else if (err instanceof AgentFlowError) {
-    showError(err.getUserMessage());
-  } else {
-    throw err;
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function ask(text: string, attempt = 0): Promise<unknown> {
+  try {
+    return await client.invoke([Message.text_message(text)]);
+  } catch (err) {
+    if (err instanceof AuthenticationError) {
+      window.location.href = '/login';
+    } else if (err instanceof ValidationError) {
+      console.error('Invalid request:', err.details);
+    } else if (err instanceof TransientStorageError && attempt < 3) {
+      await sleep(1000 * 2 ** attempt); // exponential backoff
+      return ask(text, attempt + 1);
+    } else if (err instanceof GraphRecursionError) {
+      console.error('Step limit exceeded. Raise recursion_limit or fix the loop.');
+    } else if (err instanceof AgentFlowError) {
+      console.error(err.getUserMessage());
+    } else {
+      throw err; // network error or timeout
+    }
   }
 }
+
+await ask('Hello');
 ```
 
-### Building errors yourself
+## Build errors in your own proxy
 
-Both helpers used internally are exported, which is useful when you proxy 10xGraph through your own server and want to re-raise the same error types on the far side.
+`parseErrorResponse` and `createErrorFromResponse` are exported for code that calls the API itself, for example a server route that proxies requests. Use them to get the same error classes the client produces.
 
-| Function | Signature | Description |
+| Function | Parameters | Returns |
 |---|---|---|
-| `parseErrorResponse` | `(response: Response) => Promise<ApiErrorResponse \| null>` | Parse a `fetch` `Response` into `{ metadata, error }`. Returns `null` when the body is missing or not JSON. |
-| `createErrorFromResponse` | `(response: Response, fallbackMessage?: string, endpoint?: string, method?: string) => Promise<AgentFlowError>` | Build the most specific error subclass for a failed `Response`. Falls back to a generic `AgentFlowError` with `errorCode: 'UNKNOWN_ERROR'` when the body cannot be parsed. |
+| `parseErrorResponse` | `response: Response` | `Promise<ApiErrorResponse \| null>`. `null` if the content type is not JSON or parsing fails. |
+| `createErrorFromResponse` | `response: Response`, `fallbackMessage?: string`, `endpoint?: string`, `method?: string` | `Promise<AgentFlowError>`, the most specific subclass. |
 
-```ts
-import { createErrorFromResponse } from '@10xscale/agentflow-client';
+```ts title="app/api/invoke/route.ts"
+import { createErrorFromResponse } from '@10xgraph/client';
 
-const response = await fetch(`${base}/v1/graph/invoke`, init);
-if (!response.ok) {
-  throw await createErrorFromResponse(response, 'Invoke failed', '/v1/graph/invoke', 'POST');
+export async function POST(req: Request) {
+  const upstream = await fetch('http://localhost:8000/v1/graph/invoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: await req.text(),
+  });
+
+  if (!upstream.ok) {
+    const error = await createErrorFromResponse(
+      upstream,
+      'Invoke failed',
+      '/v1/graph/invoke',
+      'POST'
+    );
+    // Return a safe subset. toJSON() includes the stack trace.
+    return Response.json(
+      { code: error.errorCode, message: error.message, requestId: error.requestId },
+      { status: error.statusCode }
+    );
+  }
+
+  return Response.json(await upstream.json());
 }
 ```
 
----
+## Response shapes
 
-## What you learned
+These exported types describe the error body the server sends and the field-level detail entries.
 
-- `AgentFlowClient` is instantiated with a `baseUrl` and optional auth, headers, timeout, and debug options.
-- Every API domain (invoke, stream, threads, memory, files, tools) is covered by a method on this class.
-- Errors are thrown as `AgentFlowError` (or a specific subclass) carrying `statusCode`, `errorCode`, `requestId`, `details`, and a `recoverySuggestion`.
+```ts
+interface ErrorDetail {
+  loc?: string[]; // field path, e.g. ['body', 'messages']
+  msg?: string;   // human-readable message
+  type?: string;  // failure type, e.g. 'value_error'
+}
 
-## Next step
+interface ApiErrorResponse {
+  metadata: { message: string; request_id: string; timestamp: string };
+  error: { code: string; message: string; details: ErrorDetail[] };
+}
+```
 
-See [how-to/client/create-client](/docs/client/create-client) for a step-by-step guide to setting up and verifying the client, or jump to [`reference/client/invoke`](/docs/reference/client/invoke) to learn the `invoke()` method in depth.
+## Related pages
+
+- [Handle errors](/docs/client/error-handling): retries, error blocks and error chunks in streams.
+- [Create a client](/docs/client/create-client): configuration, auth and timeout.
+- [Error codes](/docs/reference/error-codes): the codes the server returns.

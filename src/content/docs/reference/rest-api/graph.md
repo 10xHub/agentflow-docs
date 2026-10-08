@@ -6,12 +6,12 @@ section: Reference
 group: "REST API"
 order: 310
 label: Graph
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-These endpoints drive the core graph execution. All requests require a valid `thread_id` in `config` when the server has a checkpointer configured.
+The graph endpoints run your compiled graph over HTTP and WebSocket: invoke it for a complete result, stream it chunk by chunk, stop or repair a thread, and inspect the graph's nodes, tools, and state schema. This page lists each route with its permission, request body, and response.
 
-Base path: `/v1/graph`
+Routes sit under `/v1/graph`, and every response wraps its payload in `{"success": true, "data": ...}`.
 
 ## Route summary
 
@@ -79,6 +79,14 @@ Messages may carry image and document content blocks referencing an uploaded `fi
 }
 ```
 
+| `data` field | Description |
+| --- | --- |
+| `messages` | Final processed messages from the graph. Always present. |
+| `state` | State from the run, or `null`. |
+| `context` | Context messages, or `null`. |
+| `summary` | Summary text, or `null`. |
+| `meta` | Run metadata such as `thread_id`, or `null`. How much is filled in depends on `response_granularity`. |
+
 ---
 
 ## POST /v1/graph/stream
@@ -135,11 +143,11 @@ Cancel an in-progress graph execution.
 ```json
 {
   "success": true,
-  "data": {"status": "stopped", "thread_id": "my-thread-1"}
+  "data": {"ok": true, "running": true}
 }
 ```
 
-The running graph finishes the current node and then stops. It does not interrupt mid-node.
+The request records a stop flag on the thread, and the running graph checks it between nodes, so the current node finishes first. When nothing is running the call still succeeds, with `running: false` (`reason: "no-state"`) or `ok: false` (`reason: "no-checkpointer"`). Stopping needs a checkpointer.
 
 ---
 

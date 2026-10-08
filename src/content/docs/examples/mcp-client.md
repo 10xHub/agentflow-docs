@@ -1,43 +1,87 @@
 ---
 title: MCP Client
-seoTitle: "MCP client tutorial with FastMCP"
-description: Connect to MCP servers with FastMCP Client, list remote tools, inspect metadata, and invoke tools directly.
+seoTitle: "MCP client example with FastMCP"
+description: "Connect to MCP servers, discover remote tools, and invoke them directly using FastMCP."
 section: Examples
 group: "Tools and MCP"
 order: 110
 label: MCP Client
-updated: "2026-07-21"
+faq:
+  - q: "Do I need a graph to call MCP tools?"
+    a: "No. The FastMCP Client connects to a server, lists tools and calls them on its own. A graph is only needed when an LLM should choose the tools."
+  - q: "Does the example server check the Authorization header?"
+    a: "No. The example server accepts any request. The header in the client config shows where credentials go for servers that require them."
+updated: "2026-10-08"
 ---
 
-**Source example:** [`examples/react-mcp/client.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-mcp/client.py)
+## What the example shows
 
-## What you will build
+The FastMCP `Client` connects to an MCP server, lists its tools with their schemas, and calls one directly, with no graph involved. Use this pattern to inspect a server or call tools from a script, or to learn MCP before wiring it into a 10xGraph agent.
 
-A standalone MCP client that connects to a weather server, lists the remote tools it exposes, inspects their metadata, and calls `get_weather`.
+The example pairs a small weather server with a client that lists the tools and calls `get_weather`.
 
-## Prerequisites
+## How to run it
 
-- Python 3.12 or later
-- `fastmcp` installed
-- the MCP server from the previous tutorial running locally
-
-Install:
+The files are in `agentflow/examples/react-mcp/`. Install the packages (the client also imports `python-dotenv`), then start the server in one terminal.
 
 ```bash
-pip install fastmcp
+pip install fastmcp python-dotenv
+python agentflow/examples/react-mcp/server.py
 ```
 
-Start the server in another terminal:
+The server uses the streamable HTTP transport and serves the MCP endpoint at `http://127.0.0.1:8000/mcp`. In a second terminal, run the client.
 
 ```bash
-python examples/react-mcp/server.py
+python agentflow/examples/react-mcp/client.py
 ```
 
-## Step 1 — Define the MCP server config
+You see the tool name and tags, the full tool definition, then the result of calling `get_weather` for New York.
 
-The client uses a config object keyed by server name:
+## The server exposes one tool
 
-```python
+The server registers `get_weather` with a description and tags, then runs over streamable HTTP. The tags are what the client later reads from the tool metadata.
+
+```python title="agentflow/examples/react-mcp/server.py"
+from fastmcp import FastMCP
+
+
+mcp = FastMCP("My MCP Server")
+
+
+@mcp.tool(
+    description="Get the weather for a specific location",
+    tags={"weather", "information"},
+    exclude_args=["user_details"],
+)
+def get_weather(location: str, user: dict | None = None) -> dict:
+    print(f"User Details: {user}")
+    return {
+        "location": location,
+        "temperature": "22°C",
+        "description": "Sunny",
+    }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+```
+
+## The client lists and calls the tool
+
+The client declares its servers in a config dict, opens the connection with an async context manager, lists the tools, and calls one by name. The same file is shown whole so you can run it as is.
+
+```python title="agentflow/examples/react-mcp/client.py"
+import asyncio
+
+from dotenv import load_dotenv
+from fastmcp import Client
+from mcp import Tool
+
+
+load_dotenv()
+
+
+# Map server names to connection details.
 config = {
     "mcpServers": {
         "weather": {
@@ -47,71 +91,25 @@ config = {
         },
     },
 }
-```
 
-This config tells the client:
-
-- which server to connect to
-- which transport to use
-- which headers to send
-
-## Step 2 — Create the client
-
-```python
-from fastmcp import Client
 
 client_http = Client(config)
-```
 
-The client manages MCP connections with async context management.
-
-## Step 3 — List tools
-
-The example calls `list_tools()` and reads metadata:
-
-```python
-from mcp import Tool
 
 async def call_tools():
+    # Discover tools and print their tags and full definitions.
     async with client_http:
         tools: list[Tool] = await client_http.list_tools()
         for i in tools:
             meta = i.meta or {}
             tags = meta.get("_fastmcp", {}).get("tags", [])
             print(f"Tool: {i.name}, Tags: {tags}")
+
             print(i.model_dump())
-```
 
-This is useful when you want to:
 
-- inspect what a server can do
-- build a UI for available tools
-- filter tools by server-side metadata
-
-## Discovery and invocation flow
-
-```mermaid
-sequenceDiagram
-    participant App
-    participant Client as FastMCP Client
-    participant Server as MCP server
-
-    App->>Client: list_tools()
-    Client->>Server: MCP list tools request
-    Server-->>Client: tool schemas + metadata
-    Client-->>App: Tool objects
-    App->>Client: call_tool("get_weather", {...})
-    Client->>Server: MCP tool invocation
-    Server-->>Client: structured result
-    Client-->>App: CallToolResult
-```
-
-## Step 4 — Invoke a tool directly
-
-The example then calls `get_weather`:
-
-```python
 async def invoke():
+    # Call a tool by name with a dict of arguments.
     async with client_http:
         result = await client_http.call_tool(
             "get_weather",
@@ -120,66 +118,50 @@ async def invoke():
             },
         )
         print(result)
-```
 
-You get a structured MCP result rather than a plain string. That result may contain:
 
-- human-readable content
-- structured JSON content
-- error flags
-
-## Example run
-
-```python
 async def main():
     await call_tools()
     await invoke()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-Run it:
+The first line of output looks like this (example output, the tool definition that follows varies with the FastMCP version):
 
-```bash
-python examples/react-mcp/client.py
+```text
+Tool: get_weather, Tags: ['weather', 'information']
 ```
 
-Expected output:
+The call prints a `CallToolResult` that holds the content, the parsed `structured_content` and `data`, and an `is_error` flag. For this tool, `data` is `{'location': 'New York', 'temperature': '22°C', 'description': 'Sunny'}`.
 
-- one or more tool definitions from the server
-- a successful `CallToolResult` for `get_weather`
+## What each part does
 
-## How this relates to 10xGraph
+The example shows three client patterns: configuration, discovery and invocation.
 
-This page shows raw MCP usage without a graph. 10xGraph builds on the same idea by plugging an MCP client into `ToolNode`, which lets an agent call these tools as part of a graph run.
+| Pattern | Code | What it does |
+|---|---|---|
+| Configuration | `Client(config)` | Declares one or more servers by name, each with a URL, transport and optional headers. |
+| Discovery | `list_tools()` | Returns `Tool` objects with names, JSON Schema inputs and metadata such as tags. |
+| Invocation | `call_tool(name, args)` | Awaits the server's response and returns a `CallToolResult`, not a raw string. |
 
-That is the next tutorial:
+The example server does not check the `Authorization` header. The header in the config only shows where credentials go for servers that require them.
 
-- [MCP ReAct Agent](/docs/examples/mcp-react-agent)
+## When to use this pattern
 
-## Common mistakes
+Use a standalone client to inspect a server's tools before integrating it, to call MCP tools from a script, or to understand MCP mechanics. Do not use it when an LLM should decide which tools to call. In that case plug MCP into a 10xGraph agent, which manages the client for you, as in [MCP ReAct agent](/docs/examples/mcp-react-agent). The server side is covered in [MCP server](/docs/examples/mcp-server).
 
-- Not starting the MCP server first.
-- Pointing the client at the wrong URL or transport.
-- Forgetting auth headers when the server requires them.
-- Expecting direct Python return values instead of MCP response objects.
+## Common issues and how to fix them
 
-## Key concepts
-
-| Concept | Details |
+| Issue | Fix |
 |---|---|
-| `Client(config)` | Connects to one or more MCP servers |
-| `list_tools()` | Discovers remote tools and their schemas |
-| `call_tool(name, args)` | Invokes a remote MCP tool directly |
-| `meta` | Metadata block that can include tags and server-specific hints |
+| Connection refused | Start the server first and check that the URL in the config matches its host, port and `/mcp` path. |
+| 401 or auth errors | Match the headers to what your server expects. The example server needs none. |
+| `ModuleNotFoundError` for `fastmcp`, `mcp` or `dotenv` | Run `pip install fastmcp python-dotenv`. |
+| Empty tag list | The tool was registered without `tags`, or your FastMCP version stores metadata differently. Print `i.model_dump()` to check. |
 
-## What you learned
+## What to try next
 
-- How to configure an MCP client.
-- How to discover remote tool schemas.
-- How to invoke a remote tool without 10xGraph orchestration.
-
-## Next step
-
-→ [MCP ReAct Agent](/docs/examples/mcp-react-agent) to let a 10xGraph graph call those MCP tools automatically.
+Add a second server entry to the `mcpServers` config and list the tools from both. Then move to [MCP ReAct agent](/docs/examples/mcp-react-agent) to let an agent call these tools automatically.

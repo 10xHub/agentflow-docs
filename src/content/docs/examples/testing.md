@@ -6,92 +6,84 @@ section: Examples
 group: "Production"
 order: 200
 label: Testing
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: Does QuickTest call a real model?
+    a: No. It builds a small graph around a TestAgent that returns the responses you supply, so tests are fast, free and need no API key.
+  - q: Are QuickTest assertions case sensitive?
+    a: Yes. assert_contains and assert_not_contains use a plain substring check on the final response, so "Sunny" does not match "sunny".
+  - q: When should I use evaluations instead of QuickTest?
+    a: Use QuickTest to check graph wiring, routing and tool calls deterministically. Use the evaluation framework when you need to score the quality of a live model's answers.
 ---
 
-**Source example:** `examples/testing/quick_test_example.py`
+`QuickTest` lets you test a 10xGraph graph in a few lines without calling a live model. It wraps a canned `TestAgent` in a temporary graph and returns a `TestResult` with chainable assertions. This walkthrough covers single-turn, multi-turn and tool tests, and how to place them in CI.
 
-## What you will build
+The code comes from `agentflow/examples/testing/quick_test_example.py`. It needs only the core package and no API key:
 
-A testing workflow that lets you validate graph behavior without calling a real LLM.
+```bash
+pip install 10xgraph
+python agentflow/examples/testing/quick_test_example.py
+```
 
-The example focuses on `QuickTest`, which gives you short, readable tests for:
+## Why use QuickTest for unit tests
 
-- single-turn responses
-- multi-turn conversations
-- tool-calling flows
-- chained assertions
+Good graph unit tests are fast, deterministic, cheap to run in CI and easy to read when they fail. A live model gives you none of these. `QuickTest` removes the model from the loop and the graph boilerplate (nodes, edges, compile, invoke) with it, so you can check wiring and routing on every pull request.
 
-## Why this matters
+Canned responses prove your graph and assertions work, not that a model is smart. Quality of live answers belongs to the [evaluation framework](/docs/examples/evaluation).
 
-Unit tests should be:
+## How QuickTest builds a test graph
 
-- fast
-- deterministic
-- cheap to run in CI
-- easy to read when they fail
-
-That is exactly the problem `QuickTest` is solving.
-
-## Testing model
+Each helper builds a temporary `StateGraph` around a `TestAgent`, compiles it, invokes it and wraps the output in a `TestResult`. Nothing is sent over the network.
 
 ```mermaid
 flowchart TD
     A[Test case] --> B[QuickTest helper]
-    B --> C[TestAgent]
-    B --> D[temporary StateGraph]
+    B --> C[TestAgent with canned responses]
+    B --> D[Temporary StateGraph]
     D --> E[Compiled graph]
     E --> F[TestResult]
     F --> G[assert_contains / assert_tool_called / assert_no_errors]
 ```
 
-Instead of talking to a live model, `QuickTest` builds a graph around `TestAgent`, which returns predefined responses.
+| Helper | Use it to test |
+|---|---|
+| `QuickTest.single_turn(agent_response, user_message="Hello")` | One user message and one reply |
+| `QuickTest.multi_turn(conversation)` | A list of `(user_message, agent_response)` tuples |
+| `QuickTest.with_tools(query, response, tools, tool_responses=None)` | A ReAct-style loop with mock tools |
+| `QuickTest.custom(agent, user_message, graph_setup=None)` | Your own agent or a customized graph |
 
-## Step 1 - Test a single-turn interaction
+All helpers also accept `model` (a label, default `"test-model"`) and `config` (passed to the graph invocation).
 
-The smallest example is:
+## Test a single-turn reply
+
+`QuickTest.single_turn` builds a one-node graph (`MAIN` to `END`), sends your message and returns the canned response as `result.final_response`.
 
 ```python
-result = await QuickTest.single_turn(
-    agent_response="Hello! How can I help you today?",
-    user_message="Hi there",
-)
+import asyncio
 
-result.assert_contains("Hello")
-result.assert_contains("help")
-result.assert_no_errors()
+from tenxgraph.qa.testing import QuickTest
+
+
+async def main():
+    result = await QuickTest.single_turn(
+        agent_response="Hello! How can I help you today?",
+        user_message="Hi there",
+    )
+
+    result.assert_contains("Hello")
+    result.assert_contains("help")
+    result.assert_no_errors()
+    print(f"Passed. Response: {result.final_response}")
+
+
+asyncio.run(main())
 ```
 
-What happens under the hood:
+Use this to check downstream formatting or routing assumptions without paying for a model call.
 
-1. `QuickTest.single_turn()` creates a `TestAgent`
-2. it builds a one-node graph: `MAIN -> END`
-3. it invokes the graph with your user message
-4. it returns a `TestResult`
+## Test a multi-turn conversation
 
-This means you can test downstream formatting or routing assumptions without paying for a model call.
-
-## Single-turn flow
-
-```mermaid
-sequenceDiagram
-    participant Test as Test code
-    participant Quick as QuickTest.single_turn
-    participant Agent as TestAgent
-    participant Graph as Compiled graph
-
-    Test->>Quick: agent_response + user_message
-    Quick->>Agent: preload canned response
-    Quick->>Graph: build and invoke graph
-    Graph->>Agent: run MAIN node
-    Agent-->>Graph: predefined response
-    Graph-->>Quick: result
-    Quick-->>Test: TestResult
-```
-
-## Step 2 - Test a multi-turn conversation
-
-The example then moves to multi-turn testing:
+`QuickTest.multi_turn` takes a list of `(user_message, agent_response)` tuples, re-invokes the graph once per turn and accumulates the conversation. The agent returns the responses in order.
 
 ```python
 result = await QuickTest.multi_turn(
@@ -102,28 +94,15 @@ result = await QuickTest.multi_turn(
     ]
 )
 
-result.assert_contains("welcome")
-result.assert_message_count(6)
+result.assert_contains("welcome")  # checks the final response only
+result.assert_message_count(6)  # 3 user + 3 assistant
 ```
 
-This helper re-invokes the graph across multiple turns while accumulating conversation state.
+The count of 6 is a sanity check that every turn was recorded. Use this helper to verify follow-ups, continuity and the response shape after several turns.
 
-That makes it useful when you want to verify:
+## Test tool calls with mock tools
 
-- follow-up behavior
-- conversational continuity
-- response shape after several turns
-
-The message count of `6` is a nice sanity check here because the conversation contains:
-
-- 3 user messages
-- 3 assistant messages
-
-## Step 3 - Test tool usage without real tool integrations
-
-Tool-calling tests are where `QuickTest.with_tools()` becomes really helpful.
-
-Example:
+`QuickTest.with_tools` builds a small ReAct-style graph: `MAIN` is a `TestAgent`, `TOOL` is a generated `ToolNode`, and the graph loops from `TOOL` back to `MAIN`. Tools passed as strings become mock functions that record each call and return your `tool_responses` entry (or `"Mock result from <name>"`).
 
 ```python
 result = await QuickTest.with_tools(
@@ -137,15 +116,7 @@ result.assert_contains("sunny")
 result.assert_tool_called("get_weather")
 ```
 
-The helper builds a small ReAct-like graph:
-
-- `MAIN` is a `TestAgent`
-- `TOOL` is a generated `ToolNode`
-- the graph loops back from `TOOL` to `MAIN`
-
-That lets you validate that a tool name was called, and optionally that the call carried the right arguments.
-
-## Tool test flow
+`assert_tool_called` also accepts keyword arguments to check call arguments, for example `assert_tool_called("get_weather", query="...")`. Mock tools record the `query` argument plus any extra keyword arguments. You can also pass real functions in `tools` instead of strings. The graph runs with a recursion limit of 10 unless you override it in `config`.
 
 ```mermaid
 flowchart LR
@@ -155,13 +126,18 @@ flowchart LR
     B --> D[TestResult]
 ```
 
-This is ideal for CI because it exercises your graph structure without introducing flaky network dependencies.
+This exercises your graph structure without flaky network dependencies, which suits CI.
 
-## Step 4 - Use assertion chaining for readable tests
+## Chain assertions for readable tests
 
-The example shows chained assertions:
+Every assertion returns the same `TestResult`, so you can chain checks into one readable block.
 
 ```python
+result = await QuickTest.single_turn(
+    agent_response="I can help you with Python programming.",
+    user_message="Can you help with coding?",
+)
+
 (
     result.assert_contains("Python")
     .assert_contains("programming")
@@ -170,36 +146,26 @@ The example shows chained assertions:
 )
 ```
 
-This style has two benefits:
-
-- tests stay compact
-- the intent stays readable even when you check several properties
-
-## Step 5 - Structure tests for CI
-
-A practical way to use this example in CI is:
-
-1. keep `QuickTest` for fast unit-style validation
-2. reserve live model tests for a much smaller smoke-test suite
-3. run deterministic tests on every pull request
-4. run slower end-to-end tests on a schedule or in a gated pipeline
-
-Recommended split:
-
-| Test type | Best tool |
+| Assertion | Checks |
 |---|---|
-| graph wiring and simple behavior | `QuickTest` |
-| tool call assertions | `QuickTest.with_tools` |
-| live response quality scoring | evaluation framework |
-| manual exploration | example scripts or playground |
+| `assert_contains(text)` | Substring is in `final_response` (case sensitive) |
+| `assert_not_contains(text)` | Substring is absent from `final_response` |
+| `assert_equals(expected)` | `final_response` equals the string exactly |
+| `assert_tool_called(name, **args)` | A recorded call to the tool exists, with matching args if given |
+| `assert_tool_not_called(name)` | No recorded call to the tool |
+| `assert_message_count(n)` | The transcript has exactly `n` messages |
+| `assert_no_errors()` | No message has the role `error` |
 
-## Turn the example into a real test file
+## Write a pytest test file
 
-A minimal pytest version looks like this:
+To run these checks in CI, put them in a normal async pytest test. This assumes `pytest-asyncio` is installed.
 
 ```python
+# tests/test_greeting.py
 import pytest
+
 from tenxgraph.qa.testing import QuickTest
+
 
 @pytest.mark.asyncio
 async def test_greeting_response():
@@ -211,38 +177,16 @@ async def test_greeting_response():
     result.assert_contains("Hello").assert_no_errors()
 ```
 
-## Run the example script
+## Split unit tests from live quality checks
 
-```bash
-python examples/testing/quick_test_example.py
-```
+Run `QuickTest` on every pull request and keep live-model tests to a much smaller suite on a schedule or in a gated pipeline.
 
-You should see four sections:
-
-- single turn
-- multi-turn
-- tools
-- assertions
-
-Each section prints a success line when its checks pass.
-
-## What to verify
-
-When you run the script, confirm that:
-
-- all examples complete successfully
-- the tool example reports a tool call to `get_weather`
-- the multi-turn example ends with a six-message transcript
-- no example depends on an external API key
-
-## Common mistakes
-
-- Using `QuickTest` for questions that actually require a live model's reasoning quality.
-- Forgetting that canned responses only prove your graph and assertions, not model intelligence.
-- Mixing deterministic test helpers with non-deterministic external services in the same CI step.
-- Writing assertions that are so loose they can pass even when the behavior regresses.
-
-## Testing workflow summary
+| Test type | Best tool |
+|---|---|
+| Graph wiring and simple behavior | `QuickTest` |
+| Tool call assertions | `QuickTest.with_tools` |
+| Live response quality scoring | Evaluation framework |
+| Manual exploration | Example scripts or the playground |
 
 ```mermaid
 flowchart TD
@@ -251,18 +195,26 @@ flowchart TD
     C --> D[Use evaluation suite for deeper quality checks]
 ```
 
-## Related docs
+## Verify the example ran
 
-- [Testing Reference](/docs/reference/python/testing)
-- [Evaluation Reference](/docs/reference/python/evaluation)
-- [ReAct Agent Tutorial](/docs/examples/react-agent)
+Run the script from the repository root. It prints four sections: single turn, multi-turn, tools and assertions, each ending with a success line. Confirm that:
 
-## What you learned
+- all four sections complete without an `AssertionError`
+- the tool example finds a call to `get_weather`
+- the multi-turn example ends with a six-message transcript
+- nothing needs an external API key
 
-- How `QuickTest` removes most graph testing boilerplate.
-- How to test single-turn, multi-turn, and tool-based flows deterministically.
-- How to position `QuickTest` as a CI-friendly unit testing layer.
+## Common mistakes
 
-## Next step
+- Using `QuickTest` for questions that need a live model's reasoning quality.
+- Writing assertions so loose that they pass when behavior regresses.
+- Forgetting that `assert_contains` is case sensitive.
+- Mixing deterministic helpers with non-deterministic external services in the same CI step.
 
-→ Continue with [Evaluation](/docs/examples/evaluation) when you need scored quality checks rather than deterministic unit tests.
+## Related pages
+
+- [Testing reference](/docs/reference/python/testing)
+- [Evaluation reference](/docs/reference/python/evaluation)
+- [ReAct agent tutorial](/docs/examples/react-agent)
+
+Next, continue with [Evaluation](/docs/examples/evaluation) when you need scored quality checks rather than deterministic unit tests.

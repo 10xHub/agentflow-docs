@@ -1,248 +1,253 @@
 ---
 title: Call from your app
-description: Use the 10xGraph TypeScript client to call your running agent server from a Node.js or browser application.
+description: "Call your running 10xGraph agent server from a TypeScript app with @10xgraph/client: invoke, stream, keep a thread and send an auth token."
 group: "Tutorial"
 section: "Get started"
 order: 90
 label: Call from your app
 updated: "2026-10-08"
+faq:
+  - q: "Which package do I install to call a 10xGraph server from TypeScript?"
+    a: "Install @10xgraph/client and import AgentFlowClient and Message from it. Until the renamed package is published on npm, the published name is @10xscale/agentflow-client."
+  - q: "How does the agent remember earlier messages?"
+    a: "Pass the same thread_id in the config option of every invoke or stream call. The server checkpointer stores the conversation under that ID and restores it on the next call."
+  - q: "Is the stream Server-Sent Events?"
+    a: "No. client.stream() reads newline-delimited JSON (NDJSON) over a normal HTTP response from POST /v1/graph/stream."
 ---
 
-Now that your agent is running as an HTTP server, you can invoke it from any TypeScript or JavaScript application using the 10xGraph client. The client abstracts away HTTP details, handles message serialization, and supports both one-shot invocations and real-time streaming of results.
+In this step you call the agent server from step 4 with the TypeScript client. You create an `AgentFlowClient`, get a full reply with `invoke()`, read a live reply with `stream()`, keep a conversation on one `thread_id`, and send an auth token. By the end, a Node.js script talks to your Python graph over HTTP.
 
 ## Prerequisites
 
-From the previous tutorial step, you have:
+You need the server from [Serve and inspect](/docs/get-started/tutorial/serve-and-inspect) running, and Node.js 18 or later (the client uses the built-in `fetch`).
 
-- A running API server: `10xgraph api --host 127.0.0.1 --port 8000`
-- A Python agent with tools, checkpointing, and a `10xgraph.json` config file
-- Access to the server at `http://127.0.0.1:8000`
+- The API server is started with `10xgraph api --host 127.0.0.1 --port 8000`, from the folder that holds `10xgraph.json`.
+- The graph has a weather tool and a checkpointer, as built in the previous steps.
+- The server is reachable at `http://127.0.0.1:8000`.
 
-Keep the API server running in a terminal for the examples in this step.
+Keep the server running in one terminal and use a second terminal for the scripts below.
 
 ## Install the TypeScript client
 
-In your TypeScript or Node.js project, install the 10xGraph client:
+Install the client in any Node.js or browser project. It has no Python dependency and talks to the server over HTTP.
 
 ```bash
+# Install the 10xGraph TypeScript client
 npm install @10xgraph/client
 ```
 
-If you are using an older version of the 10xGraph project, the published package may still be under the old name. Check the latest version on npm:
+Until the renamed package is published on npm, the published name is `@10xscale/agentflow-client`. Install that instead and change the import path in the examples to match. The class is called `AgentFlowClient` in both.
+
+To run TypeScript files directly, install a runner such as `tsx`:
 
 ```bash
-npm install @10xscale/agentflow-client
+npm install --save-dev tsx
 ```
 
-## Create the client instance
+## Create the client
 
-Import the client and connect to your running server:
+The client needs only the address of your server. Every other option is optional.
 
-```typescript
-import { AgentFlowClient, Message } from "@10xgraph/client";
+```ts title="client.ts"
+import { AgentFlowClient } from "@10xgraph/client";
 
-const client = new AgentFlowClient({
+// One client per server. Reuse it for every call.
+export const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
 });
 ```
 
-The `AgentFlowClient` constructor accepts a configuration object with:
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `baseUrl` | `string` | required | URL of the 10xGraph API server |
+| `authToken` | `string \| null` | none | Bearer token, sent as `Authorization: Bearer <token>` |
+| `headers` | `HeadersInit` | none | Extra headers sent with every request |
+| `timeout` | `number` | `300000` | Request timeout in milliseconds (5 minutes) |
+| `debug` | `boolean` | `false` | Log request details to the console |
 
-- `baseUrl` (required): the URL where your 10xGraph API server is running
-- `authToken` (optional): a JWT token if your server requires authentication
-- `timeout` (optional): request timeout in milliseconds (default: 5 minutes)
-- `headers` (optional): additional HTTP headers to send with every request
+See [Create the client](/docs/client/create-client) for the remaining options such as `auth` and `credentials`.
 
-## Invoke the agent and get a response
+## Invoke the agent and read the full reply
 
-Send a message to your agent and wait for the full response:
+`client.invoke()` sends your messages to `POST /v1/graph/invoke`, waits for the graph to finish, and returns every message the run produced. Use it when you need the complete answer before you do anything else.
 
-```typescript
-const result = await client.invoke(
-  [Message.text_message("What is the weather in Tokyo?")],
-  {
-    config: {
-      thread_id: "my-first-thread",
-    },
-  }
-);
-
-const reply = result.messages.at(-1);
-console.log("Agent replied:", reply?.text());
-```
-
-Here is what happens:
-
-1. `Message.text_message(...)` creates a message object with the text content
-2. `client.invoke(...)` sends the message to the server at `/v1/graph/invoke`
-3. The server runs your graph: it loads the thread state (if the `thread_id` exists), passes your message to the agent, the agent calls tools if needed, and returns all messages
-4. `result.messages` contains all messages in the conversation: your input and the agent's response
-5. The result also includes `result.meta` with metadata like `thread_id` and `is_new_thread`
-
-Create a file called `call-agent.ts`:
-
-```typescript
+```ts title="call-agent.ts"
 import { AgentFlowClient, Message } from "@10xgraph/client";
 
-const client = new AgentFlowClient({
-  baseUrl: "http://127.0.0.1:8000",
-});
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function main() {
+  // Send one user message on a named thread
   const result = await client.invoke(
     [Message.text_message("What is the weather in Tokyo?")],
-    {
-      config: {
-        thread_id: "tutorial-thread",
-      },
-    }
+    { config: { thread_id: "tutorial-thread" } },
   );
 
+  // The last message is the agent's final answer
   const reply = result.messages.at(-1);
   console.log("Agent replied:", reply?.text());
+  console.log("Thread:", result.meta.thread_id, "new:", result.meta.is_new_thread);
 }
 
 main().catch(console.error);
 ```
 
-Run it using `tsx` (or your project's TypeScript runner):
+Run it:
 
 ```bash
 npx tsx call-agent.ts
 ```
 
-If your agent has access to a weather tool, you see output like:
+The output depends on your model. It looks like this:
 
 ```text
 Agent replied: The weather in Tokyo is sunny and 22°C.
+Thread: tutorial-thread new: true
 ```
 
-## Build a multi-turn conversation with thread IDs
+What the call does:
 
-A `thread_id` is a persistent identifier for a conversation. The server stores all messages and state under that ID. By reusing the same `thread_id`, your agent remembers context across calls:
+1. `Message.text_message(text)` builds a user message. Its second argument is the role, which defaults to `"user"`.
+2. `invoke()` posts the messages, your `config` and the run options to the server. The default `recursion_limit` is 25 and the default `response_granularity` is `"full"`.
+3. The server loads the thread from the checkpointer, runs the graph (including any server-side tools) and returns the messages.
+4. `result.messages` holds the messages from the run. `result.meta` holds `thread_id` and `is_new_thread`.
+5. `reply.text()` joins the text blocks of a message into one string.
 
-```typescript
-const THREAD_ID = "conversation-with-user-123";
+If the graph asks the client to run a tool in your app (a remote tool), `invoke()` runs it and calls the server again until the run finishes. Remote tools are covered in [Remote tools](/docs/client/remote-tools).
 
-// First turn
-const first = await client.invoke(
-  [Message.text_message("My name is Alex.")],
-  { config: { thread_id: THREAD_ID } }
-);
-console.log(first.messages.at(-1)?.text());
+## Keep a conversation on one thread
 
-// Second turn — server recalls "My name is Alex"
-const second = await client.invoke(
-  [Message.text_message("What is my name?")],
-  { config: { thread_id: THREAD_ID } }
-);
-console.log(second.messages.at(-1)?.text());
+A `thread_id` names a conversation. The server stores the state under that ID through the checkpointer, so a second call with the same ID continues where the first stopped.
+
+```ts title="multi-turn.ts"
+import { AgentFlowClient, Message } from "@10xgraph/client";
+
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+const config = { thread_id: "conversation-with-user-123" };
+
+async function main() {
+  // First turn: give the agent a fact
+  const first = await client.invoke([Message.text_message("My name is Alex.")], { config });
+  console.log(first.messages.at(-1)?.text());
+
+  // Second turn: same thread_id, so the server restores the history
+  const second = await client.invoke([Message.text_message("What is my name?")], { config });
+  console.log(second.messages.at(-1)?.text());
+}
+
+main().catch(console.error);
 ```
 
-Expected output:
+The second answer mentions Alex because the server, not your app, holds the history. You send only the new message each time. A different `thread_id` starts a fresh conversation. Reading and editing stored threads is covered in [Manage threads](/docs/client/manage-threads).
 
-```text
-Nice to meet you, Alex!
-Your name is Alex.
+## Stream the reply as it is generated
+
+`client.stream()` posts to `POST /v1/graph/stream` and returns an async generator. The server answers with newline-delimited JSON (NDJSON), not Server-Sent Events, and the client yields one chunk per line as it arrives.
+
+```ts title="stream-agent.ts"
+import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+
+async function main() {
+  const stream = client.stream(
+    [Message.text_message("Write a short story about a robot.")],
+    { config: { thread_id: "streaming-demo" } },
+  );
+
+  // Print each piece of the reply as soon as it arrives
+  for await (const chunk of stream) {
+    if (chunk.event === StreamEventType.MESSAGE && chunk.message) {
+      process.stdout.write(chunk.message.text());
+    }
+  }
+  console.log();
+}
+
+main().catch(console.error);
 ```
 
-The agent can see the entire conversation history on the server because you passed the same `thread_id`. If you create a new thread with a different ID, the agent starts fresh without memory of previous turns.
+The default `response_granularity` for `stream()` is `"low"`, which keeps chunks small. If the graph calls a remote tool, `stream()` runs it and continues the stream for you.
 
-## Stream responses for real-time updates
+Use `stream()` for chat interfaces where the user should see text appear. Use `invoke()` for scripts and background jobs that need the finished answer.
 
-For a responsive user experience, stream the agent's response as it is generated instead of waiting for the full reply:
+### Chunk fields and event types
 
-```typescript
-const stream = client.stream(
-  [Message.text_message("Write a short story about a robot.")],
-  { config: { thread_id: "streaming-demo" } }
-);
+Every chunk has an `event` field that tells you which other fields are set.
 
-for await (const chunk of stream) {
-  if (chunk.event === "message" && chunk.message) {
-    // A token from the model was just received
-    process.stdout.write(chunk.message.text());
+| `event` | `StreamEventType` | Set fields | Meaning |
+|---|---|---|---|
+| `"message"` | `MESSAGE` | `message` | A message from the agent or a tool |
+| `"updates"` | `UPDATES` | `data` | A progress or status update |
+| `"state"` | `STATE` | `state` | The graph state |
+| `"error"` | `ERROR` | `data` | An error reported by the server during the run |
+
+Chunks can also carry `thread_id`, `run_id`, `metadata` and `timestamp`. Handle all four event types with a `switch`:
+
+```ts title="stream-events.ts"
+import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
+
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
+
+async function main() {
+  const stream = client.stream(
+    [Message.text_message("What is 2 + 2? Explain briefly.")],
+    { config: { thread_id: "event-demo" } },
+  );
+
+  for await (const chunk of stream) {
+    switch (chunk.event) {
+      case StreamEventType.MESSAGE:
+        if (chunk.message) process.stdout.write(chunk.message.text());
+        break;
+      case StreamEventType.UPDATES:
+        console.log("\n[update]", chunk.data);
+        break;
+      case StreamEventType.STATE:
+        console.log("\n[state]", chunk.state);
+        break;
+      case StreamEventType.ERROR:
+        console.error("\n[error]", chunk.data);
+        break;
+    }
   }
 }
-console.log();
+
+main().catch(console.error);
 ```
 
-The `stream()` method returns an async generator that yields chunks as they arrive. Each chunk has:
+Most apps only need the `message` event. The `state` and `updates` events help when you build a progress view or debug a run. The full list of options is in [Stream responses](/docs/client/stream-responses).
 
-- `event`: one of `StreamEventType.MESSAGE`, `StreamEventType.UPDATES`, `StreamEventType.STATE`, or `StreamEventType.ERROR`
-- `message`: the current `Message` object (present when `event === "message"`)
-- `state`: the current graph state (present when `event === "state"`)
-- `data`: additional metadata (present when `event === "updates"`)
-- `thread_id`: the thread ID for this run
-- `run_id`: the unique ID of this invocation
+## Send an auth token
 
-When the agent calls a tool, the stream pauses while the tool executes on the server. You see state updates and then the agent's response continues. This is NDJSON (newline-delimited JSON) over HTTP, so you get incremental, real-time feedback.
+If the server has authentication enabled, pass the token when you create the client. The client then adds `Authorization: Bearer <token>` to every request.
 
-## Handle stream events
+```ts title="authenticated-client.ts"
+import { AgentFlowClient } from "@10xgraph/client";
 
-Different event types carry different information. Here is how to distinguish them:
-
-```typescript
-const stream = client.stream(
-  [Message.text_message("Solve 2 + 2 in detail.")],
-  { config: { thread_id: "event-demo" } }
-);
-
-for await (const chunk of stream) {
-  switch (chunk.event) {
-    case "message":
-      if (chunk.message) {
-        process.stdout.write(chunk.message.text());
-      }
-      break;
-
-    case "updates":
-      if (chunk.data?.status === "done") {
-        console.log("\nRun completed.");
-      }
-      break;
-
-    case "state":
-      if (chunk.state) {
-        console.log("Graph state updated:", chunk.state);
-      }
-      break;
-
-    case "error":
-      console.error("Error in stream:", chunk.data);
-      break;
-  }
-}
-```
-
-Most of the time you care about the `message` event to display the agent's response. The `updates` event signals completion or tool calls. The `state` event carries the full graph state if you need it for debugging or building advanced UI.
-
-## Add authentication
-
-If your API server is configured with JWT authentication (which you set up with `"auth": "jwt"` in `10xgraph.json`), pass a bearer token when creating the client:
-
-```typescript
+// Read the token from the environment, never hard-code it
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
-  authToken: process.env.AGENT_TOKEN, // or pass it directly
+  authToken: process.env.AGENT_TOKEN,
 });
 ```
 
-The client automatically adds the `Authorization: Bearer <token>` header to all requests. For more control, use the `headers` option:
+To send other headers as well, use the `headers` option. A `headers` entry named `Authorization` takes priority over `authToken`.
 
-```typescript
+```ts title="custom-headers.ts"
+import { AgentFlowClient } from "@10xgraph/client";
+
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",
-  headers: {
-    Authorization: `Bearer ${myToken}`,
-    "X-Custom-Header": "value",
-  },
+  headers: { "X-Request-Source": "tutorial" },
 });
 ```
 
-## Understanding the communication flow
+The token is fixed for the lifetime of the client. Create a new client to use a different token. Never put a token in code that ships to a browser; proxy the call through your own backend instead, as shown in [Next.js and React](/docs/client/nextjs-and-react). How the server issues and checks tokens is covered in [Authentication](/docs/server/auth).
 
-When you call `client.invoke()` or `client.stream()`, here is what happens:
+## How a call travels
+
+The client turns your call into one HTTP request and parses the response back into typed objects.
 
 ```mermaid
 sequenceDiagram
@@ -251,34 +256,32 @@ sequenceDiagram
   participant Server as 10xGraph API server
   participant Graph as Python graph
 
-  App->>Client: invoke([Message], config)
+  App->>Client: invoke(messages, options)
   Client->>Server: POST /v1/graph/invoke
-  Server->>Graph: Load thread state, run graph
-  Graph-->>Server: Messages and final state
+  Server->>Graph: Load thread, run graph
+  Graph-->>Server: Messages and state
   Server-->>Client: JSON response
-  Client-->>App: InvokeResult { messages, state, meta }
+  Client-->>App: InvokeResult (messages, meta)
 ```
 
-The `Message.text_message()` helper creates a message in the same format your Python agent expects. You can also construct messages with other content blocks (images, files, etc.), which the client serializes and the server handles.
+`stream()` follows the same path to `POST /v1/graph/stream` and yields NDJSON lines instead of one JSON body.
 
 ## Verify it works
 
-Create a test script that exercises both invoke and streaming:
+Run one script that exercises both calls. If it prints a reply for each, your app is connected.
 
-```typescript
+```ts title="verify.ts"
 import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
 
-const client = new AgentFlowClient({
-  baseUrl: "http://127.0.0.1:8000",
-});
+const client = new AgentFlowClient({ baseUrl: "http://127.0.0.1:8000" });
 
 async function testInvoke() {
   console.log("Testing invoke...");
   const result = await client.invoke(
     [Message.text_message("Hello, what tools do you have?")],
-    { config: { thread_id: "test-invoke" } }
+    { config: { thread_id: "test-invoke" } },
   );
-  console.log("Result:", result.messages.at(-1)?.text());
+  console.log("Reply:", result.messages.at(-1)?.text());
   console.log("Thread ID:", result.meta.thread_id);
 }
 
@@ -287,13 +290,12 @@ async function testStream() {
   let count = 0;
   const stream = client.stream(
     [Message.text_message("Tell me a fact.")],
-    { config: { thread_id: "test-stream" } }
+    { config: { thread_id: "test-stream" } },
   );
-
   for await (const chunk of stream) {
     count++;
     if (chunk.event === StreamEventType.MESSAGE) {
-      process.stdout.write(chunk.message?.text() || "");
+      process.stdout.write(chunk.message?.text() ?? "");
     }
   }
   console.log(`\n(Received ${count} chunks)`);
@@ -307,27 +309,30 @@ async function main() {
 main().catch(console.error);
 ```
 
-Run it:
-
 ```bash
-npx tsx test.ts
+npx tsx verify.ts
 ```
 
-If both tests complete, you have successfully connected your TypeScript app to your 10xGraph server. The agent processed your messages, and you received responses via both invoke and streaming.
+### Common errors
+
+- **`fetch failed` or connection refused:** the server is not running or `baseUrl` is wrong. Check `10xgraph api` is up on the same host and port.
+- **HTTP 401 or 403:** the server requires auth. Pass `authToken` as shown above.
+- **CORS error in a browser:** the server must allow your page's origin through the `ORIGINS` environment variable. See the [production checklist](/docs/server/production-checklist).
+- **`Request timeout after 300000ms`:** the run took longer than `timeout`. Raise `timeout` or use `stream()`.
+
+More fixes are in [Client troubleshooting](/docs/troubleshooting/client).
 
 ## What you learned
 
-- The `AgentFlowClient` abstracts HTTP communication with your running agent server
-- Use `client.invoke()` for a complete response in one call
-- Use `client.stream()` for real-time, incremental updates as the agent processes
-- A `thread_id` persists conversation context across multiple calls
-- `Message.text_message()` creates the message format your agent understands
-- Stream events (`message`, `updates`, `state`, `error`) carry different types of information
-- Authentication is handled automatically when you pass an `authToken` or headers
+- `AgentFlowClient` talks to your running server; only `baseUrl` is required.
+- `client.invoke()` returns the full reply in one call, with `messages` and `meta`.
+- `client.stream()` yields NDJSON chunks; `message`, `updates`, `state` and `error` are the event types.
+- A shared `thread_id` makes the server restore the conversation on every call.
+- `authToken` or `headers` carry credentials, and tokens stay on the server side in browser apps.
 
 ## Next steps
 
-- **TypeScript client reference** — explore all methods and types ([Client API](/docs/reference/client/client))
-- **Manage threads and memory** — read and modify conversation history from your app ([Threads guide](/docs/client/manage-threads))
-- **Build a React UI** — use the client with React hooks for a real application ([React guide](/docs/client/nextjs-and-react))
-- **Production deployment** — production checklist for the API server ([Server production](/docs/server/production-checklist))
+- [Client API reference](/docs/reference/client/client): every method and type.
+- [Manage threads](/docs/client/manage-threads): read and edit conversation history from your app.
+- [Next.js and React](/docs/client/nextjs-and-react): build a UI that streams a reply.
+- [Production checklist](/docs/server/production-checklist): harden the server before you deploy.

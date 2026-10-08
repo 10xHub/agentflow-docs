@@ -5,18 +5,17 @@ description: How to contribute to 10xGraph and to these docs, including the loca
 section: Project
 order: 60
 label: Contributing
-updated: "2026-09-07"
+updated: "2026-10-08"
 ---
 
-10xGraph is MIT licensed and developed in the open. Bug reports, fixes,
-documentation, and examples are all welcome.
+You can contribute to 10xGraph by fixing bugs, improving the code, writing documentation, or adding examples. The project is MIT licensed and developed in the open across four repositories: the Python framework, the API server and CLI, the TypeScript client, and this docs site. Pick the one that matches your change.
 
 | You want to change | Repository |
 | --- | --- |
 | The core Python framework | [10xGraph/10xGraph](https://github.com/10xGraph/10xGraph) |
 | The API server or CLI | [10xGraph/10xgraph-api](https://github.com/10xGraph/10xgraph-api) |
-| The TypeScript client | [10xHub/agentflow-client](https://github.com/10xHub/agentflow-client) |
-| This documentation site | [10xHub/agentflow-docs](https://github.com/10xHub/agentflow-docs) |
+| The TypeScript client | [10xGraph/10xgraph-client](https://github.com/10xGraph/10xgraph-client) |
+| This documentation site | [10xGraph/agentflow-docs](https://github.com/10xGraph/agentflow-docs) |
 
 Every page here has an **Edit this page** link at the bottom that opens the
 right file in the docs repository.
@@ -43,14 +42,13 @@ uv pip install -e ".[google-genai,openai,anthropic,mcp,pg_checkpoint]"
 Before opening a pull request:
 
 ```bash
-pytest                 # coverage gate is 80%
-ruff check . && ruff format .
-mypy .
+uv run pytest --cov --cov-branch   # tests plus the 80% coverage gate
+uv run ruff check . && uv run ruff format .
+uv run mypy tenxgraph/             # new code is type-checked
 ```
 
 Tests that need a real Redis or Postgres are marked `integration` and are
-excluded from a default run. Run them with `--integration` once you have the
-services up.
+skipped by default. Pass `--integration` once you have the services up.
 
 The full guide, including the code of conduct, lives in `CONTRIBUTING.md` in each
 repository.
@@ -59,9 +57,9 @@ repository.
 
 - One concern per pull request. A fix plus a refactor is two pull requests.
 - A test that fails before the change and passes after it.
-- A changelog entry under `## [Unreleased]` in the affected package, using the
-  `Added` / `Changed` / `Fixed` / `Breaking` headings. Breaking changes must
-  include the migration step.
+- A changelog entry under `## [Unreleased]` in `CHANGELOG.md`, under the same
+  headings that file already uses (`Breaking`, `Changed`, `Added`, `Fixed`,
+  `Migration`). Breaking changes must include the migration step.
 - Public API changes come with docs. A new parameter that appears nowhere on this
   site does not exist as far as users are concerned.
 
@@ -69,72 +67,61 @@ repository.
 
 ## Contributing to these docs
 
+The docs are a static [Astro](https://astro.build) site. Pages are `.md` or `.mdx`
+files under `src/content/docs/`, and the folder path is the URL path. Node 22.12
+or newer is required.
+
 ```bash
-git clone https://github.com/10xHub/agentflow-docs
+git clone https://github.com/10xGraph/agentflow-docs
 cd agentflow-docs
 npm install
-npm start          # dev server with hot reload on http://localhost:3000
+npm run dev        # builds the search index, then serves http://localhost:4321
 ```
 
-Checks that must pass:
+Checks that must pass before a pull request:
 
 ```bash
-npm run build              # fails on any broken internal link
-npm run typecheck
-npm run lint:frontmatter   # every page needs title, description, keywords
-npm run verify:api         # documented symbols and routes must exist
+npm run check      # type-check .astro and .ts files
+npm run build      # validates every page's frontmatter, then builds and indexes
 ```
 
-`verify:api` needs the framework installed, because it checks the docs against
-the packages users actually get:
-
-```bash
-pip install 10xgraph 10xgraph-api
-npm run verify:api
-```
+Frontmatter is validated by the collection schema in `src/content.config.ts`, so
+a page with a missing or out-of-range field fails the build.
 
 ### Where a page belongs
 
-The site follows the [Divio](https://docs.divio.com/documentation-system/)
-four-quadrant split. Put a page where its reader is, not where its topic is.
+Put a page where its reader is, not where its topic is. The `section` field in the
+frontmatter must be one of the sections below.
 
-| Section | Purpose | The reader is |
-| --- | --- | --- |
-| `docs/get-started/`, `docs/beginner/` | Guided first steps | Learning by doing, in order |
-| `docs/tutorials/` | Complete worked examples | Following a scenario end to end |
-| `docs/how-to/` | One task, one page | Stuck on a specific job |
-| `docs/concepts/` | Explanation and mental models | Trying to understand, not to type |
-| `docs/reference/` | Exhaustive, factual API surface | Looking something up |
-| `docs/troubleshooting/` | Symptom to cause to fix | Something is broken right now |
+| Section | The reader is |
+| --- | --- |
+| Get started | Learning by doing, in order |
+| Concepts | Trying to understand, not to type |
+| Build agents | Doing a task with the Python library |
+| API server | Running, securing, or deploying the server |
+| TypeScript client | Calling a server from an app |
+| Testing and evaluation | Checking that an agent works |
+| Integrations | Connecting a model, framework, or store |
+| Examples | Following a complete walkthrough |
+| Reference | Looking something up |
+| Troubleshooting | Something is broken right now |
 
-If a topic needs coverage in more than one quadrant, write the reference page and
-link to it. Do not restate the same parameter table in four places: that is how
-the site accumulated four pages about `10xgraph.json`.
+If a topic needs coverage in more than one section, write the reference page and
+link to it. Do not restate the same parameter table in four places.
 
 ### Writing conventions
 
-- **Front matter is required**: `title`, `sidebar_label`, `description`,
-  `keywords`. Keep the description factual and under 165 characters. Never pad a
-  description to hit a length target.
+- **Frontmatter**: `title`, `description` (50 to 170 characters), `section`, and
+  `order` are the core fields. `seoTitle` (15 to 49 characters), `group`, `label`,
+  `updated`, and `faq` (items with `q` and `a`) are optional.
+- **Open with the answer.** Start each page with a 40 to 60 word paragraph that
+  answers the page's question on its own.
 - **Verify before asserting.** Read the source for the signature, the default,
-  and the error message. Three shipped drift bugs came from plausible guesses.
-- **Every code block should run.** Use real import paths. Prefer a short complete
-  example over a long partial one.
-- **Link with relative paths** (`../concepts/state-graph.md`) so the build
-  catches breakage. `onBrokenLinks` is set to `throw`.
-- **Moving or renaming a page requires a redirect** in `docusaurus.config.ts`.
-- Course lessons have extra structural rules in `COURSE_STYLE_GUIDE.md` at the
-  repository root.
-
-### Releasing a docs version
-
-Docs are versioned only when a release line needs to stay available. When work
-starts on the next minor, freeze the current one first:
-
-```bash
-npm run docs:cut-version -- 1.0
-```
-
-That snapshots `docs/` into `versioned_docs/version-1.0`, after which `docs/`
-becomes the unreleased docs and the version dropdown appears in the navbar
-automatically.
+  and the error message. Prefer a short complete example over a long partial one.
+- **Every code block should run.** Use real import paths such as
+  `from tenxgraph.core.graph import StateGraph`.
+- **Link with absolute docs paths** such as `/docs/concepts`, and only to pages
+  that exist.
+- **Moving or renaming a page requires a redirect** in `src/redirects.json`.
+- **Components** such as `Callout` and `Tabs` work only in `.mdx` files. Plain
+  `.md` pages use Markdown only.

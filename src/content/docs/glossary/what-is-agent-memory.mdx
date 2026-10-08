@@ -5,33 +5,33 @@ description: "Agent memory is how an AI agent stores and retrieves information a
 section: Glossary
 order: 60
 label: What is agent memory?
-updated: "2026-09-29"
+updated: "2026-10-08"
 faq:
   - q: What is the difference between agent memory and a database?
-    a: "A database stores structured data retrieved by exact queries. Agent memory includes all three types: in-context memory (the LLM's working context), episodic memory (conversation threads retrieved by thread ID), and semantic memory (facts retrieved by similarity, not exact match). All three can be backed by databases but serve different retrieval patterns."
+    a: "A database stores structured data retrieved by exact queries. Agent memory covers three types: in-context memory (the LLM's working context), episodic memory (conversation threads retrieved by thread ID), and semantic memory (facts retrieved by similarity, not exact match). All three can be backed by databases but serve different retrieval patterns."
   - q: Does 10xGraph support persistent memory out of the box?
     a: Yes. 10xGraph ships with InMemoryCheckpointer for development (state is lost when the process stops) and PgCheckpointer for production (dual-layer Redis + Postgres persistence). When running via 10xgraph api, the checkpointer the graph is compiled with is applied automatically to all requests.
   - q: How does 10xGraph handle multiple users in the same agent?
-    a: Each conversation is scoped to a thread_id. Different users get different thread IDs and their memory is completely isolated. The checkpointer stores state keyed by thread_id — there is no cross-contamination between threads. The API server uses thread IDs from each request.
+    a: Each conversation is scoped to a thread_id. Different users get different thread IDs and their memory is completely isolated. The checkpointer stores state keyed by thread_id, so threads do not share memory. The API server uses thread IDs from each request.
   - q: What is checkpointing in the context of AI agents?
     a: Checkpointing is the practice of saving the full graph state after each processing step to persistent storage. If the server crashes mid-conversation, the state can be restored from the checkpoint. 10xGraph's PgCheckpointer saves to Redis (fast, for active sessions) and Postgres (durable, for long-term history).
   - q: Can I clear an agent's memory?
     a: "Yes. Delete the thread from storage to clear its episodic memory. Via the API: DELETE /v1/threads/{thread_id}. The next invocation with that thread_id will start fresh. For semantic memory stored in a vector store, delete the namespace or specific items."
 ---
 
-**Agent memory is the set of mechanisms by which an AI agent stores and retrieves information — from the current conversation context, to facts from past sessions, to long-term knowledge about the user.** Without memory, each agent invocation starts from scratch, with no knowledge of previous interactions.
-
-There are three distinct memory types for AI agents, each serving a different purpose and requiring a different implementation.
+**Agent memory is the set of mechanisms by which an AI agent stores and retrieves information: the current conversation context, facts from past sessions, and long-term knowledge about the user.** Without memory, each agent invocation starts from scratch. There are three memory types, each with a different purpose and implementation: working, episodic and semantic.
 
 ## The three types of agent memory
 
+Working memory lives in the model's context window, episodic memory is saved thread history, and semantic memory is a searchable long-term store. Most production agents use all three.
+
 ### 1. Working memory (in-context)
 
-The messages in the current conversation window. This is what the LLM can "see" right now — the system prompt, user messages, assistant responses, and tool results in the current session.
+The messages in the current conversation window. This is what the LLM can "see" right now: the system prompt, user messages, assistant responses and tool results in the current session.
 
 **Properties:**
 - Fastest to access (already in the LLM input)
-- Limited by the model's context window (typically 8K–1M tokens depending on the model)
+- Limited by the model's context window (from thousands to about a million tokens, depending on the model)
 - Disappears when the session ends unless explicitly saved
 
 **In 10xGraph:** the `AgentState.context` list is the working memory. It grows with each message exchange.
@@ -41,11 +41,11 @@ The messages in the current conversation window. This is what the LLM can "see" 
 A persistent record of past conversations indexed by thread ID. When you invoke the agent again with the same thread ID, it can reload the conversation history.
 
 **Properties:**
-- Persists across server restarts (stored in Redis + Postgres)
+- Persists across server restarts (when you use a durable checkpointer such as Postgres + Redis)
 - Enables multi-turn conversations that continue across sessions
-- Indexed by thread ID — each user/conversation gets their own thread
+- Indexed by thread ID, so each user/conversation gets their own thread
 
-**In 10xGraph:** implemented via `PgCheckpointer`, which writes graph state to Redis (hot layer) and Postgres (durable layer) after every step.
+**In 10xGraph:** implemented via a checkpointer. `PgCheckpointer` writes graph state to Redis (hot layer) and Postgres (durable layer) after every step; `InMemoryCheckpointer` and `SqliteCheckpointer` also exist.
 
 ### 3. Semantic memory (vector store)
 
@@ -53,17 +53,19 @@ Long-term storage of facts, documents, or user preferences, retrieved by semanti
 
 **Properties:**
 - Unlimited storage (external vector database)
-- Retrieved by similarity search — "what do I know about this user?"
+- Retrieved by similarity search ("what do I know about this user?")
 - Requires embedding the information at write time
 
-**In 10xGraph:** implemented via the `Store` abstraction, with support for Qdrant and Mem0 as backend vector stores.
+**In 10xGraph:** implemented via the store abstraction (`BaseStore`), with `QdrantStore` and `Mem0Store` as backends.
 
 ## Implementing episodic memory (thread persistence)
 
-```python
+Compile the agent with a checkpointer and pass the same `thread_id` on every call. Install `10xgraph[google-genai,pg_checkpoint]`.
+
+```python title="episodic_memory.py"
 from tenxgraph.storage.checkpointer import PgCheckpointer
 from tenxgraph.prebuilt.agent import ReactAgent
-from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state import Message
 
 def get_weather(city: str) -> str:
     """Get weather for a city."""
@@ -75,7 +77,7 @@ agent = ReactAgent(
 )
 
 checkpointer = PgCheckpointer(
-    db_url="postgresql+asyncpg://user:password@localhost/agentflow",
+    postgres_dsn="postgresql://user:password@localhost/graph_db",
     redis_url="redis://localhost:6379/0",
 )
 
@@ -87,7 +89,7 @@ result1 = app.invoke(
     config={"thread_id": "user-123"},  # thread_id scopes the memory
 )
 
-# Second turn — agent remembers the first question
+# Second turn: agent remembers the first question
 result2 = app.invoke(
     {"messages": [Message.text_message("And in London?")]},
     config={"thread_id": "user-123"},  # same thread = same memory
@@ -98,29 +100,34 @@ The second invocation has full context of the first turn because both use `threa
 
 ## Implementing semantic memory (long-term store)
 
-```python
-from tenxgraph.core.state import AgentState
-from tenxgraph.prebuilt import make_agent_memory_tool, make_user_memory_tool
+Give the agent a vector store through `MemoryConfig`. Install `10xgraph[google-genai,qdrant,openai]` and set `OPENAI_API_KEY` for the embeddings.
 
-# Tools for the agent to manage its own long-term memory
+```python title="semantic_memory.py"
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.storage.store import (
+    MemoryConfig,
+    OpenAIEmbedding,
+    create_local_qdrant_store,
+)
+
+# Local Qdrant store with OpenAI embeddings
+store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
+
 agent = ReactAgent(
     model="google/gemini-2.5-flash",
-    tools=[make_user_memory_tool(), make_agent_memory_tool()],
-    system_prompt=[{
-        "role": "system",
-        "content": "You have long-term memory tools. Save important facts about the user and search them when relevant."
-    }],
+    memory=MemoryConfig(store=store),
 )
+app = agent.compile()
 ```
 
-The agent can then decide to save facts ("user prefers Python over JavaScript") and retrieve them in future sessions. `make_user_memory_tool()` scopes the memories to the current user; `make_agent_memory_tool()` scopes them to the agent itself. There is also a single combined `memory_tool` if you would rather expose one tool than two.
+With `MemoryConfig`, the agent retrieves relevant memories before each model call and exposes memory tools so the model can save facts ("user prefers Python over JavaScript") and recall them in future sessions. User-scoped and agent-scoped memory are configured separately. See the memory store guide for the full options.
 
 ## Memory and the API server
 
 When running via `10xgraph api`, memory is automatic once the graph is compiled with a checkpointer. The server uses the checkpointer the compiled graph carries:
 
 ```python title="graph/agent.py"
-app = graph.compile(checkpointer=my_checkpointer)
+app = agent.compile(checkpointer=checkpointer)
 ```
 
 ```json title="10xgraph.json"
@@ -139,13 +146,16 @@ curl -X POST http://localhost:8000/v1/graph/invoke \
 
 ## Context window management
 
-Working memory grows with each turn. Without trimming, long conversations eventually exceed the model's context limit. 10xGraph handles this automatically when `trim_context=True` is set on the agent:
+Working memory grows with each turn, and long conversations eventually exceed the model's context limit. Set `trim_context=True` and register a context manager so 10xGraph trims old messages. `MessageContextManager` keeps the last `max_messages` messages (default 10):
 
-```python
+```python title="trim_context.py"
+from tenxgraph.prebuilt import MessageContextManager
+from tenxgraph.prebuilt.agent import ReactAgent
+
 agent = ReactAgent(
     model="google/gemini-2.5-flash",
-    tools=[get_weather],
-    trim_context=True,  # automatically trim old messages when context is too long
+    context_manager=MessageContextManager(max_messages=20),
+    trim_context=True,  # trim old messages through the context manager
 )
 ```
 

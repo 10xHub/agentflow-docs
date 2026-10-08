@@ -4,7 +4,7 @@ description: What 10xGraph does not do yet, which surfaces are incomplete, and w
 section: Project
 order: 30
 label: Roadmap
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
 This page is the honest inventory: things that are announced, half-built, or
@@ -87,5 +87,4 @@ These are not gaps. They are decisions, and they are unlikely to change.
 
 From 1.0 on, the public API is covered by a deprecation policy: nothing public is
 removed without at least one minor release of warning, and moved modules keep a
-shim. The full policy, and what counts as public API for each package, is in the
-[changelog](/changelog).
+shim.

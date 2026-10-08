@@ -1,25 +1,27 @@
 ---
 title: Checkpointers
 seoTitle: "Checkpointers API reference (Python)"
-description: BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer — state persistence for conversation threads.
+description: Checkpointer implementations for state persistence. BaseCheckpointer, InMemoryCheckpointer, PgCheckpointer, SqliteCheckpointer.
 section: Reference
 group: "Python library"
 order: 210
 label: Checkpointers
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
+A checkpointer persists graph state, messages and thread metadata between requests, so conversations survive restarts and multi-turn runs stay coherent. 10xGraph ships four: the `BaseCheckpointer` abstract class, plus `InMemoryCheckpointer`, `SqliteCheckpointer` and `PgCheckpointer`. Pass one to `graph.compile(checkpointer=...)`.
 
-A checkpointer persists graph state between requests so conversations survive server restarts, threads can be paused and resumed, and multiple turns stay coherent. Without a checkpointer the graph uses an in-memory default that is reset every call.
+For choosing between them, see [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) and [Set up checkpointing](/docs/guides/set-up-checkpointing).
 
 ## Import paths
 
+All four classes are exported from one package. `PgCheckpointer` and `SqliteCheckpointer` raise `ImportError` on construction if their optional dependencies are missing.
+
 ```python
 from tenxgraph.storage.checkpointer import BaseCheckpointer, InMemoryCheckpointer
-# Optional — requires asyncpg
+# Optional: requires the pg_checkpoint extra (asyncpg and redis)
 from tenxgraph.storage.checkpointer import PgCheckpointer
-# Optional — requires aiosqlite
+# Optional: requires the sqlite_checkpoint extra (aiosqlite)
 from tenxgraph.storage.checkpointer import SqliteCheckpointer
 ```
 
@@ -27,15 +29,15 @@ from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
 ## `BaseCheckpointer[StateT]`
 
-Abstract base class for all checkpointer implementations. Provides both async and sync method pairs.
+Abstract base class for all checkpointer implementations. It declares async methods and a sync wrapper for each one, so a custom backend only implements the async side.
 
 ### Abstract async methods
 
-Each abstract method must be implemented by a subclass:
+The methods below are abstract and must be implemented by a subclass:
 
 | Method | Signature | Description |
 |---|---|---|
-| `asetup` | `async () -> Any` | Initialise the storage backend (create tables, connect pools…). |
+| `asetup` | `async () -> Any` | Initialise the storage backend (create tables, connect pools). |
 | `aput_state` | `async (config, state) -> StateT` | Persist a state snapshot for the thread in `config["thread_id"]`. |
 | `aget_state` | `async (config) -> StateT \| None` | Load the latest state snapshot for the thread. |
 | `aclear_state` | `async (config) -> Any` | Delete all state for the thread. |
@@ -53,14 +55,18 @@ Each abstract method must be implemented by a subclass:
 
 ### Sync wrappers
 
-For every `async axxx()` method there is a sync `xxx()` wrapper that calls `asyncio.run()`. Use these only from non-async contexts (e.g. a management script):
+For every `async axxx()` method there is a sync `xxx()` wrapper that runs the async method to completion. Use these only from non-async contexts such as a management script:
 
 ```python
 checkpointer.put_state(config, state)
 checkpointer.get_state(config)
 ```
 
+Optional, non-abstract async methods also exist on the base class, for example `aput_checkpoint`, `aput_cache_value`, `aget_cache_value`, `arequest_stop` and `aget_thread_owner`. Backends override them as needed.
+
 ### Wiring into a graph
+
+Pass the checkpointer to `compile`. The same call works for every backend.
 
 ```python
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
@@ -105,17 +111,14 @@ All access is guarded by per-bucket `asyncio.Lock` instances for safe concurrent
 
 ## `PgCheckpointer`
 
-PostgreSQL-backed checkpointer with optional Redis caching. Production-grade.
+PostgreSQL-backed checkpointer with a Redis cache for the hot state. Use it for production and multi-worker deployments. Both Postgres and Redis connection details are required.
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Optional dependency</p>
 
-Requires `asyncpg`. Install with:
-```
-pip install asyncpg
-```
-Redis caching is optional but recommended for high-traffic deployments:
-```
-pip install redis
+Requires both `asyncpg` and `redis`. Install them with the extra:
+
+```bash
+pip install "10xgraph[pg_checkpoint]"
 ```
 
 </aside>
@@ -125,7 +128,7 @@ from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
     postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
-    redis_url="redis://localhost:6379/0",   # optional
+    redis_url="redis://localhost:6379/0",   # required unless redis or redis_pool is given
 )
 
 await checkpointer.asetup()   # creates tables if they don't exist
@@ -134,19 +137,26 @@ app = graph.compile(checkpointer=checkpointer)
 
 ### Constructor parameters
 
-| Parameter | Type | Description |
-|---|---|---|
-| `postgres_dsn` | `str \| None` | PostgreSQL DSN. Required unless `pg_pool` is provided. |
-| `pg_pool` | `asyncpg.Pool \| None` | Pre-created asyncpg connection pool. |
-| `pool_config` | `dict \| None` | Config passed to `asyncpg.create_pool()` (`min_size`, `max_size`, etc.). |
-| `redis_url` | `str \| None` | Redis URL for caching. |
-| `redis` | `Redis \| None` | Pre-created Redis instance. |
-| `redis_pool` | `ConnectionPool \| None` | Pre-created Redis connection pool. |
-| `cache_ttl` | `int` | Redis cache TTL in seconds. Default: `86400` (24 hours). |
+The constructor takes the connection arguments below as named parameters; the remaining options are read from keyword arguments. It raises `ValueError` if neither `postgres_dsn` nor `pg_pool` is given, or if none of `redis_url`, `redis_pool` or `redis` is given.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `postgres_dsn` | `str \| None` | `None` | PostgreSQL DSN. Required unless `pg_pool` is provided. |
+| `pg_pool` | `asyncpg.Pool \| None` | `None` | Pre-created asyncpg connection pool. |
+| `pool_config` | `dict \| None` | `None` | Config passed to `asyncpg.create_pool()` (`min_size`, `max_size`, etc.). |
+| `redis_url` | `str \| None` | `None` | Redis URL for caching. One of `redis_url`, `redis` or `redis_pool` is required. |
+| `redis` | `Redis \| None` | `None` | Pre-created Redis instance. |
+| `redis_pool` | `ConnectionPool \| None` | `None` | Pre-created Redis connection pool. |
+| `redis_pool_config` | `dict \| None` | `None` | Config passed to `redis.asyncio.ConnectionPool()` if creating a new pool. |
+| `schema` | `str` | `"public"` | PostgreSQL schema name where checkpointer tables live. Must match `^[a-zA-Z_][a-zA-Z0-9_]*$`, otherwise `ValueError`. |
+| `cache_ttl` (kwarg) | `int` | `86400` | Redis cache TTL in seconds (24 hours). |
+| `state_history_limit` (kwarg) | `int` | `20` | Number of historical state snapshots to retain per thread. |
+| `release_resources` (kwarg) | `bool` | `False` | On `arelease()`, close the Postgres and Redis resources even if you passed them in. By default only resources the checkpointer created itself are closed. |
+| `enforce_user_isolation` (kwarg) | `bool` | `True` | Treat `user_id` as an ownership boundary. When enabled, threads and state are scoped to the requesting user. Set to `False` for single-tenant apps or when there is no real user identity. |
 
 ### ID types
 
-`PgCheckpointer` adapts its schema based on the `id_type` registered by the compiled graph's `id_generator`:
+`PgCheckpointer` adapts its schema to the thread and message ID type:
 
 | `id_type` | SQL column type |
 |---|---|
@@ -154,23 +164,24 @@ app = graph.compile(checkpointer=checkpointer)
 | `int` | `SERIAL` |
 | `bigint` | `BIGSERIAL` |
 
-This is set automatically. You do not set it directly.
+The value comes from the `generated_id_type` registered with InjectQ by the compiled graph, defaulting to `string`. You can override it with the `id_type` keyword argument. The `user_id` column type follows the `user_id_type` keyword argument (default `string`).
 
 ### Schema migration
 
-`asetup()` creates the required tables if they do not exist. It is idempotent — safe to call on every startup.
+`asetup()` creates the required tables if they do not exist and applies pending schema migrations. It is idempotent and safe to call on every startup. A failed migration raises `SchemaVersionError`, a subclass of `StorageError`.
 
 ---
 
 ## `SqliteCheckpointer`
 
-Single-file SQLite checkpointer. Stores **everything** — durable state, the hot "realtime" state cache, generic TTL cache, messages, and threads — in one local `.db` file. No Postgres, no Redis. Fully async via `aiosqlite`.
+Single-file SQLite checkpointer. Stores everything in one local `.db` file: durable state, the hot "realtime" state cache, generic TTL cache, messages, and threads. No Postgres, no Redis. Fully async via `aiosqlite`.
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Optional dependency</p>
 
 Requires `aiosqlite`. Install with:
-```
-pip install 10xgraph[sqlite_checkpoint]
+
+```bash
+pip install "10xgraph[sqlite_checkpoint]"
 ```
 
 </aside>
@@ -192,7 +203,7 @@ app = graph.compile(checkpointer=checkpointer)
 | `db_path` | `str \| Path \| None` | Path to the SQLite database file. Defaults to `~/.10xgraph/checkpointer.db`. Parent directories are created on setup. Pass `":memory:"` for an ephemeral in-process database (useful for tests). |
 
 **When to use:**
-- **Client-side / embedded agents.** A desktop app that ships a Python sidecar (Tauri, Electron, PyInstaller) or a local CLI agent — the checkpointer runs entirely on the user's machine, right next to the app.
+- **Client-side / embedded agents.** A desktop app that ships a Python sidecar (Tauri, Electron, PyInstaller) or a local CLI agent. The checkpointer runs entirely on the user's machine, right next to the app.
 - **Dedicated-room deployments.** Each user (or tenant, or session) has their own process and their own `.db` file, so there is exactly one writer per database.
 
 **When NOT to use:**
@@ -200,7 +211,7 @@ app = graph.compile(checkpointer=checkpointer)
 
 ### Design notes
 
-- **One file, no external services.** The realtime state cache lives in a separate SQLite table (`af_state_cache`) rather than Redis; durable state lives in `af_states`. Reads check the cache table first, then fall back to durable state — the same two-layer read path as `PgCheckpointer`, collapsed into one file.
+- **One file, no external services.** The realtime state cache lives in a separate SQLite table (`af_state_cache`) rather than Redis; durable state lives in `af_states`. Reads check the cache table first, then fall back to durable state. This is the same two-layer read path as `PgCheckpointer`, collapsed into one file.
 - **Custom state is preserved.** State is serialized with an embedded `__class_path__` and reconstructed into its exact `AgentState` subclass on read, matching `PgCheckpointer`.
 - **Concurrency.** A single persistent connection is opened lazily with `PRAGMA journal_mode=WAL`; writes are serialized behind an `asyncio.Lock`. Call `await checkpointer.arelease()` (or `checkpointer.release()`) at shutdown to close it.
 - **Isolation.** Data is keyed purely by `thread_id`; `user_id` is not required. `alist_threads` returns every thread in the file, which matches the one-database-per-user model.
@@ -293,9 +304,9 @@ All checkpointer methods accept a `config` dict. The required key is:
 config = {"thread_id": "session-abc123"}
 ```
 
-Additional keys used internally:
-- `user_id` — scopes message searches by user.
-- `run_id` — tracks a specific invocation.
+Optional keys:
+- `user_id`: scopes message searches by user.
+- `run_id`: tracks a specific invocation.
 
 ---
 
@@ -304,7 +315,9 @@ Additional keys used internally:
 | Error | Cause | Fix |
 |---|---|---|
 | `StorageError` | Unrecoverable PostgreSQL error. | Check Postgres logs and DSN config. |
-| `TransientStorageError` | Temporary Postgres failure. | Automatically retried by the framework. |
-| `ImportError: asyncpg` | `PgCheckpointer` used without `asyncpg` installed. | Run `pip install asyncpg`. |
-| `ImportError: aiosqlite` | `SqliteCheckpointer` used without `aiosqlite` installed. | Run `pip install 10xgraph[sqlite_checkpoint]`. |
+| `TransientStorageError` | Temporary Postgres failure. | Retry the call. |
+| `ImportError: PgCheckpointer requires 'asyncpg'` or `'redis'` | `PgCheckpointer` used without both packages installed. | Run `pip install "10xgraph[pg_checkpoint]"`. |
+| `ValueError: Either redis_url, redis_pool or redis instance must be provided.` | `PgCheckpointer` created without Redis details. | Pass `redis_url`, `redis` or `redis_pool`. |
+| `SchemaVersionError` | A schema migration failed during `asetup()`. | Check database permissions and the `schema` name. |
+| `ImportError: SqliteCheckpointer requires 'aiosqlite'` | `SqliteCheckpointer` used without `aiosqlite` installed. | Run `pip install "10xgraph[sqlite_checkpoint]"`. |
 | State lost between requests | Using `InMemoryCheckpointer` with multiple workers. | Switch to `PgCheckpointer` or ensure a single-process deployment. |

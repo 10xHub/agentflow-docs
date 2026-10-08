@@ -1,27 +1,25 @@
 ---
 title: Graph control
 seoTitle: "Graph control methods in the TS client"
-description: "Reference for graph-control methods on the TypeScript client: ping, graph, graphTools, observability, graphStateSchema, stopGraph, fixGraph, and setup."
+description: "Reference for graph-control methods on the TypeScript client: ping, graph, graphTools, observability, graphStateSchema, stopGraph, and fixGraph."
 section: Reference
 group: "TypeScript client"
 order: 470
 label: Graph control
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-Seven methods on `AgentFlowClient` describe or control the graph itself rather than a single conversation: what the graph is, what tools it has, what its state looks like, what a run did, and how to stop or repair one.
+Seven methods on `AgentFlowClient` inspect the graph and control its execution. They check server health, retrieve the graph's topology, list available tools, fetch observability data for a run, return the state schema, and stop or repair a thread. All are imported from `@10xgraph/client` and called on a client instance.
 
-**Source:** `src/client.ts`, `src/endpoints/`
-
-| Method | Endpoint | Returns |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| `ping()` | `GET /ping` | `Promise<PingResponse>` |
-| `graph()` | `GET /v1/graph` | `Promise<GraphResponse>` |
-| `graphTools()` | `GET /v1/graph/tools` | `Promise<GraphToolsResponse>` |
-| `observability(threadId, runId?)` | `GET /v1/observability/{thread_id}` | `Promise<ObservabilityResponse>` |
-| `graphStateSchema()` | `GET /v1/graph:StateSchema` | `Promise<StateSchemaResponse>` |
-| `stopGraph(threadId, config?)` | `POST /v1/graph/stop` | `Promise<StopGraphResponse>` |
-| `fixGraph(threadId, config?)` | `POST /v1/graph/fix` | `Promise<FixGraphResponse>` |
+| `ping()` | `GET /ping` | Verify server connectivity |
+| `graph()` | `GET /v1/graph` | Get graph topology and capabilities |
+| `graphTools()` | `GET /v1/graph/tools` | List available tools |
+| `observability(threadId, runId?)` | `GET /v1/observability/{thread_id}` | Retrieve traces and metrics for a run |
+| `graphStateSchema()` | `GET /v1/graph:StateSchema` | Get the state schema as JSON Schema |
+| `stopGraph(threadId, config?)` | `POST /v1/graph/stop` | Request graph to halt execution |
+| `fixGraph(threadId, config?)` | `POST /v1/graph/fix` | Repair thread with orphaned tool calls |
 
 Every response follows the same envelope: the payload under `data`, and `{ request_id, timestamp, message }` under `metadata`.
 
@@ -36,6 +34,7 @@ ping(): Promise<PingResponse>
 Liveness check. Use it to fail fast at startup instead of discovering a bad `baseUrl` on the first `invoke()`.
 
 ```ts
+// Response type for ping()
 interface PingResponse {
   data: string;                 // the server's pong payload
   metadata: ResponseMetadata;
@@ -43,6 +42,12 @@ interface PingResponse {
 ```
 
 ```ts
+import { AgentFlowClient } from '@10xgraph/client';
+
+const baseUrl = 'http://127.0.0.1:8000';
+const client = new AgentFlowClient({ baseUrl });
+
+// Fail fast at startup if the server is unreachable.
 try {
   await client.ping();
 } catch {
@@ -50,7 +55,7 @@ try {
 }
 ```
 
-`ping()` does not require the graph to be healthy — it only proves the HTTP server is answering. Use `graph()` when you need to know the graph itself loaded.
+`ping()` does not require the graph to be healthy. It only proves the HTTP server is answering. Use `graph()` when you need to know the graph itself loaded.
 
 ---
 
@@ -148,7 +153,7 @@ interface GraphToolsResponse {
 
 A graph with no tool nodes returns `nodes: []` and `tool_count: 0`. That is a valid graph, not an error.
 
-See [how-to/client/graph-utilities](/docs/client/graph-utilities) for worked examples, including verifying that your remote tools registered.
+See [graph-utilities](/docs/client/graph-utilities) for worked examples, including verifying that your remote tools registered.
 
 ---
 
@@ -274,6 +279,7 @@ stopGraph(threadId: string, config?: Record<string, any>): Promise<StopGraphResp
 Sets a stop flag on the thread. The graph checks it between nodes and halts before starting the next one.
 
 ```ts
+// Declared TypeScript type
 interface StopGraphResponse {
   data: {
     success: boolean;
@@ -285,7 +291,9 @@ interface StopGraphResponse {
 }
 ```
 
-It is a request, not a guarantee: the currently executing node runs to completion, so one more message may still arrive. Thread state is preserved, so the next call on the same `thread_id` resumes from where the flag was checked. Stopping a thread that is not running is not an error — `success` can still be `true`.
+The server currently fills `data` with the result of the core stop call instead: `{ ok: boolean, running?: boolean, reason?: string }`. `reason` is `"not-running"` when the thread exists but is idle, `"no-state"` when the thread has no state, and `"no-checkpointer"` when the graph has no checkpointer (stop needs one). Do not rely on `success`, `message` or `stopped_at`; check `data.ok` and `data.running` with a cast if you need the outcome.
+
+It is a request, not a guarantee: the currently executing node runs to completion, so one more message may still arrive. Stopping a thread that is not running is not an error.
 
 Breaking out of a `for await` loop over `stream()` closes your end of the connection but does not stop the graph. Call `stopGraph()` as well.
 
@@ -297,7 +305,7 @@ Breaking out of a `for await` loop over `stream()` closes your end of the connec
 fixGraph(threadId: string, config?: Record<string, any>): Promise<FixGraphResponse>
 ```
 
-Repairs a thread whose history contains tool calls with no matching results, which happens when a run is cut off mid-tool-call. The LLM sees the orphaned calls and believes it is still waiting, so the thread appears stuck.
+Repairs a thread by removing every message in its saved state that has a tool call with empty `content`, which can be left behind when a run is cut off mid-tool-call. Those leftovers can leave the thread stuck.
 
 ```ts
 interface FixGraphResponse {
@@ -311,7 +319,7 @@ interface FixGraphResponse {
 }
 ```
 
-`removed_count: 0` means the thread was already valid.
+`removed_count: 0` means no such messages were found. If the thread has no saved state, the server returns `success: false` with `removed_count: 0`.
 
 ---
 
@@ -359,6 +367,18 @@ The constructor takes a partial object and `Object.assign`s it, so a graph compi
 An interrupt is not an error. The run ends normally and the state comes back paused:
 
 ```ts
+import { AgentFlowClient, Message } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://127.0.0.1:8000' });
+
+// Placeholder: replace with your own approval UI.
+async function askUser(reason: string, data?: Record<string, any>): Promise<boolean> {
+  console.log('Approval needed:', reason, data);
+  return true;
+}
+
+const userMessage = Message.text_message('Delete the old reports', 'user');
+
 const result = await client.invoke([userMessage], {
   config: { thread_id: 'approval-1' },
 });
@@ -370,7 +390,7 @@ if (interrupt) {
   const approved = await askUser(interrupt.reason, interrupt.data);
 
   // Resume by invoking the same thread again.
-  await client.invoke([Message.text_message(approved ? 'approved' : 'rejected')], {
+  await client.invoke([Message.text_message(approved ? 'approved' : 'rejected', 'user')], {
     config: { thread_id: 'approval-1' },
   });
 }
@@ -382,13 +402,12 @@ if (interrupt) {
 
 ## What you learned
 
-- `ping()` proves the server answers; `graph()` proves the graph loaded and reports what the deployment supports.
+- `ping()` and `graph()` give you early feedback on server health and what the deployment supports.
 - `graphTools()` shows what the model can actually call, tagged `local`, `mcp`, or `remote`.
-- `observability()` returns one run at a time as a span tree plus token usage; `run_ids` lists the rest.
-- `stopGraph()` is cooperative and `fixGraph()` repairs orphaned tool calls.
-- `setup()` transmits the schemas of your client-side tools; handlers never leave your process.
-- `AgentState.execution_meta.interrupt` is how a client detects that the graph is waiting on a human.
+- `observability()` reconstructs a run as spans and events with token usage, and `run_ids` lists all runs.
+- `stopGraph()` halts execution cooperatively; `fixGraph()` removes messages with empty tool calls from a thread.
+- `AgentState.execution_meta.interrupt` tells you when the graph is paused waiting for human input.
 
 ## Next step
 
-See [how-to/client/graph-utilities](/docs/client/graph-utilities) for task-oriented recipes, or [Register remote tools](/docs/client/remote-tools) for registering the client-side tools that `setup()` transmits.
+See [graph-utilities](/docs/client/graph-utilities) for task-oriented recipes, or [remote-tools](/docs/client/remote-tools) for registering client-side tools that the server can invoke.

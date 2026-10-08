@@ -1,207 +1,192 @@
 ---
 title: Testing
 seoTitle: "Testing API reference (Python)"
-description: TestAgent, QuickTest, TestResult, MockMCPClient — test 10xGraph graphs without making LLM API calls.
+description: "TestAgent, QuickTest, TestContext, QuickEval, and mocks for unit tests and evaluations without LLM API calls."
 section: Reference
 group: "Python library"
 order: 260
 label: Testing
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
+The `tenxgraph.qa.testing` module lets you test graphs without calling an LLM. `TestAgent` replaces `Agent` with canned responses, `QuickTest` builds and runs a graph in one call, `TestContext` isolates setup, and the mocks stand in for MCP clients, tools and stores. `QuickEval` lives in `tenxgraph.qa.evaluation` and runs evaluations in one call.
 
-Use the testing utilities to write fast, deterministic unit and integration tests for your graphs. `TestAgent` replaces `Agent` with a mock that returns pre-defined responses, so your tests never hit the LLM API.
+For a walkthrough with a full test, see [Unit tests](/docs/testing/unit-tests). For evaluation concepts, see [Evaluation](/docs/testing/evaluation).
 
 ## Import paths
 
+All testing classes come from one module. `QuickEval` comes from the evaluation package.
+
 ```python
 from tenxgraph.qa.testing import (
-    TestAgent,
-    QuickTest,
-    TestResult,
+    InMemoryStore,
     MockMCPClient,
     MockToolRegistry,
-    InMemoryStore,
+    QuickTest,
+    TestAgent,
+    TestContext,
+    TestResult,
 )
+
+from tenxgraph.qa.evaluation import QuickEval
 ```
 
----
+## TestAgent
 
-## `TestAgent`
-
-A drop-in replacement for `Agent` that returns predefined responses in order.
+`TestAgent` is a drop-in replacement for `Agent` that returns predefined responses and records every call. When the list runs out it cycles back to the start.
 
 ```python
 from tenxgraph.qa.testing import TestAgent
 
-agent = TestAgent(
-    model="test-model",
-    responses=["Hello from the test agent!", "How can I help?"],
-)
+agent = TestAgent(responses=["Hello from the test agent!", "How can I help?"])
 ```
 
-### Constructor parameters
+### TestAgent constructor parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `model` | `str` | `"test-model"` | Model identifier string (unused — for API compatibility only). |
-| `responses` | `list[str \| dict]` | `[]` | Predefined responses returned in sequence. Each invocation consumes the next item. |
-| `system_prompt` | `list[dict] \| None` | `None` | Accepted for API compatibility. Not used. |
-| `**kwargs` | any | — | All other `Agent` constructor kwargs are accepted and silently ignored. |
+| `model` | `str` | `"test-model"` | Model identifier. Kept for compatibility, never called. |
+| `system_prompt` | `list[dict] \| None` | `None` | System prompt. Passed to message conversion only. |
+| `responses` | `list[str] \| None` | `None` | Responses returned in order, cycling. An empty or missing list becomes `["Test response"]`. |
+| `tools` | `list \| None` | `None` | Tools to simulate. When non-empty, the first call returns tool calls instead of a response. |
+| `simulate_tool_calls` | `bool` | `False` | Force tool-call simulation on the first call. Needs `tools`. |
+| `**kwargs` | any | none | Other `Agent` keyword arguments, passed to the base class. |
 
-### Attributes
+### TestAgent attributes and methods
 
-| Attribute | Type | Description |
+| Member | Returns | Description |
 |---|---|---|
-| `call_count` | `int` | Number of times the agent was invoked. |
-| `call_history` | `list[dict]` | Details of each invocation (state, config). |
+| `call_count` | `int` | Number of calls so far. |
+| `call_history` | `list[dict]` | One dict per call with keys `messages`, `tools` and `kwargs`. |
+| `assert_called()` | `None` | Fails if the agent was never called. |
+| `assert_called_times(n)` | `None` | Fails unless the call count equals `n`. |
+| `assert_not_called()` | `None` | Fails if the agent was called. |
+| `get_last_messages()` | `list[dict]` | Messages of the latest call, or `[]`. |
+| `get_last_tools()` | `list \| None` | Tool specs of the latest call, or `None`. |
+| `reset()` | `None` | Clears the call count and history. |
 
-### Tool call simulation
-
-Pass raw tool call dicts in the responses list to simulate the agent calling a tool:
-
-```python
-agent = TestAgent(
-    responses=[
-        {
-            "content": "",
-            "tools_calls": [{
-                "id": "call_abc",
-                "function": {
-                    "name": "get_weather",
-                    "arguments": {"location": "London"},
-                },
-            }],
-        },
-        "The weather in London is sunny and 22°C.",
-    ]
-)
-```
-
-### Using in a graph
+### Run a TestAgent in a graph
 
 ```python
-from tenxgraph.core.graph import StateGraph, ToolNode
+# Run a one-node graph with a TestAgent instead of a real model.
+import asyncio
+
+from tenxgraph.core.graph import StateGraph
+from tenxgraph.core.state import Message
 from tenxgraph.qa.testing import TestAgent
-from tenxgraph.utils import START, END
+from tenxgraph.utils import END
 
-test_agent = TestAgent(responses=["Hello!"])
 
-graph = StateGraph()
-graph.add_node("MAIN", test_agent)
-graph.set_entry_point("MAIN")
-graph.add_edge("MAIN", END)
+async def main() -> None:
+    test_agent = TestAgent(responses=["Hello!"])
 
-app = graph.compile()
-result = await app.ainvoke({"messages": [Message.text_message("Hi")]})
+    graph = StateGraph()
+    graph.add_node("MAIN", test_agent)
+    graph.set_entry_point("MAIN")
+    graph.add_edge("MAIN", END)
+
+    app = graph.compile()
+    result = await app.ainvoke({"messages": [Message.text_message("Hi")]})
+    print(result["messages"][-1].text())
+    test_agent.assert_called_times(1)
+
+
+asyncio.run(main())
 ```
 
----
+To swap a real agent for a `TestAgent` in an existing graph, call `graph.override_node("MAIN", test_agent)` before compiling.
 
-## `QuickTest`
+### Simulate a tool call
 
-High-level helper that builds, compiles, and runs a graph in one call. Reduces test boilerplate from 20 lines to 3.
+Pass `tools` to make the first call return a tool call for each tool, with the arguments `{"query": "test query"}`. Later calls return your responses. Use it with a `ToolNode` and conditional edges, or let `QuickTest.with_tools` build that graph for you.
 
 ```python
-from tenxgraph.qa.testing import QuickTest
+from tenxgraph.qa.testing import TestAgent
 
-result = await QuickTest.single_turn(
-    agent_response="Hello! How can I help?",
-    user_message="Hi there",
-)
-result.assert_contains("Hello")
+
+def get_weather(query: str) -> str:
+    """Return a canned forecast."""
+    return "sunny"
+
+
+agent = TestAgent(responses=["It is sunny."], tools=[get_weather])
 ```
 
-### `QuickTest.single_turn`
+## QuickTest
 
-```python
-result = await QuickTest.single_turn(
-    agent_response="The capital is Paris.",
-    user_message="What is the capital of France?",
-    model="test-model",
-    config={"thread_id": "test-1"},
-)
-```
-
-Builds a one-node `TestAgent → END` graph and runs one turn. Returns `TestResult`.
-
-### `QuickTest.multi_turn`
-
-```python
-result = await QuickTest.multi_turn(
-    conversation=[
-        ("Hello", "Hi there!"),
-        ("What can you do?", "I can answer questions."),
-        ("Tell me a joke", "Why did the chicken cross the road?"),
-    ],
-)
-result.assert_contains("chicken")
-```
-
-Builds a one-node graph and replays each turn in sequence, accumulating messages in state. Returns the `TestResult` from the final turn.
-
-### `QuickTest.with_tools`
-
-```python
-result = await QuickTest.with_tools(
-    query="What's the weather in Paris?",
-    response="It's sunny and 22°C in Paris.",
-    tools=["get_weather"],
-)
-result.assert_tool_called("get_weather")
-```
-
-Builds a `TestAgent → ToolNode → TestAgent → END` pattern and verifies tools were invoked. Returns `TestResult`.
-
----
-
-## `TestResult`
-
-Returned by `QuickTest` and wraps the raw graph output with assertion helpers.
-
-```python
-result.assert_contains("Hello")
-result.assert_not_contains("Error")
-result.assert_equals("Exact expected response")
-result.assert_tool_called("get_weather")
-result.assert_tool_called("search", query="weather")   # with arg check
-result.assert_tool_not_called("send_email")
-result.assert_message_count(3)
-result.assert_no_errors()
-```
-
-### Attributes
-
-| Attribute | Type | Description |
-|---|---|---|
-| `final_response` | `str` | The last text response from the agent. |
-| `messages` | `list[Message]` | All messages from the run. |
-| `tool_calls` | `list[dict]` | All tool calls made during the run. |
-| `state` | `dict` | Full output dict from `ainvoke()`. |
-| `passed` | `bool` | `True` unless an assertion has failed. |
-
-### Methods
+`QuickTest` builds a graph around a `TestAgent`, runs it and returns a `TestResult`. All methods are async class methods.
 
 | Method | Description |
 |---|---|
-| `assert_contains(text)` | `final_response` must contain `text`. |
-| `assert_not_contains(text)` | `final_response` must NOT contain `text`. |
-| `assert_equals(expected)` | `final_response` must equal `expected` exactly. |
-| `assert_tool_called(name, **args)` | A tool with `name` must have been called. Pass `**args` to also check argument values. |
-| `assert_tool_not_called(name)` | A tool with `name` must NOT have been called. |
-| `assert_message_count(n)` | Total message count must equal `n`. |
-| `assert_no_errors()` | No `ErrorBlock` in any message. |
+| `single_turn(agent_response, user_message="Hello", model="test-model", config=None)` | One user message, one canned response. |
+| `multi_turn(conversation, model="test-model", config=None)` | `conversation` is a list of `(user_message, agent_response)` tuples. Replays each turn and accumulates messages. Returns the result of the last turn. |
+| `with_tools(query, response, tools, tool_responses=None, model="test-model", config=None)` | `tools` is a list of tool names or functions. Builds a `TestAgent`, `ToolNode`, `TestAgent` loop and records tool calls. `tool_responses` maps a tool name to its mock output. |
+| `custom(agent, user_message, graph_setup=None, config=None)` | Runs any agent. `graph_setup` is a callable that receives the `StateGraph` and returns it, so you can add nodes or edges. |
 
-All assertion methods return `self` for chaining.
-
----
-
-## `MockMCPClient`
-
-Fake MCP client for testing nodes that use MCP tools.
+Every method returns a `TestResult`. Only `with_tools` records tool calls; the others return an empty `tool_calls` list.
 
 ```python
+# Run a single turn and a tool scenario.
+import asyncio
+
+from tenxgraph.qa.testing import QuickTest
+
+
+async def main() -> None:
+    result = await QuickTest.single_turn(
+        agent_response="The capital is Paris.",
+        user_message="What is the capital of France?",
+    )
+    result.assert_contains("Paris")
+
+    result = await QuickTest.with_tools(
+        query="What's the weather in Paris?",
+        response="It's sunny in Paris.",
+        tools=["get_weather"],
+        tool_responses={"get_weather": "sunny"},
+    )
+    result.assert_tool_called("get_weather")
+
+
+asyncio.run(main())
+```
+
+## TestResult
+
+`TestResult` wraps the output of a `QuickTest` run and adds assertion helpers. Each assertion raises `AssertionError` on failure and returns `self`, so calls chain.
+
+```python
+result.assert_contains("Hello").assert_no_errors().assert_message_count(2)
+```
+
+### TestResult attributes
+
+| Attribute | Type | Description |
+|---|---|---|
+| `final_response` | `str` | Text of the last response. |
+| `messages` | `list` | All messages from the run. |
+| `tool_calls` | `list[dict]` | Recorded calls, each with `name` and `args`. |
+| `state` | `dict` | Raw output of `ainvoke()`. |
+| `passed` | `bool` | Starts `True`. Truthiness of the result equals this value. |
+
+### TestResult methods
+
+| Method | Description |
+|---|---|
+| `assert_contains(text)` | `final_response` contains `text`. |
+| `assert_not_contains(text)` | `final_response` does not contain `text`. |
+| `assert_equals(expected)` | `final_response` equals `expected` exactly. |
+| `assert_tool_called(tool_name, **expected_args)` | The tool was called. Extra keyword arguments must match the recorded `args`. |
+| `assert_tool_not_called(tool_name)` | The tool was not called. |
+| `assert_message_count(count)` | The number of messages equals `count`. |
+| `assert_no_errors()` | No message has the role `"error"`. |
+
+## MockMCPClient
+
+`MockMCPClient` is a fake MCP client for testing nodes that use MCP tools. Register tools with `add_tool`, pass the client to `ToolNode`, then inspect the recorded calls.
+
+```python
+from tenxgraph.core.graph import ToolNode
 from tenxgraph.qa.testing import MockMCPClient
 
 mock_mcp = MockMCPClient()
@@ -212,99 +197,161 @@ mock_mcp.add_tool(
     handler=lambda query: f"Found results for: {query}",
 )
 
-tools = ToolNode(client=mock_mcp)
-graph.add_node("TOOL", tools)
+tool_node = ToolNode([], client=mock_mcp)
 ```
 
----
+| Method | Returns | Description |
+|---|---|---|
+| `add_tool(name, description="", parameters=None, handler=None)` | `MockMCPClient` | Register a tool. `parameters` is a dict of JSON schema properties, and every key is marked required. Without `handler`, calls return `"Mock result for <name>"`. Sync and async handlers both work. |
+| `list_tools()` | `list[dict]` | Async. Tool definitions in MCP format. |
+| `call_tool(name, arguments)` | `Any` | Async. Runs the handler and records the call. Raises `ValueError` for an unknown tool. |
+| `was_called(name)` | `bool` | Whether the tool was called. |
+| `call_count(name)` | `int` | Number of calls. |
+| `get_calls(name)` | `list[dict]` | Call records, each with `arguments`. |
+| `get_last_call(name)` | `dict \| None` | The latest record. |
+| `assert_called(name)` | `None` | Fails if never called. |
+| `assert_called_with(name, **expected_args)` | `None` | Checks the latest call's arguments. |
+| `reset()` | `None` | Clears call history, keeps tools. |
+| `clear()` | `None` | Clears tools and call history. |
 
-## `MockToolRegistry`
+## MockToolRegistry
 
-Tracks which tools were called and with what arguments. Useful for asserting tool behaviour in integration tests.
+`MockToolRegistry` registers plain functions as tools and records every call with its arguments. Use it to assert tool behavior in graph tests.
 
 ```python
+from tenxgraph.core.graph import ToolNode
 from tenxgraph.qa.testing import MockToolRegistry
 
 registry = MockToolRegistry()
 registry.register("get_weather", lambda location: f"Sunny in {location}")
-registry.register("search", lambda q: [{"title": "Result", "url": "http://..."}])
 
-tools = ToolNode(list(registry.funcs.values()))
+tools = ToolNode(registry.get_tool_list())
 
 # ... run the graph ...
 
 assert registry.was_called("get_weather")
-assert registry.get_call_count("get_weather") == 1
-args = registry.get_last_args("get_weather")
-assert args["location"] == "London"
+assert registry.call_count("get_weather") == 1
+assert registry.get_last_call("get_weather")["kwargs"]["location"] == "London"
 ```
 
----
+| Method | Returns | Description |
+|---|---|---|
+| `register(name, mock_func, description=None)` | `MockToolRegistry` | Wrap a function so calls are recorded. The wrapper takes the registered name. `description` becomes its docstring. |
+| `register_async(name, mock_func, description=None)` | `MockToolRegistry` | Same for an async function. |
+| `get_tool_list()` | `list[Callable]` | Wrapped functions, ready for `ToolNode`. |
+| `was_called(name)` | `bool` | Whether the tool was called. |
+| `call_count(name)` | `int` | Number of calls. |
+| `get_calls(name)` | `list[dict]` | Call records, each with `args` and `kwargs`. |
+| `get_last_call(name)` | `dict \| None` | The latest record. |
+| `assert_called(name)` | `None` | Fails if never called. |
+| `assert_called_with(name, **expected_kwargs)` | `None` | Checks the keyword arguments of the latest call. |
+| `assert_call_count(name, expected)` | `None` | Fails unless the call count equals `expected`. |
+| `reset()` | `None` | Clears call history, keeps functions. |
+| `clear()` | `None` | Clears functions and call history. |
 
-## `InMemoryStore` (testing)
+The `functions` and `calls` dicts are public attributes.
 
-A lightweight in-memory `BaseStore` for tests that need memory functionality without a real vector database.
+## InMemoryStore
+
+`InMemoryStore` is a `BaseStore` that keeps memories in a dict, so tests need no vector database or embeddings. Search is a case-insensitive substring match on content, unless you preset results.
 
 ```python
+from tenxgraph.core.graph import StateGraph
 from tenxgraph.qa.testing import InMemoryStore
 
 store = InMemoryStore()
-app = graph.compile(store=store)
+# store.set_search_results([...]) makes every search return those results.
+
+graph = StateGraph()
+# ... add nodes ...
+# app = graph.compile(store=store)
 ```
 
-Stores memories in a Python dict. Similarity search returns all stored memories sorted by insertion order (no embeddings). For tests that only care about whether memories are stored and retrieved.
+| Member | Description |
+|---|---|
+| `memories` | Dict of stored `MemorySearchResult` objects by id. |
+| `set_search_results(results)` | Preset results that `asearch` returns (cut to `limit`) instead of searching. |
+| `clear()` | Removes all memories and preset results. |
 
----
+It implements the async `BaseStore` methods: `asetup`, `astore`, `asearch`, `aget`, `aget_all`, `aupdate`, `adelete`, `aforget_memory` and `arelease`. See [Memory stores reference](/docs/reference/python/memory-stores) for their signatures.
 
-## Full test example
+## TestContext
+
+`TestContext` creates an isolated dependency container, an `InMemoryStore` and a `MockToolRegistry`, plus factory methods for graphs and test agents. It is optional, and useful when tests should not share state.
 
 ```python
-import pytest
-from tenxgraph.core.graph import StateGraph, ToolNode
-from tenxgraph.core.state import AgentState, Message
-from tenxgraph.qa.testing import TestAgent, TestResult, QuickTest
+# Build and compile a graph inside an isolated test context.
+from tenxgraph.qa.testing import TestContext
 from tenxgraph.utils import END
 
-@pytest.mark.asyncio
-async def test_single_response():
-    result = await QuickTest.single_turn(
-        agent_response="The capital of France is Paris.",
-        user_message="What is the capital of France?",
-    )
-    result.assert_contains("Paris")
-
-@pytest.mark.asyncio
-async def test_tool_call_path():
-    """Verify the agent calls the weather tool."""
-    result = await QuickTest.with_tools(
-        query="What's the weather in Tokyo?",
-        response="It's rainy and 18°C in Tokyo.",
-        tools=["get_weather"],
-    )
-    result.assert_tool_called("get_weather")
-    result.assert_contains("Tokyo")
-
-@pytest.mark.asyncio
-async def test_custom_state_preserved():
-    """Verify custom state fields survive a round-trip."""
-    from tenxgraph.utils import ResponseGranularity
-    from pydantic import Field
-
-    class CustomerState(AgentState):
-        customer_id: str = ""
-
-    agent = TestAgent(responses=["Done processing order."])
-    graph = StateGraph(CustomerState(customer_id="CUST-001"))
-    graph.add_node("MAIN", agent)
+with TestContext() as ctx:
+    graph = ctx.create_graph()
+    graph.add_node("MAIN", ctx.create_test_agent(responses=["Hello!"]))
     graph.set_entry_point("MAIN")
     graph.add_edge("MAIN", END)
+    app = graph.compile(store=ctx.get_store())
+```
 
-    app = graph.compile()
-    result = await app.ainvoke(
-        {"messages": [Message.text_message("Process my order")]},
-        response_granularity=ResponseGranularity.FULL,
+The constructor takes no arguments. It sets the public attributes `container` (an `InjectQ`) and `store`. Entering the context activates the container. Leaving it clears the store and the mock tools.
+
+| Method | Returns | Description |
+|---|---|---|
+| `create_graph(state=None)` | `StateGraph` | New graph bound to the isolated container. |
+| `create_test_agent(responses=None, model="test-model", system_prompt=None)` | `TestAgent` | New `TestAgent`. |
+| `get_store()` | `InMemoryStore` | The context's store. |
+| `get_mock_tools()` | `MockToolRegistry` | The context's mock tool registry. |
+| `register_mock_tool(name, func, description=None)` | `TestContext` | Register a mock tool and return `self`. |
+| `reset()` | `None` | Clears the store and the mock tools. |
+
+## QuickEval
+
+`QuickEval` runs evaluations with a few lines. Each method is an async class method (except `run_sync`), builds an eval set and config, runs `AgentEvaluator` and returns an `EvalReport`. It needs a compiled graph and a `TrajectoryCollector` wired into it.
+
+`create_eval_app(graph)` from `tenxgraph.qa.evaluation.testing` takes an uncompiled `StateGraph` and returns the compiled app and its collector.
+
+```python
+# Quick checks against a graph compiled with a collector.
+import asyncio
+
+from tenxgraph.qa.evaluation import QuickEval
+from tenxgraph.qa.evaluation.testing import create_eval_app
+
+
+async def run(graph) -> None:
+    app, collector = create_eval_app(graph)  # graph is an uncompiled StateGraph
+
+    await QuickEval.check(
+        graph=app,
+        collector=collector,
+        query="What is 2+2?",
+        expected_response_contains="4",
     )
 
-    state: CustomerState = result["state"]
-    assert state.customer_id == "CUST-001"
+    await QuickEval.batch(
+        graph=app,
+        collector=collector,
+        test_pairs=[("Hello", "Hi there"), ("What can you do?", "I can help")],
+    )
+
+    await QuickEval.tool_usage(
+        graph=app,
+        collector=collector,
+        test_cases=[("What's the weather?", "It's sunny", ["get_weather"])],
+    )
 ```
+
+### QuickEval methods
+
+Every method takes `graph` and `collector` first, and ends with `verbose=True` and `print_results=True`. `verbose` logs progress, and `print_results` prints the report to the console.
+
+| Method | Parameters before `verbose` | Description |
+|---|---|---|
+| `check` | `query`, `expected_response_contains=None`, `expected_response_equals=None`, `expected_tools=None`, `threshold=0.7` | One query. With `expected_tools` it uses a custom config (tool threshold 1.0), otherwise the `quick_check` preset. |
+| `preset` | `preset` (an `EvalConfig`), `eval_set` (`EvalSet` or JSON path) | Run an eval set with a config from `EvalPresets`. |
+| `batch` | `test_pairs` (`(query, expected_response)` tuples), `threshold=0.7` | Run many pairs with the `quick_check` preset and the ROUGE threshold you set. |
+| `tool_usage` | `test_cases` (`(query, expected_response, expected_tools)` tuples), `strict=True` | Run with the `tool_usage` preset. |
+| `conversation_flow` | `conversation` (`(query, expected_response)` tuples), `threshold=0.8` | One multi-turn case with the `conversation_flow` preset. |
+| `from_builder` | `builder` (`EvalSetBuilder`), `config=None` | Build the set from a builder. Defaults to `quick_check`. |
+| `run_sync` | `eval_set` (`EvalSet` or JSON path), `config=None` | Blocking version. It calls `asyncio.run`, so do not use it inside a running event loop. |
+
+All methods return an `EvalReport`. For presets, criteria and reports, see [Evaluation reference](/docs/reference/python/evaluation) and [Presets](/docs/testing/presets).

@@ -1,66 +1,62 @@
 ---
 title: MCP Server
-seoTitle: "MCP server tutorial with FastMCP"
-description: Expose tools over Model Context Protocol using FastMCP so 10xGraph and other MCP clients can call them remotely.
+seoTitle: MCP server example with FastMCP
+description: Expose Python tools over Model Context Protocol using FastMCP so 10xGraph and other MCP clients can call them remotely.
 section: Examples
-group: "Tools and MCP"
+group: Tools and MCP
 order: 100
 label: MCP Server
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-**Source example:** [`examples/react-mcp/server.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/react-mcp/server.py)
+This example turns a Python function into a remotely callable tool with FastMCP, a Python library for building Model Context Protocol servers. The server exposes the tool over HTTP, so 10xGraph graphs and other MCP clients can discover it and call it by name.
 
-## What you will build
+## What the example shows
 
-A small MCP server that exposes a `get_weather` tool over HTTP using FastMCP. This is the server-side half of the MCP tutorials.
+A small but complete MCP server that wraps a weather function as a discoverable, remotely callable tool. The server listens on HTTP and handles tool listing and execution requests from MCP clients.
 
-## Prerequisites
+Model Context Protocol (MCP) is an open protocol that standardizes how applications call tools and access resources. Instead of each application implementing its own tool invocation system, MCP provides a single interface: clients list tools, the server responds with schema and metadata, and clients invoke tools by name with arguments. This example demonstrates the server side of that exchange.
 
-- Python 3.12 or later
-- `fastmcp` installed
+This example is one half of the MCP pair. See the [MCP Client](/docs/examples/mcp-client) example for the client side. Together, they show how a graph can use remote tools without hosting them in the same process.
 
-Install the dependency:
+## How to run it
+
+The example is at `examples/react-mcp/server.py` in the 10xGraph repository.
+
+Install FastMCP:
 
 ```bash
 pip install fastmcp
 ```
 
-## What MCP gives you
+The `fastmcp` package is the only requirement for the server; it does not need 10xGraph installed. Then run the server:
 
-MCP turns a local Python function into a remotely callable tool with discoverable schema and metadata.
-
-```mermaid
-flowchart LR
-    A[Python function] --> B[FastMCP tool decorator]
-    B --> C[MCP server]
-    C --> D[MCP client]
-    D --> E[10xGraph ToolNode or other MCP consumer]
+```bash
+cd agentflow/examples/react-mcp
+python server.py
 ```
 
-Use this when:
+The [MCP Client](/docs/examples/mcp-client) example connects to `http://127.0.0.1:8000/mcp` with the `streamable-http` transport, so start the server first.
 
-- you want tools to live outside the agent process
-- multiple clients should share the same tool service
-- you want standardized tool discovery and invocation
+## The code walked through
 
-## Step 1 — Create the MCP server
+### Create a named MCP server
 
-The example creates a named server:
+The first step is to instantiate a FastMCP server with a name:
 
-```python
+```python title="examples/react-mcp/server.py"
 from fastmcp import FastMCP
 
 mcp = FastMCP("My MCP Server")
 ```
 
-That name helps identify the server to clients and in logs.
+The name identifies the server to clients during the MCP handshake.
 
-## Step 2 — Expose a tool
+### Register a tool
 
-The weather function is registered with metadata:
+Tools are registered with the `@mcp.tool()` decorator. The decorator exposes the function as a discoverable, remotely invokable tool and builds its input schema from the function's type hints:
 
-```python
+```python title="examples/react-mcp/server.py"
 @mcp.tool(
     description="Get the weather for a specific location",
     tags={"weather", "information"},
@@ -75,89 +71,70 @@ def get_weather(location: str, user: dict | None = None) -> dict:
     }
 ```
 
-What this gives you:
+Key parts:
+- `description` tells clients what the tool does.
+- `tags` let clients filter or categorize tools.
+- `exclude_args` lists parameter names to hide from the public tool schema. See the note below on how the example's value relates to its `user` parameter.
 
-- a discoverable name and schema
-- descriptive metadata for clients
-- structured return data
+### Run the server
 
-The example also shows the idea of excluding server-side-only arguments. In your own code, make sure `exclude_args` matches real parameter names you want hidden from the public tool schema.
+The `mcp.run()` call starts the server with a specified transport:
 
-## MCP server request flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server as FastMCP server
-    participant Tool as get_weather
-
-    Client->>Server: list_tools()
-    Server-->>Client: tool schema + metadata
-    Client->>Server: call_tool("get_weather", {"location": "New York"})
-    Server->>Tool: execute Python function
-    Tool-->>Server: dict result
-    Server-->>Client: structured MCP tool response
-```
-
-## Step 3 — Run the server
-
-The example starts FastMCP with streamable HTTP transport:
-
-```python
+```python title="examples/react-mcp/server.py"
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
 ```
 
-Run it:
+The `streamable-http` transport serves MCP over HTTP, so clients connect by URL instead of launching the server as a subprocess.
 
-```bash
-python examples/react-mcp/server.py
+## What happens when a client connects
+
+When an MCP client connects to the server, two things can happen:
+
+1. **List tools**: The client sends `list_tools()` and the server responds with the schema and metadata of all registered tools.
+
+2. **Call a tool**: The client sends `call_tool("get_weather", {"location": "New York"})`. The server executes the Python function and returns the result as a structured MCP tool response.
+
+The full request/response flow looks like this:
+
+```
+Client
+  |
+  +----> list_tools()
+  |      <---- tool schema + metadata
+  |
+  +----> call_tool("get_weather", {"location": "New York"})
+  |      <---- structured result
 ```
 
-By default, the companion client example expects the MCP endpoint at:
+## Why this matters for 10xGraph
 
-```text
-http://127.0.0.1:8000/mcp
-```
+`ToolNode` accepts an MCP `client` argument, so a graph can call tools served by a FastMCP server as if they were local. This means you can:
 
-## Why this example matters for 10xGraph
+- Keep tools in a separate process or service.
+- Share tools across multiple agents.
+- Manage tool authentication and versioning independently.
+- Use standardized tool discovery and invocation.
 
-10xGraph can treat remote MCP tools like normal tools when you connect a FastMCP client to a `ToolNode`. That lets you separate:
+## Common patterns
 
-- tool hosting
-- tool authentication
-- graph orchestration
+### Excluding arguments from the tool schema
 
-## Verification
+The `exclude_args` option in `@mcp.tool()` hides named parameters from the schema clients see, which keeps internal values out of the public contract. In the example file the list is `["user_details"]`, but the function parameter is named `user`, so the names do not match. To hide `user`, set `exclude_args=["user"]`.
 
-You can verify the server is working by pairing it with the next tutorial:
+### Tool metadata and discovery
 
-- [MCP Client](/docs/examples/mcp-client)
+The `description` and `tags` you provide in the decorator directly influence how clients see and use the tool. A well-written description helps clients understand the tool's purpose. Tags let clients filter tools by category or capability. FastMCP reads the type hints from the function signature, so the model sees the parameter names and types.
 
-If the client can list `get_weather` and call it successfully, the server is exposed correctly.
+### Error handling
 
-## Common mistakes
+Keep tool functions small and raise clear exceptions for bad input. The client receives a failed tool result instead of the server process stopping. Check the FastMCP documentation for the exact error format your version returns.
 
-- Starting the client before the server is running.
-- Using the wrong transport; this example uses `streamable-http`.
-- Assuming excluded arguments are hidden automatically if the name is wrong.
-- Returning values that are not serializable by the server stack.
+## What to try next
 
-## Key concepts
+Run the [MCP Client](/docs/examples/mcp-client) example to see how to connect to this server, list its tools, and invoke them.
 
-| Concept | Details |
-|---|---|
-| `FastMCP` | Lightweight MCP server implementation |
-| `@mcp.tool(...)` | Registers a Python callable as a remotely invokable tool |
-| `tags` | Metadata that clients can inspect for filtering or UX |
-| `streamable-http` | Transport used by the example server and clients |
-
-## What you learned
-
-- How to turn a Python function into an MCP tool.
-- How FastMCP exposes tool metadata and schema.
-- How to run an MCP server that 10xGraph can consume later.
-
-## Next step
-
-→ [MCP Client](/docs/examples/mcp-client) to connect to the server and inspect or invoke its tools.
+You can also consult:
+- [Use MCP](/docs/guides/use-mcp) for how to wire an MCP client into a graph's `ToolNode`.
+- [GitHub MCP](/docs/examples/github-mcp) for a more complex MCP example that connects to GitHub.
+- [Guides: Tools and MCP](/docs/guides#tools-and-mcp) for the full set of tool and MCP documentation.

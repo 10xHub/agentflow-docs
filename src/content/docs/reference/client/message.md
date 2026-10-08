@@ -1,17 +1,15 @@
 ---
 title: "Message"
 seoTitle: "Message class in the TypeScript client"
-description: Reference for the Message class and all content block types in the 10xGraph TypeScript client.
+description: Reference for the Message class, its factory methods and all 12 content block types in the 10xGraph TypeScript client.
 section: Reference
 group: "TypeScript client"
 order: 480
 label: "Message"
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-The `Message` class is the data model that 10xGraph uses to represent every message in a conversation — user inputs, assistant responses, tool calls, and tool results. It is defined in `src/message.ts` and exported from `@10xscale/agentflow-client`.
-
----
+`Message` is the data model the 10xGraph TypeScript client uses for every message in a conversation: user input, assistant replies, system prompts, tool calls and tool results. Each message holds a role and an array of typed content blocks. This page lists the class, its factory methods and every block type.
 
 ## Import
 
@@ -33,7 +31,7 @@ import {
   MediaRef,
   AnnotationRef,
   TokenUsages,
-} from '@10xscale/agentflow-client';
+} from '@10xgraph/client';
 ```
 
 ---
@@ -64,15 +62,15 @@ class Message {
 
 | Field | Type | Description |
 |---|---|---|
-| `message_id` | `string \| null` | Server-assigned message ID. Use `"0"` or `null` when creating new messages — the server assigns the real ID. |
+| `message_id` | `string \| null` | Message ID. Defaults to `null` when you create a message; leave it `null` for new messages. |
 | `role` | `'user' \| 'assistant' \| 'system' \| 'tool'` | Who produced this message. |
 | `content` | `ContentBlock[]` | Array of content blocks. A single message can have multiple blocks (e.g. text + image). |
-| `delta` | `boolean` | `true` when this message is a streaming partial update rather than a final message. Set by the server. |
-| `tools_calls` | `Record<string, any>[]` | Raw tool call array from the underlying LLM response. Populated by the server; do not set this manually. |
+| `delta` | `boolean` | `true` when this message is a streaming partial update rather than a final message. Set on messages the server streams back. |
+| `tools_calls` | `Record<string, any>[]` | Raw tool call array from the underlying LLM response. Populated by the server; you do not set it. |
 | `timestamp` | `number` | Unix timestamp in milliseconds when the message was created. Defaults to `Date.now()` at construction time. |
 | `metadata` | `Record<string, any>` | Arbitrary key-value metadata you can attach to messages. |
-| `usages` | `TokenUsages` | Token usage information returned by the LLM. Only present on `assistant` messages. |
-| `raw` | `Record<string, any>` | The raw LLM response object, if the server passes it through. Useful for debugging. |
+| `usages` | `TokenUsages` | Token usage information returned by the LLM, when the server provides it. |
+| `raw` | `Record<string, any>` | The raw LLM response object, when present. Useful for debugging. |
 
 ---
 
@@ -96,13 +94,13 @@ const systemMsg = Message.text_message(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `content` | `string` | — | The text content. |
+| `content` | `string` | none | The text content. |
 | `role` | `'user' \| 'assistant' \| 'system' \| 'tool'` | `'user'` | The role for the message. |
 | `message_id` | `string \| null` | `null` | Optional message ID. Use `null` to let the server assign one. |
 
 ### `Message.tool_message(content, message_id?, meta?)`
 
-Creates a `tool` role message containing `ToolResultBlock` instances. Typically you do not create these manually — when you use remote tools the client creates them for you.
+Creates a `tool` role message containing `ToolResultBlock` instances. The `message_id` defaults to `null` and `meta` (stored in `metadata`) to `{}`. You rarely build these by hand: when you use remote tools the client creates them for you.
 
 ```ts
 const toolResult = Message.tool_message([
@@ -128,11 +126,11 @@ const inline = Message.withImage('Describe this', 'data:image/png;base64,iVBORw0
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `text` | `string` | — | The prompt that accompanies the image. |
-| `imageUrl` | `string` | — | URL or `data:` URI. Stored as `MediaRef` with `kind: 'url'`. |
+| `text` | `string` | none | The prompt that accompanies the image. |
+| `imageUrl` | `string` | none | URL or `data:` URI. Stored as `MediaRef` with `kind: 'url'`. |
 | `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. Note there is no `'tool'` option here. |
 
-To attach an image you uploaded through `client.uploadFile()`, use `Message.withFile()` instead — it builds a `file_id` reference, which is what the server resolves at LLM-call time.
+To attach an image you uploaded through `client.uploadFile()`, use `Message.withFile()` instead. It builds a `file_id` reference to the uploaded file.
 
 ### `Message.withFile(text, fileId, mimeType?, role?)`
 
@@ -154,8 +152,8 @@ const msg = Message.withFile('Summarize this PDF', upload.data.file_id, 'applica
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `text` | `string` | — | The prompt that accompanies the file. |
-| `fileId` | `string` | — | `file_id` from `client.uploadFile()` (`response.data.file_id`). |
+| `text` | `string` | none | The prompt that accompanies the file. |
+| `fileId` | `string` | none | `file_id` from `client.uploadFile()` (`response.data.file_id`). |
 | `mimeType` | `string` | `undefined` | Used to select the block type and stored on the `MediaRef`. Omitting it produces a `DocumentBlock`. |
 | `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. |
 
@@ -177,7 +175,7 @@ const msg = Message.multimodal([
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `blocks` | `ContentBlock[]` | — | Blocks in the order the model should see them. |
+| `blocks` | `ContentBlock[]` | none | Blocks in the order the model should see them. |
 | `role` | `'user' \| 'assistant' \| 'system'` | `'user'` | Role for the message. |
 
 ---
@@ -201,6 +199,7 @@ Appends one media block to an existing message's `content` array, in place. Retu
 ```ts
 const msg = Message.text_message('Compare these two charts');
 
+// firstId and secondId are file_id values returned by client.uploadFile()
 msg.attach_media(new MediaRef('file_id', undefined, firstId, undefined, 'image/png'), 'image');
 msg.attach_media(new MediaRef('file_id', undefined, secondId, undefined, 'image/png'), 'image');
 ```
@@ -212,7 +211,7 @@ msg.attach_media(new MediaRef('file_id', undefined, secondId, undefined, 'image/
 | `media` | `MediaRef` | The reference to attach. |
 | `as_type` | `'image' \| 'audio' \| 'video' \| 'document'` | Which block class to wrap it in. Any other value throws `Unsupported media type: <value>`. |
 
-The `MediaRef` constructor is positional — `(kind, url, file_id, data_base64, mime_type, ...)` — so a `file_id` reference needs `undefined` in the `url` slot. Assigning the fields by name is easier to read:
+The `MediaRef` constructor is positional, `(kind, url, file_id, data_base64, mime_type, ...)`, so a `file_id` reference needs `undefined` in the `url` slot. Assigning the fields by name is easier to read:
 
 ```ts
 const media = new MediaRef('file_id');
@@ -397,7 +396,7 @@ class ToolCallBlock {
 
 ### `RemoteToolCallBlock`
 
-Like `ToolCallBlock` but specifically for tools that execute on the client side (browser). When the server needs the client to run a tool, it returns a message containing `RemoteToolCallBlock` entries. The client's `invoke()` loop detects these, executes the registered handlers, and sends the results back.
+Like `ToolCallBlock` but specifically for tools that execute on the client side (browser). When the server needs the client to run a tool, it returns a message containing `RemoteToolCallBlock` entries. The client's `invoke()` detects these, runs the registered handlers, and sends the results back.
 
 ```ts
 class RemoteToolCallBlock {
@@ -446,7 +445,7 @@ new ToolResultBlock({
 
 ### `ReasoningBlock`
 
-Extended-thinking / chain-of-thought reasoning steps emitted by models that support it (e.g. Claude 3+).
+Extended-thinking / chain-of-thought reasoning steps emitted by models that support it (for example Claude models with extended thinking).
 
 ```ts
 class ReasoningBlock {
@@ -579,11 +578,15 @@ class TokenUsages {
 
 ```ts
 import {
+  AgentFlowClient,
   Message,
   TextBlock,
   ImageBlock,
   MediaRef,
-} from '@10xscale/agentflow-client';
+} from '@10xgraph/client';
+
+// Connect to a running 10xGraph API server
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
 // 1. Simple text message
 const greeting = Message.text_message('Hello!');
@@ -615,11 +618,11 @@ console.log(result.messages);
 - `Message` has four roles: `user`, `assistant`, `system`, and `tool`.
 - `content` is always an array of typed `ContentBlock` objects.
 - `Message.text_message()` is the easiest way to create a plain text message.
-- `RemoteToolCallBlock` arrives from the server when a remote tool needs executing — the `invoke()` loop handles this automatically.
+- `RemoteToolCallBlock` arrives from the server when a remote tool needs executing, and `invoke()` handles this automatically.
 - Use `MediaRef` with `kind: 'file_id'` to reference files you have uploaded via `uploadFile()`.
 - `Message.withImage()`, `Message.withFile()`, and `Message.multimodal()` build multimodal messages without hand-assembling blocks; `attach_media()` adds one to a message you already have.
 - `message.text()` flattens content blocks to a string and is what you render for both final messages and streaming deltas.
 
 ## Next step
 
-See [how-to/client/send-images-and-documents](/docs/client/files-and-multimodal) for the end-to-end upload-and-send flow, or [`reference/client/invoke`](/docs/reference/client/invoke) to learn how to send messages and receive responses.
+See [Files and multimodal](/docs/client/files-and-multimodal) for the end-to-end upload-and-send flow, or [invoke reference](/docs/reference/client/invoke) to learn how to send messages and receive responses.

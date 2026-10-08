@@ -1,66 +1,66 @@
 ---
 title: Skills
-seoTitle: "Skills tutorial: load SKILL.md on demand"
-description: Build a 10xGraph graph that loads Agent Skills (SKILL.md) on demand and combines them with normal tools.
+seoTitle: "Skills example: dynamic SKILL.md loading"
+description: Run an example graph that loads Agent Skills (SKILL.md files) on demand and combines them with normal Python tools.
 section: Examples
 group: "Production"
 order: 190
 label: Skills
-updated: "2026-09-29"
+updated: "2026-10-08"
+faq:
+  - q: How does the model know which skill to load?
+    a: The agent adds an available_skills catalog (name, description and triggers) to the system prompt. When a request matches a description, the model calls activate_skill with that skill name.
+  - q: Can I mix skills with normal Python tools?
+    a: Yes. The example registers get_weather in a ToolNode, and the skill tools are added to the same node, so one agent can call both.
 ---
 
-**Source example:** `examples/skills/graph.py`
+This example builds one assistant that switches into specialized modes at runtime by loading `SKILL.md` files from disk, alongside a normal Python tool. The code lives in `agentflow/examples/skills/` and needs Python 3.12 or newer. Skills follow the Agent Skills format, so the folders are portable between tools.
 
-## What you will build
+## What this example shows
 
-A graph where one assistant can switch into specialized modes at runtime by loading `SKILL.md` files from disk. The skills follow the [Agent Skills specification](https://agentskills.io/specification), so the same folders also work in Claude Code, Codex and GitHub Copilot.
+The agent in this example:
 
-In this tutorial the agent can:
+- answers normal questions directly
+- calls a regular Python tool for weather lookups
+- loads dynamic `SKILL.md` files when requests match a skill's description
+- stays in the main loop after the skill content is injected
 
-- answer normal questions directly
-- call a regular Python tool like `lookup_order`
-- call the auto-injected `activate_skill` tool when a request matches a skill
-- return to the main loop after the skill content has been loaded
+## How to run it
 
-## Prerequisites
-
-- Python 3.12 or later
-- `10xgraph` installed
-- `python-dotenv` installed
-- a model key for the provider used by the example
-
-Install the basics:
+Install the required packages:
 
 ```bash
-pip install 10xgraph python-dotenv
+pip install "10xgraph[google-genai]" python-dotenv
 ```
 
-## How the skills system works
+The scripts call `load_dotenv()`, so you can also put `GOOGLE_API_KEY` in a `.env` file next to where you run them.
 
-```mermaid
-flowchart TD
-    A[User message] --> B[MAIN agent]
-    B -->|normal reply| G[END]
-    B -->|tool call: lookup_order| C[TOOL node]
-    B -->|tool call: activate_skill| C
-    C -->|tool result message| B
-    C -->|skill instructions returned| B
-    H[skills directory] --> C
+Set your Google API key:
+
+```bash
+export GOOGLE_API_KEY=your_key_here
 ```
 
-The key idea is simple:
+Run the interactive chat:
 
-1. you keep reusable instructions in `SKILL.md` files
-2. `SkillConfig` makes those skills discoverable: each skill's name and description go into an `<available_skills>` catalog in the system prompt
-3. 10xGraph injects an `activate_skill` tool automatically, plus `read_skill_resource` when a skill bundles extra files
-4. when the model decides a skill fits, it calls `activate_skill("skill-name")`
-5. the skill content comes back as a tool result, wrapped in `<skill_content>` tags, and becomes part of the next model turn
+```bash
+python examples/skills/chat.py
+```
 
-## Step 1: Create a skills directory
+Or run the scripted example with a single query (from `agentflow/`):
 
-The example stores skills next to the graph file:
+```bash
+cd examples/skills
+python graph.py
+python graph.py "Review this Python function: def add(a, b): return a + b"
+python graph.py "Write a professional apology email to a client"
+```
 
-```text
+## Example structure
+
+The skills folder is in the repo:
+
+```text title="examples/skills/"
 examples/skills/
 ├── graph.py
 ├── chat.py
@@ -75,266 +75,189 @@ examples/skills/
         └── SKILL.md
 ```
 
-Each skill is just a Markdown file with YAML frontmatter.
+Each SKILL.md contains frontmatter and instructions:
 
-Example shape:
-
-```markdown
+```markdown title="skills/code-review/SKILL.md"
 ---
 name: code-review
 description: "Perform thorough code reviews, identify bugs, suggest improvements, and explain code quality issues. Use when the user shares code and asks for a review, bug hunt, or quality feedback."
 metadata:
-  triggers: "review my code; find bugs"
-  tags: "engineering, development"
+  triggers: "review my code; check this code; find bugs"
+  tags: "engineering"
   priority: "10"
 ---
 
-You are now in CODE REVIEW mode.
+You are now in code review mode.
+...
 ```
 
-The frontmatter gives the runtime enough structure to:
+## How skills are discovered and injected
 
-- identify the skill (`name` must match the folder name)
-- tell the model what the skill does and when to use it (`description`)
-- add example requests as hints in the catalog (`metadata.triggers`, a 10xGraph extension)
-- order skills in the catalog (`metadata.priority`, highest first)
+You point `SkillConfig` at a folder, and the agent discovers every `SKILL.md` in it, adds a catalog to the system prompt, and registers the skill tools. The agent is built in the next section; here are the settings that control the behavior.
 
-The specification requires `metadata` values to be strings, so the triggers are a `;`-separated string and the priority is quoted. Check a skill with `10xgraph skills --validate examples/skills/skills`.
+When the graph is built, 10xGraph adds these tools to the tool node:
 
-## Step 2 - Point `SkillConfig` at the directory
+- `activate_skill(skill_name)` loads a skill's instructions.
+- `read_skill_resource(skill_name, path)` reads a file bundled with a skill. It is registered only when a skill bundles files.
 
-The example builds the path like this:
+| Setting | Effect |
+|---|---|
+| `skills_dir` | Path to the folder containing skill folders |
+| `inject_catalog=True` | Adds skill names and descriptions to the system prompt so the model knows what to load (default `True`) |
+| `hot_reload=True` | Re-reads a `SKILL.md` from disk when its modification time changes (default `True`; useful during authoring) |
 
-```python
+## Building the graph
+
+The example defines a normal tool, an agent with skills, a router and a ReAct-style graph. Together they form the complete `graph.py` (the real file also prints the registered tools and accepts a query from the command line).
+
+### Define the tool, agent and graph
+
+```python title="examples/skills/graph.py"
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
 from tenxgraph.core.skills import SkillConfig
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state.message_context_manager import MessageContextManager
+from tenxgraph.utils.constants import END
 
+load_dotenv()
+
+
+# A regular Python tool, used alongside the skills
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
+    weather_data = {
+        "london": "Cloudy, 15°C",
+        "new york": "Sunny, 22°C",
+        "tokyo": "Rainy, 18°C",
+        "paris": "Partly cloudy, 17°C",
+    }
+    location_lower = location.lower()
+    if location_lower in weather_data:
+        return f"The weather in {location} is: {weather_data[location_lower]}"
+    else:
+        return f"Weather data not available for {location}. Try London, New York, Tokyo, or Paris."
+
+
+# The folder that holds one sub-folder per skill
 SKILLS_DIR = str(Path(__file__).parent / "skills")
-```
 
-Then it passes that into the agent:
+# Registered in the graph as "TOOL"
+tool_node = ToolNode([get_weather])
 
-```python
 agent = Agent(
     model="google/gemini-2.5-flash",
-    system_prompt=[...],
-    tool_node=ToolNode([lookup_order]),
+    system_prompt=[
+        {"role": "system", "content": "You are a smart, multi-skilled assistant."}
+    ],
+    tool_node="TOOL",  # resolved to the ToolNode above when the graph compiles
     skills=SkillConfig(
         skills_dir=SKILLS_DIR,
-        inject_catalog=True,
-        hot_reload=True,
+        inject_catalog=True,  # add the <available_skills> catalog to the prompt
+        hot_reload=True,  # re-read a SKILL.md when it changes on disk
     ),
     trim_context=True,
 )
-```
 
-What these options do:
 
-| Field | Effect |
-|---|---|
-| `skills_dir` | Tells 10xGraph where to find `SKILL.md` files |
-| `inject_catalog=True` | Adds the `<available_skills>` catalog (name, description, trigger hints) to the prompt |
-| `hot_reload=True` | Re-reads a `SKILL.md` when it changes on disk, so edits are picked up without a restart |
-
-`hot_reload=True` is especially useful while authoring skills because you can edit a file and retry without restarting the process.
-
-## Step 3 - Combine skills with normal tools
-
-This example is useful because it shows that skills do not replace regular tools.
-
-The graph still exposes a regular support tool:
-
-```python
-def lookup_order(order_id: str) -> str:
-    orders = {
-        "A-1001": "Shipped, arriving Thursday",
-        "A-1002": "Processing",
-        "A-1003": "Delivered",
-    }
-    return orders.get(order_id, "Order not found")
-```
-
-Then the agent is created with that tool node:
-
-```python
-tool_node = ToolNode([lookup_order])
-```
-
-When skills are enabled, 10xGraph augments that tool node by injecting `activate_skill` into it (and `read_skill_resource` if a skill bundles files). The final tool node therefore contains both kinds of capability:
-
-- hand-written Python tools
-- the automatically generated skill tools
-
-The example makes that explicit:
-
-```python
-tool_node = agent.get_tool_node()
-```
-
-That is the important call. It returns the final tool node after skill tooling has been attached.
-
-## Step 4 - Route between the agent and tools
-
-The tutorial uses a standard ReAct loop:
-
-```python
 def should_use_tools(state: AgentState) -> str:
+    """Route to TOOL node if there are tool calls, else END."""
     if not state.context:
         return END
-
     last = state.context[-1]
-
     if last.role == "assistant" and hasattr(last, "tools_calls") and last.tools_calls:
         return "TOOL"
-
     if last.role == "tool":
         return "MAIN"
-
     return END
-```
 
-Execution flow:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Main as MAIN agent
-    participant Tools as TOOL node
-    participant Files as SKILL.md files
-
-    User->>Main: "Review this Python function"
-    Main->>Tools: call activate_skill("code-review")
-    Tools->>Files: load code-review/SKILL.md
-    Files-->>Tools: markdown instructions
-    Tools-->>Main: tool result containing skill content
-    Main-->>User: review written using the loaded skill
-```
-
-The same loop also handles regular tools. If the user asks about an order, the agent can call `lookup_order` instead of `activate_skill`.
-
-## Step 5 - Understand what the model actually sees
-
-With `inject_catalog=True`, the model gets a compact catalog of skills in the prompt. That helps it decide whether a request like:
-
-- `review this code`
-- `analyse this data`
-- `humanize this text`
-- `write an apology email`
-
-should trigger a skill.
-
-When the skill is loaded, the tool returns the full markdown instructions. That means the next assistant turn is grounded in the exact contents of the relevant `SKILL.md` file. If context trimming later drops that tool result, the agent puts the instructions back into the system prompt on its own.
-
-A useful mental model is:
-
-- the catalog helps the model choose
-- `activate_skill` delivers the full instructions
-- `read_skill_resource` fetches bundled files (references, scripts) only when the instructions point to them
-- the next assistant step applies those instructions
-
-## Step 6 - Compile and run the graph
-
-The example graph is a classic two-node setup:
-
-```python
-graph = StateGraph(
-    context_manager=MessageContextManager(max_messages=20),
-)
+graph = StateGraph(context_manager=MessageContextManager(max_messages=20))
 graph.add_node("MAIN", agent)
 graph.add_node("TOOL", tool_node)
-
-graph.add_conditional_edges(
-    "MAIN",
-    should_use_tools,
-    {"TOOL": "TOOL", END: END},
-)
+graph.add_conditional_edges("MAIN", should_use_tools, {"TOOL": "TOOL", END: END})
 graph.add_edge("TOOL", "MAIN")
 graph.set_entry_point("MAIN")
 
 app = graph.compile()
 ```
 
-Run it:
+The agent is passed `tool_node="TOOL"`, a string naming the graph node that holds the `ToolNode`. When the graph compiles, 10xGraph resolves it and wires the skill tools into that node.
 
-```bash
-cd examples/skills
-python graph.py
+### Run one query
+
+Invoke the compiled graph with a message and a thread id, then print the assistant replies.
+
+```python title="examples/skills/graph.py"
+if __name__ == "__main__":
+    result = app.invoke(
+        {"messages": [Message.text_message("Review this function: def add(a, b): return a + b")]},
+        config={"thread_id": "skills-demo-1", "recursion_limit": 15},
+    )
+    for msg in result["messages"]:
+        if msg.role == "assistant":
+            print(msg.text() or "(no text)")
 ```
 
-Or pass a query directly:
+## How the model uses skills
 
-```bash
-python graph.py "Review this Python code: def add(a,b): return a+b"
-python graph.py "Help me write a professional apology email to a client"
-python graph.py "Analyse this data: sales=[120,95,140,88,160] by month"
-python graph.py "Where is order A-1001?"
+At runtime the model sees an `<available_skills>` catalog in the system prompt, then calls `activate_skill` when a request matches a skill's description. The tool returns the skill body, which the model follows for the rest of the turn.
+
+The catalog lists each skill's name and description, plus any `triggers` from the frontmatter, ordered by priority (highest first):
+
+```xml
+<available_skills>
+  <skill>
+    <name>code-review</name>
+    <description>Perform thorough code reviews, ...</description>
+    <triggers>review my code; check this code; ...</triggers>
+  </skill>
+  ...
+</available_skills>
 ```
 
-## What to verify
+When a request matches, the model calls `activate_skill("code-review")`. The tool returns the `SKILL.md` body wrapped in `<skill_content>` tags, followed by a list of any bundled files:
 
-When the example starts, it prints the registered tools. You should see:
-
-- `lookup_order`
-- `activate_skill`
-
-Then test these scenarios:
-
-| Input | Expected behavior |
-|---|---|
-| code review request | agent loads `code-review` skill |
-| writing request | agent loads `writing-assistant` skill |
-| humanization request | agent loads `humanizer` skill |
-| order status request | agent uses `lookup_order` instead of a skill |
-
-## Why this pattern works well
-
-This design keeps responsibilities separate:
-
-- graph code handles orchestration
-- Python tools handle deterministic actions
-- `SKILL.md` files hold specialized writing and reasoning instructions
-
-That separation is valuable because non-engineers can often improve a skill file without touching graph wiring.
-
-## Common mistakes
-
-- Registering the original `ToolNode` instead of `agent.get_tool_node()`. That drops the injected `activate_skill` tool.
-- Putting all domain instructions in the base system prompt instead of splitting them into focused skills.
-- Forgetting that skill selection is model-driven. The `description` must say when to use the skill; trigger phrases are only hints.
-- Leaving `hot_reload=True` in a production environment where you want more predictable file loading behavior.
-
-## Skills architecture recap
-
-```mermaid
-flowchart LR
-    A[Graph code] --> B[Agent]
-    C[SkillConfig] --> B
-    D[SKILL.md files] --> C
-    B --> E[Injected activate_skill tool]
-    F[Custom Python tools] --> G[ToolNode]
-    E --> G
-    G --> B
+```text
+<skill_content name="code-review">
+You are now in **CODE REVIEW** mode.
+...
+</skill_content>
 ```
 
-## Related docs
+The result is a tool message in the conversation, so the model applies those instructions to the user's request.
 
-- [Skills Reference](/docs/reference/python/skills)
-- [Agents and Tools](/docs/concepts/agents-and-tools)
-- [Tool Decorator Tutorial](/docs/examples/tool-decorator)
+## Testing the example
 
-## What you learned
+Start the example and test these inputs:
 
-- How 10xGraph discovers `SKILL.md` files.
-- How `SkillConfig` injects `activate_skill` (and `read_skill_resource`) into the tool node.
-- How to combine skill loading with normal Python tools in one graph.
+```text
+You: Review this Python function for bugs
+```
 
-## Variant: a persistent terminal chat
+The agent should load the `code-review` skill.
 
-The repo also ships `examples/skills/chat.py`, which wraps the same graph in a REPL. Three details matter.
+```text
+You: Analyse this data: [120, 95, 140, 88, 160]
+```
 
-Use one `thread_id` for the whole session, and reuse it on every call:
+The agent should load the `data-analysis` skill.
 
-```python
+```text
+You: What's the weather in London?
+```
+
+The agent should call the `get_weather` tool instead of loading a skill. Model behavior varies, so treat these outcomes as typical, not guaranteed. In `chat.py` a line such as `>> Skill loaded: code-review` confirms an activation.
+
+## The persistent chat variant
+
+`examples/skills/chat.py` wraps the same graph in a terminal REPL. The excerpts below show the three patterns that matter: one thread per session, detecting which skill loaded, and printing the final reply.
+
+### Use one thread for the whole session
+
+```python title="examples/skills/chat.py"
 thread_id = f"skills-chat-{uuid4().hex[:8]}"
 
 result = app.invoke(
@@ -343,9 +266,9 @@ result = app.invoke(
 )
 ```
 
-Detect which skill was loaded by scanning tool messages for the `<skill_content name="...">` tag that `activate_skill` wraps around skill text:
+### Detect which skill was loaded
 
-```python
+```python title="examples/skills/chat.py"
 SKILL_CONTENT_RE = re.compile(r'<skill_content name="([^"]+)">')
 
 for msg in result["messages"]:
@@ -355,17 +278,39 @@ for msg in result["messages"]:
             print(f"  >> Skill loaded: {match.group(1)}")
 ```
 
-Print only the latest assistant message with text, since the result also contains tool messages:
+### Print the assistant reply
 
-```python
+```python title="examples/skills/chat.py"
 for msg in reversed(result["messages"]):
     if msg.role == "assistant" and msg.text():
         print(f"\nAssistant: {msg.text()}\n")
         break
 ```
 
-Pass the tools through `tool_node=ToolNode([...])` as above. `Agent` has no `tools=` parameter. Create the thread ID once, not per message, or the conversation looks stateless. Handle `KeyboardInterrupt` and `EOFError` in the loop.
+The chat version passes `tools=[get_weather]` to the `Agent` instead of a `tool_node`, then calls `agent.get_tool_node()` to get the tool node with the skill tools included and adds it to the graph as "TOOL".
+
+## Key patterns
+
+Skills work because:
+
+- The `<available_skills>` catalog helps the model decide when to load a skill
+- `activate_skill` returns the full SKILL.md content, grounding the model in exact instructions
+- `read_skill_resource` lets skills bundle references and scripts the model can read
+- Skill activations are recorded in the execution state, so they survive context trimming
+
+## Common mistakes
+
+- Adding the agent to a graph without a node named "TOOL" when you pass `tool_node="TOOL"`; the name must match the node you add with `add_node`
+- Putting all instructions in the system prompt instead of splitting them into focused SKILL.md files
+- Writing descriptions that don't match what users actually type; the catalog is the model's only guide to when to load a skill
+- Leaving `hot_reload=True` on in production when you do not need it; it exists for editing skills while the app runs (set `hot_reload=False` to disable)
+
+## Related pages
+
+- [Agent Skills guide](/docs/guides/use-skills): in-depth coverage of all options, validation, and troubleshooting
+- [Skills reference](/docs/reference/python/skills): API details
+- [Agents and Tools](/docs/concepts/agents-and-tools): how agents, tools and the tool node work together
 
 ## Next step
 
-→ Continue with [Testing](/docs/examples/testing) to add fast deterministic tests around graphs like this one.
+Continue with [Testing](/docs/examples/testing) to add fast unit tests around graphs like this one.

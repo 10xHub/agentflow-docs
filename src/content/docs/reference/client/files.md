@@ -1,18 +1,18 @@
 ---
 title: Files
 seoTitle: "File upload and media in the TS client"
-description: Reference for file upload and media access methods on AgentFlowClient.
+description: "Upload, retrieve, and manage multimodal files with the 10xGraph TypeScript client."
 section: Reference
 group: "TypeScript client"
 order: 540
 label: Files
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-The files API lets you upload images, audio clips, documents, and other binary files to the 10xGraph server so they can be referenced in multimodal messages. The server stores files and returns a `file_id` and an access URL that you embed in `ImageBlock`, `AudioBlock`, or `DocumentBlock` content.
+The file methods on `AgentFlowClient` upload binary files to the server, then fetch the file, its metadata or a usable access URL. An upload returns a `file_id` and a `url` that you place in a `MediaRef` inside an `ImageBlock`, `AudioBlock` or `DocumentBlock`. For the task-oriented walkthrough, see [Files and multimodal](/docs/client/files-and-multimodal).
 
-**Endpoints base path:** `/v1/files`  
-**Source:** `src/endpoints/files.ts`
+**Package:** `@10xgraph/client`  
+**Import:** `import { AgentFlowClient } from '@10xgraph/client';`
 
 ---
 
@@ -59,10 +59,10 @@ interface FileUploadResponse {
     mime_type: string;         // Detected MIME type (e.g. 'image/jpeg')
     size_bytes: number;        // File size in bytes
     filename: string;          // Name as stored on the server
-    extracted_text: string | null; // Text extracted from documents (PDF, DOCX), if supported
-    url: string;               // Access URL — use this in MediaRef
+    extracted_text: string | null; // Text extracted from documents, or null
+    url: string;               // Access URL, use this in MediaRef
     direct_url?: string | null;       // Direct URL (e.g. S3 presigned URL) if cloud-backed
-    direct_url_expires_at?: number | null; // Unix timestamp when direct_url expires
+    direct_url_expires_at?: number | null; // Unix timestamp (seconds) when direct_url expires
   };
   metadata?: {
     request_id: string;
@@ -128,7 +128,7 @@ Fetch metadata about a stored file without downloading its contents.
 const info = await client.getFileInfo('file-abc123');
 console.log(info.data.mime_type);       // 'application/pdf'
 console.log(info.data.size_bytes);      // 204800
-console.log(info.data.extracted_text);  // Text extracted from the PDF, or null
+console.log(info.data.extracted_text);  // Extracted text, or null
 ```
 
 ### `FileInfoResponse`
@@ -159,7 +159,7 @@ Get the best access URL for a file. For cloud-backed storage (S3, GCS, Azure) th
 ```ts
 const result = await client.getFileAccessUrl('file-abc123');
 console.log(result.data.url);             // The best URL to use right now
-console.log(result.data.expires_at);      // Unix timestamp, or null if permanent
+console.log(result.data.expires_at);      // Unix timestamp (seconds), or null if permanent
 console.log(result.data.mime_type);
 ```
 
@@ -170,7 +170,7 @@ interface FileAccessUrlResponse {
   data: {
     file_id: string;
     url: string;
-    expires_at?: number | null;  // Unix timestamp in milliseconds; null = no expiry
+    expires_at?: number | null;  // Unix timestamp in seconds; null = no expiry
     mime_type: string;
   };
   metadata?: ResponseMetadata;
@@ -179,7 +179,7 @@ interface FileAccessUrlResponse {
 
 <aside class="callout callout-tip" role="note"><p class="callout-title">Refreshing signed URLs</p>
 
-If you display a file in the UI and the user might have the page open for a long time, poll `getFileAccessUrl()` before rendering to ensure the URL has not expired. Compare `Date.now()` with `expires_at * 1000`.
+If you display a file in the UI and the user might have the page open for a long time, poll `getFileAccessUrl()` before rendering to ensure the URL has not expired. The expires_at field is a Unix timestamp in seconds, so compare it with `Math.floor(Date.now() / 1000)`.
 
 </aside>
 
@@ -187,14 +187,14 @@ If you display a file in the UI and the user might have the page open for a long
 
 ## `getMultimodalConfig()`
 
-Fetch the server's multimodal configuration — which storage backend is active, the max upload size, and how documents are handled.
+Fetch the server's multimodal configuration: which storage backend is active, the max upload size, and how documents are handled.
 
 **Endpoint:** `GET /v1/config/multimodal`
 
 ```ts
 const config = await client.getMultimodalConfig();
 console.log(config.data.media_storage_type);  // 'memory' | 'local' | 'cloud'
-console.log(config.data.media_max_size_mb);   // 25 by default
+console.log(config.data.media_max_size_mb);   // 25 by default (MEDIA_MAX_SIZE_MB)
 console.log(config.data.document_handling);   // 'extract_text' | 'pass_raw' | 'skip'
 ```
 
@@ -215,7 +215,7 @@ interface MultimodalConfigResponse {
 
 ## Supported MIME types
 
-The server accepts any MIME type that your storage backend supports, but the graph can only process types that the underlying LLM supports. Common supported types:
+By default the server accepts any content type. An operator can restrict uploads with the `MEDIA_ALLOWED_CONTENT_TYPES` setting (comma-separated entries such as `image/*,application/pdf`); a rejected type returns status `415`. Separately, the graph can only use types that the underlying LLM supports. Typical choices:
 
 | Category | MIME types |
 |---|---|
@@ -224,7 +224,7 @@ The server accepts any MIME type that your storage backend supports, but the gra
 | Video | `video/mp4`, `video/webm` |
 | Documents | `application/pdf`, `text/plain`, `text/markdown` |
 
-Call `getMultimodalConfig()` to confirm the active storage settings before uploading.
+Call `getMultimodalConfig()` to confirm the active storage settings and size limit before uploading.
 
 ---
 
@@ -237,7 +237,7 @@ import {
   ImageBlock,
   TextBlock,
   MediaRef,
-} from '@10xscale/agentflow-client';
+} from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -273,10 +273,10 @@ async function askAboutImage(imageFile: File, question: string) {
 
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `413` | File exceeds `media_max_size_mb`. | Check `getMultimodalConfig()` and reduce file size. |
-| `AgentFlowError` status `415` | Unsupported MIME type. | Verify the file type is accepted by the storage backend. |
-| `AgentFlowError` status `404` | `file_id` not found (deleted or wrong ID). | Re-upload the file. |
-| Signed URL expired | `direct_url_expires_at` is in the past. | Call `getFileAccessUrl()` to refresh the URL. |
+| `AgentFlowError` with `statusCode` `413` | File exceeds `media_max_size_mb`. | Check `getMultimodalConfig()` and reduce file size. |
+| `AgentFlowError` with `statusCode` `415` | The server restricts content types and yours is not allowed. | Upload an allowed type, or ask the operator to adjust `MEDIA_ALLOWED_CONTENT_TYPES`. |
+| `NotFoundError` (`statusCode` `404`) | `file_id` not found, or not visible to the current user. | Re-upload the file or check the ID. |
+| Signed URL expired | `expires_at` is in the past. | Call `getFileAccessUrl()` to refresh the URL. |
 
 ---
 
@@ -284,7 +284,7 @@ async function askAboutImage(imageFile: File, question: string) {
 
 - `uploadFile()` accepts `File`, `Blob`, or `{ data, filename }`. It returns a `file_id` and `url`.
 - Reference uploaded files in messages via `MediaRef('url', url)` or `MediaRef('file_id')` with `file_id` set.
-- `getFileAccessUrl()` refreshes cloud-backed signed URLs.
+- `getFileAccessUrl()` refreshes cloud-backed signed URLs; the expiry is a Unix timestamp in seconds.
 - `getMultimodalConfig()` tells you the storage backend and max file size.
 
 ## Next step

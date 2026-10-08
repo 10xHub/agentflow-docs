@@ -7,52 +7,66 @@ section: "Get started"
 order: 70
 label: Add Memory
 updated: "2026-10-08"
+faq:
+  - q: "Why does my agent forget what I said in the previous call?"
+    a: "Either the graph was compiled without a checkpointer, or each call used a different thread_id. Attach a checkpointer with graph.compile(checkpointer=...) and pass the same thread_id in config on every call of the conversation."
+  - q: "What happens if I do not pass a thread_id?"
+    a: "The graph generates a random thread_id for that run and logs a warning. The run cannot be continued later because nobody knows its ID, so always pass an explicit thread_id."
+  - q: "Is a checkpointer the same as long-term memory?"
+    a: "No. A checkpointer stores the full state of one thread, keyed by thread_id. Long-term memory is a separate store searched by meaning and shared across threads and users."
 ---
 
-A checkpointer saves your agent's state after each run so conversations persist across calls on the same thread. Without one, every `app.invoke` call starts fresh. In this step, you will add `InMemoryCheckpointer` to persist conversation history, test that memory works across turns, and learn when to upgrade to SQLite or Postgres+Redis for production.
+A checkpointer saves your agent's state after each run, so a conversation continues across calls that share a `thread_id`. Without one, every `app.invoke` call starts from nothing. In this step you attach `InMemoryCheckpointer`, prove memory works across turns and fails across threads, and learn the upgrade path to SQLite and Postgres+Redis.
 
-## Understanding threads and checkpoints
+## What you build
 
-A **thread** is a unique conversation identifier. When you invoke a graph with the same `thread_id` and a checkpointer is attached, the graph loads the previous state, processes the new message, and saves the updated state back. Each thread is completely isolated — different `thread_id` values get fresh starts.
+You take the agent from the previous steps and compile it with a checkpointer. Then you run two turns on one thread and see the agent recall your name, and run a third call on a different thread and see it does not.
 
-Every call to `app.invoke` takes a `config` with a `thread_id`. The checkpointer persists state keyed by this ID. Without a checkpointer, the graph has no memory and history is lost between invocations.
+Prerequisites:
+
+- 10xGraph installed with a provider extra: `pip install "10xgraph[google-genai]"` (or `[openai]` or `[anthropic]`).
+- The provider API key set in your environment, as in the earlier steps.
+
+## Understand threads and checkpoints
+
+A thread is one conversation, identified by a `thread_id` string you choose. When a checkpointer is attached, each `app.invoke` call loads the saved state for that ID, adds your new message, runs the graph, and saves the result back. Different IDs never see each other's state.
 
 ```mermaid
 sequenceDiagram
   participant App as app.invoke(thread_id="abc")
   participant Checkpointer as Checkpointer
-  participant State as Agent State
+  participant State as Agent state
 
   App->>Checkpointer: load state for "abc"
-  Checkpointer-->>State: previous messages & state
+  Checkpointer-->>State: previous messages and state
   App->>State: append new message
-  App->>State: run agent node
+  App->>State: run the graph
   App->>Checkpointer: save updated state for "abc"
 ```
 
-The checkpointer reads before the first node runs and writes after the final node completes. This ensures the agent always has full context from previous turns.
+You send only the new message on each call. The checkpointer supplies the earlier history, so you do not resend it.
 
-## Add a checkpointer
+If you omit `thread_id`, the graph generates a random one and logs a warning. That run cannot be resumed or stopped later, because no caller knows its ID. Always pass an explicit `thread_id` for anything you may continue.
 
-`InMemoryCheckpointer` stores all state in process memory. It is ideal for development and testing because it requires no external infrastructure. State is lost when the process exits.
+## Add a checkpointer to the graph
 
-Edit your graph from the previous step to compile with a checkpointer:
+`InMemoryCheckpointer` keeps all state in process memory. It needs no setup or extra packages, which makes it the right choice for development and tests. State is lost when the process exits.
 
-```python
-from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+Create `agent_with_memory.py`. The graph is the same single-agent graph as before, compiled with a checkpointer:
+
+```python title="agent_with_memory.py"
+from tenxgraph.core.graph import Agent, StateGraph
 from tenxgraph.core.state import AgentState, Message
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 from tenxgraph.utils import END
 
+# State lives in this process only; it disappears on exit
 checkpointer = InMemoryCheckpointer()
 
 agent = Agent(
-    model="google/gemini-2.5-flash",
+    model="gemini-2.5-flash",
     system_prompt=[
-        {
-            "role": "system",
-            "content": "You are a helpful assistant.",
-        }
+        {"role": "system", "content": "You are a helpful assistant."}
     ],
 )
 
@@ -61,129 +75,108 @@ graph.add_node("assistant", agent)
 graph.set_entry_point("assistant")
 graph.add_edge("assistant", END)
 
-# Pass the checkpointer when compiling
+# Attach the checkpointer when you compile
 app = graph.compile(checkpointer=checkpointer)
-```
 
-## Test multi-turn conversation
-
-Create `agent_with_memory.py` with the graph above, then add these calls:
-
-```python
 THREAD = "memory-demo-1"
 
-# First turn
+# Turn 1: tell the agent your name
 result = app.invoke(
     {"messages": [Message.text_message("My name is Alex.")]},
     config={"thread_id": THREAD},
 )
-print(result["messages"][-1].text())
+print("Turn 1:", result["messages"][-1].text())
 
-# Second turn — same thread_id, agent remembers
+# Turn 2: same thread_id, so the agent sees turn 1
 result = app.invoke(
     {"messages": [Message.text_message("What is my name?")]},
     config={"thread_id": THREAD},
 )
-print(result["messages"][-1].text())
+print("Turn 2:", result["messages"][-1].text())
+
+# Turn 3: a different thread_id starts from a blank state
+result = app.invoke(
+    {"messages": [Message.text_message("What is my name?")]},
+    config={"thread_id": "memory-demo-2"},
+)
+print("New thread:", result["messages"][-1].text())
 ```
 
-Run it:
+## Run it and check memory
+
+Run the file. The first two calls share a thread, and the third uses a new one:
 
 ```bash
 python agent_with_memory.py
 ```
 
-Expected output (exact wording varies):
+Example output (the wording varies from run to run):
 
 ```text
-Nice to meet you, Alex!
-Your name is Alex.
+Turn 1: Nice to meet you, Alex!
+Turn 2: Your name is Alex.
+New thread: I don't know your name yet. Could you tell me?
 ```
 
-The agent remembered "Alex" from the first turn because both calls shared the same `thread_id`.
-
-## Use a different thread
-
-Each `thread_id` is an independent conversation. Using a different ID gives the agent a fresh start:
-
-```python
-# New thread — agent has no memory of "Alex"
-result = app.invoke(
-    {"messages": [Message.text_message("What is my name?")]},
-    config={"thread_id": "memory-demo-2"},
-)
-print(result["messages"][-1].text())
-```
-
-Expected output:
-
-```text
-I don't know your name yet. Could you tell me?
-```
+Turn 2 answers correctly because it ran on `memory-demo-1`, where the checkpointer holds turn 1. The last call used `memory-demo-2`, which has no history, so the agent cannot know your name. To confirm the checkpointer is the cause, remove `checkpointer=checkpointer` from `compile` and run again: turn 2 no longer knows the name.
 
 ## Choose a checkpointer for your use case
 
-The example above uses `InMemoryCheckpointer`, which is fine for development. As you move toward production, choose a checkpointer based on your needs:
+All three checkpointers plug into `graph.compile(checkpointer=...)` the same way, so moving between them changes one line. Pick by how long state must live and how many users you serve.
 
-| Checkpointer | Storage | Durability | When to use | Extra required |
+| Checkpointer | Storage | Durability | When to use | Install |
 |---|---|---|---|---|
-| `InMemoryCheckpointer` | RAM | Lost on process exit | Local development, tests, demos | None |
-| `SqliteCheckpointer` | SQLite file | Survives restarts | Single-user or embedded agents, Tauri/Electron apps, CLI tools | `pip install 10xgraph[sqlite_checkpoint]` |
-| `PgCheckpointer` | Postgres + Redis | Full durability & scale | Multi-user servers, production | `pip install 10xgraph[pg_checkpoint]` |
+| `InMemoryCheckpointer` | Process memory | Lost on exit | Development, tests, demos | Included |
+| `SqliteCheckpointer` | One SQLite file | Survives restarts | Single-user or embedded agents, desktop apps, CLI tools | `pip install "10xgraph[sqlite_checkpoint]"` |
+| `PgCheckpointer` | Postgres and Redis | Durable, shared | Multi-user servers, production | `pip install "10xgraph[pg_checkpoint]"` |
 
-**InMemoryCheckpointer** is perfect for this tutorial because you are running locally. When you deploy, you'll upgrade to SQLite (for single-user scenarios) or Postgres+Redis (for shared services).
+### Switch to SQLite for a single-user agent
 
-### Upgrade to SQLite
+`SqliteCheckpointer` stores state in a local file, so conversations survive restarts. It serializes writers and does not scale across machines, so do not use it for a shared multi-user service.
 
-SQLite stores state in a local file. The checkpointer handles all table management. It survives process restarts and is ideal for agents embedded in desktop apps or running on a single machine:
-
-```python
+```python title="agent_with_memory.py (replace the checkpointer)"
 from tenxgraph.storage.checkpointer import SqliteCheckpointer
 
-# Path defaults to ~/.10xgraph/default.db
+# db_path is optional; the default is checkpointer.db in ~/.10xgraph
 checkpointer = SqliteCheckpointer(db_path="./my_agent.db")
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-Install the extra: `pip install 10xgraph[sqlite_checkpoint]`
+### Switch to Postgres and Redis for production
 
-### Upgrade to Postgres+Redis
+`PgCheckpointer` keeps durable state in Postgres and uses Redis as a fast cache. Use it when several processes or users share the same threads.
 
-`PgCheckpointer` uses Postgres for durable state and Redis as a hot cache. It is the production choice for services that need to handle concurrent requests, scale horizontally, or offer high availability:
-
-```python
+```python title="agent_with_memory.py (replace the checkpointer)"
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
-    postgres_url="postgresql://user:pass@localhost/agentdb",
-    redis_url="redis://localhost:6379"
+    postgres_dsn="postgresql://user:pass@localhost/agentdb",
+    redis_url="redis://localhost:6379",
 )
 app = graph.compile(checkpointer=checkpointer)
 ```
 
-Install the extra: `pip install 10xgraph[pg_checkpoint]`
+Its constructor also accepts existing pool or client objects (`pg_pool`, `redis`, `redis_pool`), pool settings, and a `schema` name (default `public`). Setup, backups and failover are covered in the [checkpointing guide](/docs/guides/set-up-checkpointing). For how threads and checkpoints work internally and the trade-offs between backends, read [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
 
-The checkpointer creates all required tables on first run. In production, ensure your Postgres instance is properly backed up and your Redis is configured for failover. See the [Checkpointing guide](/docs/guides/set-up-checkpointing) for detailed configuration.
+## Thread memory versus long-term store
 
-## Thread memory vs long-term store
+There are two separate memory layers. Thread memory is the checkpointer: the full conversation state of one thread, loaded by `thread_id`. The long-term store holds facts that outlive any single thread.
 
-There are two distinct memory layers in 10xGraph:
+| Layer | Holds | Looked up by | Scope |
+|---|---|---|---|
+| Thread memory (checkpointer) | Messages and state of one conversation | `thread_id` | One thread |
+| Long-term store (for example Qdrant or Mem0) | Facts, preferences, shared knowledge | Semantic search | Across threads and users |
 
-**Thread memory** (checkpointer) is the short-term conversation context. It stores all messages, state, and execution history for a specific thread. When you invoke the graph with a `thread_id`, the checkpointer loads the full prior history so the agent has complete context. This is ideal for multi-turn conversations within a single thread, where the agent needs to recall everything said earlier in that thread.
-
-**Long-term store** (Qdrant, Mem0) is for semantic memory that persists across threads and users. It is a vector database indexed by embedding, used for retrieval-augmented generation (RAG), user preference storage, or shared facts. You query the store with a natural language search, not a thread ID. Long-term store is optional and typically activated via memory tools like `memory_tool()` or a custom memory preload node.
-
-In this tutorial, you are building thread memory. If your agent needs to remember facts about users or access shared knowledge across different conversations, you would integrate a long-term store separately. Most agents start with solid thread memory; long-term store is added when use cases demand it (e.g., "remember my preferences across all chats").
+This tutorial builds thread memory. Add a long-term store when the agent must remember something across conversations, such as "remember my preferences in every chat". It is optional, and you reach it through a memory tool such as `memory_tool` or a preload node. See [Long-term memory](/docs/concepts/memory-and-store) for retrieval, scoping and when to use each approach.
 
 ## What you learned
 
 - A checkpointer persists state between invocations, keyed by `thread_id`.
-- Each thread is an independent conversation; different thread IDs start fresh.
-- `InMemoryCheckpointer` is fast for development; `SqliteCheckpointer` for single-user deployments; `PgCheckpointer` for production services.
-- Thread memory (checkpointer) and long-term store (vector DB) serve different purposes: thread memory holds recent conversation context, while long-term store enables semantic search across threads.
-- Attach the checkpointer during graph compilation: `graph.compile(checkpointer=...)`.
-- State is loaded before the first node, updated by the graph, and saved after the final node completes.
+- You attach it with `graph.compile(checkpointer=...)` and send only the new message each call.
+- Different thread IDs are independent conversations; a missing `thread_id` produces a random, unresumable one.
+- `InMemoryCheckpointer` suits development, `SqliteCheckpointer` single-user apps, and `PgCheckpointer` shared production services.
+- Thread memory is not long-term memory: the first is per thread, the second is searched by meaning across threads.
 
 ## Next step
 
-Serve the agent over HTTP with [Run with the API](/docs/get-started/tutorial/serve-and-inspect).
+Serve the agent over HTTP with [Run with the API](/docs/get-started/tutorial/serve-and-inspect). Method-level details for each backend are in the [checkpointers reference](/docs/reference/python/checkpointers).

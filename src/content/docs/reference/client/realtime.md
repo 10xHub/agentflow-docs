@@ -1,17 +1,17 @@
 ---
 title: "realtime()"
 seoTitle: "realtime() audio session in the TS client"
-description: Reference for the AgentFlowClient.realtime() method and the RealtimeSession class — a transport-only audio-to-audio client for the /v1/graph/live WebSocket.
+description: Reference for AgentFlowClient.realtime() and RealtimeSession, the transport-only audio-to-audio client for the /v1/graph/live WebSocket.
 section: Reference
 group: "TypeScript client"
 order: 510
 label: "realtime()"
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
 `client.realtime()` opens a realtime, audio-to-audio session over the server's `/v1/graph/live` WebSocket and returns a `RealtimeSession`. You stream PCM16 microphone audio up and receive PCM16 model audio back, plus transcripts, tool calls, and lifecycle events.
 
-The session is **transport only**: it moves bytes and events between your app and the server. Capturing microphone audio and playing back the model's audio are your application's responsibility — the client deliberately ships no mic or speaker code so it stays small and runs unchanged in browsers, Node, and React Native.
+The session is **transport only**: it moves bytes and events between your app and the server. Capturing microphone audio and playing back the model's audio are your application's responsibility, so the client deliberately ships no mic or speaker code so it stays small and runs unchanged in browsers, Node, and React Native.
 
 **Endpoint:** `WS /v1/graph/live`  
 **Source:** `src/endpoints/realtime.ts`  
@@ -30,7 +30,7 @@ client.realtime(
 ): RealtimeSession
 ```
 
-`realtime()` is synchronous — it returns the `RealtimeSession` immediately and opens the socket in the background. Await `session.ready` before sending input if you need the connection to be established first.
+`realtime()` is synchronous: it returns the `RealtimeSession` immediately and opens the socket in the background. Await `session.ready` before sending input if you need the connection to be established first.
 
 ---
 
@@ -67,9 +67,9 @@ interface RealtimeVADConfig {
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `reconnect` | `RealtimeReconnectOptions` | see below | Client-side reconnect/backoff policy for a dropped socket. |
-| `onAudio` | `(pcm16: Uint8Array, sampleRate: number) => void` | — | Convenience handler, sugar for `session.on('audio', ...)`. |
-| `onEvent` | `(e: RealtimeEvent) => void` | — | Convenience handler, sugar for `session.on('event', ...)`. |
-| `onError` | `(e: ErrorEvent) => void` | — | Convenience handler, sugar for `session.on('error', ...)`. |
+| `onAudio` | `(pcm16: Uint8Array, sampleRate: number) => void` | none | Convenience handler, sugar for `session.on('audio', ...)`. |
+| `onEvent` | `(e: RealtimeEvent) => void` | none | Convenience handler, sugar for `session.on('event', ...)`. |
+| `onError` | `(e: Extract<RealtimeEvent, { type: 'error' }>) => void` | none | Convenience handler, sugar for `session.on('error', ...)`. |
 
 ```ts
 interface RealtimeReconnectOptions {
@@ -135,7 +135,7 @@ Each variant of `RealtimeEvent` also has its own channel, so you can subscribe n
 | `'tool_call'` | `{ type: 'tool_call'; id: string; name: string; args: Record<string, unknown> }` |
 | `'tool_result'` | `{ type: 'tool_result'; id: string; result: unknown }` |
 | `'turn_complete'` | `{ type: 'turn_complete' }` |
-| `'interrupted'` | `{ type: 'interrupted' }` — barge-in; flush local playback |
+| `'interrupted'` | `{ type: 'interrupted' }` (barge-in; flush local playback) |
 | `'session_update'` | `{ type: 'session_update'; resumption_handle?: string \| null }` |
 | `'go_away'` | `{ type: 'go_away'; time_left?: string \| null }` |
 | `'agent_changed'` | `{ type: 'agent_changed'; author: string }` |
@@ -170,7 +170,7 @@ type RealtimeEvent =
 
 ## Authentication
 
-The bearer token is sent using the browser-safe `agentflow-bearer` WebSocket subprotocol — it is never placed in the URL. On Node runtimes the `Authorization` header is also set. You provide the token the same way as for every other client call, via `authToken` or `auth` on the `AgentFlowClient` config (see [`reference/client/auth`](/docs/reference/client/auth)); `realtime()` reuses it automatically.
+The bearer token is sent using the browser-safe `agentflow-bearer` WebSocket subprotocol, and it is never placed in the URL. On Node runtimes the `Authorization` header is also set. You provide the token the same way as for every other client call, via `authToken` or `auth` on the `AgentFlowClient` config (see [`reference/client/auth`](/docs/reference/client/auth)); `realtime()` reuses it automatically.
 
 The server accepts the token via the `Authorization` header, the `agentflow-bearer` subprotocol, or a `?token=` query fallback. The client uses the subprotocol so the token is never logged in a URL.
 
@@ -194,12 +194,16 @@ The session does **not** reconnect after an explicit `close()` or after receivin
 ### Basic audio session
 
 ```ts
-import { AgentFlowClient } from '@10xscale/agentflow-client';
+import { AgentFlowClient } from '@10xgraph/client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
   authToken: process.env.API_TOKEN!,
 });
+
+// Placeholders you implement: audio playback and microphone capture.
+declare function playback(pcm16: Uint8Array, sampleRate: number): void;
+declare const micChunk: Uint8Array; // PCM16 mono @ 16 kHz
 
 const session = client.realtime(
   { model: 'gemini-2.5-flash-live', modalities: 'AUDIO' },
@@ -223,6 +227,8 @@ session.close();
 ### Push-to-talk (manual VAD)
 
 ```ts
+declare const micChunk: Uint8Array; // PCM16 mono @ 16 kHz, from your capture code
+
 const session = client.realtime({
   model: 'gemini-2.5-flash-live',
   vad: { enabled: false },
@@ -241,6 +247,10 @@ session.activityEnd();
 ### Handling tool calls and interruptions
 
 ```ts
+// Placeholder you implement: stop and clear queued audio playback.
+declare function stopPlayback(): void;
+
+// `session` is the RealtimeSession from the basic example above.
 session.on('tool_call', (e) => {
   console.log('tool requested:', e.name, e.args);
   // The live agent runs server-side tools itself; tool_call/tool_result are
@@ -254,13 +264,17 @@ session.on('interrupted', () => {
 
 session.on('go_away', (e) => {
   console.log('server will rotate the connection soon:', e.time_left);
-  // No action needed — the session reconnects and resumes automatically.
+  // No action needed: the session reconnects and resumes automatically.
 });
 ```
 
 ### Single catch-all handler
 
 ```ts
+// Placeholders you implement.
+declare function playback(pcm16: Uint8Array, sampleRate: number): void;
+declare function appendTranscript(text: string): void;
+
 const session = client.realtime(
   { model: 'gemini-2.5-flash-live' },
   {
@@ -273,12 +287,13 @@ const session = client.realtime(
 );
 ```
 
-### Running on Node &lt; 21
+### Running on Node < 21
 
-Browsers and Node 21+ have a global `WebSocket`. On Node 18 or 20, pass an implementation (the [`ws`](https://www.npmjs.com/package/ws) package) via `webSocketImpl` on the client config — it is used for both `realtime()` and `wsStream()`:
+Browsers and Node 21+ have a global `WebSocket`. On Node 18 or 20, pass an implementation (the [`ws`](https://www.npmjs.com/package/ws) package) via `webSocketImpl` on the client config. It is used for both `realtime()` and `wsStream()`:
 
 ```ts
 import WebSocket from 'ws';
+import { AgentFlowClient } from '@10xgraph/client';
 
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
@@ -308,7 +323,7 @@ Constants `REALTIME_INPUT_SAMPLE_RATE` (16000) and `REALTIME_OUTPUT_SAMPLE_RATE`
 | Socket closes with code `1008` after the init frame | Not authorized for the requested `thread_id`. Preceded by an `error` event with `code: 'not_authorized'`. | Check the token and the server's `AuthorizationBackend`. |
 | Socket closes with code `1011` | An unexpected server-side error ended the session. | Check the server logs. |
 | Socket closes with code `1003` | Invalid init frame (e.g. an unsupported `modalities` value). | Check `model` and `modalities`; read the `error` event for the reason. |
-| `No WebSocket implementation available` thrown | Running on Node &lt; 21 without a global `WebSocket`. | Pass `webSocketImpl` (the `ws` package) in the client config. |
+| `No WebSocket implementation available` thrown | Running on Node < 21 without a global `WebSocket`. | Pass `webSocketImpl` (the `ws` package) in the client config. |
 | No audio plays | The client is transport-only. | Wire the `'audio'` channel to your own audio output. |
 | Repeated `'reconnecting'` then a fatal `reconnect_failed` | The server is unreachable past `maxAttempts`. | Check the server and network; raise `maxAttempts` or handle the fatal error. |
 
@@ -319,7 +334,7 @@ Constants `REALTIME_INPUT_SAMPLE_RATE` (16000) and `REALTIME_OUTPUT_SAMPLE_RATE`
 - `client.realtime(init, options?)` returns a transport-only `RealtimeSession` over `/v1/graph/live`.
 - Send PCM16 @ 16 kHz with `sendAudio`; receive PCM16 @ 24 kHz on the `'audio'` channel; capture and playback are your responsibility.
 - Subscribe to typed events (`output_transcript`, `tool_call`, `interrupted`, ...) with `session.on(...)`.
-- Auth uses the browser-safe `agentflow-bearer` subprotocol automatically; pass `webSocketImpl` on Node &lt; 21.
+- Auth uses the browser-safe `agentflow-bearer` subprotocol automatically; pass `webSocketImpl` on Node < 21.
 - The session auto-reconnects with backoff and resumes the same `thread_id`, unless you call `close()` or a fatal error occurs.
 
 ## Next step

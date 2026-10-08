@@ -4,23 +4,23 @@ description: AI agent streaming sends responses token-by-token to a frontend ove
 section: Glossary
 order: 90
 label: What is agent streaming?
-updated: "2026-07-21"
+updated: "2026-10-08"
 faq:
   - q: What is SSE (Server-Sent Events)?
     a: "Server-Sent Events is a web standard for pushing data from server to client over a persistent HTTP connection. The client opens a GET or POST request with Accept: text/event-stream, and the server sends newline-delimited events as they occur. SSE is simpler than WebSockets for one-directional streaming and reconnects automatically if the connection drops."
   - q: Does streaming work with AI agent tool calls?
-    a: Yes. 10xGraph streams token generation and tool call events. When the LLM calls a tool, the stream emits a tool_call_start event; when the tool finishes, a tool_call_end event; then token streaming resumes for the next LLM response. This lets the frontend show exactly what the agent is doing in real time.
+    a: Yes. Tool activity arrives as ordinary message chunks whose content blocks are tool_call and tool_result. When the LLM calls a tool, a chunk with a tool_call block is streamed; when the tool finishes, a chunk with a tool_result block follows; then token streaming resumes for the next LLM response. This lets the frontend show what the agent is doing in real time.
   - q: How do I stop a stream mid-generation?
-    a: Close the SSE connection from the client side. 10xGraph detects the disconnect and cancels the in-progress LLM generation. See the stop-stream tutorial in the 10xGraph examples for a complete implementation with an abort controller on the TypeScript client.
+    a: Abort the HTTP request from the client, for example with an AbortController on fetch. The server stops sending once the connection closes. See the TypeScript client guide for stream options.
   - q: Can I stream to multiple clients simultaneously?
-    a: Yes. 10xGraph's API server is fully async and handles concurrent streams. Each stream is scoped to a thread_id — multiple users can stream simultaneously without interference. The SSE endpoint uses Python's asyncio for non-blocking I/O.
+    a: Yes. 10xGraph's API server is fully async and handles concurrent streams. Each stream is scoped to a thread_id, so multiple users can stream simultaneously without interference.
   - q: Does streaming affect the agent's response quality?
-    a: No. The LLM generates the same tokens in the same order regardless of whether streaming is enabled. Streaming only changes when those tokens are delivered to the client — progressively vs. all at once after completion.
+    a: No. Streaming only changes when tokens are delivered to the client, progressively instead of all at once after completion. The content of the answer is the same.
 ---
 
-**AI agent streaming sends responses to the client token-by-token (or chunk-by-chunk) as the LLM generates them, instead of waiting for the full response to complete before sending anything.** From the user's perspective, the text appears progressively on screen — the same experience as ChatGPT's typewriter effect — dramatically reducing perceived latency.
+**AI agent streaming sends the agent's output to the client chunk by chunk as the LLM generates it, instead of waiting for the full response.** The text appears progressively on screen, like a typewriter, which sharply reduces perceived latency. 10xGraph streams over a single HTTP request with newline-delimited JSON chunks.
 
-Streaming matters because LLMs generate tokens sequentially. A 500-token response at typical generation speed takes 5–10 seconds without streaming. With streaming, the user sees the first tokens within 200–500ms.
+Streaming matters because LLMs generate tokens sequentially. A long response can take many seconds to finish, but with streaming the user sees the first tokens almost immediately.
 
 ## How streaming works
 
@@ -34,7 +34,7 @@ SSE stream to client:   chunk1   chunk2     chunk3     chunk4
 UI renders:             "The"  "The weather"  "The weather in"  ...
 ```
 
-The server sends each token as an SSE event the moment it is generated. The client receives and renders tokens in real time.
+The server sends each chunk the moment it is generated. The client receives and renders tokens in real time.
 
 ## SSE vs WebSockets for streaming
 
@@ -46,14 +46,14 @@ The server sends each token as an SSE event the moment it is generated. The clie
 | Reconnection | Automatic | Manual |
 | Best for | Token streaming | Bidirectional agent interaction |
 
-10xGraph supports both: `POST /v1/graph/stream` for SSE token streaming, and `WS /v1/graph/ws` for bidirectional WebSocket connections (used for remote tool calls where the client executes tools on behalf of the agent).
+10xGraph supports both: `POST /v1/graph/stream` for streaming over HTTP, and `WS /v1/graph/ws` for bidirectional WebSocket connections (used for remote tool calls where the client executes tools on behalf of the agent).
 
 ## Streaming from Python with 10xGraph
 
-10xGraph's built-in API server exposes SSE streaming with zero configuration:
+10xGraph's built-in API server exposes streaming with zero configuration:
 
 ```bash
-10xgraph api  # starts REST + SSE + WebSocket server
+10xgraph api  # starts REST + streaming + WebSocket server
 ```
 
 The streaming endpoint:
@@ -67,22 +67,20 @@ curl -N -X POST http://localhost:8000/v1/graph/stream \
   }'
 ```
 
-Each SSE event arrives as:
+The response uses the `text/event-stream` content type, but the body is one JSON object per line (NDJSON), not `data:` prefixed frames. Incremental text arrives as `message` chunks with `delta: true`:
 
 ```
-data: {"event": "token", "content": "Neural"}
-data: {"event": "token", "content": " networks"}
-data: {"event": "token", "content": " are"}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": "Neural"}]}}
+{"event": "message", "message": {"role": "assistant", "delta": true, "content": [{"type": "text", "text": " networks"}]}}
 ...
-data: {"event": "end"}
 ```
 
 ## Consuming the stream from TypeScript
 
-The `@10xscale/agentflow-client` npm package handles SSE parsing automatically:
+The `@10xgraph/client` npm package parses the stream for you:
 
 ```typescript
-import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
+import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
 
 const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
 
@@ -102,7 +100,7 @@ The client package exposes a single entry point and ships no React bindings, so 
 
 ```tsx
 import { useCallback, useState } from "react";
-import { AgentFlowClient, Message, StreamEventType } from "@10xscale/agentflow-client";
+import { AgentFlowClient, Message, StreamEventType } from "@10xgraph/client";
 
 const client = new AgentFlowClient({ baseUrl: "http://localhost:8000" });
 
@@ -141,7 +139,7 @@ function Chat() {
 
 ## Streaming with tool calls
 
-When an agent calls a tool during streaming, the stream pauses while the tool executes, then resumes with the next LLM response. 10xGraph streams tool-call events so the UI can show "calling search_web..." in real time:
+When an agent calls a tool during streaming, the text stream pauses while the tool executes, then resumes with the next LLM response. 10xGraph streams tool-call events so the UI can show "calling search_web..." in real time:
 
 ```json
 {"event": "message", "message": {"role": "assistant", "content": [{"type": "tool_call", "name": "search_web", "args": {"query": "latest AI news"}}]}}

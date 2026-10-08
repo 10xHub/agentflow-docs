@@ -5,16 +5,16 @@ description: "How 10xGraph is run: MIT license, maintained by 10xScale, with a c
 section: Project
 order: 10
 label: Overview
-updated: "2026-10-06"
+updated: "2026-10-08"
 ---
 
-This section covers 10xGraph as a project rather than as an API: who maintains it, how releases are announced, how to report a security problem, where to ask for help and how to contribute. 10xGraph is MIT licensed and maintained by 10xScale, with Shudipto Trafder as lead maintainer. It is pre-1.0 and was renamed from 10xGraph in October 2026, so the pages here matter most to teams deciding whether to depend on it.
+This section covers 10xGraph as a project: who maintains it, how releases are announced, how to report a security problem, where to get help and how to contribute. It is MIT licensed, maintained by 10xScale, and pre-1.0 after its October 2026 rename from Agentflow.
 
 ## Start here
 
 Read the [Changelog](/changelog) first to see what has shipped and which versions are current, then the [Roadmap](/docs/project/roadmap) for what is missing, partial or deliberately out of scope. The roadmap is where the honest gaps are listed, so it is worth reading before you commit to the project.
 
-If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/upgrade-to-1.0) explains what to migrate. For the package rename (new PyPI and npm names, CLI and GitHub org), see the launch post [10xGraph is now 10xGraph](/blog/introducing-10xgraph). If something breaks, [Support](/docs/project/support) explains what to collect for a bug report that gets fixed, and [Security](/docs/project/security) describes private vulnerability reporting. To send a fix or a doc improvement, start with [Contributing](/docs/project/contributing); the people involved are listed on [Maintainers](/maintainers).
+If you plan to upgrade across a breaking change, [Upgrade to 1.0](/docs/project/upgrade-to-1.0) explains what to migrate. For the package rename (new PyPI and npm names, CLI and GitHub org), see [Coming from Agentflow](/docs/get-started/coming-from-agentflow). If something breaks, [Support](/docs/project/support) explains what to collect for a bug report that gets fixed, and [Security](/docs/project/security) describes private vulnerability reporting. To send a fix or a doc improvement, start with [Contributing](/docs/project/contributing); the people involved are listed on [Maintainers](/maintainers).
 
 | Page | Answers |
 | --- | --- |

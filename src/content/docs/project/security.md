@@ -5,7 +5,7 @@ description: How to report a vulnerability in 10xGraph, what response to expect,
 section: Project
 order: 40
 label: Security
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
 ## Reporting a vulnerability
@@ -38,7 +38,6 @@ Include as much of the following as you can:
 
 Security fixes are applied to the latest published release line. Pin a known-good
 version in production and upgrade promptly when a security release is announced.
-See the [changelog](/changelog) for what is current.
 
 ## Scope
 
@@ -62,9 +61,9 @@ injection](/docs/guides/protect-against-prompt-injection).
 ### The model can be persuaded to call a tool
 
 Prompt injection is a property of language models, not a defect in the graph
-engine. The framework gives you the controls to bound it — input validators,
-per-tool authorization, human-in-the-loop interrupts — but it cannot decide for
-you which tool calls are acceptable. See [security and
+engine. The framework gives you the controls to bound it: input validators,
+per-tool authorization, and human-in-the-loop interrupts. However, it cannot
+decide for you which tool calls are acceptable. See [security and
 validators](/docs/concepts/security-and-validators).
 
 ### Development defaults are permissive
@@ -84,7 +83,8 @@ Before exposing an agent to untrusted users:
 3. Enable authentication (`"auth": "jwt"` or a custom `BaseAuth`) and set a
    `JWT_SECRET_KEY` of at least 32 characters. See
    [auth and authorization](/docs/server/auth).
-4. Keep `enforce_user_isolation` on so a thread id alone is not an access token.
+4. Keep `enforce_user_isolation` on in your checkpointer (the default for the Postgres
+   checkpointer) so a thread id alone is not an access token.
 5. Configure [rate limiting](/docs/server/rate-limiting), and
    make sure your proxy hop count is correct so the limit cannot be bypassed
    with a forged `X-Forwarded-For`.

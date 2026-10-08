@@ -1,102 +1,105 @@
 ---
 title: Project structure
 seoTitle: 10xGraph production project structure
-description: The files that 10xgraph init --template production generates, what each one does, and what every key in the generated 10xgraph.json controls.
+description: The files that 10xgraph init --template production generates, what each one does, and which 10xgraph.json keys init writes for you.
 group: "Next steps"
 section: "Get started"
 order: 120
-updated: 2026-10-08T00:00:00.000Z
+updated: "2026-10-08"
 faq:
   - q: Which template should I start from?
-    a: Use quick-start to try an idea, since it writes only a graph, an env example and 10xgraph.json. Use production when the agent will be deployed, because it adds auth options, a prompt-injection validator, evals, tests, test and eval configuration blocks, and lint setup.
+    a: Use quick-start to try an idea, since it writes a graph, an env example and 10xgraph.json. Use production when the agent will be deployed, because it adds a state class, a tool, a prompt-injection validator, lifecycle hooks, evals, tests, ruff and pre-commit setup, and optional JWT or custom auth with rate limiting.
   - q: Does init overwrite my existing files?
-    a: No. If a file already exists, init stops with an error unless you pass --force. An existing 10xgraph.json is also protected by that rule.
+    a: No. If a file already exists, init stops with an error unless you pass --force. A 10xgraph.json that was already in the directory is protected by the same rule.
+  - q: Can I add rate limiting without auth?
+    a: Not through init. The interactive prompts ask about rate limiting only after you choose jwt or custom auth. You can still add a rate_limit block to 10xgraph.json by hand.
 ---
 
-Running `10xgraph init --template production` scaffolds a complete, production-ready 10xGraph project. The template generates a working agent with a state class, a tool, input validation, safety hooks, an integrated test suite, evaluation examples, and a 10xgraph.json config ready for deployment. Every file has a clear purpose, and you customize them to build your agent. This page explains what gets created, how each part works, and what every configuration key does.
+`10xgraph init --template production` scaffolds a deployable agent project: a `graph/` package with a state class, a weather tool, a prompt-injection validator and lifecycle hooks, plus `tests/`, `evals/`, ruff and pre-commit setup, an env template and a generated `10xgraph.json`. This page walks through every file and the config keys init writes.
 
-## How do I generate it?
+## Generate the project
 
-The most common way to scaffold a production project with authentication and rate limiting:
+Run init with the production template and the auth and rate-limit choices you want. The command below writes a JWT-protected project with Redis rate limiting and skips all prompts.
 
 ```bash
-10xgraph init --template production --auth jwt --rate-limit redis --yes
+# Scaffold a production project in the current directory without prompts
+10xgraph init --template production --auth jwt --rate-limit redis --name MyAgent --yes
 ```
 
-The command accepts several options:
+Without `--yes` or `--non-interactive`, init asks for each choice interactively. The template choice defaults to quick-start, and `--yes` without `--template` also gives you quick-start.
 
-| Option | Values | Purpose |
-|---|---|---|
-| `--template` | `quick-start`, `production` | Template to use. Quick-start is minimal; production includes auth, tests, evals and lint. |
-| `--auth` | `none`, `jwt`, `custom` | Authentication scheme. Required for production template. |
-| `--rate-limit` | `none`, `memory`, `redis` | Rate limiting backend. Required for production template. |
-| `--name` | string | Agent name (used in generated files and config). Default: `agent`. |
-| `--path` | directory | Where to scaffold the project. Default: current directory. |
-| `--yes` | flag | Use the supplied options without interactive prompts. |
-| `--non-interactive` | flag | Run without any interactive prompts. |
-| `--dry-run` | flag | List files that would be created without writing them. |
-| `--force` | flag | Overwrite existing files (including 10xgraph.json). |
+| Option | Values | Default | Purpose |
+|---|---|---|---|
+| `--template` | `quick-start`, `production` | `quick-start` | Which project to scaffold. Quick-start is a minimal graph with no auth. |
+| `--auth` | `none`, `jwt`, `custom` | `none` | Authentication scheme. Needs `--template production`. |
+| `--rate-limit` | `none`, `memory`, `redis` | `none` | Rate-limit backend. Needs `--template production`. |
+| `--name` | text | Directory name, or `MyAgent` when the path is `.` | Agent name, used for the package name in `pyproject.toml` and `APP_NAME` in `.env.example`. |
+| `--path`, `-p` | directory | `.` | Where to scaffold the project. |
+| `--yes`, `-y` | flag | off | Accept defaults and do not prompt. |
+| `--non-interactive` | flag | off | Fail instead of prompting. Use it in CI. |
+| `--dry-run` | flag | off | List the files that would be created without writing anything. |
+| `--force`, `-f` | flag | off | Overwrite files that already exist. |
 
-Without `--yes` or `--non-interactive`, init presents guided prompts for each option, allowing you to customize the generated project interactively.
+Init never overwrites silently. If any target file exists, it stops with `File already exists ... Use --force to overwrite.` Run `--dry-run` first when you scaffold into a non-empty directory.
 
-## What files does it create?
+## See what init creates
+
+Init writes the tree below. The `auth/` folder exists only with `--auth custom`; with `none` or `jwt` it is skipped.
 
 <FileTree>
 
-- **10xgraph.json** Configuration that the API server and CLI read on every run
-- .env.example Environment variable template; copy to .env and fill in your API keys
-- .python-version Pin the Python version (3.12 or later)
-- .pre-commit-config.yaml Git hooks for formatting, linting, and security checks
-- pyproject.toml Project metadata, dependencies, and tool configuration
-- graph/ Your agent implementation package (importable as a module)
-  - **agent.py** Entry point: builds and compiles your ReactAgent, exports `app`
-  - state.py Custom AgentState subclass with domain-specific fields
-  - thread_name_generator.py Names threads based on first user message
-  - tools/ Tool functions available to your agent
-    - weather_tool.py Example tool with retry logic and error handling
+- 10xgraph.json Config the API server and CLI read on every run
+- .env.example Environment template; copy to .env and add your API key
+- .python-version Python version pin (3.13 in the template)
+- .pre-commit-config.yaml Git hooks for formatting, linting and security checks
+- pyproject.toml Dependencies, ruff, pytest and coverage settings
+- graph/ Your agent package
+  - agent.py Builds the ReactAgent and exports the compiled graph as `app`
+  - state.py Custom AgentState subclass
+  - thread_name_generator.py ThreadNameGenerator subclass for naming threads
+  - tools/ Tool functions
+    - weather_tool.py Example tool with retries and progress events
   - validators/ Input validation and lifecycle hooks
-    - manager.py Registers validators and lifecycle hooks on the callback manager
-    - validators.py Prompt-injection validator that guards against malicious input
-    - lifecyle.py Lifecycle hooks that respond to graph start, end, errors, interrupts and state changes
-- auth/ Custom authentication implementation (only with `--auth custom`)
-  - agent_auth.py BaseAuth subclass; implement the `authenticate` method
-- evals/ Evaluation sets for testing agent behavior
-  - weather_agents_eval.py Example eval set (replace with your test cases)
-  - user_simulator_eval.py Example eval using simulated user messages
+    - manager.py Builds the CallbackManager and registers everything
+    - validators.py PromptInjectionValidator configuration
+    - lifecyle.py Lifecycle hooks (the filename spelling is the template's)
+- auth/ Only with `--auth custom`
+  - agent_auth.py BaseAuth subclass with an unimplemented authenticate method
+- evals/ Evaluation files
+  - weather_agents_eval.py Eval set built with EvalSetBuilder
+  - user_simulator_eval.py Simulated-user scenarios
 - tests/ Pytest suite
-  - conftest.py Shared test fixtures
-  - test_graph_nodes.py Unit tests for graph nodes
-  - test_catalog_tools.py Tests for tool definitions and execution
+  - conftest.py Sets a dummy GEMINI_API_KEY for tests
+  - test_graph_nodes.py Checks on the agent configuration and routing
+  - test_catalog_tools.py Tests for get_weather
+  - test_agent_eval.py Tests for the eval set and report writing
 
 </FileTree>
 
-The `auth/` folder is created only when you choose `--auth custom`. The `lifecyle.py` spelling (not "lifecycle") matches the generated template. When you run init without the `--auth` flag in quick-start mode, the auth folder is omitted.
+The quick-start template is smaller: `graph/agent.py` (a single-file agent with its tool), `.env.example` and `10xgraph.json`.
 
-## Project structure: how it all fits together
+## How the pieces connect
 
-The generated project organizes your agent code, configuration, and tests so that the 10xGraph API server can load and run your agent. Here is how the pieces connect:
+The API server reads `10xgraph.json`, imports `graph.agent:app`, and runs it. `agent.py` pulls in the state class, the tool and the callback manager, so each file below plugs into that one graph.
 
-**Entry point:** `graph/agent.py` imports your state class, tools, and validators, then builds and compiles a `ReactAgent` into `app`, which is exported. The `app` variable is a `CompiledGraph` (a runnable agent). The `10xgraph.json` config tells the API server where to find this: `"agent": "graph.agent:app"`.
+| Piece | Role |
+|---|---|
+| `10xgraph.json` | Points the server at `app`, and at the auth, thread-name and DI hooks. |
+| `graph/state.py` | Defines the working state the graph reads and writes, saved by the checkpointer. |
+| `graph/tools/` | Functions the model can call. |
+| `graph/validators/` | Checks input before the graph runs and reacts to graph events. |
+| `tests/` | Unit tests, run with `10xgraph test`. |
+| `evals/` | Behavior evaluations, run with `10xgraph eval`. |
 
-**Configuration:** `10xgraph.json` points to your agent, specifies auth options, rate limits, checkpointing strategy, and optional features. The API server reads this file on startup and configures itself accordingly.
+## Read the generated files
 
-**State and messages:** `graph/state.py` defines an `AgentState` subclass that holds the agent's working state. Your custom fields appear here. During execution, the graph accumulates messages and state changes; checkpointers save them.
+### graph/agent.py: the entry point
 
-**Tools:** `graph/tools/` holds tool functions. Each tool is a Python function decorated with `@tool` or passed to the Agent constructor. Tools can declare injected parameters like `state`, `emit`, and `tool_call_id` to access context.
-
-**Validation and lifecycle:** `graph/validators/` includes a prompt-injection guard (active by default) and lifecycle hooks that respond to graph events. Hooks let you hydrate state at the start, clean up at the end, or respond to errors and interrupts.
-
-**Testing:** `tests/` includes unit tests for your graph nodes and tools. Run them with `10xgraph test`. The suite is pre-wired with pytest fixtures and coverage reporting.
-
-**Evaluation:** `evals/` holds evaluation sets (test cases with expected outputs). Run them with `10xgraph eval`. Evals measure agent quality; unit tests verify correctness.
-
-## Understanding each generated file
-
-### graph/agent.py
-
-This is your agent's entry point. It imports all components, builds a `ReactAgent`, and compiles it to a `CompiledGraph`:
+This file builds a `ReactAgent`, compiles it with a checkpointer and the callback manager, and exports the result as `app`. It is the file `"agent": "graph.agent:app"` points at.
 
 ```python title="graph/agent.py"
+from datetime import datetime
+
 from tenxgraph.core.state import MessageContextManager
 from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
@@ -120,7 +123,22 @@ react_agent = ReactAgent(
     state=WeatherState(),
     model="google/gemini-2.5-flash",
     provider="google",
-    system_prompt=[...],
+    system_prompt=[
+        {
+            "role": "system",
+            "content": """
+                You are a helpful assistant.
+                Your task is to assist the user in finding information and answering questions.
+                User Current Location: {user_location}
+                If missing information, ask the user for clarification.
+                Use tools when they help answer the user.
+            """,
+        },
+        {
+            "role": "user",
+            "content": f"Today Date is {datetime.now().strftime('%Y-%m-%d')}",
+        },
+    ],
     trim_context=True,
     tools=[get_weather],
     context_manager=context_manager,
@@ -132,13 +150,11 @@ app = react_agent.compile(
 )
 ```
 
-The `ReactAgent` orchestrates your agent's reasoning loop: it calls your LLM, interprets tool calls, executes tools, and updates state. The `compile()` call wraps it in a `CompiledGraph` that the API server can run.
+`{user_location}` in the system prompt is filled from the `user_location` field of `WeatherState`. `InMemoryCheckpointer` loses all state on restart, so swap it for a durable checkpointer before you deploy (see the callout below).
 
-**Before deploying:** Replace `InMemoryCheckpointer` with a durable checkpointer (SQLite or Postgres+Redis) so your agent's state persists across restarts. See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
+### graph/state.py: custom state
 
-### graph/state.py
-
-A custom state class inheriting from `AgentState`:
+The state class extends `AgentState` with your own fields. Fields you add persist with each checkpoint and are available to prompts and tools.
 
 ```python title="graph/state.py"
 from tenxgraph.core import AgentState
@@ -148,17 +164,30 @@ class WeatherState(AgentState):
     user_location: str = ""
 ```
 
-Add any fields your agent needs. These fields persist in the checkpoint and are available to your tools and system prompt. Use type hints so the state is introspectable.
+### graph/tools/weather_tool.py: an example tool
 
-### graph/tools/weather_tool.py
-
-Example tool that shows how to use injected parameters (`tool_call_id`, `state`, `emit`):
+The tool takes the model's `location` argument plus three optional injected parameters. `tool_call_id`, `state` and `emit` are supplied by the runtime and are not shown to the model.
 
 ```python title="graph/tools/weather_tool.py"
+import logging
+import random
+
 from tenxgraph.core.state.stream_emitter import StreamEmitter
+
 from graph.state import WeatherState
 
+
+logger = logging.getLogger(__name__)
+
 MAX_RETRIES = 3
+
+
+def call_weather_api(location: str) -> str:
+    is_failed = random.choice([True, False])  # noqa: S311
+    if is_failed:
+        raise Exception("Failed to fetch weather data due to a simulated API error.")
+    return f"The weather in {location} is sunny"
+
 
 def get_weather(
     location: str,
@@ -170,10 +199,10 @@ def get_weather(
     if tool_call_id:
         logger.info(f"Tool call ID: {tool_call_id}")
     if state and hasattr(state, "context"):
-        logger.info(f"Number of messages: {len(state.context)}")
+        logger.info(f"Number of messages in context: {len(state.context)}")  # type: ignore
     if emit:
         emit.progress("Fetching weather data...")
-    
+
     for i in range(MAX_RETRIES):
         try:
             return call_weather_api(location)
@@ -181,18 +210,19 @@ def get_weather(
             logger.error(f"Attempt {i + 1} failed: {e}")
             if emit:
                 emit.progress(f"Attempt {i + 1} failed, retrying...")
-    
-    return f"Sorry, I couldn't fetch the weather for {location}."
+
+    return f"Sorry, I couldn't fetch the weather for {location} after multiple attempts."
 ```
 
-Tools can be async (use `async def`). To add your own tools, create new files in `graph/tools/` and pass them to `ReactAgent(..., tools=[...])`.
+`call_weather_api` is a stub that fails at random, so the retry loop is easy to see. Replace it with a real API call. Add your own tools as new files in `graph/tools/` and list them in `tools=[...]`. See [Use the @tool decorator](/docs/guides/use-tool-decorator) for how the schema is built.
 
-### graph/validators/validators.py
+### graph/validators: input checks and lifecycle hooks
 
-A prompt-injection guard that rejects suspicious input:
+The `validators/` package holds a prompt-injection guard, a lifecycle hook class, and a manager that registers both. `manager.py` creates the `callback_manager` that `agent.py` passes to `compile()`.
 
 ```python title="graph/validators/validators.py"
 from tenxgraph.utils.validators import PromptInjectionValidator
+
 
 prompt_validator = PromptInjectionValidator(
     strict_mode=True,
@@ -214,11 +244,7 @@ prompt_validator = PromptInjectionValidator(
 )
 ```
 
-Edit `suspicious_keywords` for your domain. The example list is tuned for a weather agent; you may need to add or remove words so legitimate input is not blocked.
-
-### graph/validators/manager.py
-
-Registers validators and lifecycle hooks:
+Tune `suspicious_keywords` to your domain. Words such as `free` or `token` block ordinary messages in some apps. See [Protect against prompt injection](/docs/guides/protect-against-prompt-injection).
 
 ```python title="graph/validators/manager.py"
 from tenxgraph.utils.callbacks import CallbackManager
@@ -226,51 +252,33 @@ from tenxgraph.utils.callbacks import CallbackManager
 from .lifecyle import AgentLifecycleHook
 from .validators import prompt_validator
 
+
 callback_manager = CallbackManager()
 callback_manager.register_input_validator(prompt_validator)
 callback_manager.register_lifecycle_hook(AgentLifecycleHook())
 ```
 
-The `CallbackManager` is passed to your agent at compile time and invokes validators and hooks at the appropriate moments. To add more validators or hooks, create them in separate files and register them here.
+`lifecyle.py` defines `AgentLifecycleHook(GraphLifecycleHook[WeatherState])` with stub implementations of seven async hooks, each returning `None` to keep state unchanged (`on_graph_start` returns the state it received).
 
-### graph/validators/lifecyle.py
+| Hook | Called when |
+|---|---|
+| `on_graph_start` | Before the graph runs. Use it to hydrate state, for example from the authenticated user. |
+| `on_graph_end` | After successful completion, before the final state sync. |
+| `on_graph_error` | An unhandled error escapes the execution loop. The exception is still re-raised. |
+| `on_interrupt` | Execution pauses at an interrupt point. |
+| `on_resume` | A paused run is about to resume. |
+| `on_checkpoint` | Before every durable checkpoint write. |
+| `on_state_update` | After each node's result is merged into state. |
 
-Lifecycle hooks respond to graph events (start, end, error, interrupt, checkpoint):
+Override only the hooks you need. The full contract is in [Use callbacks](/docs/guides/use-callbacks).
 
-```python title="graph/validators/lifecyle.py"
-from tenxgraph.utils.callbacks import GraphLifecycleHook, GraphLifecycleContext
-from graph.state import WeatherState
+### graph/thread_name_generator.py: thread names
 
-class AgentLifecycleHook(GraphLifecycleHook[WeatherState]):
-    async def on_graph_start(
-        self, context: GraphLifecycleContext, state: WeatherState
-    ) -> WeatherState | None:
-        """Hydrate state from auth context before the agent runs."""
-        return state
-
-    async def on_graph_end(
-        self, context: GraphLifecycleContext, final_state: WeatherState,
-        messages: list, total_steps: int
-    ) -> WeatherState | None:
-        """Called after successful completion; return modified state or None."""
-        return None
-
-    async def on_graph_error(
-        self, context: GraphLifecycleContext, error: Exception,
-        partial_state: WeatherState, messages: list, step: int, node_name: str
-    ) -> tuple[WeatherState, str] | None:
-        """Called on unhandled error; return (modified_state, error_message) or None."""
-        return None
-```
-
-The template provides stub implementations for all hook methods. Override them to respond to events (for example, logging, cleanup, state augmentation).
-
-### graph/thread_name_generator.py
-
-Generates human-readable names for threads (conversation sessions):
+The generator names a thread from the user's messages. The template returns a fixed placeholder string.
 
 ```python title="graph/thread_name_generator.py"
 from tenxgraph_api import ThreadNameGenerator
+
 
 class MyNameGenerator(ThreadNameGenerator):
     async def generate_name(self, messages: list[str]) -> str:
@@ -278,19 +286,32 @@ class MyNameGenerator(ThreadNameGenerator):
         return "MyCustomThreadName"
 ```
 
-The `messages` parameter is a list of message strings from the user's first turn. Use them to derive a name (e.g., extract a topic). The name appears in thread listings and logs.
+Replace the return value with logic that derives a name from `messages`, for example a short summary of the first message.
 
-### auth/agent_auth.py
+### auth/agent_auth.py: custom authentication
 
-Custom authentication (only with `--auth custom`):
+With `--auth custom`, init scaffolds a `BaseAuth` subclass that rejects every request with 401 until you implement `authenticate`. Its constructor logs a warning to remind you.
 
 ```python title="auth/agent_auth.py"
+import logging
+from typing import Any
+
 from tenxgraph_api import BaseAuth
 from fastapi import HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 
+
+logger = logging.getLogger(__name__)
+
+
 class AgentAuth(BaseAuth):
     """Verify the caller and return who they are."""
+
+    def __init__(self) -> None:
+        logger.warning(
+            "AgentAuth.authenticate is not implemented yet: every request will get 401. "
+            "Implement it in auth/agent_auth.py."
+        )
 
     def authenticate(
         self,
@@ -300,224 +321,123 @@ class AgentAuth(BaseAuth):
     ) -> dict[str, Any] | None:
         if credential is None:
             raise HTTPException(status_code=401, detail="Missing credentials")
-        
-        # Verify the bearer token (e.g., with your identity provider):
-        # claims = verify_token(credential.credentials)
-        # return {"user_id": claims["sub"], "roles": claims.get("roles", [])}
-        
-        raise HTTPException(status_code=401, detail="Not configured")
+
+        # Replace this with a real check, for example verifying the bearer token with your
+        # identity provider:
+        #
+        #     claims = verify_token(credential.credentials)  # raises on a bad token
+        #     return {"user_id": claims["sub"], "roles": claims.get("roles", [])}
+        raise HTTPException(status_code=401, detail="Authentication is not configured")
 ```
 
-The `authenticate` method receives a request and credential, verifies them, and returns a dict with at least `"user_id"`. The `user_id` becomes the thread owner, so it must come from a verified credential. Optional `roles` or `scopes` feed the authorization backend.
+Return a dict with at least `user_id`. It becomes the thread and memory owner, so take it from the verified credential, never from a client-set header or body field. Optional `roles` and `scopes` feed the authorization backend. See [Authentication](/docs/server/auth).
 
-### evals/ and tests/
+### evals and tests
 
-**Evals** (`evals/weather_agents_eval.py` and `user_simulator_eval.py`) define evaluation test cases. Each file exports an `eval_set` that specifies inputs, expected behaviors, and scoring criteria. Run with `10xgraph eval`.
+`evals/weather_agents_eval.py` defines `get_eval_config()` (it returns `EvalPresets.tool_usage(threshold=0.6)`) and `get_eval_set()` (an `EvalSetBuilder` set with a greeting case and `get_weather` tool tests). `evals/user_simulator_eval.py` defines `get_scenarios()` and runs simulated-user conversations. Run them with `10xgraph eval`.
 
-**Tests** (`tests/test_graph_nodes.py`, `test_catalog_tools.py`, `conftest.py`) are Pytest tests. They use fixtures from `conftest.py` to instantiate your agent and test nodes and tools in isolation. Run with `10xgraph test`. The suite is pre-configured for coverage reporting and linting.
+The tests cover the agent configuration and routing (`test_graph_nodes.py`), the `get_weather` tool (`test_catalog_tools.py`) and the eval set and report writing (`test_agent_eval.py`). `conftest.py` only sets a dummy `GEMINI_API_KEY`, so the tests run offline. Run them with `10xgraph test`. See [Test and evaluate](/docs/get-started/tutorial/test-and-evaluate) and [Testing](/docs/testing).
 
 ### .env.example
 
-A template for environment variables. Copy to `.env` and fill in your API keys:
+The env template holds app, CORS, request-limit, security-header, Snowflake, Sentry and API key settings. Copy it to `.env` and fill in `GOOGLE_API_KEY`.
 
 ```bash title=".env.example"
-# App Config
-APP_NAME="agent"
+APP_NAME="MyAgent"
 APP_VERSION="0.1.0"
 MODE="production"
 LOG_LEVEL="INFO"
 IS_DEBUG="false"
+SUMMARY="MyAgent Backend"
 
-# CORS and Security
 ORIGINS="*"
 ALLOWED_HOST="*"
+
+ROOT_PATH="/"
 DOCS_PATH=""
 REDOCS_PATH=""
 
-# Request Limits
 MAX_REQUEST_SIZE=10485760  # 10MB
 
-# Security Headers
 SECURITY_HEADERS_ENABLED="true"
 HSTS_ENABLED="true"
 
-# Snowflake ID Generation
 SNOWFLAKE_EPOCH=1609459200000
 SNOWFLAKE_NODE_ID=1
 SNOWFLAKE_WORKER_ID=2
 
-# Sentry (error tracking)
 SENTRY_DSN=""
 
-# Redis (only if --rate-limit redis)
+# Only with --rate-limit redis
 REDIS_URL=""
 
-# JWT (only if --auth jwt)
+# Only with --auth jwt
 JWT_SECRET_KEY=""
 JWT_ALGORITHM="HS256"
 
-# API Keys
 GOOGLE_API_KEY=""
 ```
 
-The template includes conditional blocks (`##[IF_REDIS]##`, `##[IF_JWT]##`) that are expanded when you choose auth or rate-limit options. In production, never commit `.env`; load it from a secrets manager.
+This excerpt omits the remaining HSTS and header settings. The Redis and JWT blocks appear only when you choose those options. Every variable is listed in the [environment reference](/docs/reference/api-cli/environment).
 
-### pyproject.toml
+### pyproject.toml, .python-version and pre-commit
 
-Project metadata, dependencies, and tool configuration:
+`pyproject.toml` names the project after your agent, requires Python 3.12 or later, and depends on `10xgraph`, `10xgraph-api` and `google-genai`. A `test` extra adds `pytest`, `pytest-asyncio`, `pytest-cov` and `pytest-env`. It also configures ruff (line length 100, target `py312`) and pytest with coverage over `graph`.
 
-```toml title="pyproject.toml"
-[project]
-name = "my-agent"
-version = "0.1.0"
-requires-python = ">=3.12"
-dependencies = [
-    "10xgraph",
-    "10xgraph-api",
-    "google-genai",
-]
+`.python-version` pins `3.13`. If you run 3.12, edit it. `.pre-commit-config.yaml` runs the standard pre-commit hooks, pyupgrade, ruff format, ruff and bandit on commit. Install them with `pre-commit install`.
 
-[project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "pytest-env",
-]
+If you use a different model provider, swap `google-genai` for that provider's SDK and change `model` and `provider` in `agent.py`.
 
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-lint.select = ["E", "W", "F", "PL", "I", "B", ...]
+## Understand the generated 10xgraph.json
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = [
-    "--cov=graph", "--cov-report=html", "--cov-fail-under=0", "-v"
-]
-```
-
-- Requires Python 3.12 or later.
-- Pins `10xgraph` (core) and `10xgraph-api` (server/CLI).
-- Includes your LLM provider's SDK (e.g., `google-genai`, `openai`, `anthropic`).
-- Configures Ruff for code formatting and linting.
-- Configures Pytest with coverage targets.
-
-Run `pip install -e ".[test]"` in development to install with test extras.
-
-### .pre-commit-config.yaml
-
-Git hooks that run before every commit:
-
-```yaml title=".pre-commit-config.yaml"
-repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  hooks:
-  - id: check-yaml
-  - id: trailing-whitespace
-  - id: check-added-large-files
-  - id: check-merge-conflict
-
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  hooks:
-  - id: ruff-format
-  - id: ruff
-    args: ['--fix', '--exit-non-zero-on-fix']
-
-- repo: https://github.com/PyCQA/bandit
-  hooks:
-  - id: bandit
-```
-
-These hooks ensure code is formatted, linted, and free of obvious security issues. Install with `pre-commit install`.
-
-## Understanding 10xgraph.json
-
-The config file tells the API server how to load your agent, handle authentication, rate limit requests, and checkpoint state:
+Init builds `10xgraph.json` from your answers and writes it after the template files, so the generated file contains only the keys below. For `--auth custom --rate-limit redis`, it looks like this.
 
 ```json title="10xgraph.json"
 {
   "agent": "graph.agent:app",
   "env": ".env",
-  "auth": "jwt",
+  "auth": {
+    "method": "custom",
+    "path": "auth.agent_auth:AgentAuth"
+  },
   "thread_name_generator": "graph.thread_name_generator:MyNameGenerator",
-  "ag_ui": { "enabled": false },
+  "ag_ui": {
+    "enabled": false
+  },
   "authorization": "ownership",
   "injectq": "graph.agent:container",
   "rate_limit": {
     "enabled": true,
     "backend": "redis",
-    "redis": {
-      "url": "${REDIS_URL}",
-      "prefix": "10xgraph:rate-limit"
-    },
     "requests": 100,
     "window": 60,
-    "by": "user",
-    "trusted_proxy_headers": true,
-    "trusted_proxy_hops": 1,
-    "fail_open": false,
+    "by": "ip",
+    "trusted_proxy_headers": false,
     "exclude_paths": ["/ping", "/docs", "/redoc", "/openapi.json"]
-  },
-  "test": {
-    "path": "tests",
-    "coverage": true,
-    "coverage_threshold": 70
-  },
-  "evaluation": {
-    "directory": "evals",
-    "output_dir": "eval_reports",
-    "threshold": 0.75,
-    "parallel": false,
-    "max_concurrency": 4,
-    "timestamp_files": true
   }
 }
 ```
 
-| Key | Type | Purpose |
+| Key | Written when | Value from init |
 |---|---|---|
-| `agent` | string | `module:variable` path to your compiled graph (required). |
-| `env` | string | Path to `.env` file to load before starting. |
-| `auth` | `null`, string, or object | `null` for no auth, `"jwt"` for JWT (needs `JWT_SECRET_KEY` env var), or `{"method": "custom", "path": "module:class"}` for custom auth. |
-| `authorization` | string | Authorization backend: `"ownership"` (thread owner only), `"allow_all"`, `"default"`, or a custom backend path. |
-| `thread_name_generator` | string | `module:class` of a `ThreadNameGenerator` subclass. |
-| `ag_ui` | object | AG-UI (CopilotKit) endpoint config. `{"enabled": false}` disables it; set `enabled: true` to activate. |
-| `injectq` | string | `module:variable` of an InjectQ DI container (optional). |
-| `remote_tools` | array | List of remote tools callable from client code (empty by default). |
-| `rate_limit` | object | Rate limiting config (see below). |
-| `test` | object | Test config: `path`, `coverage` (bool), `coverage_threshold` (percent). |
-| `evaluation` | object | Eval config: `directory`, `output_dir`, `threshold` (score), `parallel` (bool), `max_concurrency`, `timestamp_files` (bool). |
+| `agent` | Always | `graph.agent:app` |
+| `env` | Always | `.env` |
+| `auth` | Always | `null` for none, `"jwt"` for JWT (needs `JWT_SECRET_KEY` and `JWT_ALGORITHM`), or `{"method": "custom", "path": "auth.agent_auth:AgentAuth"}` |
+| `ag_ui` | Always | `{"enabled": false}`, the AG-UI endpoint is off |
+| `thread_name_generator` | Always | `null` for quick-start, `graph.thread_name_generator:MyNameGenerator` for production |
+| `authorization` | Production with jwt or custom | `"ownership"`: a thread is accessible only to its owner. Other values are `"allow_all"` or a `module:attribute` backend. |
+| `injectq` | Production | `graph.agent:container` (see the warning below) |
+| `rate_limit` | Production with a rate-limit backend | `enabled`, `backend`, `requests`, `window`, `by`, `trusted_proxy_headers`, `exclude_paths` |
 
-### Rate limit configuration
+Defaults come from the prompts or flags: 100 requests per 60 seconds, counted `ip` (interactive mode also offers `global`), with `trusted_proxy_headers` true only if you say you are behind a reverse proxy. Keys such as `test`, `evaluation`, `remote_tools`, `checkpointer` and `store` are not written for production, though you can add them yourself. The quick-start template adds none of these either. For every key and default, see the [configuration reference](/docs/reference/api-cli/configuration), and for rate-limit options see [Rate limiting](/docs/server/rate-limiting).
 
-When `rate_limit.enabled` is true, the API server enforces request limits:
+## Fix these before you deploy
 
-| Key | Values | Purpose |
-|---|---|---|
-| `backend` | `"memory"`, `"redis"`, `"custom"` | Where to store request counts. Memory is in-process; Redis is shared across workers. |
-| `requests` | number | Max requests per window (default 100). |
-| `window` | seconds | Time window in seconds (default 60). |
-| `by` | `"ip"`, `"user"`, `"global"` | Limit per client IP, authenticated user, or all clients combined. |
-| `trusted_proxy_headers` | boolean | Honor `X-Forwarded-For` from proxies (set true behind a reverse proxy). |
-| `trusted_proxy_hops` | number | How many hops to trust in `X-Forwarded-For` (default 1). |
-| `exclude_paths` | array | Paths not counted against the limit (e.g., `/ping`, `/docs`). |
-| `fail_open` | boolean | On backend error: true = allow requests; false = deny (default false). |
-| `redis` | object | If backend is `redis`: `{ "url": "redis://...", "prefix": "..." }`. |
+<Callout type="warning" title="The injectq key points at a variable that does not exist">
 
-The template uses `"by": "user"` when auth is configured (JWT or custom), because it limits per authenticated identity. Change to `"by": "ip"` to limit per client IP.
+Production init writes `"injectq": "graph.agent:container"`, but `graph/agent.py` defines no `container`. The server fails at startup with `Failed to load InjectQ from graph.agent:container: module 'graph.agent' has no attribute 'container'`.
 
-## Important notes before deploying
-
-<Callout type="warning" title="The injectq key has a bug in the template">
-
-The generated `10xgraph.json` includes `"injectq": "graph.agent:container"`, but `graph/agent.py` does not define a `container` variable. The server will raise an error at startup: `AttributeError: module 'graph.agent' has no attribute 'container'`.
-
-To fix this, either:
-
-1. **Delete the key** from `10xgraph.json` if you do not use dependency injection yet.
-2. **Add the container** to `graph/agent.py`:
+Either delete the `injectq` key from `10xgraph.json`, or add a container to `graph/agent.py`:
 
 ```python title="graph/agent.py"
 from injectq import InjectQ
@@ -525,40 +445,35 @@ from injectq import InjectQ
 container = InjectQ.get_instance()
 ```
 
-When you are ready to use dependency injection, populate the container with your dependencies (e.g., database connections, config objects) and reference them in your tools and nodes.
+When you start using dependency injection, bind your services on this container. See [Use dependency injection](/docs/guides/use-dependency-injection).
 
 </Callout>
 
-<Callout type="tip" title="Checkpointing in production">
+<Callout type="tip" title="Switch to a durable checkpointer">
 
-The template uses `InMemoryCheckpointer`, which stores state in memory and is lost when the server restarts. Before deploying, switch to a durable checkpointer:
-
-- SQLite for single-machine deployments
-- Postgres + Redis for distributed deployments
-
-See [Set up checkpointing](/docs/guides/set-up-checkpointing) for detailed configuration.
+The template uses `InMemoryCheckpointer`, so threads and state vanish when the server restarts. Choose a durable checkpointer before deploying: see [Set up checkpointing](/docs/guides/set-up-checkpointing) and [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
 
 </Callout>
 
-<Callout type="note" title="Customize security settings">
+<Callout type="note" title="Tighten the env defaults">
 
-The `.env.example` defaults `ORIGINS="*"` and `ALLOWED_HOST="*"`, which allow requests from any domain. Before production, restrict these to your actual client domains and set `DOCS_PATH=""` to disable API documentation endpoints.
+`.env.example` ships `ORIGINS="*"` and `ALLOWED_HOST="*"`. Restrict both to your real domains before production. Leave `DOCS_PATH` and `REDOCS_PATH` empty to keep the API docs off. Never commit `.env`.
 
 </Callout>
 
 ## What to do next
 
-- **Read the configuration reference** to understand every key in `10xgraph.json`: [Configuration reference](/docs/reference/api-cli/configuration)
-- **Replace the example tool** with your own: [Use the @tool decorator](/docs/guides/use-tool-decorator)
-- **Customize your state class** for your domain: [Use custom state](/docs/guides/use-custom-state)
-- **Set up durable checkpointing** before deploying: [Set up checkpointing](/docs/guides/set-up-checkpointing)
-- **Run the server locally** to test your agent: [Run the server](/docs/server/run-the-server)
+- Run the project locally: [Run the server](/docs/server/run-the-server)
+- Replace the example tool: [Use the @tool decorator](/docs/guides/use-tool-decorator)
+- Add your own fields to the state: [Use custom state](/docs/guides/use-custom-state)
+- Look up every config key: [Configuration reference](/docs/reference/api-cli/configuration)
 
 ## Related pages
 
 <CardGrid>
 
-<LinkCard title="Installation" href="/docs/get-started/installation" description="Install 10xGraph and create your first agent." eyebrow="Get started" />
+<LinkCard title="Installation" href="/docs/get-started/installation" description="Install 10xGraph and set up your environment." eyebrow="Get started" />
 <LinkCard title="Configuration reference" href="/docs/reference/api-cli/configuration" description="Every 10xgraph.json key." eyebrow="Reference" />
 <LinkCard title="Run the server" href="/docs/server/run-the-server" description="Start the API server locally or in production." eyebrow="Server" />
+
 </CardGrid>

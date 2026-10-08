@@ -5,7 +5,7 @@ description: Where to ask questions, how to file a good bug report for 10xGraph,
 section: Project
 order: 50
 label: Support
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
 ## Start here
@@ -14,7 +14,7 @@ Most problems have a page already:
 
 | Symptom | Page |
 | --- | --- |
-| `pip install` fails, wrong Python version, `agentflow` not found | [Installation troubleshooting](/docs/troubleshooting/installation) |
+| `pip install` fails, wrong Python version, `tenxgraph` not found | [Installation troubleshooting](/docs/troubleshooting/installation) |
 | Server will not start, 401/403, CORS, rate limits | [API server troubleshooting](/docs/troubleshooting/api-server) |
 | Streaming stalls, types missing, upload fails | [Client troubleshooting](/docs/troubleshooting/client) |
 | Playground shows nothing, or a page is empty | [Playground troubleshooting](/docs/troubleshooting/playground) |

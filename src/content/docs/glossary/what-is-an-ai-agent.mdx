@@ -5,33 +5,33 @@ description: An AI agent is a program that uses an LLM to perceive input, reason
 section: Glossary
 order: 20
 label: What is an AI agent?
-updated: "2026-07-01"
+updated: "2026-10-08"
 faq:
   - q: What is the difference between an AI agent and an LLM?
     a: An LLM is a model that generates text given a prompt. An AI agent is a program built on top of an LLM that can also call tools, maintain state across multiple steps, and take actions in a loop until it completes a goal. An LLM is a component inside an AI agent, not the agent itself.
   - q: What programming language is best for building AI agents?
     a: Python is the dominant language for AI agent development because all major LLM provider SDKs (OpenAI, Anthropic, Google) have first-class Python support and most agent frameworks (10xGraph, LangGraph, CrewAI, AutoGen) are Python-native. TypeScript is used for frontend agent clients and increasingly for Node.js agent runtimes.
   - q: How do AI agents use tools?
-    a: The LLM inside an agent can request tool calls by returning a structured response that names the tool and provides the arguments. The agent runtime executes the tool (a Python function), sends the result back to the LLM, and the LLM continues reasoning. 10xGraph's ToolNode executes multiple tool calls in parallel via asyncio.gather.
+    a: The LLM inside an agent can request tool calls by returning a structured response that names the tool and provides the arguments. The agent runtime executes the tool (a Python function), sends the result back to the LLM, and the LLM continues reasoning. 10xGraph's ToolNode runs multiple tool calls from one model response in parallel.
   - q: What is the difference between an AI agent and a workflow?
     a: "A workflow has fixed, pre-determined steps. An AI agent decides dynamically which steps to take based on the LLM's reasoning. In practice, most production systems use both: deterministic graph structure (workflow) with LLM-powered decision points (agent) at nodes where human-like reasoning is needed."
   - q: Can AI agents remember previous conversations?
-    a: Yes, with the right persistence layer. 10xGraph uses a thread ID system — each conversation gets a thread ID, and the full message history is stored in Redis (hot) and Postgres (durable). When you invoke the agent again with the same thread ID, it has access to the full conversation history.
+    a: Yes, with the right persistence layer. 10xGraph uses a thread ID system. Each conversation gets a thread ID, and the full message history is stored by the checkpointer you configure (in memory, SQLite, or Redis plus Postgres). When you invoke the agent again with the same thread ID, it has access to the full conversation history.
 ---
 
-**An AI agent is a software program that uses a large language model (LLM) to perceive inputs, reason about them, and take actions — including calling external tools, writing code, or querying databases — in a loop until it achieves a goal.** Unlike a single LLM call, an agent can complete multi-step tasks autonomously by deciding which actions to take based on intermediate results.
+**An AI agent is a program that uses a large language model (LLM) to perceive input, reason about it, and take actions, such as calling tools or querying databases, in a loop until a goal is met.** Unlike a single LLM call, an agent completes multi-step tasks by choosing each next action from intermediate results.
 
-The term "agent" has been used broadly in AI research since the 1990s, but in 2024–2026 it has come to specifically mean LLM-powered programs that can use tools and maintain state across multiple steps.
+The term "agent" has been used broadly in AI research since the 1990s, but in 2024 to 2026 it has come to specifically mean LLM-powered programs that can use tools and maintain state across multiple steps.
 
 ## The core loop
 
 Every AI agent runs some version of this loop:
 
-1. **Perceive** — receive a user message or environment observation
-2. **Reason** — the LLM decides what to do next
-3. **Act** — call a tool, write a file, query a database, or respond
-4. **Observe** — get the result of the action
-5. **Repeat** — or stop if the goal is met
+1. **Perceive**: receive a user message or environment observation
+2. **Reason**: the LLM decides what to do next
+3. **Act**: call a tool, write a file, query a database, or respond
+4. **Observe**: get the result of the action
+5. **Repeat**: or stop if the goal is met
 
 The most widely used implementation of this loop is the **ReAct pattern** (Reason + Act), introduced by Yao et al. (2022). See [What is a ReAct agent?](/docs/glossary/what-is-a-react-agent) for details.
 
@@ -40,7 +40,7 @@ The most widely used implementation of this loop is the **ReAct pattern** (Reaso
 | Characteristic | Chatbot | AI agent |
 |---------------|---------|---------|
 | Can call tools | No | Yes |
-| Runs in a loop | No — single LLM call | Yes — until goal is met |
+| Runs in a loop | No, single LLM call | Yes, until goal is met |
 | Maintains task state | No | Yes |
 | Takes actions in the world | No | Yes |
 | Can spawn sub-tasks | No | Yes (multi-agent) |
@@ -53,7 +53,7 @@ A chatbot responds to one message with one LLM call. An agent may make dozens of
 
 ```python
 from tenxgraph.prebuilt.agent import ReactAgent
-from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.state import Message
 
 def search_web(query: str) -> str:
     """Search the web and return a summary of results."""
@@ -79,19 +79,19 @@ result = app.invoke(
 print(result["messages"][-1].text())
 ```
 
-The agent will call `get_weather` for Tokyo, call `search_web` for the news query, then compose a final answer — all automatically.
+The agent will call `get_weather` for Tokyo, call `search_web` for the news query, then compose a final answer, all automatically.
 
 ## Serving an AI agent as an API
 
 Once you have a compiled agent, one command starts a production HTTP server:
 
 ```bash
-pip install 10xgraph-api
+pip install "10xgraph[google-genai]" 10xgraph-api
 10xgraph init
 10xgraph api
 ```
 
-This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET /v1/graph/threads/{id}` — no extra FastAPI code required.
+This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (NDJSON), and `GET /v1/threads/{thread_id}/state` endpoints with no extra FastAPI code required.
 
 ## Types of AI agents
 
@@ -108,11 +108,11 @@ This gives you `POST /v1/graph/invoke`, `POST /v1/graph/stream` (SSE), and `GET 
 
 A raw LLM call returns text. For production AI agents, you also need:
 
-- **Persistent threads** — conversations that survive server restarts
-- **Tool execution** — call functions, APIs, databases in parallel
-- **Streaming** — send tokens to a frontend as they generate
-- **Auth and rate limiting** — control who can call the agent and how often
-- **Observability** — traces, metrics, error tracking
+- **Persistent threads**: conversations that survive server restarts
+- **Tool execution**: call functions, APIs, databases in parallel
+- **Streaming**: send tokens to a frontend as they generate
+- **Auth and rate limiting**: control who can call the agent and how often
+- **Observability**: traces, metrics, error tracking
 
 10xGraph ships all of these as part of the framework. See [Get Started](/docs/get-started) for the full stack.
 
@@ -121,7 +121,7 @@ A raw LLM call returns text. For production AI agents, you also need:
 <CardGrid>
 
 <LinkCard title="Build your first agent" href="/docs/get-started/first-agent" description="A step-by-step guide to building and serving a Python AI agent with 10xGraph." eyebrow="Guide" />
-<LinkCard title="What is a ReAct agent?" href="/docs/glossary/what-is-a-react-agent" description="The Reason + Act pattern — the most common single-agent architecture." eyebrow="Concept" />
+<LinkCard title="What is a ReAct agent?" href="/docs/glossary/what-is-a-react-agent" description="The Reason + Act pattern, the most common single-agent architecture." eyebrow="Concept" />
 <LinkCard title="Agents and tools" href="/docs/concepts/agents-and-tools" description="How agents and tools work together in 10xGraph." eyebrow="Concept" />
 <LinkCard title="Compare frameworks" href="/docs/compare" description="10xGraph vs LangGraph, CrewAI, AutoGen, and Google ADK." eyebrow="Guide" />
 

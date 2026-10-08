@@ -1,7 +1,7 @@
 ---
 title: Mental Model
-seoTitle: "10xGraph mental model: six core concepts"
-description: Understand the six core concepts in 10xGraph before building your first agent.
+seoTitle: "10xGraph mental model: seven core concepts"
+description: Learn the seven ideas behind every 10xGraph agent (message, state, node, edge, graph, agent, thread) and the seven tutorial steps that build on them.
 section: "Get started"
 group: "Tutorial"
 order: 51
@@ -9,207 +9,223 @@ label: Mental Model
 updated: "2026-10-08"
 faq:
   - q: "What is the difference between a message and a message role?"
-    a: "A message is a unit of communication with a role (user, assistant, system, or tool) and content blocks. The role identifies who sent it: the user, the model, or a tool result."
+    a: "A message is one unit of communication, made of content blocks. Its role says who sent it: user, assistant, system or tool."
   - q: "Can I extend AgentState with custom fields?"
-    a: "Yes. Subclass AgentState and add your fields. The framework preserves the base fields (context, context_summary, execution_meta) alongside your custom data."
+    a: "Yes. Subclass AgentState and add your fields. The base fields (context, context_summary, execution_meta) are kept alongside your custom data."
   - q: "Why do I need a StateGraph if nodes are just functions?"
-    a: "StateGraph connects nodes into a workflow with defined entry points and edges. It handles execution flow, persistence (with a checkpointer), and coordination between nodes."
+    a: "A node only does one step of work. StateGraph connects nodes with edges and an entry point, and compiling it gives you a runnable app that manages state, routing and persistence."
 ---
 
-This tutorial teaches you to build a Python agent step by step, starting with understanding how 10xGraph thinks about agent workflows. By the end of this page, you will know the six core concepts that everything else builds on: message, state, node, edge, graph, and agent. You will also understand how they work together and what you build across the seven tutorial steps.
+A 10xGraph agent is a graph. Messages accumulate in a shared state, nodes (plain functions or an LLM-backed agent) read and update that state, and edges decide which node runs next. A thread identifies one conversation so state can be saved and resumed. This page defines each idea once.
 
-## What you build in this tutorial
+## What you build across the tutorial
 
-This is a seven-step path from an empty folder to a production-ready agent. Each step teaches one concept with a complete, runnable code example.
+The tutorial takes you from an empty folder to an agent that calls tools, remembers conversations, runs behind an HTTP API, and is called from TypeScript. Each step has complete, runnable code that builds on the previous one.
 
-| Step | What you build | Page |
+| Step | What you do | Page |
 |---|---|---|
-| 1 | Understand the mental model | This page |
-| 2 | Compile and run a single-node workflow | [Build a graph](/docs/get-started/tutorial/build-a-graph) |
-| 3 | Add a tool and set up ReAct routing | [Build a graph](/docs/get-started/tutorial/build-a-graph) |
-| 4 | Persist conversation state with a checkpointer | [Threads and memory](/docs/get-started/tutorial/threads-and-memory) |
-| 5 | Expose the agent over HTTP | [Serve and inspect](/docs/get-started/tutorial/serve-and-inspect) |
-| 6 | Test it in the hosted playground | [Serve and inspect](/docs/get-started/tutorial/serve-and-inspect) |
-| 7 | Call it from a TypeScript application | [Call from your app](/docs/get-started/tutorial/call-from-your-app) |
+| 1 | Learn the mental model | This page |
+| 2 | Build a graph by hand with an agent, a tool node and routing | [Build a graph](/docs/get-started/tutorial/build-a-graph) |
+| 3 | Add memory with a checkpointer and thread IDs | [Threads and memory](/docs/get-started/tutorial/threads-and-memory) |
+| 4 | Serve the graph over HTTP and inspect it | [Serve and inspect](/docs/get-started/tutorial/serve-and-inspect) |
+| 5 | Call the server from TypeScript | [Call from your app](/docs/get-started/tutorial/call-from-your-app) |
+| 6 | Stream a run and pause for human approval | [Stream and approve](/docs/get-started/tutorial/stream-and-approve) |
+| 7 | Test and evaluate the agent | [Test and evaluate](/docs/get-started/tutorial/test-and-evaluate) |
 
-By the end, you will have an agent that calls tools, persists conversation state, runs behind an HTTP API, and can be called from TypeScript.
+If you only want a working agent in a few minutes, use the [first agent quickstart](/docs/get-started/first-agent) instead, then come back here to understand what it does.
 
-## The six core concepts
+## The seven core concepts
 
-Before writing code, it helps to understand the six ideas that 10xGraph is built on. This section explains each one.
+Seven terms cover the whole framework: message, state, node, edge, graph, agent and thread. The first six are Python objects you create; the thread is an ID you pass at run time.
 
-### 1. Message
+### Message
 
-A **message** is the unit of communication in 10xGraph. Every input to an agent and every output is a message. A message has a role (who sent it) and content.
-
-The four roles are:
-- `user`: input from a person or client
-- `assistant`: output from the language model
-- `tool`: output from a tool or function
-- `system`: instructions or context for the model
+A message is the unit of communication. Every input to a graph and every output from a node is a message, made of a role and a list of content blocks. The role is one of `user`, `assistant`, `system` or `tool`.
 
 ```python
 from tenxgraph.core.state import Message
 
+# role defaults to "user" when omitted
 user_msg = Message.text_message("What is the capital of France?", role="user")
 assistant_msg = Message.text_message("Paris.", role="assistant")
-tool_msg = Message.text_message("Result: ...", role="tool")
+
+print(assistant_msg.text())  # "Paris."
 ```
 
-Messages contain content blocks. The simplest is a text block, but messages can also hold images, audio, documents, or tool calls and results. You will see more content types later as your agent grows.
+The simplest content block is text. Messages can also carry images, audio, documents, and the tool calls and tool results that connect an agent to its tools. An assistant message that requests tools exposes them in `message.tools_calls` (the attribute name is spelled with an `s` after `tool`).
 
-### 2. State
+### State
 
-**State** is the container that moves through your graph. It holds the conversation history and any data your application needs. The base state class is `AgentState`.
+State is the object that travels through the graph. It holds the conversation and any data your application needs. The base class is `AgentState`, and every node receives the current state.
 
-The `AgentState` class has three fields:
-- `context`: A list of `Message` objects, ordered by time
-- `context_summary`: A compressed summary of the context (used by advanced features)
-- `execution_meta`: Internal data that 10xGraph tracks (current node, interrupts, etc.)
-
-```python
-from tenxgraph.core.state import AgentState
-
-state = AgentState()
-state.context           # Empty list of messages to start
-state.context.append(msg)  # Add a message
-state.context[-1]       # Access the most recent message
-```
-
-You can extend `AgentState` to add custom fields for your application, like user preferences or extracted data. Every node in your graph receives the current state and can read it and update it.
-
-### 3. Node
-
-A **node** is a Python function that processes state. A node receives the current state as input and returns a message or a state update. Nodes are where your application logic lives.
+| Field | Type | Purpose |
+|---|---|---|
+| `context` | `list[Message]` | The conversation, in order. New messages are appended and deduplicated by `message_id`. |
+| `context_summary` | `str \| None` | An optional compressed summary of older context. Defaults to `None`. |
+| `execution_meta` | `ExecMeta` | Internal progress data: current node, step, interrupts. Managed by the runtime. |
 
 ```python
 from tenxgraph.core.state import AgentState, Message
 
-def my_node(state: AgentState) -> Message:
-    # Read from state
-    latest_message = state.context[-1]
-    user_input = latest_message.text()
-    
-    # Process
-    response = f"You said: {user_input}"
-    
-    # Return a new message
-    return Message.text_message(response, role="assistant")
+state = AgentState()
+state.context.append(Message.text_message("Hello"))
+print(state.context[-1].text())  # the most recent message
 ```
 
-10xGraph provides two special built-in nodes:
-- **Agent**: Wraps a language model. It reads the conversation history, sends it to the LLM, and returns the model's response as a message.
-- **ToolNode**: Executes the tool calls that the LLM requested. It looks at the most recent assistant message, finds the tool calls in it, runs them, and returns the results.
-
-### 4. Edge
-
-An **edge** is a connection between two nodes that defines the workflow. An edge says "after node A completes, run node B next" or "if condition C is true, run node D".
-
-The simplest edges are unconditional:
+`AgentState` is a Pydantic model, so you extend it by subclassing and adding fields. The base fields are preserved.
 
 ```python
-graph.add_edge("node_a", "node_b")  # Always run node_b after node_a
+from pydantic import Field
+
+from tenxgraph.core.state import AgentState
+
+
+class SupportState(AgentState):
+    # Custom application data that travels with the conversation
+    customer_id: str = ""
+    tags: list[str] = Field(default_factory=list)
 ```
 
-Conditional edges let you branch based on state:
+### Node
+
+A node is a function that takes the state and returns work to add to it. Most nodes return a `Message`. Nodes are where your logic lives: calling a model, running a tool, validating input.
 
 ```python
-def route_to_tool(state: AgentState) -> str:
-    # Check if the last message has tool calls
-    last_msg = state.context[-1]
-    if last_msg.tools_calls:
-        return "tool_node"
-    else:
-        return "end"
+from tenxgraph.core.state import AgentState, Message
 
-graph.add_conditional_edges("agent", route_to_tool)
+
+def echo(state: AgentState) -> Message:
+    # Read the latest message from state
+    user_input = state.context[-1].text()
+    # Return a new message; it is appended to state.context
+    return Message.text_message(f"You said: {user_input}", role="assistant")
 ```
 
-The most common pattern is the ReAct (Reasoning + Acting) loop: Agent → check if tools were called → ToolNode → back to Agent (or END).
+10xGraph ships two ready-made nodes for LLM work:
 
-### 5. Graph
+- **Agent** wraps a language model. It reads the context, calls the model and returns the response, including any tool calls.
+- **ToolNode** executes the tool calls found in the latest assistant message and returns the results as tool messages.
 
-A **graph** (a `StateGraph`) connects your nodes and edges into a complete workflow. You define the entry point (where execution starts) and the edges between nodes, then compile it into a runnable application.
+### Edge
+
+An edge connects two nodes and defines what runs next. An unconditional edge always runs the target after the source. A conditional edge calls a routing function that inspects the state and returns the name of the next node.
+
+```python
+from tenxgraph.core.state import AgentState
+from tenxgraph.utils import END
+
+# Unconditional: always run "tools" after "agent"
+# graph.add_edge("agent", "tools")
+
+
+def route(state: AgentState) -> str:
+    # Go to the tool node when the model asked for tools, otherwise finish
+    last = state.context[-1]
+    if last.role == "assistant" and last.tools_calls:
+        return "tools"
+    return END
+
+
+# Conditional: the path map lists the nodes the router may choose
+# graph.add_conditional_edges("agent", route, {"tools": "tools", END: END})
+```
+
+`END` is the constant `"__end__"`. Returning it from a router finishes the run. Routers receive the state and should have no side effects.
+
+The most common shape is the ReAct loop: the agent runs, a router checks for tool calls, the tool node runs, and control returns to the agent until no more tools are requested.
+
+### Graph
+
+A graph is a `StateGraph`. You register nodes, connect them with edges, set the entry point, and call `compile()`. The result is a `CompiledGraph`, the runnable application.
 
 ```python
 from tenxgraph.core.graph import StateGraph
-from tenxgraph.core.state import AgentState
-from tenxgraph.utils import START, END
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.utils import END
+
+
+def echo(state: AgentState) -> Message:
+    return Message.text_message(f"You said: {state.context[-1].text()}", role="assistant")
+
 
 graph = StateGraph(AgentState)
-graph.add_node("my_node", my_node)
-graph.set_entry_point("my_node")
-graph.add_edge("my_node", END)
+graph.add_node("echo", echo)       # register a node by name
+graph.set_entry_point("echo")      # where execution starts
+graph.add_edge("echo", END)        # finish after echo
 
 app = graph.compile()
+
+# Input is a dict with a "messages" list; config carries the thread_id
+result = app.invoke(
+    {"messages": [Message.text_message("Hello")]},
+    config={"thread_id": "demo"},
+)
+for message in result["messages"]:
+    print(message.role, message.text())
 ```
 
-Once compiled, the graph becomes a `CompiledGraph`: a runnable application that executes nodes in order, manages state transitions, and optionally saves state for persistence.
+`compile()` accepts optional arguments such as `checkpointer`, `store`, `interrupt_before` and `interrupt_after`. You use `checkpointer` in step 3. See [StateGraph](/docs/concepts/state-graph) for the full model.
 
-### 6. Agent
+### Agent
 
-An **agent** is a built-in node that wraps a language model and handles the interaction. You give it a model (like `"gpt-4o"` or `"claude-opus-5"`), and it:
-1. Reads the conversation history from state
-2. Sends it to the language model
-3. Returns the model's response as a message (added to the context)
-4. If the model requested tool calls, includes them in the message so a ToolNode can execute them
+An agent is a node backed by a language model. You construct `Agent` with a model name and optional settings, then register it like any other node. It reads `context`, calls the model, and returns the response as a message. If the model requests tools, the message carries the tool calls so a `ToolNode` can run them.
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph.core.graph import Agent, StateGraph
 
-agent = Agent(model="gpt-4o")
-message = agent(state)  # Calls the model and returns a message
+agent = Agent(
+    model="gpt-4o",       # the model to call
+    provider="openai",    # optional: detected from the model name when omitted
+)
+
+graph = StateGraph()
+graph.add_node("agent", agent)  # an Agent is registered like any node
 ```
 
-An Agent is a regular node—it just does more work internally. You can combine it with other nodes, add tools, and build complex workflows around it.
+An `Agent` is a regular node that does more work internally. You build the full tool-calling loop around it in [step 2](/docs/get-started/tutorial/build-a-graph). Running it needs the provider extra installed (for example `pip install "10xgraph[openai]"`) and an API key. See [installation](/docs/get-started/installation).
 
-## How they work together
+### Thread
 
-This diagram shows the flow of data through a simple graph:
+A thread is one conversation, identified by a `thread_id` in the run config. With a checkpointer attached at compile time, the graph saves state under that ID after each run. Invoking again with the same `thread_id` loads the saved state and continues. A different `thread_id` starts a fresh conversation.
+
+If you omit `thread_id`, the runtime generates a random one, so that run cannot be resumed. You set up persistence in [step 3](/docs/get-started/tutorial/threads-and-memory).
+
+## How the concepts fit together
+
+A tool-calling agent is the graph below. The agent node calls the model, a router reads the last message, and either the tool node runs and loops back or the run ends.
 
 ```mermaid
 flowchart TD
-    Start([START]) --> Agent[Agent: LLM call]
-    Agent -->|tool calls?| Check{Decision}
-    Check -->|yes| Tool[ToolNode: execute tools]
-    Tool -->|add results| Agent
-    Check -->|no| End([END])
-    
-    Input["User Message"] -.->|add to context| Agent
-    Agent -.->|returns Message| Output["Message added to context"]
+    S([START]) --> A[agent node: calls the model]
+    A --> R{router: tool calls in last message?}
+    R -->|yes| T[tool node: runs the tools]
+    T --> A
+    R -->|no| E([END])
 ```
 
-Here is what happens step by step:
+One run proceeds like this:
 
-1. You invoke the graph with an initial message (e.g., `"What is 2+2?"`).
-2. The graph creates an `AgentState` and adds your message to `context`.
-3. The graph runs the entry point node (often an `Agent`).
-4. The Agent reads `context`, sends it to the language model, and returns the model's response.
-5. The response message is appended to `context`.
-6. The graph checks the edge from the Agent node. Is there a conditional route based on tool calls? If the model requested tools, the graph moves to the ToolNode. Otherwise, it ends.
-7. The ToolNode executes the requested tools and returns results as messages, added to `context`.
-8. Control returns to the Agent, which reads the updated context (including tool results) and calls the model again.
-9. The loop repeats until the Agent says it is done (no more tool calls).
-10. The graph returns the final state and context.
+1. You call `invoke` with a message and a `thread_id`.
+2. The runtime builds the state and appends your message to `context`. If a checkpointer holds state for that thread, it is loaded first.
+3. The entry point node runs and returns a message, which is appended to `context`.
+4. The graph follows the outgoing edge. For a conditional edge, the router reads the state and picks the next node.
+5. The tool node appends tool results to `context`, and control returns to the agent, which sees them and calls the model again.
+6. When a router returns `END`, the run finishes and the result is returned. The checkpointer saves the final state under the thread.
 
-## Threads and persistence
+## When to use a graph
 
-One key insight: a **thread** is a conversation. Each call to your compiled graph belongs to a thread, identified by a `thread_id`. When you invoke the graph, you pass a `thread_id`. The graph saves the state to a **checkpointer** (a kind of database). The next time you invoke with the same `thread_id`, the graph loads the saved state and picks up where it left off.
-
-You will set up this in [step 4](/docs/get-started/tutorial/threads-and-memory), but it is good to know now: every state and message history is tied to a thread. Threads allow conversations to persist across server restarts and enable multi-turn interactions.
+Use a graph when your workflow has more than one step, loops, branches, or needs to survive restarts. For a single model call with no tools or memory, calling the provider SDK directly is simpler. For the common tool-calling pattern, the prebuilt `ReactAgent` assembles this graph for you, and step 2 shows both forms so you can pick.
 
 ## What you learned
 
-- A **message** is a unit of communication with a role and content.
-- **State** is a container that holds the conversation history and application data.
-- A **node** is a function that reads state and returns messages or updates.
-- An **edge** is a connection between nodes that defines the workflow.
-- A **graph** wires nodes and edges together and compiles them into a runnable app.
-- An **agent** is a built-in node that calls a language model and handles tool integration.
-- Messages flow through nodes in order, accumulating in the state's `context` field.
+- A message has a role and content blocks.
+- State (`AgentState`) holds `context`, `context_summary` and `execution_meta`, and you extend it by subclassing.
+- A node is a function from state to a message or update.
+- Edges are unconditional or routed by a function; `END` finishes the run.
+- A `StateGraph` compiles into a runnable `CompiledGraph`.
+- An `Agent` is a model-backed node, and a `ToolNode` runs its tool calls.
+- A thread is a conversation identified by `thread_id`.
 
 ## Next step
 
-Now that you understand the mental model, build your [first working graph](/docs/get-started/tutorial/build-a-graph). You will create nodes, wire them together, and run your first 10xGraph application.
-
-For a deeper dive into how graphs execute, see [StateGraph](/docs/concepts/state-graph) in Concepts.
+Build a working tool-calling graph in [Build a graph](/docs/get-started/tutorial/build-a-graph). For how execution works in depth, read [StateGraph](/docs/concepts/state-graph).

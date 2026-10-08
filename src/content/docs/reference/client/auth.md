@@ -1,17 +1,17 @@
 ---
-title: Auth
-seoTitle: "Auth in the TypeScript client"
-description: Reference for all authentication options available in AgentFlowClient.
+title: Client authentication
+seoTitle: "Client authentication in 10xGraph TypeScript SDK"
+description: "Bearer, Basic, and header authentication options for the 10xGraph TypeScript client, with WebSocket auth details."
 section: Reference
 group: "TypeScript client"
 order: 550
 label: Auth
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-`AgentFlowClient` supports three authentication strategies, all configured via the `auth` field in `AgentFlowConfig`. It also provides a legacy `authToken` shortcut for the common bearer-token case.
+`AgentFlowClient` authenticates with a bearer token, HTTP Basic credentials or a custom header, set through the `auth` field of `AgentFlowConfig`. The `authToken` field is a shorthand for bearer tokens. This page lists each option, the header it sends, how HTTP and WebSocket requests resolve credentials, and common failures.
 
-**Source:** `src/request.ts`
+Source: `src/request.ts` and `src/ws.ts`.
 
 ---
 
@@ -24,7 +24,10 @@ import {
   AgentFlowBearerAuth,
   AgentFlowBasicAuth,
   AgentFlowHeaderAuth,
-} from '@10xscale/agentflow-client';
+  bearerAuth,
+  basicAuth,
+  headerAuth,
+} from '@10xgraph/client';
 ```
 
 ---
@@ -38,7 +41,23 @@ type AgentFlowAuth =
   | AgentFlowHeaderAuth;
 ```
 
-Pass a value of this type to `AgentFlowConfig.auth`. If both `authToken` and `auth` are set, `auth` takes precedence.
+Pass a value of this type to `AgentFlowConfig.auth`. If both `authToken` and `auth` are set, `auth` takes precedence on HTTP requests.
+
+The package also exports three small factory functions that return these objects:
+
+| Function | Returns |
+|---|---|
+| `bearerAuth(token)` | `{ type: 'bearer', token }` |
+| `basicAuth(username, password)` | `{ type: 'basic', username, password }` |
+| `headerAuth(name, value, prefix?)` | `{ type: 'header', name, value, prefix }` |
+
+```ts
+// Equivalent to auth: { type: 'bearer', token: ... }
+const client = new AgentFlowClient({
+  baseUrl: 'http://localhost:8000',
+  auth: bearerAuth(process.env.API_TOKEN!),
+});
+```
 
 ---
 
@@ -106,7 +125,7 @@ Adds the header:
 Authorization: Basic <base64(username:password)>
 ```
 
-The encoding uses `btoa()` in browsers and `Buffer.from()` in Node.js.
+The client encodes the credentials as UTF-8 base64, using `Buffer` when it exists and `btoa()` otherwise.
 
 #### Example
 
@@ -182,7 +201,7 @@ When the server is configured with `"auth": null` (no auth / open endpoint), omi
 ```ts
 const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
-  // No auth fields — appropriate for local development or
+  // No auth fields: appropriate for local development or
   // internal services behind a gateway
 });
 ```
@@ -204,29 +223,28 @@ const client = new AgentFlowClient({
 });
 ```
 
-The `headers` map is merged with the auth header and any content-type headers on every request. If a key in `headers` conflicts with a key set by auth, the auth value wins.
+The `headers` map is merged with the auth header and any default headers on every request. Header names are compared case-insensitively. If a key in `headers` conflicts with a key set by `auth`, the `auth` value wins.
 
 ---
 
 ## Auth header precedence
 
-When both `authToken` and `auth` are provided, `auth` takes precedence. When `headers` contains an `Authorization` key and `auth` also sets `Authorization`, the `auth` value wins.
+For HTTP requests, `auth` always wins over `authToken`, and `authToken` never overwrites an `Authorization` header you set in `headers`. The table lists each combination.
 
 | Config | Result |
 |---|---|
 | Only `authToken` | Sends `Authorization: Bearer <token>` |
 | Only `auth` (bearer) | Sends `Authorization: Bearer <token>` |
-| Both `authToken` and `auth` | `auth` wins — `authToken` is ignored |
-| `headers['Authorization']` and `auth` | `auth` wins |
-| `headers['Authorization']` and no `auth` | Custom header is sent |
+| Both `authToken` and `auth` | `auth` wins; `authToken` is ignored |
+| `headers['Authorization']` and `auth` | `auth` wins when it sets `Authorization` |
+| `headers['Authorization']` and `authToken` only | The `headers` value is sent, `authToken` is ignored |
+| `headers['Authorization']` and no auth fields | Custom header is sent |
 
-<aside class="callout callout-warning" role="note"><p class="callout-title">The order is reversed on WebSocket routes</p>
+<aside class="callout callout-note" role="note"><p class="callout-title">WebSocket routes use the same priority, bearer only</p>
 
-The table above describes HTTP requests (`buildHeaders` in `src/request.ts`). For `wsStream()` and `realtime()` the token is resolved by `resolveBearerToken()` in `src/ws.ts`, which checks `authToken` **first** and only falls back to `auth.token` when `authToken` is absent.
+`wsStream()` and `realtime()` resolve the token with `resolveBearerToken()` in `src/ws.ts`, which applies the same priority as HTTP: `auth` first, then `authToken`. If `auth` is set to `basic` or `header`, no bearer token is found and none is sent as a subprotocol.
 
-If both are set to different values, your HTTP calls and your WebSocket calls will authenticate as different principals. Set exactly one of them.
-
-Note also that only bearer auth reaches a WebSocket. `basic` and `header` auth produce an `Authorization` or custom header that a browser cannot attach to a WebSocket handshake; on Node the `Authorization` header is still passed, so basic auth happens to work there and not in the browser. Use a bearer token if you need WebSocket streaming or realtime audio.
+Only bearer tokens reach a WebSocket in a browser, because browsers cannot attach headers to a WebSocket handshake. On Node, the resolved `Authorization` header (including Basic) is also passed. Use a bearer token if you need WebSocket streaming or realtime audio.
 
 </aside>
 
@@ -234,14 +252,14 @@ Note also that only bearer auth reaches a WebSocket. `basic` and `header` auth p
 
 ## WebSocket authentication
 
-Browsers cannot set request headers on a WebSocket, so the client sends the bearer token as a WebSocket subprotocol: the socket is opened with `['agentflow-bearer', '<token>']` and the server reads the second entry. The token is never placed in the URL. On Node runtimes whose `WebSocket` constructor accepts an options argument, an `Authorization: Bearer ...` header is passed as well.
+Browsers cannot set request headers on a WebSocket, so the client sends the bearer token as a WebSocket subprotocol: the socket is opened with `['agentflow-bearer', '<token>']` and the server reads the second entry. The server accepts `agentflow-bearer` as a deprecated alias of `10xgraph-bearer`. The token is never placed in the URL. On Node runtimes whose `WebSocket` constructor accepts an options argument, an `Authorization: Bearer ...` header is passed as well.
 
 `wsStream()` and `realtime()` do this for you. The pieces are also exported, for building your own socket against the same server:
 
 | Export | Signature | Description |
 |---|---|---|
 | `WS_BEARER_SUBPROTOCOL` | `'agentflow-bearer'` | The subprotocol token the server recognises for bearer auth. |
-| `resolveBearerToken` | `(context: { authToken?, auth? }) => string \| null` | Returns `authToken` if set, else `auth.token` for bearer auth, else `null`. |
+| `resolveBearerToken` | `(context: { authToken?, auth? }) => string \| null` | Returns `auth.token` when `auth` is bearer, `null` when `auth` is another type, else `authToken`, else `null`. |
 | `buildWsUrl` | `(context: { baseUrl }, path: string) => string` | Converts `http:` to `ws:` and `https:` to `wss:`, strips a trailing slash, and appends `path`. |
 | `openWebSocket` | `(url: string, context: WsAuthContext) => WebSocket` | Opens the socket with the subprotocol pair, adding the `Authorization` header on Node. Throws `No WebSocket implementation available` when there is no global `WebSocket` and no `webSocketImpl`. |
 | `WebSocketImpl` | `new (url, protocols?, options?) => WebSocket` | The constructor shape shared by the browser `WebSocket` and the Node `ws` package. This is the type of the `webSocketImpl` config field. |
@@ -253,7 +271,7 @@ import {
   openWebSocket,
   resolveBearerToken,
   WS_BEARER_SUBPROTOCOL,
-} from '@10xscale/agentflow-client';
+} from '@10xgraph/client';
 
 const context = {
   baseUrl: 'https://api.example.com',
@@ -282,7 +300,7 @@ Use the following table to choose the right client-side auth type based on the `
 | `{ "method": "custom", "path": "..." }` with API key check | `{ type: 'header', name: 'X-API-Key', value: apiKey }` |
 | `{ "method": "custom", "path": "..." }` with bearer check | `{ type: 'bearer', token: apiToken }` |
 
-See the server-side auth documentation at [`reference/api-cli/auth`](/docs/reference/api-cli/auth) for how to generate JWT tokens and implement custom auth handlers.
+See [Server auth](/docs/server/auth) and the [API reference](/docs/reference/api-cli/auth) for how to generate JWT tokens and implement custom auth handlers.
 
 ---
 
@@ -292,12 +310,16 @@ When the server is configured with `"auth": "jwt"`, obtain a signed token with P
 
 ```python
 # Python: generate a test token
-import jwt, os, datetime
+# pip install PyJWT
+import datetime
+import os
+
+import jwt
 
 token = jwt.encode(
     {
         "sub": "user-123",
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24),
     },
     os.environ["JWT_SECRET_KEY"],
     algorithm=os.environ.get("JWT_ALGORITHM", "HS256"),
@@ -311,7 +333,7 @@ const client = new AgentFlowClient({
   baseUrl: 'http://localhost:8000',
   auth: {
     type: 'bearer',
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    token: process.env.API_TOKEN!, // the token printed by the script above,
   },
 });
 ```
@@ -326,7 +348,7 @@ For browser apps that rely on session cookies (e.g. an API gateway that sets a c
 const client = new AgentFlowClient({
   baseUrl: 'https://api.example.com',
   credentials: 'include',
-  // No auth field — the cookie is sent automatically by the browser
+  // No auth field: the cookie is sent automatically by the browser
 });
 ```
 
@@ -341,8 +363,7 @@ const client = new AgentFlowClient({
 | `AgentFlowError` status `401` | Missing or invalid token. | Check the `auth` config and the server `JWT_SECRET_KEY` / custom auth handler. |
 | `AgentFlowError` status `403` | Token is valid but lacks permission for the requested operation. | Check the server-side `AuthorizationBackend` configuration. |
 | `TypeError: Failed to fetch` | CORS blocked due to missing credentials or wrong origin. | Set `credentials: 'include'` and verify CORS headers on the server. |
-| WebSocket rejected while HTTP works | Non-bearer auth (browser), or a proxy stripping `Sec-WebSocket-Protocol`. | Use a bearer token, and forward the subprotocol header through the proxy. |
-| HTTP and WebSocket authenticate as different users | `authToken` and `auth` are both set to different values; the two paths pick opposite winners. | Set only one. |
+| WebSocket rejected while HTTP works | Non-bearer auth in a browser, or a proxy stripping `Sec-WebSocket-Protocol`. | Use a bearer token, and forward the subprotocol header through the proxy. |
 
 ---
 
@@ -353,8 +374,8 @@ const client = new AgentFlowClient({
 - Use `auth: { type: 'basic', username, password }` for HTTP Basic auth.
 - Omit `auth` entirely for open/no-auth servers.
 - `credentials` controls cookie handling in browser environments.
-- WebSocket routes authenticate with the `agentflow-bearer` subprotocol, never a URL parameter, and resolve `authToken` before `auth` — the reverse of HTTP.
+- WebSocket routes authenticate with the `agentflow-bearer` subprotocol, never a URL parameter, and resolve `auth` before `authToken`, the same as HTTP.
 
 ## Next step
 
-See [Register remote tools](/docs/client/remote-tools) to learn how to register client-side tools that the agent can invoke remotely.
+See [Remote tools](/docs/client/remote-tools) to learn how to register client-side tools that the graph can invoke remotely.

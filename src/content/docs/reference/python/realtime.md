@@ -1,28 +1,23 @@
 ---
-title: Realtime
-seoTitle: "Realtime audio API reference (Python)"
-description: API reference for realtime audio-to-audio, including LiveInputQueue, RealtimeConfig, VADConfig, ReconnectConfig, AudioAgent, and the WebSocket bridge protocol.
+title: Realtime audio
+seoTitle: Realtime audio API reference (Python)
+description: Python API reference for live audio-to-audio agent sessions with Gemini Live, including AudioAgent, RealtimeConfig, LiveInputQueue and RealtimeEvent.
 section: Reference
-group: "Python library"
+group: Python library
 order: 100
 label: Realtime
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-The realtime subsystem provides live, audio-to-audio sessions backed by Gemini Live. It is a separate runtime from the turn-based `invoke`/`stream` path: the provider owns the turn loop, and 10xGraph wraps it with a duplex pump, tool dispatch, transcript persistence, and automatic reconnection.
+This page is the Python API reference for live audio-to-audio sessions backed by Gemini Live: `AudioAgent`, `arealtime()`, `LiveInputQueue`, the config objects, and the `RealtimeEvent` types. Realtime is a separate runtime from `invoke` and `stream`, where the provider drives each turn. Install it with `pip install "10xgraph[realtime]"`. The matching server WebSocket route is covered in [Live WebSocket](/docs/reference/rest-api/live).
 
-## Install extra
-
-```bash
-pip install "10xgraph[realtime]"
-```
-
-Provider SDK imports are lazy. Importing `tenxgraph.core.realtime` does not load `google-genai` until a session opens.
+The provider owns the turn loop. 10xGraph adds input queueing, tool dispatch, transcript persistence, and automatic reconnection around it. The provider SDK is imported lazily, so importing `tenxgraph.core.realtime` does not require the extra.
 
 ## Import paths
 
+Everything except `AudioAgent` and the sample-rate constants is exported from `tenxgraph.core.realtime`.
+
 ```python
-# Public API surface
 from tenxgraph.core.realtime import (
     # Input queue
     LiveInputQueue, LiveInput, LiveInputKind,
@@ -37,24 +32,54 @@ from tenxgraph.core.realtime import (
     RealtimeClient, GeminiLiveClient, normalize_message,
 )
 
-# Prebuilt agent
 from tenxgraph.prebuilt.agent import AudioAgent
-
-# Audio format constants
 from tenxgraph.core.realtime.base import INPUT_SAMPLE_RATE, OUTPUT_SAMPLE_RATE
 ```
 
-`INPUT_SAMPLE_RATE = 16000` (Hz); `OUTPUT_SAMPLE_RATE = 24000` (Hz).
-
----
+Audio formats: `INPUT_SAMPLE_RATE = 16000` Hz (PCM16), `OUTPUT_SAMPLE_RATE = 24000` Hz (PCM16).
 
 ## AudioAgent
 
-Prebuilt realtime agent builder. Mirrors `ReactAgent`'s construction surface and wraps a `LiveAgent` as the graph root. Compile it once and drive sessions with `CompiledGraph.arealtime()`.
+`AudioAgent` is the prebuilt builder for realtime audio-to-audio sessions. It mirrors `ReactAgent`, but wraps a `LiveAgent` as the graph root and is driven by `CompiledGraph.arealtime()` instead of `invoke` or `stream`. Only Gemini Live is supported. For a walkthrough, see [Audio agent](/docs/guides/prebuilt/audio-agent).
 
-```python
+```python title="audio_session.py"
+import asyncio
+
+from tenxgraph.core.realtime import LiveInputQueue
 from tenxgraph.prebuilt.agent import AudioAgent
+
+
+def get_time() -> str:
+    """Return the current time as a string."""
+    from datetime import datetime
+
+    return datetime.now().isoformat(timespec="seconds")
+
+
+agent = AudioAgent(
+    model="gemini-2.5-flash",  # use the Gemini Live model your account has access to
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tools=[get_time],
+)
+app = agent.compile()
+
+
+async def main() -> None:
+    queue = LiveInputQueue()
+    queue.send_text("What time is it?")
+    queue.close()  # closing the queue ends the session once the provider goes idle
+
+    async for event in app.arealtime(queue, config={"thread_id": "demo"}):
+        if event.type == "output_transcript" and event.finished:
+            print("Model:", event.text)
+        elif event.type == "error":
+            print("Error:", event.message)
+
+
+asyncio.run(main())
 ```
+
+Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` before running.
 
 ### Constructor
 
@@ -70,41 +95,46 @@ AudioAgent(
     realtime_config: RealtimeConfig | None = None,
     system_prompt: list[dict[str, Any]] | None = None,
     tools: Iterable[Callable] | None = None,
-    client: Any = None,                        # MCP client
+    client: Any = None,
     pass_user_info_to_mcp: bool = False,
     skills: SkillConfig | None = None,
     memory: MemoryConfig | None = None,
     realtime_client_factory: Callable[[], RealtimeClient] | None = None,
     live_node_name: str = "LIVE",
-    **agent_kwargs,
+    **agent_kwargs: Any,
 )
 ```
 
-| Parameter | Notes |
-|---|---|
-| `model` | Model string resolved through `detect_provider`. Must resolve to `"google"` provider; only Gemini Live is supported in v1. |
-| `state` | Initial `AgentState` subclass instance for the graph. |
-| `context_manager` | `BaseContextManager` applied to the conversation context. |
-| `publisher` | One publisher or a list of them, forwarded to the underlying `StateGraph`. |
-| `id_generator` | ID generator for thread, run, and message IDs. Defaults to `DefaultIDGenerator()`. |
-| `container` | An existing InjectQ container to build the graph against. When omitted, the ambient container is used. Pass one to isolate DI bindings per agent, which matters when several agents run in the same process. |
-| `realtime_config` | Per-session config. Defaults to `RealtimeConfig(model=model)` if omitted. |
-| `system_prompt` | List of `{"role": "system", "content": "..."}` dicts. Flattened into `system_instruction` at connect time. |
-| `tools` | Callable tools passed to a `ToolNode`. Advertised to the provider at connect time. |
-| `client` | MCP client (fastmcp / mcp). |
-| `pass_user_info_to_mcp` | Forward the run's user identity to MCP tool calls. Forwarded to the internal `ToolNode`. Defaults to `False`. |
-| `skills` | `SkillConfig` for dynamic skill injection. |
-| `memory` | `MemoryConfig` for long-term memory. |
-| `realtime_client_factory` | Zero-argument callable returning a `RealtimeClient`. Overrides the default provider client factory: use it to inject a fake client in tests, or to supply a pre-authenticated Gemini Live client. |
-| `live_node_name` | Name of the graph node holding the `LiveAgent`. Defaults to `"LIVE"`. Change it when the name collides with another node or when a lifecycle hook keys off node names. |
-| `**agent_kwargs` | Forwarded verbatim to the underlying `LiveAgent`. |
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `model` | str | Required | Gemini Live model name. The provider is detected from the name (an optional `gemini/` prefix works); any provider other than Google raises `ValueError`. |
+| `state` | `StateT \| None` | None | Initial `AgentState` subclass instance. |
+| `context_manager` | `BaseContextManager \| None` | None | Context trimming or summarization manager. |
+| `publisher` | `BasePublisher \| list[BasePublisher] \| None` | None | One publisher or a list of them. |
+| `id_generator` | `BaseIDGenerator` | `DefaultIDGenerator()` | ID generator for thread, run, and message IDs. |
+| `container` | `Any \| None` | None | InjectQ container for dependency injection isolation. |
+| `realtime_config` | `RealtimeConfig \| None` | None | Per-session config overrides; defaults to `RealtimeConfig(model=model)`. |
+| `system_prompt` | `list[dict[str, Any]] \| None` | None | System prompt dicts with `role` and `content` keys. |
+| `tools` | `Iterable[Callable] \| None` | None | Callable tools advertised to the provider. |
+| `client` | `Any \| None` | None | MCP client (fastmcp or mcp module). |
+| `pass_user_info_to_mcp` | bool | False | Forward run's user identity to MCP tool calls. |
+| `skills` | `SkillConfig \| None` | None | Dynamic skill injection config. |
+| `memory` | `MemoryConfig \| None` | None | Long-term memory config. |
+| `realtime_client_factory` | `Callable[[], RealtimeClient] \| None` | None | Custom provider client factory (for testing or pre-auth). |
+| `live_node_name` | str | "LIVE" | Name of the internal `LiveAgent` node. |
+| `**agent_kwargs` | Any | none | Forwarded to the underlying `LiveAgent`. `api_key`, `use_vertex_ai`, `project` and `location` configure the Gemini client; the rest go to the base agent. |
 
-A `ToolNode` is only created when `tools` or `client` is provided; otherwise the live agent runs without tools.
+Returns: an `AudioAgent` instance.
+
+A `ToolNode` is created only if `tools` or `client` is provided. The graph has a single node (named by `live_node_name`) that owns the whole session loop.
+
+For Vertex AI, pass `use_vertex_ai=True` and set `GOOGLE_CLOUD_PROJECT` (or pass `project=`); `GOOGLE_CLOUD_LOCATION` defaults to `us-central1`.
 
 ### compile()
 
 ```python
-app = AudioAgent(...).compile(
+def compile(
+    self,
     checkpointer: BaseCheckpointer | None = None,
     store: BaseStore | None = None,
     callback_manager: CallbackManager | None = None,
@@ -112,11 +142,19 @@ app = AudioAgent(...).compile(
 ) -> CompiledGraph
 ```
 
-`compile()` does not accept `media_store`, `interrupt_before`, or `interrupt_after`. Realtime media is sent frame-by-frame through `LiveInputQueue` and is never offloaded.
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `checkpointer` | `BaseCheckpointer \| None` | None | Persistence layer for thread state and resumption. |
+| `store` | `BaseStore \| None` | None | Long-term memory store. |
+| `callback_manager` | `CallbackManager \| None` | None | Lifecycle hooks (on_graph_start, on_turn_end, etc.). |
+| `shutdown_timeout` | float | 30.0 | Seconds to wait for graceful shutdown. |
 
----
+Returns: a `CompiledGraph` ready to drive with `arealtime()` or `realtime()`. Unlike `ReactAgent.compile()`, it does not accept `media_store`, `interrupt_before` or `interrupt_after`. Images and video go frame by frame through `LiveInputQueue.send_image`.
 
-## CompiledGraph.arealtime / realtime
+
+## CompiledGraph.arealtime() / realtime()
+
+`arealtime()` runs a realtime session and yields normalized events. `realtime()` is a synchronous wrapper for code with no running event loop. The session ends when the input queue is closed and the provider goes idle, or on a fatal error.
 
 ```python
 async def arealtime(
@@ -132,82 +170,104 @@ def realtime(
 ) -> Generator[RealtimeEvent]
 ```
 
-`arealtime` is an async generator; use it from async contexts. `realtime` is a synchronous wrapper that drives a private event loop and raises if called from inside a running event loop.
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `input_queue` | `LiveInputQueue` | Required | Input queue fed by audio/text/control frames. |
+| `config` | `dict[str, Any] \| None` | None | Runtime config: `thread_id`, `user_id`, and `realtime`, a dict of `RealtimeConfig` field overrides for this session (unknown keys and `None` values are ignored; the merged result is re-validated). |
+| `state` | `AgentState \| None` | None | Initial state. Falls back to the state given to `AudioAgent`, then an empty `AgentState`. |
 
-**Config keys:**
+**Yields:** `RealtimeEvent` objects (audio chunks, transcripts, tool calls, errors).
 
-| Key | Description |
-|---|---|
-| `thread_id` | Thread for this session. Required for persistence and resume. |
-| `user_id` | User identifier. Forwarded to tools via injectable params. |
-| `realtime` | Dict of `RealtimeConfig` field overrides for this session only. |
+**Raises:**
 
-**Forcing rules:**
+- `RuntimeError` if the graph contains no `LiveAgent`, or more than one.
+- `RuntimeError` if `realtime()` is called from a running event loop (use `arealtime()` instead).
 
-- A graph containing a `LiveAgent` must use `arealtime()` / `realtime()`. Calling `invoke`, `ainvoke`, `stream`, or `astream` raises `RuntimeError`.
-- `arealtime()` requires exactly one `LiveAgent` in the graph. Zero or more than one raises.
-- `realtime()` raises if called from a thread with a running event loop.
+Calling `invoke` or `stream` on a graph that contains a `LiveAgent` also raises `RuntimeError`.
 
----
 
 ## LiveInputQueue
 
-Non-blocking upstream input queue. Feed it from any context including audio capture callbacks on other threads.
+Non-blocking input queue for audio, text, and control frames. Synchronous `send_*` methods allow producers to feed frames from any thread without blocking (e.g., audio capture callbacks).
+
+```python title="input_queue.py"
+from tenxgraph.core.realtime import LiveInputQueue
+
+queue = LiveInputQueue(maxsize=100)
+queue.send_audio(b"\x00\x00" * 1600, sample_rate=16000)  # 100 ms of PCM16 silence
+queue.send_text("Hello")
+queue.send_activity_end()  # Manual VAD only: mark end of user turn
+queue.close()
+
+
+async def drain() -> None:
+    async for frame in queue:  # yields LiveInput frames until the close sentinel
+        print(frame.kind, frame.sample_rate)
+```
+
+### Constructor
 
 ```python
 LiveInputQueue(maxsize: int = 0)
 ```
 
-All send methods are synchronous (`put_nowait`), so the input side keeps accepting audio while the model is still generating. That is the precondition for barge-in. Feed one queue per session.
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `maxsize` | int | 0 | Queue size. `0` means unbounded. A full queue drops new frames and logs a warning. |
 
-`maxsize=0` (the default) means unbounded. With a positive `maxsize`, a frame that arrives when the queue is full is dropped and logged at warning level rather than blocking the producer. Sends after `close()` are dropped silently (logged at DEBUG).
+The read-only property `closed: bool` is `True` once `close()` has been called.
 
 ### Methods
 
 | Method | Signature | Description |
 |---|---|---|
-| `send_audio` | `(data: bytes, sample_rate: int = 16000) -> None` | Send a chunk of PCM16 audio. |
-| `send_text` | `(text: str) -> None` | Inject a text turn into the live session. |
-| `send_image` | `(data: bytes, mime_type: str = "image/jpeg") -> None` | Send a still image or a single video frame. |
-| `send_activity_start` | `() -> None` | Manual VAD: mark start of user speech. Only meaningful when `vad.enabled=False`. |
-| `send_activity_end` | `() -> None` | Manual VAD: mark end of user speech. Pairs with `send_activity_start`; the provider treats the enclosed audio as one user turn and begins responding. |
-| `close` | `() -> None` | Signal end of input. Idempotent: repeated calls do nothing. Enqueues a single `close` sentinel, which ends the `async for` loop over the queue and lets the pump task finish. Later sends are dropped. |
+| `send_audio` | `(data: bytes, sample_rate: int = 16000) -> None` | Enqueue PCM16 audio chunk. |
+| `send_text` | `(text: str) -> None` | Inject text turn. |
+| `send_image` | `(data: bytes, mime_type: str = "image/jpeg") -> None` | Send image or video frame. |
+| `send_activity_start` | `() -> None` | Manual VAD: mark start of user speech. Use when `vad.enabled=False`. |
+| `send_activity_end` | `() -> None` | Manual VAD: mark end of user speech. Pairs with `send_activity_start`. |
+| `close` | `() -> None` | Signal end of input. Idempotent; enqueues a `close` sentinel. Later sends are dropped silently. |
 
-`closed` is a read-only property reporting whether `close()` has been called.
 
-#### Image input
+## LiveInput
 
-`send_image` is a Python-SDK capability. Gemini Live accepts still images and video as individual frames, so send video as a stream of frames; roughly 1 fps is the model's effective ceiling. `mime_type` must be an image type the provider supports and defaults to `image/jpeg`.
-
-```python
-queue.send_image(jpeg_bytes, mime_type="image/jpeg")
-```
-
-The API server's `/v1/graph/live` WebSocket bridge forwards audio and text only, so image input is not available over that socket. Use the SDK path when you need it.
-
-### LiveInput
-
-The dataclass frames enqueued by `send_*`. Not normally constructed directly.
+`LiveInput` is the dataclass for a single frame enqueued by the `send_*` methods. You normally do not construct it directly.
 
 ```python
-@dataclass
+@dataclass(slots=True)
 class LiveInput:
-    kind: LiveInputKind   # "audio" | "text" | "image" | "activity_start" | "activity_end" | "close"
+    kind: LiveInputKind  # "audio" | "text" | "image" | "activity_start" | "activity_end" | "close"
     data: bytes | None = None
     text: str | None = None
-    sample_rate: int = 16000
+    sample_rate: int = 16000  # INPUT_SAMPLE_RATE
     mime_type: str | None = None
 ```
 
----
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `kind` | `LiveInputKind` | Required | Frame type discriminator. |
+| `data` | `bytes \| None` | None | Audio or image bytes (only set for `"audio"`, `"image"`). |
+| `text` | `str \| None` | None | Text content (only set for `"text"`). |
+| `sample_rate` | int | 16000 | Sample rate for audio frames. |
+| `mime_type` | `str \| None` | None | MIME type for image frames. |
+
 
 ## RealtimeConfig
 
-Per-session configuration for a realtime session.
+`RealtimeConfig` is the per-session configuration passed to the provider client at connect time. It is a Pydantic model; pass it to `AudioAgent(realtime_config=...)`.
 
-```python
-from tenxgraph.core.realtime import RealtimeConfig
+```python title="realtime_config.py"
+from tenxgraph.core.realtime import RealtimeConfig, VADConfig
+
+config = RealtimeConfig(
+    model="gemini-2.5-flash",
+    response_modalities=["AUDIO"],
+    voice="Puck",
+    vad=VADConfig(enabled=True),
+)
 ```
+
+### Constructor
 
 ```python
 RealtimeConfig(
@@ -226,32 +286,40 @@ RealtimeConfig(
 )
 ```
 
-| Field | Default | Notes |
-|---|---|---|
-| `model` | required | Gemini Live model string. |
-| `response_modalities` | `["AUDIO"]` | Exactly one modality per session (validated). Pass `["TEXT"]` for a text-only session. |
-| `voice` | `None` | Provider voice name (e.g. `"Puck"`). Provider default when `None`. |
-| `system_instruction` | `None` | Fixed at connect time for the lifetime of the session. When `AudioAgent.system_prompt` is set, it overrides this field at connect time. |
-| `input_audio_transcription` | `True` | Enable provider-side transcription of user speech. |
-| `output_audio_transcription` | `True` | Enable provider-side transcription of model speech. |
-| `vad` | `VADConfig()` | Voice-activity detection settings. |
-| `reconnect` | `ReconnectConfig()` | Reconnect/backoff policy. |
-| `context_window_compression` | `False` | Enable provider-side context window compression. |
-| `session_resumption` | `True` | Store and use Gemini session resumption handles. Requires a checkpointer for cross-session resume. |
-| `tools` | `None` | Override the auto-derived tool schemas. When `None`, schemas are taken from the `ToolNode`. |
-| `tools_tags` | `None` | Filter which tools are advertised by tag. |
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `model` | str | Required | Gemini Live model string. |
+| `response_modalities` | `list[Literal["AUDIO", "TEXT"]]` | `["AUDIO"]` | Exactly one modality per session (validated). Use `["TEXT"]` for text-only. |
+| `voice` | `str \| None` | None | Provider voice name (e.g. `"Puck"`, `"Breeze"`). Provider default when None. |
+| `system_instruction` | `str \| None` | None | System instruction fixed at connect time. Used only when `AudioAgent.system_prompt` is empty. |
+| `input_audio_transcription` | bool | True | Enable provider-side transcription of user speech. |
+| `output_audio_transcription` | bool | True | Enable provider-side transcription of model speech. |
+| `vad` | `VADConfig` | `VADConfig()` | Voice-activity detection settings. |
+| `reconnect` | `ReconnectConfig` | `ReconnectConfig()` | Reconnect/backoff policy for drops. |
+| `context_window_compression` | bool | False | Enable provider-side context compression. |
+| `session_resumption` | bool | True | Use provider resumption handles. Loading and saving a handle across sessions requires a checkpointer and `thread_id`. |
+| `tools` | `list[Any] \| None` | None | Override auto-derived tool schemas. |
+| `tools_tags` | `list[str] \| None` | None | Filter tools by tag. |
 
-`response_modalities` is validated: it must contain exactly one entry. Passing `["AUDIO", "TEXT"]` raises `ValueError`.
+**Validation:** `response_modalities` must contain exactly one entry; `["AUDIO", "TEXT"]` raises `ValueError`.
 
----
 
 ## VADConfig
 
-Voice-activity detection settings. Disable for push-to-talk (manual activity) workflows.
+`VADConfig` holds voice-activity detection settings. Disable it for push-to-talk workflows and drive turns with `send_activity_start` and `send_activity_end`.
 
-```python
+```python title="vad_config.py"
 from tenxgraph.core.realtime import VADConfig
 
+vad = VADConfig(
+    enabled=False,  # Manual VAD
+    start_sensitivity="HIGH",
+)
+```
+
+### Constructor
+
+```python
 VADConfig(
     enabled: bool = True,
     start_sensitivity: str | None = None,
@@ -261,23 +329,32 @@ VADConfig(
 )
 ```
 
-| Field | Default | Notes |
-|---|---|---|
-| `enabled` | `True` | Set `False` to use manual push-to-talk via `send_activity_start` / `send_activity_end`. |
-| `start_sensitivity` | `None` | Provider-neutral sensitivity hint. `None` uses provider default. |
-| `end_sensitivity` | `None` | Provider-neutral sensitivity hint. `None` uses provider default. |
-| `prefix_padding_ms` | `None` | Audio prepended before detected speech onset. |
-| `silence_duration_ms` | `None` | Silence duration that triggers end-of-speech detection. |
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | True | Automatic VAD. Set False for manual push-to-talk via `send_activity_start`/`end`. |
+| `start_sensitivity` | `str \| None` | None | Provider-neutral hint (mapped per provider). None = provider default. |
+| `end_sensitivity` | `str \| None` | None | Provider-neutral hint. None = provider default. |
+| `prefix_padding_ms` | `int \| None` | None | Audio prepended before detected speech onset. |
+| `silence_duration_ms` | `int \| None` | None | Silence duration triggering end-of-speech detection. |
 
----
 
 ## ReconnectConfig
 
-Reconnect and backoff policy for dropped sessions.
+`ReconnectConfig` sets the reconnect and exponential backoff policy for dropped sessions. All three fields must be zero or greater.
 
-```python
+```python title="reconnect_config.py"
 from tenxgraph.core.realtime import ReconnectConfig
 
+reconnect = ReconnectConfig(
+    base_delay=1.0,
+    max_delay=30.0,
+    max_attempts=10,
+)
+```
+
+### Constructor
+
+```python
 ReconnectConfig(
     base_delay: float = 0.5,
     max_delay: float = 10.0,
@@ -285,47 +362,55 @@ ReconnectConfig(
 )
 ```
 
-| Field | Default | Notes |
-|---|---|---|
-| `base_delay` | `0.5` | Base delay in seconds for exponential backoff. |
-| `max_delay` | `10.0` | Maximum delay cap in seconds. |
-| `max_attempts` | `5` | Maximum error-driven reconnect attempts. Set `0` to disable error-driven reconnect entirely. |
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `base_delay` | float | 0.5 | Base delay in seconds for exponential backoff. |
+| `max_delay` | float | 10.0 | Maximum delay cap in seconds. |
+| `max_attempts` | int | 5 | Maximum error-driven reconnect attempts. Set 0 to disable. |
 
 **Reconnect rules:**
 
-- `go_away` (planned provider rotation): reconnect immediately with no backoff, attempts counter is not incremented.
-- Transient drop / receive error: attempt `n` waits `min(base_delay * 2^(n-1), max_delay)` seconds, up to `max_attempts`. After the cap, a fatal `ErrorEvent(code="reconnect_failed")` is emitted and the session ends.
-- Any successful receive resets the attempts counter to 0.
+- `go_away` (provider-initiated rotation): reconnect immediately, attempts counter not incremented.
+- Transient drop / receive error: attempt `n` waits `min(base_delay * 2^(n-1), max_delay)` seconds, up to `max_attempts`. After cap, fatal `ErrorEvent(code="reconnect_failed")` is emitted.
+- Any successful receive resets attempts counter to 0.
 
----
 
 ## RealtimeEvent
 
-Discriminated union keyed on `type`. All events are Pydantic models.
+`RealtimeEvent` is a discriminated union of event types keyed on the `type` field. Every event is a Pydantic model, and `arealtime()` yields them in provider order.
 
-```python
+```python title="handle_events.py"
 from tenxgraph.core.realtime import RealtimeEvent
+
+async for event in app.arealtime(queue):
+    if event.type == "audio_delta":
+        speaker.write(event.data)
+    elif event.type == "input_transcript":
+        print(f"User: {event.text}" if event.finished else f"User (partial): {event.text}")
+    elif event.type == "error":
+        if event.fatal:
+            break
 ```
 
 ### AudioDeltaEvent
 
 ```python
 type: Literal["audio_delta"]
-data: bytes        # PCM16 chunk at OUTPUT_SAMPLE_RATE (24000 Hz)
-sample_rate: int   # always 24000
+data: bytes        # PCM16 chunk
+sample_rate: int   # 24000
 ```
 
-A chunk of model audio output. Write it to a speaker or file.
+Model audio output (PCM16). Write it to a speaker or file.
 
 ### InputTranscriptEvent
 
 ```python
 type: Literal["input_transcript"]
 text: str
-finished: bool     # True on the final chunk; text carries the complete transcript
+finished: bool     # True on final chunk
 ```
 
-Transcript of the user's speech. The provider streams partial chunks (`finished=False`) as they are transcribed. On `finished=True`, `text` carries the complete transcript for the turn. Persisted to the checkpointer thread when finished.
+The user's speech transcript. Chunks arrive with `finished=False`, then the finished marker. The runtime turns the accumulated transcript into a message on the finished marker.
 
 ### OutputTranscriptEvent
 
@@ -335,7 +420,7 @@ text: str
 finished: bool
 ```
 
-Transcript of the model's speech. Same streaming/finished semantics as `InputTranscriptEvent`. Persisted to the checkpointer thread when finished.
+Model's speech transcript. Same streaming/finished semantics as `InputTranscriptEvent`.
 
 ### ToolCallEvent
 
@@ -346,7 +431,7 @@ name: str
 args: dict[str, Any]
 ```
 
-The provider is requesting a tool invocation. 10xGraph dispatches this automatically through the `ToolNode` and returns the result before the model continues. Emitted before tool execution for observability.
+Provider requests tool invocation. 10xGraph dispatches automatically via `ToolNode`.
 
 ### ToolResultEvent
 
@@ -356,7 +441,7 @@ id: str
 result: Any
 ```
 
-Emitted after a tool finishes, for observability. The result has already been sent back to the model.
+Tool execution finished. Result already sent to model.
 
 ### TurnCompleteEvent
 
@@ -364,7 +449,7 @@ Emitted after a tool finishes, for observability. The result has already been se
 type: Literal["turn_complete"]
 ```
 
-The model finished generating a turn (audio and transcription complete).
+Model finished generating a turn (audio and transcription complete).
 
 ### InterruptedEvent
 
@@ -372,7 +457,7 @@ The model finished generating a turn (audio and transcription complete).
 type: Literal["interrupted"]
 ```
 
-Barge-in: the user spoke while the model was talking. Flush any queued audio playback. Partial transcripts for the interrupted turn are discarded.
+Barge-in: the user spoke while the model was talking. Flush any queued playback.
 
 ### SessionUpdateEvent
 
@@ -381,16 +466,16 @@ type: Literal["session_update"]
 resumption_handle: str | None
 ```
 
-The provider issued a session-resumption handle. Stored in the checkpointer thread metadata automatically when a checkpointer is provided.
+Provider issued a session-resumption handle. Stored in checkpointer thread metadata automatically.
 
 ### GoAwayEvent
 
 ```python
 type: Literal["go_away"]
-time_left: str | None    # provider duration string (e.g. "5s"); verbatim
+time_left: str | None    # Provider duration string, e.g. "5s"
 ```
 
-The provider will close the socket soon (planned rotation). The runtime reconnects immediately with the cached resumption handle; no intervention is required from the caller.
+Provider will close socket soon (planned rotation). Runtime reconnects automatically with cached resumption handle.
 
 ### AgentChangedEvent
 
@@ -399,7 +484,7 @@ type: Literal["agent_changed"]
 author: str
 ```
 
-The active agent or persona changed. Reserved for future multi-agent persona swap.
+The active agent or persona changed. Reserved for a future multi-agent persona swap; the single-agent runtime does not emit it.
 
 ### ErrorEvent
 
@@ -410,13 +495,12 @@ message: str
 fatal: bool
 ```
 
-A normalized provider error. Non-fatal errors are transient; the session continues. Fatal errors (`fatal=True`) end the session; `code="reconnect_failed"` means reconnect attempts were exhausted.
+Normalized provider error. Non-fatal errors are transient (session continues). Fatal errors (`fatal=True`) end session. `code="reconnect_failed"` means reconnect attempts exhausted.
 
----
 
 ## RealtimeClient (Protocol)
 
-Provider-neutral protocol that all provider clients implement. Not used directly in application code; use `AudioAgent` instead.
+`RealtimeClient` is the provider-neutral, runtime-checkable protocol that every realtime provider client implements. Application code rarely uses it directly; use `AudioAgent` instead, and implement this protocol only to supply a custom or fake client.
 
 ```python
 from tenxgraph.core.realtime import RealtimeClient
@@ -424,131 +508,85 @@ from tenxgraph.core.realtime import RealtimeClient
 
 | Method | Signature | Description |
 |---|---|---|
-| `connect` | `async (config: RealtimeConfig, resume_handle: str \| None = None) -> None` | Open a provider socket. |
+| `connect` | `async (config: RealtimeConfig, resume_handle: str \| None = None) -> None` | Open provider socket. |
 | `send_audio` | `async (pcm: bytes, sample_rate: int) -> None` | Send PCM16 audio input. |
-| `send_text` | `async (text: str) -> None` | Send a text turn. |
-| `send_image` | `async (data: bytes, mime_type: str) -> None` | Send an image frame. |
+| `send_text` | `async (text: str) -> None` | Send text turn. |
+| `send_image` | `async (data: bytes, mime_type: str) -> None` | Send image frame. |
 | `send_activity_start` | `async () -> None` | Manual VAD: start marker. |
 | `send_activity_end` | `async () -> None` | Manual VAD: end marker. |
-| `send_tool_response` | `async (call_id: str, name: str, result: Any) -> None` | Return a tool result to the model. |
-| `reseed_history` | `async (messages: list[Any]) -> None` | Seed conversation history into a fresh session. |
-| `receive` | `() -> AsyncIterator[RealtimeEvent]` | Yield normalized events from the provider. |
-| `close` | `async () -> None` | Close the socket. Safe to call more than once. |
+| `send_tool_response` | `async (call_id: str, name: str, result: Any) -> None` | Return tool result to model. |
+| `reseed_history` | `async (messages: list[Any]) -> None` | Seed conversation history into fresh session. |
+| `receive` | `() -> AsyncIterator[RealtimeEvent]` | Yield normalized events from provider. |
+| `close` | `async () -> None` | Close socket. Safe to call multiple times. |
 
 ### GeminiLiveClient
 
-The Gemini Live provider client. Import path: `tenxgraph.core.realtime.GeminiLiveClient`. Used by `LiveAgent` internally; inject a custom factory via `AudioAgent(realtime_client_factory=...)` for testing.
+`GeminiLiveClient` implements `RealtimeClient` for Gemini Live. `LiveAgent` creates one per connection by default, so you only need it to customize how the client is built.
 
 ```python
 from tenxgraph.core.realtime import GeminiLiveClient, normalize_message
+
+from tenxgraph.prebuilt.agent import AudioAgent
+
+
+# Inject a custom client per connection (for tests or pre-built credentials).
+def client_factory() -> GeminiLiveClient:
+    return GeminiLiveClient(api_key="YOUR_API_KEY")  # placeholder, load from your secret store
+
+
+app = AudioAgent("gemini-2.5-flash", realtime_client_factory=client_factory).compile()
 ```
 
-`normalize_message` converts Gemini wire messages to `RealtimeEvent` objects.
+The constructor is `GeminiLiveClient(client=None, *, connector=None, api_key=None, use_vertex_ai=False, project=None, location=None)`. Without `api_key`, it reads `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
 
----
+`normalize_message(message)` maps a Google `LiveServerMessage` (the SDK object, not a dict) to a `list[RealtimeEvent]` in wire order.
 
-## GraphLifecycleHook integration
 
-Realtime sessions fire lifecycle hooks via `GraphLifecycleHook`. Register via `CallbackManager.register_lifecycle_hook` and pass `callback_manager` to `compile()`.
+## Lifecycle hooks
 
-```python
+Realtime sessions fire `GraphLifecycleHook` methods: the session acts as the graph run, and each model turn fires turn hooks. Register a hook with `CallbackManager.register_lifecycle_hook()` and pass the manager to `compile()`.
+
+```python title="lifecycle_hooks.py"
 from tenxgraph.utils.callbacks import CallbackManager, GraphLifecycleHook
-from tenxgraph.core.state import AgentState
 
-class SessionAuditHook(GraphLifecycleHook):
-    async def on_graph_start(self, ctx, state: AgentState) -> AgentState:
-        print("session started")
-        return state
+class MyHook(GraphLifecycleHook):
+    async def on_graph_start(self, context, state):
+        print("Session started")
+        return None  # None keeps the current state
 
-    async def on_graph_end(self, ctx, state, messages, total_steps: int) -> None:
-        print(f"session ended after {total_steps} turns")
-
-    async def on_turn_start(self, ctx, state: AgentState, turn_index: int) -> AgentState:
-        print(f"turn {turn_index} starting")
-        return state
-
-    async def on_turn_end(self, ctx, state: AgentState, turn_index: int) -> AgentState:
-        print(f"turn {turn_index} complete")
-        return state
+    async def on_turn_end(self, context, state, turn_index):
+        print(f"Turn {turn_index} complete")
+        return None
 
 cb = CallbackManager()
-cb.register_lifecycle_hook(SessionAuditHook())
-
-app = AudioAgent(MODEL, ...).compile(callback_manager=cb)
+cb.register_lifecycle_hook(MyHook())
+app = AudioAgent("gemini-2.5-flash").compile(callback_manager=cb)
 ```
-
-Hook semantics in realtime:
 
 | Hook | When | Notes |
 |---|---|---|
-| `on_graph_start` | Once, before the first turn | The session opened. |
-| `on_graph_end` | Once, after the session closes | `total_steps` = number of turns completed. |
-| `on_turn_start` | Before each model generation turn | `turn_index` is 1-based. |
-| `on_turn_end` | After `turn_complete` or `interrupted` | If the session closes mid-turn (no `turn_complete`), still fired. |
+| `on_graph_start` | Once, before first turn | Session opened. |
+| `on_graph_end` | Once, when the session ends | Signature `(context, final_state, messages, total_steps)`; `total_steps` is the number of turns. |
+| `on_turn_start` | On the first content event of a turn | `turn_index` is 1-based. |
+| `on_turn_end` | After `turn_complete` or `interrupted` | Same `turn_index` as the matching start. |
 
-These hooks are no-ops for `invoke` and `stream`. Tool/MCP before/after/error callbacks fire as usual. No AI-invocation callback or input-validator pass runs in realtime.
+`on_turn_start` and `on_turn_end` fire only in realtime sessions, never for `invoke` or `stream`. See [Lifecycle callbacks](/docs/reference/python/lifecycle-callbacks) for the full hook list.
 
----
 
-## API server WebSocket bridge
+## API server integration
 
-`10xgraph api` exposes `ws://<host>/v1/graph/live` when the configured graph contains a `LiveAgent`.
+The API server exposes the WebSocket route `/v1/graph/live` for graphs that contain a `LiveAgent`. The frame protocol, auth and close codes are documented in [Live WebSocket](/docs/reference/rest-api/live), and the connection settings in [WebSockets](/docs/server/websockets).
 
-### Protocol reference
-
-**Auth:** `RequirePermission("graph", "stream")`. Browser WebSocket clients can pass the token as a `?token=` query parameter.
-
-**Frame 1 (client -> server): JSON control (init)**
-
-```json
-{
-  "thread_id": "abc",
-  "model": "gemini-live-2.5-flash-preview",
-  "voice": "Puck",
-  "modalities": ["AUDIO"],
-  "vad": {"enabled": true}
-}
-```
-
-All fields are optional. Present fields override the agent's build-time `RealtimeConfig` for this session. A new `thread_id` is generated if absent.
-
-**Subsequent upstream frames:**
-
-| Frame type | Content |
-|---|---|
-| Binary | PCM16 input audio at 16 kHz |
-| JSON text `{"type": "text", "text": "..."}` | Inject a text turn |
-| JSON text `{"type": "activity_start"}` | Manual VAD start |
-| JSON text `{"type": "activity_end"}` | Manual VAD end |
-| JSON text `{"type": "close"}` | End the session |
-
-**Downstream frames:**
-
-| Frame type | Content |
-|---|---|
-| Binary | PCM16 model audio at 24 kHz (`audio_delta`) |
-| JSON text | All other `RealtimeEvent` objects serialized via `model_dump(mode="json")` |
-
-Image/video input is SDK-only. The WebSocket bridge does not forward image frames.
-
-### WebSocket close codes
-
-| Code | Meaning |
-|---|---|
-| `1003` | Invalid init frame (not JSON, not a dict). |
-| `1011` | Internal server error (e.g. non-live graph, provider/checkpointer error). |
-| `1000` | Normal close (session ended). |
-
----
 
 ## Common errors
 
 | Error | Cause | Fix |
 |---|---|---|
-| `ImportError: google.generativeai` | Session opened without the `realtime` extra installed. | `pip install "10xgraph[realtime]"`. |
-| `ValueError: LiveAgent v1 supports only Gemini Live (google provider)` | Model string resolved to a non-Google provider. | Use a `gemini-*` model string or prefix with `gemini/`. |
-| `RuntimeError: This graph contains a LiveAgent; use .arealtime()` | Called `invoke`/`stream` on a realtime graph. | Switch to `arealtime()`. |
-| `RuntimeError: arealtime() requires a graph rooted at a LiveAgent` | Called `arealtime()` on a non-realtime graph. | Use `AudioAgent` or add a `LiveAgent` node. |
-| `RuntimeError: realtime() (sync) cannot be called from a running event loop` | Called `realtime()` inside an async context. | Use `await arealtime()` instead. |
-| `ValueError: response_modalities must contain exactly one modality` | Passed two modalities to `RealtimeConfig`. | Pass exactly one: `["AUDIO"]` or `["TEXT"]`. |
-| `ErrorEvent(code="reconnect_failed", fatal=True)` | Reconnect attempts exhausted after transient drops. | Check network stability; increase `max_attempts` or `max_delay`. |
+| `ImportError: google-genai SDK is required for Gemini realtime` | Extra not installed. | `pip install "10xgraph[realtime]"`. |
+| `ValueError: Gemini realtime requires credentials` | No API key found. | Set `GEMINI_API_KEY` or `GOOGLE_API_KEY`, pass `api_key=`, or use `use_vertex_ai=True` with `GOOGLE_CLOUD_PROJECT`. |
+| `ValueError: LiveAgent v1 supports only Gemini Live (google provider)` | Model resolved to a non-Google provider. | Use a Gemini model name, optionally prefixed with `"gemini/"`. |
+| `RuntimeError: This graph contains a LiveAgent; use .arealtime() / .realtime()...` | Called `invoke`/`stream` on realtime graph. | Switch to `arealtime()` or `realtime()`. |
+| `RuntimeError: arealtime() requires a graph rooted at a LiveAgent` | No `LiveAgent` in the graph. | Build the graph with `AudioAgent`. |
+| `RuntimeError: realtime() (sync) cannot be called from a running event loop` | Called `realtime()` in async context. | Use `await arealtime()` instead. |
+| `ValueError: response_modalities must contain exactly one modality` | Passed two modalities. | Pass `["AUDIO"]` or `["TEXT"]`, not both. |
+| `ErrorEvent(code="reconnect_failed", fatal=True)` | Reconnect attempts exhausted. | Check network; increase `max_attempts` or `max_delay`. |

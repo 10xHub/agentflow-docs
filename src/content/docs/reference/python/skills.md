@@ -1,13 +1,15 @@
 ---
 title: Skills
 seoTitle: "Skills API reference (Python)"
-description: SkillConfig, SkillMeta and SkillsRegistry — load Agent Skills (agentskills.io) into an Agent and let the model activate them on demand.
+description: "SkillConfig, SkillMeta, SkillDiagnostic, SkillResourceError and SkillsRegistry. Load Agent Skills into agents."
 section: Reference
 group: "Python library"
 order: 90
 label: Skills
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
+
+This page is the Python reference for 10xGraph skills: the `SkillConfig` you pass to `Agent`, the `SkillMeta` and `SkillsRegistry` types behind it, the diagnostics and errors skills raise, and `validate_skill`. Skills follow the Agent Skills specification, so one written for another client loads unchanged.
 
 ## When to use this
 
@@ -53,6 +55,58 @@ Skills load in three steps, so an agent with many skills only pays for the ones 
 
 ---
 
+## `SkillDiagnostic`
+
+A problem found while loading or validating a skill. Diagnostics record specification violations (errors) and recommendations (warnings) as skills are discovered.
+
+```python
+from tenxgraph.core.skills import SkillDiagnostic
+
+diagnostic = SkillDiagnostic(
+    level="error",
+    message="Skill name 'SQL' must be lowercase",
+    path="./.agents/skills/sql/SKILL.md"
+)
+print(diagnostic)  # error: ./.agents/skills/sql/SKILL.md: Skill name 'SQL' must be lowercase
+```
+
+### Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `level` | str (error or warning) | required | Severity: error is a specification violation, warning is a recommendation. |
+| `message` | str | required | Description of the issue. |
+| `path` | str | empty | File or directory where the issue was found. |
+
+### Methods
+
+| Method | Returns | Description |
+|---|---|---|
+| `__str__()` | `str` | Formatted message combining level, path and description. |
+
+---
+
+## `SkillResourceError`
+
+Raised when a bundled skill file cannot be resolved, accessed or read. Inherits from `ValueError`.
+
+```python
+from tenxgraph.core.skills import SkillsRegistry, SkillResourceError
+
+registry = SkillsRegistry()
+registry.discover(["./.agents/skills"])
+
+try:
+    content = registry.read_file("pdf-processing", "../etc/passwd", max_bytes=1024)
+except SkillResourceError as e:
+    print(f"Cannot read file: {e}")  # Cannot read file: Path outside skill directory
+```
+
+Raised by:
+- `SkillsRegistry.read_file()`: when the path is absolute, contains `..` segments, exits the skill directory via a symlink, or the file cannot be read.
+
+---
+
 ## `SkillConfig`
 
 Configuration passed to the `Agent` constructor via the `skills=` parameter.
@@ -92,8 +146,10 @@ The `skill_dirs` property returns `skills_dir` as a list.
 `mode="session"` pins one skill per call. The framework reads `state.<preload_from>` at the start of every call and injects that skill as a system message. No catalog and no `activate_skill` tool are added, which suits multi-tenant agents where each session has a fixed persona or domain. `read_skill_resource` is still registered when the skill bundles files and the agent has a `ToolNode`.
 
 ```python
-from tenxgraph.core.state import AgentState
+from tenxgraph.core.graph import Agent
 from tenxgraph.core.skills import SkillConfig
+from tenxgraph.core.state import AgentState
+
 
 class FashionState(AgentState):
     SKILL_NAME: str = ""

@@ -1,44 +1,50 @@
 ---
 title: Threads
 seoTitle: "Thread methods in the TypeScript client"
-description: Reference for all thread, state, and message methods on AgentFlowClient.
+description: "Reference for listing, inspecting, updating and deleting conversation threads, state and messages with the 10xGraph TypeScript client."
 section: Reference
 group: "TypeScript client"
 order: 520
 label: Threads
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-10xGraph organises conversation history into **threads**. Each thread has a unique `thread_id` and stores a sequence of messages and a state snapshot (checkpoint). The client provides methods to list, inspect, update, and delete threads and their messages.
+A thread is one conversation stored by the server's checkpointer: an ordered list of messages plus a state snapshot. The `AgentFlowClient` thread methods list threads, read and edit their state and messages, and delete them. They all call the `/v1/threads` routes and need a checkpointer on the server.
 
-<aside class="callout callout-note" role="note"><p class="callout-title">Requires checkpointer</p>
+```ts
+import { AgentFlowClient, Message } from '@10xgraph/client';
 
-Thread endpoints use the checkpointer the server's graph was compiled with (`compile(checkpointer=...)`). When none is passed, `compile()` falls back to an `InMemoryCheckpointer`, so threads live only in that server process and are lost on restart.
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+```
+
+<aside class="callout callout-note" role="note"><p class="callout-title">A checkpointer is required</p>
+
+If the server was started without a checkpointer, every thread route returns HTTP 503 ("Checkpointer is not configured"). To create threads from the client, pass `thread_id` in the `config` of an invoke or stream call. See [Invoke](/docs/reference/client/invoke) and [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
 
 </aside>
 
-**Source:** `src/client.ts`, `src/endpoints/threads*.ts`, `src/endpoints/threadState.ts`
+Every method accepts `threadId` as `string | number`. Failed requests throw `AgentFlowError` (see [Errors](/docs/reference/client/errors)).
 
----
+| Method | HTTP route | Purpose |
+|---|---|---|
+| `threads` | `GET /v1/threads` | List threads, with search and pagination |
+| `threadDetails` | `GET /v1/threads/{thread_id}` | Fetch one thread's metadata |
+| `threadState` | `GET /v1/threads/{thread_id}/state` | Read the state snapshot |
+| `updateThreadState` | `PUT /v1/threads/{thread_id}/state` | Merge new values into the state |
+| `clearThreadState` | `DELETE /v1/threads/{thread_id}/state` | Delete the state snapshot |
+| `threadMessages` | `GET /v1/threads/{thread_id}/messages` | List messages |
+| `addThreadMessages` | `POST /v1/threads/{thread_id}/messages` | Append messages without running the graph |
+| `singleMessage` | `GET /v1/threads/{thread_id}/messages/{message_id}` | Fetch one message |
+| `deleteMessage` | `DELETE /v1/threads/{thread_id}/messages/{message_id}` | Delete one message |
+| `deleteThread` | `DELETE /v1/threads/{thread_id}` | Delete a thread |
 
-## Thread management
+Every response has the shape `{ data, metadata }`, where `metadata` is a `ResponseMetadata`.
 
-### `threads(request?)`
+## List and inspect threads
 
-List all threads. Supports optional search and pagination.
+`threads` returns a page of threads, optionally filtered by a search string. `threadDetails` returns the stored record for one thread.
 
-```ts
-// List all threads
-const response = await client.threads();
-
-// With search
-const response = await client.threads({ search: 'Paris' });
-
-// With pagination
-const response = await client.threads({ offset: 0, limit: 20 });
-```
-
-**Overloads:**
+### `threads`
 
 ```ts
 client.threads(): Promise<ThreadsResponse>
@@ -46,24 +52,15 @@ client.threads(request: ThreadsRequest): Promise<ThreadsResponse>
 client.threads(search?: string, offset?: number, limit?: number): Promise<ThreadsResponse>
 ```
 
-**`ThreadsRequest`:**
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `search` | `string` | none | Search string passed to the checkpointer. |
+| `offset` | `number` | none | Records to skip. Must be 0 or more. |
+| `limit` | `number` | 100 | Page size. Must be above 0. The server caps it at 1000. |
 
-| Field | Type | Description |
-|---|---|---|
-| `search` | `string` | Substring filter applied to thread names. |
-| `offset` | `number` | Number of threads to skip (for pagination). Must be ≥ 0. |
-| `limit` | `number` | Maximum number of threads to return. Must be > 0. |
-
-**`ThreadsResponse`:**
+Returns `ThreadsResponse`, with the threads at `response.data.threads`:
 
 ```ts
-interface ThreadsResponse {
-  data: {
-    threads: ThreadItem[];
-  };
-  metadata: ResponseMetadata;
-}
-
 interface ThreadItem {
   thread_id: string;
   thread_name: string | null;
@@ -74,254 +71,210 @@ interface ThreadItem {
 }
 ```
 
----
+```ts
+// List threads three ways: defaults, request object, positional arguments
+const first = await client.threads();
+const searched = await client.threads({ search: 'paris', offset: 0, limit: 20 });
+const positional = await client.threads('paris', 0, 20);
+console.log(first.data.threads.length, searched.data.threads[0]?.thread_id, positional.metadata);
+```
 
-### `threadDetails(threadId)`
+### `threadDetails`
 
-Fetch metadata for a single thread.
+```ts
+client.threadDetails(threadId: string | number): Promise<ThreadDetailsResponse>
+```
+
+Returns the thread record at `response.data.thread_data.thread`, a `Record<string, any>`.
 
 ```ts
 const response = await client.threadDetails('thread-123');
 console.log(response.data.thread_data.thread);
 ```
 
-**Parameters:**
+## Read and edit thread state
+
+The state snapshot holds the graph's `AgentState` for a thread. Read it with `threadState`, merge values into it with `updateThreadState`, and remove it with `clearThreadState`. The thread's messages are separate and are not touched by these calls.
+
+### `threadState`
+
+```ts
+client.threadState(threadId: string | number): Promise<ThreadStateResponse>
+```
+
+Returns the snapshot at `response.data.state`.
+
+```ts
+const response = await client.threadState('thread-123');
+console.log(response.data.state);
+```
+
+### `updateThreadState`
+
+```ts
+client.updateThreadState(
+  threadId: string | number,
+  config: Record<string, any>,
+  state: any
+): Promise<UpdateThreadStateResponse>
+```
 
 | Parameter | Type | Description |
 |---|---|---|
-| `threadId` | `string \| number` | The thread ID. Must be non-empty (string) or ≥ 1 (integer). |
+| `threadId` | `string \| number` | The thread to update. |
+| `config` | `Record<string, any>` | Config sent in the request body. Pass `{}` if you have nothing to add. |
+| `state` | `any` | Partial state to merge in. |
 
-**`ThreadDetailsResponse`:**
+The server merges `state` into the stored snapshot instead of replacing it. Dictionaries are deep-merged, other values overwrite, `null` values do not erase existing ones, and `context` messages are appended. `execution_meta` is kept from the stored state. Messages in `context` may not carry tool calls: the server answers 422. Returns the merged state at `response.data.state`.
 
 ```ts
-interface ThreadDetailsResponse {
-  data: {
-    thread_data: {
-      thread: Record<string, any>;
-    };
-  };
-  metadata: ResponseMetadata;
-}
+// Merge one key into the stored state
+const response = await client.updateThreadState('thread-123', {}, {
+  user_preferences: { lang: 'fr' },
+});
+console.log(response.data.state);
 ```
 
----
-
-### `deleteThread(threadId, config?)`
-
-Delete a thread and all its associated state and messages. This is irreversible.
+### `clearThreadState`
 
 ```ts
-await client.deleteThread('thread-123');
-
-// With optional config
-await client.deleteThread('thread-123', { user_id: 'u-456' });
+client.clearThreadState(threadId: string | number): Promise<ClearThreadStateResponse>
 ```
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `string \| number` | The thread ID to delete. |
-| `config` | `Record<string, any>` | Optional configuration passed with the delete request body. |
-
----
-
-## Thread state
-
-### `threadState(threadId)`
-
-Fetch the current state snapshot for a thread (the full graph state at the last checkpoint).
+Deletes the state snapshot. Returns `response.data` as `{ success, message, data }`, where `data` is a boolean.
 
 ```ts
-const response = await client.threadState(12345);
-console.log(response.data);
-// { state: { messages: [...], user_id: 'abc', ... } }
+const response = await client.clearThreadState('thread-123');
+console.log(response.data.success);
 ```
 
-**Parameters:**
+## List and manage messages
 
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `number` | The thread ID. See the note below: the TypeScript signature says `number`, but the server accepts strings and real thread ids usually are strings. |
+Messages are the thread's conversation history. You can read them with search and pagination, append messages without running the graph, and delete single messages.
 
----
-
-### `updateThreadState(threadId, config, state)`
-
-Write a new state snapshot for a thread. Use this to seed initial state, repair a corrupted thread, or inject values that the graph needs but cannot derive from messages alone.
+### `threadMessages`
 
 ```ts
-await client.updateThreadState(
-  12345,
-  {},                          // config body (the server derives it from the path thread_id)
-  { user_preferences: { lang: 'fr' } }  // new state
-);
+client.threadMessages(threadId, request: { search?: string; offset?: number; limit?: number })
+client.threadMessages(threadId, search?: string, offset?: number, limit?: number)
 ```
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `number` | The thread ID. Typed `number`; see the note below. |
-| `config` | `Record<string, any>` | Config body. The server rebuilds the config from the path `thread_id` and ignores what you send here, so `{}` is fine. |
-| `state` | `any` | New state object to write. Keys must match the graph's state schema. |
-
----
-
-### `clearThreadState(threadId)`
-
-Delete all checkpointed state for a thread. The thread itself (its metadata and messages) is not deleted — only the state snapshot is cleared.
+Both forms return `Promise<ThreadMessagesResponse>`, with the list at `response.data.messages`. `search`, `offset` and `limit` follow the same rules and defaults as `threads`.
 
 ```ts
-await client.clearThreadState(12345);
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `number` | The thread ID. |
-
----
-
-## Messages
-
-### `threadMessages(threadId, request?)`
-
-List messages for a thread with optional search and pagination.
-
-```ts
-// All messages
-const response = await client.threadMessages('thread-123');
-
-// With search term
-const response = await client.threadMessages('thread-123', 'capital');
-
-// As a request object
+// Search a thread's messages, 50 at a time
 const response = await client.threadMessages('thread-123', {
   search: 'capital',
   offset: 0,
   limit: 50,
 });
+console.log(response.data.messages.length);
 ```
 
-**Overloads:**
+### `addThreadMessages`
 
 ```ts
-client.threadMessages(threadId: string | number): Promise<ThreadMessagesResponse>
-client.threadMessages(threadId: string | number, request: ThreadMessagesRequest): Promise<ThreadMessagesResponse>
-client.threadMessages(threadId: string | number, search?: string, offset?: number, limit?: number): Promise<ThreadMessagesResponse>
+client.addThreadMessages(
+  threadId: string | number,
+  messages: Message[],
+  config: Record<string, any> = {},
+  metadata?: Record<string, any>
+): Promise<AddThreadMessagesResponse>
 ```
 
-**`ThreadMessagesRequest` (without `threadId`):**
-
-| Field | Type | Description |
-|---|---|---|
-| `search` | `string` | Substring filter applied to message content. |
-| `offset` | `number` | Number of messages to skip (≥ 0). |
-| `limit` | `number` | Maximum number to return (> 0). |
-
-**`ThreadMessagesResponse`:**
-
-```ts
-interface ThreadMessagesResponse {
-  data: {
-    messages: Message[];
-    total?: number;
-  };
-  metadata: ResponseMetadata;
-}
-```
-
----
-
-### `addThreadMessages(threadId, messages, config?, metadata?)`
-
-Append messages to a thread's saved history. Useful for injecting context, system prompts, or synthetic messages without running the graph.
-
-```ts
-await client.addThreadMessages(
-  'thread-123',
-  [Message.text_message('You are a travel guide.', 'system')],
-  {},                         // config body (the server derives it from the path thread_id)
-  { injected_by: 'setup' }    // metadata
-);
-```
-
-**Parameters:**
+Appends messages to the thread without running the graph. Use it to inject a system prompt or context. The server rejects any message that carries a tool call (HTTP 422), because only the model may request tools. Returns `response.data` as `{ success, message, data }`.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `threadId` | `string \| number` | — | The thread ID. |
-| `messages` | `Message[]` | — | Messages to append. |
-| `config` | `Record<string, any>` | `{}` | Config body. The server rebuilds the config from the path `thread_id`, so this is effectively ignored. |
-| `metadata` | `Record<string, any>` | `undefined` | Optional metadata attached to the checkpoint. |
+| `threadId` | `string \| number` | required | The thread to append to. |
+| `messages` | `Message[]` | required | Build text messages with `Message.textMessage(text, role)`. |
+| `config` | `Record<string, any>` | `{}` | Config sent in the request body. |
+| `metadata` | `Record<string, any>` | `{}` sent | Optional metadata stored with the messages. |
 
----
+```ts
+// Append a system message to an existing thread
+await client.addThreadMessages(
+  'thread-123',
+  [Message.textMessage('You are a travel guide.', 'system')],
+  {},
+  { injected_by: 'setup' }
+);
+```
 
-### `singleMessage(threadId, messageId)`
+### `singleMessage`
 
-Fetch a single message from a thread by message ID.
+```ts
+client.singleMessage(threadId: string | number, messageId: string): Promise<ThreadMessageResponse>
+```
+
+Returns the message itself at `response.data`. The message ID must not be empty or whitespace.
 
 ```ts
 const response = await client.singleMessage('thread-123', 'msg-001');
-console.log(response.data.message);
+console.log(response.data.role, response.data.content);
 ```
 
-**Parameters:**
+### `deleteMessage`
 
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `string \| number` | The thread ID. |
-| `messageId` | `string` | The message ID. Must be non-empty. |
+```ts
+client.deleteMessage(
+  threadId: string | number,
+  messageId: string,
+  config?: Record<string, any>
+): Promise<DeleteThreadMessageResponse>
+```
 
----
-
-### `deleteMessage(threadId, messageId, config?)`
-
-Delete a single message from a thread by message ID.
+Deletes one message. `config` is sent in the request body and defaults to `{}`. Returns `response.data` as `{ success, message, data }`.
 
 ```ts
 await client.deleteMessage('thread-123', 'msg-001');
 ```
 
-**Parameters:**
+## Delete a thread
 
-| Parameter | Type | Description |
-|---|---|---|
-| `threadId` | `string \| number` | The thread ID. |
-| `messageId` | `string` | The message ID to delete. Must be non-empty. |
-| `config` | `Record<string, any>` | Optional configuration passed in the request body. |
+`deleteThread` removes the thread and cannot be undone. Use `clearThreadState` instead if you only want to drop the state snapshot.
 
----
+```ts
+client.deleteThread(threadId: string | number, config?: Record<string, any>): Promise<DeleteThreadResponse>
+```
+
+`config` is sent in the request body and defaults to `{}`. Returns `response.data` as `{ success, message, data }`.
+
+```ts
+await client.deleteThread('thread-123');
+```
 
 ## Validation rules
 
-These rules are enforced by the server and will produce `AgentFlowError` status `422` if violated:
+The server checks these constraints and answers HTTP 422 when one fails.
 
-| Rule | Description |
+| Input | Rule |
 |---|---|
-| `thread_id` non-empty | String thread IDs must not be empty or whitespace. Integer IDs must be ≥ 1. |
-| `message_id` non-empty | `messageId` must not be empty. |
-| `offset` ≥ 0 | Pagination offset must be a non-negative number. |
-| `limit` > 0 | Pagination limit must be a positive number. |
+| `threadId` (string) | Not empty or whitespace. |
+| `threadId` (number) | 1 or more. |
+| `messageId` | Not empty or whitespace. |
+| `offset` | 0 or more. |
+| `limit` | Above 0. Values over 1000 are capped at 1000. |
+| Messages and `context` you write | No tool calls. |
 
----
+## Examples
 
-## Common patterns
-
-### Paginate through all threads
+### Page through every thread
 
 ```ts
+import { AgentFlowClient } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+// Yield threads page by page until a short page signals the end
 async function* allThreads(pageSize = 50) {
   let offset = 0;
   while (true) {
     const response = await client.threads({ offset, limit: pageSize });
-    const threads = response.data.threads;
-    if (threads.length === 0) break;
+    const { threads } = response.data;
     yield* threads;
-    offset += threads.length;
     if (threads.length < pageSize) break;
+    offset += threads.length;
   }
 }
 
@@ -330,18 +283,20 @@ for await (const thread of allThreads()) {
 }
 ```
 
-### Display a conversation history
+### Print a conversation
 
 ```ts
-const response = await client.threadMessages('thread-123', {
-  offset: 0,
-  limit: 100,
-});
+import { AgentFlowClient } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+// Join the text blocks of each message into one line
+const response = await client.threadMessages('thread-123', { offset: 0, limit: 100 });
 
 for (const msg of response.data.messages) {
   const text = msg.content
-    .filter(b => b.type === 'text')
-    .map(b => (b as any).text)
+    .filter((block) => block.type === 'text')
+    .map((block) => (block as { text: string }).text)
     .join('');
   console.log(`[${msg.role}] ${text}`);
 }
@@ -350,49 +305,26 @@ for (const msg of response.data.messages) {
 ### Reset a thread
 
 ```ts
-// Keep the thread metadata but wipe the state
-await client.clearThreadState(12345);
+import { AgentFlowClient } from '@10xgraph/client';
 
-// Or delete everything including metadata and messages
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
+
+// Drop only the state snapshot, keep the thread and its messages
+await client.clearThreadState('thread-123');
+
+// Or delete the thread entirely
 await client.deleteThread('thread-123');
 ```
 
----
-
-<aside class="callout callout-warning" role="note"><p class="callout-title">`threadId` is typed inconsistently</p>
-
-`threadState()`, `updateThreadState()`, and `clearThreadState()` declare `threadId: number`. Every sibling method — `threadDetails()`, `threadMessages()`, `addThreadMessages()`, `singleMessage()`, `deleteMessage()`, `deleteThread()` — declares `string | number`, and `observability()` declares `string`.
-
-The server side has no such split: the thread routes validate `thread_id` as `str | int` and reject only empty strings and integers below 1. Real thread ids handed out by the server are strings, and they go into the URL path either way.
-
-So the `number` signatures are a client-side narrowing, not a server constraint. Passing a string thread id to those three methods works at runtime but fails to type-check. Until the signatures are widened, cast at the call site:
-
-```ts
-await client.threadState(threadId as unknown as number);
-```
-
-</aside>
-
----
-
 ## Common errors
 
-| Error | Cause | Fix |
+| Status | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `404` | Thread not found, or no checkpointer configured. | Verify `thread_id`, and confirm the graph is compiled with a checkpointer. |
-| TypeScript error passing a string id to `threadState` / `updateThreadState` / `clearThreadState` | Those three are typed `threadId: number`. | Cast at the call site; the server accepts strings. See the caution above. |
-| `AgentFlowError` status `422` | Validation failure — invalid `thread_id`, empty `message_id`, bad pagination values. | Check the field constraints listed in [Validation rules](#validation-rules). |
+| 503 | The server has no checkpointer configured. | Configure a checkpointer on the server. |
+| 422 | A validation rule above failed, or a message carries a tool call. | Check the IDs, pagination values and message content. |
 
----
-
-## What you learned
-
-- Threads persist conversation history and state between `invoke()` calls when `config.thread_id` is set.
-- `threadMessages()` supports search and pagination.
-- `clearThreadState()` removes the state snapshot but not the thread or messages.
-- All thread operations require the graph to be compiled with a checkpointer.
-- `threadState`, `updateThreadState`, and `clearThreadState` are typed `threadId: number` while their siblings accept `string | number`; the server accepts both.
+All of these surface as `AgentFlowError` with `statusCode` set. See [Errors](/docs/reference/client/errors).
 
 ## Next step
 
-See [`reference/client/memory`](/docs/reference/client/memory) to learn how to store and search long-term memories beyond per-thread conversation history.
+For long-term memories that outlive a single thread, see the [Memory reference](/docs/reference/client/memory).

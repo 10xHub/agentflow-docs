@@ -1,115 +1,119 @@
 ---
 title: "invoke()"
 seoTitle: "invoke() in the TypeScript client"
-description: Reference for the AgentFlowClient.invoke() method — send messages and receive the final state.
+description: "Reference for AgentFlowClient.invoke(): send messages to the agent graph, run remote tools automatically, and get the final result."
 section: Reference
 group: "TypeScript client"
 order: 490
 label: "invoke()"
-updated: "2026-09-29"
+updated: "2026-10-08"
+faq:
+  - q: "When should I use invoke() instead of stream()?"
+    a: "Use invoke() when you need the complete answer before updating your UI or returning from a function. Use stream() when you want tokens or messages as they are produced."
+  - q: "How do I continue a conversation across invoke() calls?"
+    a: "Pass the same thread_id at the top level of the config option on every call. You can read the id used by the server from result.meta.thread_id."
+  - q: "Why does invoke() make more than one HTTP request?"
+    a: "When the agent asks for a remote tool, the client runs your registered handler locally and sends the result back in a new request. This repeats until no remote tool calls remain or recursion_limit is reached."
 ---
 
-`client.invoke()` sends a list of messages to the agent graph and awaits the final response. It automatically handles the remote tool call loop — if the server responds with `RemoteToolCallBlock` entries, the client executes the registered handlers and re-invokes the graph until the agent returns a final text response or the `recursion_limit` is reached.
+`client.invoke()` sends messages to the agent graph and resolves with the final result. If the agent asks for a remote tool, the client runs your registered handler and calls the server again, repeating until the agent answers or `recursion_limit` is reached. For incremental output, use [`stream()`](/docs/reference/client/stream).
 
-Use `invoke()` when you want a complete, final answer before updating the UI. For incremental updates use [`stream()`](/docs/reference/client/stream).
-
-**Endpoint:** `POST /v1/graph/invoke`  
-**Source:** `src/endpoints/invoke.ts`
-
----
+**Endpoint:** `POST /v1/graph/invoke`
 
 ## Signature
 
+`invoke()` takes an array of `Message` objects and an optional options object, and returns a promise of `InvokeResult`. It is a method of `AgentFlowClient`, so create a client first (see [Client](/docs/reference/client/client)).
+
 ```ts
-client.invoke(
+import { AgentFlowClient, Message } from '@10xgraph/client';
+
+// client.invoke(messages, options?) => Promise<InvokeResult>
+invoke(
   messages: Message[],
-  options?: InvokeOptions
+  options?: {
+    initial_state?: Record<string, any>;
+    config?: Record<string, any>;
+    recursion_limit?: number;
+    response_granularity?: 'full' | 'partial' | 'low';
+    onPartialResult?: InvokeCallback;
+  }
 ): Promise<InvokeResult>
 ```
 
----
-
 ## Parameters
 
-### `messages`
+The first parameter carries the conversation input and the second tunes the run. Only `messages` is required.
 
-An array of `Message` objects to send. The most recent message is typically the user's input. You can include a `system` message to set the agent's persona:
+### messages
+
+`messages` is an array of `Message` objects. The last one is normally the user's input, and you can add a `system` message before it. Each message is serialised before sending. If `message_id` is `null` or `undefined`, the payload uses `"0"` and the server assigns a real id.
 
 ```ts
+import { Message } from '@10xgraph/client';
+
+// A system message sets the persona, the user message is the input
 const systemMsg = Message.text_message('You are a concise assistant.', 'system');
-const userMsg   = Message.text_message('What is 2 + 2?');
-
-const result = await client.invoke([systemMsg, userMsg]);
+const userMsg = Message.text_message('What is 2 + 2?');
 ```
 
-The client serialises each `Message` before sending it. If `message.message_id` is `null` or `undefined`, the serialised payload uses `"0"` — the server replaces this with a real ID.
+### options
 
-### `options` (optional)
+All options are optional. The defaults below are the values the client applies when you omit the option.
 
-| Field | Type | Default | Description |
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `initial_state` | `Record<string, any>` | `undefined` | Initial state values to seed the graph before execution. Keys must match the graph's state schema. |
-| `config` | `Record<string, any>` | `undefined` | Run configuration. The server reads `thread_id` from the **top level** of this object: `{ thread_id: 'my-thread' }`. When `thread_id` is set the server checkpoints state between calls; omitting it makes the server generate a fresh thread id for the run. A nested `configurable` key is not read and is silently ignored. |
-| `recursion_limit` | `number` | `25` | Maximum number of invoke loop iterations. Each iteration is one call to `/v1/graph/invoke`. When the limit is reached `InvokeResult.recursion_limit_reached` is `true`. |
-| `response_granularity` | `'full' \| 'partial' \| 'low'` | `'full'` | Controls how much data the server returns per call. See [Response granularity](#response-granularity) below. |
-| `onPartialResult` | `InvokeCallback` | `undefined` | Callback invoked after each loop iteration with intermediate results. Useful for showing progress in the UI without full streaming. |
+| `initial_state` | `Record<string, any>` | none | State values to seed the graph. Sent only on the first request of a call, not on the follow-up requests that return tool results. |
+| `config` | `Record<string, any>` | none | Run configuration. Put `thread_id` at the top level of this object to keep and checkpoint a conversation. |
+| `recursion_limit` | `number` | `25` | Maximum number of requests the client makes in one `invoke()` call. The server accepts values from 1 to 100. |
+| `response_granularity` | `'full' \| 'partial' \| 'low'` | `'full'` | How much data the server returns per request. See [Response granularity](#response-granularity). |
+| `onPartialResult` | `InvokeCallback` | none | Called after every request with that iteration's results. |
 
----
+## Return value
 
-## Return value: `InvokeResult`
+`invoke()` resolves with an `InvokeResult`. The `messages`, `state`, `context`, `summary` and `meta` fields come from the last server response. `all_messages` collects everything across iterations.
 
-```ts
-interface InvokeResult {
-  messages: Message[];             // Final messages from the last iteration
-  state?: AgentState;              // Final graph state
-  context?: Message[];             // Relevant context messages (RAG results, etc.)
-  summary?: string | null;         // Optional LLM-generated conversation summary
-  meta: InvokeMetadata;            // Thread ID and is_new_thread flag
-  all_messages: Message[];         // All messages across all iterations (including tool results)
-  iterations: number;              // How many invoke loop iterations ran
-  recursion_limit_reached: boolean; // true if iterations hit the recursion_limit
-}
-```
+| Field | Type | Description |
+|---|---|---|
+| `messages` | `Message[]` | Messages from the last response. |
+| `state` | `AgentState` (optional) | Graph state, when the granularity includes it. |
+| `context` | `Message[]` (optional) | Context messages, when the granularity includes them. |
+| `summary` | `string \| null` (optional) | Conversation summary, when the granularity includes it. |
+| `meta` | `InvokeMetadata` | `thread_id` (string) and `is_new_thread` (boolean). |
+| `all_messages` | `Message[]` | Every message from every iteration, including your tool results. |
+| `iterations` | `number` | How many requests were made. |
+| `recursion_limit_reached` | `boolean` | `true` when `iterations` reached `recursion_limit`. |
 
-### `InvokeMetadata`
+`recursion_limit_reached` is computed from the iteration count, so it is also `true` when the final answer arrived exactly on the last allowed iteration. Check the last message for pending remote tool calls if you need to tell the two cases apart.
 
-```ts
-interface InvokeMetadata {
-  is_new_thread: boolean;  // true if this call created a new thread
-  thread_id: string;       // The thread ID used for this invocation
-}
-```
-
-Use `meta.thread_id` if you want to continue the conversation in a later call:
+Use `meta.thread_id` to continue a conversation in a later call:
 
 ```ts
-const first = await client.invoke([userMsg], {
+// First turn: the thread is created with the id you choose
+const first = await client.invoke([Message.text_message('Hi')], {
   config: { thread_id: 'conv-001' },
 });
 
-const followUp = await client.invoke(
-  [Message.text_message('Tell me more')],
-  { config: { thread_id: first.meta.thread_id } }
-);
+// Second turn: reuse the id reported by the server
+const followUp = await client.invoke([Message.text_message('Tell me more')], {
+  config: { thread_id: first.meta.thread_id },
+});
 ```
-
----
 
 ## Response granularity
 
-The `response_granularity` option controls what the server includes in each response payload:
+`response_granularity` decides which parts of the graph output the server includes. Messages are always returned; the rest depends on the value.
 
-| Value | State | Context | Summary | When to use |
-|---|---|---|---|---|
-| `'full'` | ✅ | ✅ | ✅ | When you need complete state inspection or debugging. |
-| `'partial'` | ✅ | ✅ | ❌ | When you need state but not the summary. Slightly faster. |
-| `'low'` | ❌ | ❌ | ❌ | When you only need the final messages. Best for production chat UIs. |
+| Value | Returns | When to use |
+|---|---|---|
+| `'full'` | Messages and full state | Debugging, or when your UI reads graph state. |
+| `'partial'` | Messages, context and summary | When you need context or the summary but not the full state. |
+| `'low'` | Messages only | Chat UIs that only render messages. Smallest payload. |
 
----
+The client sends `'full'` when you omit the option. The server's own default is `low`, but a call through `AgentFlowClient` never relies on it.
 
-## InvokeCallback
+## Progress callback
 
-The `onPartialResult` callback receives an `InvokePartialResult` after each loop iteration:
+`onPartialResult` receives an `InvokePartialResult` after each request, before any tool handlers run. It is the way to show progress during a multi-step run without switching to streaming. The client awaits the callback, so an async callback delays the next iteration.
 
 ```ts
 interface InvokePartialResult {
@@ -119,20 +123,19 @@ interface InvokePartialResult {
   context?: Message[];
   summary?: string | null;
   meta: InvokeMetadata;
-  has_tool_calls: boolean;  // true if this iteration returned remote tool calls
-  is_final: boolean;        // true if this is the last iteration
+  has_tool_calls: boolean; // the response contains remote tool calls
+  is_final: boolean;       // no remote tool calls, this is the last iteration
 }
 
 type InvokeCallback = (partial: InvokePartialResult) => void | Promise<void>;
 ```
 
-Example — show a "thinking…" indicator while waiting for the agent:
-
 ```ts
-const result = await client.invoke([userMsg], {
+// Log progress while the agent works
+const result = await client.invoke([Message.text_message('Weather in Paris?')], {
   onPartialResult(partial) {
     if (partial.has_tool_calls) {
-      console.log(`Iteration ${partial.iteration}: running tools…`);
+      console.log(`Iteration ${partial.iteration}: running tools`);
     }
     if (partial.is_final) {
       console.log('Final answer received');
@@ -141,44 +144,41 @@ const result = await client.invoke([userMsg], {
 });
 ```
 
----
-
 ## Remote tool call loop
 
-When server-configured remote tools have matching `client.registerToolHandler()` handlers and the agent requests one, the loop works like this:
+The client resolves remote tool calls for you. When a response contains a `remote_tool_call` content block and a `ToolExecutor` is available (it is, on every `AgentFlowClient`), the client runs the matching handler and sends the results back.
 
-1. Client sends the initial messages to `POST /v1/graph/invoke`.
-2. Server responds. If any `RemoteToolCallBlock` is in the response messages, the client intercepts them.
-3. Client maps each `RemoteToolCallBlock.name` to its registered `ToolHandler` and executes the handlers locally.
-4. Client wraps the handler results in `ToolResultBlock` objects and sends them back to `/v1/graph/invoke` as `tool` role messages.
-5. Steps 2–4 repeat until the server returns no more `RemoteToolCallBlock` entries or `recursion_limit` is reached.
+1. The client posts your messages to `/v1/graph/invoke`.
+2. If any response message holds a `remote_tool_call` block, the client passes those messages to its tool executor, which calls the handlers you registered with `client.registerToolHandler()`.
+3. The tool result messages are added to `all_messages` and posted to the same endpoint as the next request.
+4. Steps 2 and 3 repeat until a response has no remote tool calls or `recursion_limit` is reached.
 
-See [Register remote tools](/docs/client/remote-tools) for how to register handlers.
+Only the first request carries `initial_state`. See [Register remote tools](/docs/client/remote-tools) for how to register handlers.
 
----
+## InvokeRequest
 
-## `InvokeRequest` (advanced)
-
-If you are calling the invoke endpoint directly (not through `AgentFlowClient`) the request body has this shape:
+`InvokeRequest` is the body type of one request. You only need it if you call the endpoint yourself. The client adds `messages` in serialised form and fills the other fields from your options.
 
 ```ts
 interface InvokeRequest {
-  messages: any[];                           // Serialised Message objects
+  messages: any[];                  // serialised Message objects
   initial_state?: Record<string, any>;
   config?: Record<string, any>;
-  recursion_limit?: number;                  // default 25
+  recursion_limit?: number;
   response_granularity?: 'full' | 'partial' | 'low';
 }
 ```
 
----
+## Examples
 
-## Code examples
+The examples assume a server running at `http://localhost:8000`.
 
 ### Minimal invoke
 
+This call sends one user message and prints the first content block of the first returned message.
+
 ```ts
-import { AgentFlowClient, Message } from '@10xscale/agentflow-client';
+import { AgentFlowClient, Message } from '@10xgraph/client';
 
 const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 
@@ -186,70 +186,62 @@ const result = await client.invoke([
   Message.text_message('What is the capital of Japan?'),
 ]);
 
+// Example output, the text depends on your agent
 console.log(result.messages[0].content[0]);
 // { type: 'text', text: 'The capital of Japan is Tokyo.' }
 ```
 
-### Persistent thread
+### Chat on a persistent thread
+
+Reusing one `thread_id` makes the server load the saved state, so the agent remembers earlier turns. This needs a checkpointer on the server.
 
 ```ts
+import { AgentFlowClient, Message } from '@10xgraph/client';
+
+const client = new AgentFlowClient({ baseUrl: 'http://localhost:8000' });
 const THREAD_ID = 'user-123-session-456';
 
-async function chat(userInput: string) {
-  const result = await client.invoke(
-    [Message.text_message(userInput)],
-    {
-      config: { thread_id: THREAD_ID },
-      response_granularity: 'low',
-    }
-  );
+async function chat(userInput: string): Promise<string> {
+  const result = await client.invoke([Message.text_message(userInput)], {
+    config: { thread_id: THREAD_ID },
+    response_granularity: 'low', // messages only
+  });
 
-  // Extract the assistant's text response
-  const assistantMsg = result.messages.find(m => m.role === 'assistant');
-  const textBlock = assistantMsg?.content.find(b => b.type === 'text');
-  return (textBlock as any)?.text ?? '';
+  // Pick the assistant's text block out of the returned messages
+  const assistantMsg = result.messages.find((m) => m.role === 'assistant');
+  const textBlock = assistantMsg?.content.find((b) => b.type === 'text');
+  return (textBlock as { text?: string } | undefined)?.text ?? '';
 }
 
 await chat('Hello!');
-await chat('Tell me a joke.');  // Remembers the previous message
+console.log(await chat('What did I just say?')); // sees the previous turn
 ```
 
-### With initial state
+### Seed the graph with initial state
+
+`initial_state` sets state keys before the run. Use keys that exist in your graph's state schema.
 
 ```ts
-const result = await client.invoke(
-  [Message.text_message('Continue where we left off')],
-  {
-    initial_state: {
-      user_preferences: { language: 'en', theme: 'dark' },
-    },
-    config: { thread_id: 'thread-789' },
-  }
-);
+const result = await client.invoke([Message.text_message('Continue where we left off')], {
+  initial_state: { user_preferences: { language: 'en', theme: 'dark' } },
+  config: { thread_id: 'thread-789' },
+});
 ```
-
----
 
 ## Common errors
 
+A non-2xx response throws a subclass of `AgentFlowError`, chosen by status code. See [Errors](/docs/reference/client/errors) for the full list and the fields on each error.
+
 | Error | Cause | Fix |
 |---|---|---|
-| `AgentFlowError` status `401` | Missing or invalid auth token. | Set `auth` in `AgentFlowConfig`. |
-| `AgentFlowError` status `422` | Invalid request payload (e.g. empty `messages` array, bad `config` shape). | Check that `messages` is non-empty and all required fields are correct. |
-| `AgentFlowError` status `500` | Server-side error during graph execution. | Check the server logs with `10xgraph api --verbose`. |
-| `Request timeout` | The graph took longer than `config.timeout`. | Increase `timeout` in `AgentFlowConfig` or optimise the graph. |
-| `recursion_limit_reached: true` | The tool call loop ran more than `recursion_limit` iterations. | Increase `recursion_limit` in options, or check that tools are completing without infinite loops. |
+| `AuthenticationError` (401) | Missing or invalid credentials. | Set `authToken` or `auth` in the client config. |
+| `ValidationError` (422) | The server rejected the payload, for example an empty `messages` array. | Send at least one message and check `config`. |
+| `ServerError` (500, 502, 503, 504) | The graph failed or the server is unavailable. | Check the server logs, then retry. |
+| `Error: Request timeout after <n>ms` | One request exceeded the client `timeout` (default 300000 ms). | Raise `timeout` in the client config or shorten the graph. |
+| `recursion_limit_reached: true` | The loop used all allowed iterations. | Raise `recursion_limit` (maximum 100), or check that tools return and do not loop. |
 
----
+## Related pages
 
-## What you learned
-
-- `invoke()` sends messages and returns when the agent produces a final response.
-- The `config.thread_id` option enables persistent conversations with checkpointing.
-- `response_granularity: 'low'` is the most efficient setting for chat UIs.
-- The `onPartialResult` callback lets you react to each iteration without requiring full streaming.
-- The remote tool call loop is handled automatically — register matching handlers with `registerToolHandler()`.
-
-## Next step
-
-See [`reference/client/stream`](/docs/reference/client/stream) to learn the `stream()` method for token-by-token streaming.
+- [Invoke an agent](/docs/client/invoke-agent) walks through using `invoke()` in an app.
+- [Register remote tools](/docs/client/remote-tools) explains handlers for the tool loop.
+- [`stream()`](/docs/reference/client/stream) returns output incrementally.

@@ -82,7 +82,6 @@ Coordinate multiple agents and implement advanced control flow. Covers handoff p
 - [Handoff between agents](/docs/guides/handoff-between-agents) — Agent A asks agent B to take over
 - [Add human approval](/docs/guides/add-human-approval) — Pause runs for human review before proceeding
 - [Run background tasks](/docs/guides/run-background-tasks) — Spawn work that does not block the run
-- [Expose over A2A](/docs/guides/expose-over-a2a) — Serve or call a graph over the agent-to-agent protocol
 
 ### Streaming, media and realtime
 

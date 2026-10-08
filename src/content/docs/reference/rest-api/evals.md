@@ -6,7 +6,7 @@ section: Reference
 group: "REST API"
 order: 390
 label: Evals
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
 The eval endpoints serve the JSON reports written by [`10xgraph eval`](/docs/reference/api-cli/commands#eval) over HTTP, so the playground's Evals inspector can browse them. They read `eval_reports/*.json` from the server's working directory; they do not run evaluations.
@@ -101,7 +101,7 @@ Full drilldown for one run.
         "lat": "3.1s",
         "cost": "1.4k tok",
         "input": "What is the weather in Paris?",
-        "expected": "—",
+        "expected": "\u2014",
         "actual": "The weather in Paris is 24 degrees and sunny.",
         "rubric": [
           {"key": "accuracy", "value": 0.96, "tone": "accent"},
@@ -121,7 +121,7 @@ Full drilldown for one run.
 | `sub` | string | Eval set id, model (when recorded), run timestamp in UTC, and total duration, joined with `·` |
 | `rate` | number | Pass rate as a percentage |
 | `status` | string | `pass` or `fail` |
-| `threshold` | integer | Average criterion threshold across the run, as a percentage. Defaults to `80` when the report records no thresholds. |
+| `threshold` | integer | Mean of the distinct criterion thresholds recorded in the report, as a rounded percentage. Defaults to `80` when no thresholds are recorded. |
 | `stats` | array | Summary tiles: cases, passed, failed (failures plus errors), average score, average latency, total tokens |
 | `cases` | array | One entry per case, see below |
 | `regression` | object or `null` | Comparison against the previous run of the same eval set, or `null` when this is the first run of that set |
@@ -137,9 +137,9 @@ Full drilldown for one run.
 | `status` | string | `pass` or `fail` |
 | `lat` | string | Case duration, for example `3.1s` |
 | `cost` | string | Token total, for example `1.4k tok`. Token counts only; the report records no dollar cost. |
-| `input` | string | First user message in the case, or `—` |
-| `expected` | string | Always `—`; the report schema records no per-case expected value |
-| `actual` | string | The agent's response |
+| `input` | string | First user message in the case, or a single em dash placeholder character when there is none |
+| `expected` | string | Always a single em dash placeholder character; the report schema records no per-case expected value |
+| `actual` | string | The agent's response, or the em dash placeholder when empty |
 | `rubric` | array or `null` | One row per criterion plus a `weighted score` row. `null` when the case has no criteria. |
 | `conversation` | array or `null` | Parsed turns for `sim` cases, each `{role, text}` with role `sim` or `agent`. `null` for `eval` cases. |
 
@@ -149,9 +149,9 @@ Present only when an earlier run of the same eval set exists. It compares case-b
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `note` | object | Which two runs are being compared |
+| `note` | object | Which two runs are being compared, as `current`, `prev` and `suite` strings |
 | `summary` | array | Pass-rate drift in percentage points, newly failing count, newly passing count, average score drift |
-| `rows` | array | Per-case rows with the score delta, direction (`up`, `down`, `flat`), and the pass/fail flip |
+| `rows` | array | One row per case: `name`, `delta` (previous and current score with an arrow), `dir` (`up`, `down`, `flat`), `flip` (for example `pass → fail`), and `stay` (true when pass/fail did not change) |
 
 Cases that exist in only one of the two runs are omitted from `rows`.
 

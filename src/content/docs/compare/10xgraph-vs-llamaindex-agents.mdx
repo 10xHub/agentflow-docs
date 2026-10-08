@@ -5,7 +5,7 @@ description: "10xGraph vs LlamaIndex Agents compared with sources: server, auth,
 section: Compare
 order: 50
 label: vs LlamaIndex Agents
-updated: "2026-10-06"
+updated: "2026-10-08"
 faq:
   - q: Can I use my LlamaIndex indexes inside a 10xGraph agent?
     a: Yes. Wrap your query engine in a Python function, hand it to a ToolNode, and the agent calls it like any other tool. Your indexing and retrieval stack stays the same.
@@ -132,7 +132,7 @@ app.invoke(
 ## Serving as an API
 
 ```bash
-pip install 10xgraph 10xgraph-api google-genai
+pip install "10xgraph[google-genai,pg_checkpoint]" 10xgraph-api llama-index
 10xgraph init --yes --template production --auth jwt --rate-limit redis
 10xgraph api --host 0.0.0.0 --port 8000
 10xgraph build --docker-compose --k8s
@@ -143,7 +143,7 @@ You get REST and SSE endpoints for invoke, stream and thread state, plus a WebSo
 ## Calling from TypeScript
 
 ```typescript
-import { AgentFlowClient, Message, bearerAuth } from "10xgraph-client";
+import { AgentFlowClient, Message, bearerAuth } from "@10xgraph/client";
 
 const client = new AgentFlowClient({
   baseUrl: "http://127.0.0.1:8000",

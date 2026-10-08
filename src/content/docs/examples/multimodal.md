@@ -1,68 +1,113 @@
 ---
 title: Multimodal
 seoTitle: "Multimodal tutorial: images, audio, docs"
-description: Send images, audio, video, and documents to 10xGraph using media blocks, MediaRef, a media store, and multimodal model configuration.
+description: Send images, audio, video, and documents to a 10xGraph agent with content blocks, MediaRef (url, base64, file_id), MultimodalConfig, and a media store.
 section: Examples
 group: "Memory and media"
 order: 180
 label: Multimodal
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: Do I need a media store to send media?
+    a: No. A media store is only needed for file_id workflows. External URLs and inline base64 media work without one.
+  - q: Which models accept multimodal input?
+    a: It depends on the model, not on 10xGraph. Gemini models accept images, audio, video and documents; check your provider's documentation for the model you choose.
+  - q: Can I mix media types in one message?
+    a: Yes. A message's content is a list of blocks, so one message can hold text, images, audio, video and documents together.
 ---
 
-**Source example:** [`examples/multimodal/multimodal_agent.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/multimodal/multimodal_agent.py)
+This example sends images, audio, video and documents to a multimodal model. You build a one-node graph with a configured `Agent`, then pass media in three ways: an external URL, inline base64, or a `file_id` from a media store. Every message is a list of typed content blocks.
 
-## What you will build
+**Source:** `examples/multimodal/multimodal_agent.py` in the [10xGraph repository](https://github.com/10xGraph/10xGraph).
 
-A single-node graph that accepts multiple content types:
+## What the example shows
 
-- images
-- audio
-- video
-- documents
+The graph has a single agent node, so the focus stays on media handling instead of orchestration.
 
-The tutorial also shows three ways to provide media:
-
-- external URL
-- inline base64 data
-- uploaded `file_id`
-
-## Prerequisites
-
-- Python 3.12 or later
-- `10xgraph` installed
-- a multimodal-capable provider key such as `GOOGLE_API_KEY`
-
-## Multimodal architecture
+| Topic | What you see |
+|---|---|
+| Media delivery | `MediaRef` with `kind="url"`, `"data"` and `"file_id"` |
+| Content blocks | `TextBlock`, `ImageBlock`, `AudioBlock`, `DocumentBlock`, `VideoBlock` |
+| Agent setup | `MultimodalConfig` with `ImageHandling` and `DocumentHandling` |
+| Storage | `InMemoryMediaStore` for `file_id` workflows |
+| Scenarios | Seven named builders: `url`, `base64`, `file_id`, `audio`, `document`, `video`, `mixed` |
 
 ```mermaid
 flowchart LR
-    A[User message with blocks] --> B[TextBlock / ImageBlock / AudioBlock / DocumentBlock / VideoBlock]
-    B --> C[Agent with MultimodalConfig]
-    C --> D[Provider adapter]
-    E[MediaStore optional] --> B
+    A[Message with content blocks] --> B[Agent with MultimodalConfig]
+    M[Media store, optional] --> B
+    B --> C[Provider adapter]
+    C --> D[Model reply]
 ```
 
-## Step 1 — Set up storage
+## Install and run the example
 
-The example uses:
+The example needs the Google GenAI extra and a Gemini API key. Run it from the `agentflow` folder of the repository, and pass scenario names to choose what runs (with no arguments it runs `url`, `base64` and `file_id`).
 
-```python
+```bash
+# Install 10xGraph with the Google GenAI provider
+pip install "10xgraph[google-genai]"
+
+# The example calls load_dotenv(); a .env file with GOOGLE_API_KEY works, or export it
+export GOOGLE_API_KEY=your-api-key
+
+# Run the default scenarios, or name the ones you want
+python examples/multimodal/multimodal_agent.py
+python examples/multimodal/multimodal_agent.py url base64 audio
+```
+
+<aside class="callout callout-note" role="note"><p class="callout-title">Imports in the repository file</p>
+
+The file in the repository imports every name from the top-level `tenxgraph` package. Only `Agent`, `StateGraph`, `END`, `START`, `Message`, `AgentState` and `ToolNode` are exported there, so use the canonical import paths shown below in your own code.
+
+</aside>
+
+## Import the building blocks
+
+The names live in four modules. The code in the following sections forms one script, so keep these imports at the top.
+
+```python title="multimodal_agent.py"
+import asyncio
+import base64
+
+from dotenv import load_dotenv
+
+from tenxgraph.core.graph import Agent, StateGraph
+from tenxgraph.core.state import (
+    AudioBlock,
+    DocumentBlock,
+    ImageBlock,
+    MediaRef,
+    Message,
+    TextBlock,
+    VideoBlock,
+)
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.storage.media import (
+    DocumentHandling,
+    ImageHandling,
+    InMemoryMediaStore,
+    MultimodalConfig,
+)
+from tenxgraph.utils.constants import END
+
+load_dotenv()
+```
+
+## Set up storage
+
+The checkpointer keeps thread state between runs. The media store holds uploaded bytes that you reference later by `file_id`. If you only use URLs or base64, you can skip the media store.
+
+```python title="multimodal_agent.py"
 checkpointer = InMemoryCheckpointer()
-media_store = InMemoryMediaStore()
+media_store = InMemoryMediaStore()  # needed only for file_id workflows
 ```
 
-Why two stores:
+## Configure the agent for multimodal input
 
-- `checkpointer` tracks thread state
-- `media_store` stores uploaded media for `file_id` workflows
+`MultimodalConfig` tells the adapter how to prepare media for the provider. Both settings below are the defaults, shown explicitly so you can see the options.
 
-You can skip the media store if you only use external URLs or inline base64.
-
-## Step 2 — Configure the Agent for multimodal input
-
-The example creates an agent with `MultimodalConfig`:
-
-```python
+```python title="multimodal_agent.py"
 agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
@@ -83,167 +128,196 @@ agent = Agent(
 )
 ```
 
-This controls how media is prepared for the provider.
+| Setting | Options | Default |
+|---|---|---|
+| `image_handling` | `ImageHandling.BASE64`, `URL`, `FILE_ID` | `BASE64` |
+| `document_handling` | `DocumentHandling.EXTRACT_TEXT`, `FORWARD_RAW`, `SKIP` | `EXTRACT_TEXT` |
+| `max_image_size_mb` | float | `10.0` |
+| `max_image_dimension` | int, larger images are resized | `2048` |
 
-## Media input paths
+## Build and compile the graph
 
-```mermaid
-flowchart TD
-    A[Media input] --> B[URL]
-    A --> C[Base64 data]
-    A --> D[file_id]
-    D --> E[MediaStore lookup]
-    B --> F[Provider adapter]
-    C --> F
-    E --> F
-```
+The graph is one node that goes straight to `END`. Passing `media_store` to `compile` makes the store available to the graph for media references.
 
-## Step 3 — Build the graph
-
-The graph is intentionally simple:
-
-```python
+```python title="multimodal_agent.py"
 graph = StateGraph()
 graph.add_node("agent", agent)
 graph.set_entry_point("agent")
 graph.add_edge("agent", END)
 
-app = graph.compile(checkpointer=checkpointer)
+app = graph.compile(checkpointer=checkpointer, media_store=media_store)
 ```
 
-## Step 4 — Build multimodal messages
+## Send an image by URL
 
-Each message is made of blocks.
+A `url` reference is the lightest option: you pass the address and the adapter handles the rest. Use it for media that is already public.
 
-### External URL image
-
-```python
-Message(
-    role="user",
-    content=[
-        TextBlock(text="What is in this image?"),
-        ImageBlock(
-            media=MediaRef(
-                kind="url",
-                url="https://...",
-                mime_type="image/png",
-            )
+```python title="multimodal_agent.py"
+def build_message_with_external_url() -> list[Message]:
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="What is in this image?"),
+                ImageBlock(
+                    media=MediaRef(
+                        kind="url",
+                        url="https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png",
+                        mime_type="image/png",
+                    )
+                ),
+            ],
         ),
-    ],
-)
+    ]
 ```
 
-### Inline base64 image
+## Send an image as inline base64
 
-```python
-ImageBlock(
-    media=MediaRef(
-        kind="data",
-        data_base64=png_b64,
-        mime_type="image/png",
-    )
-)
+A `data` reference embeds the bytes in the request through `data_base64`. It suits small payloads such as test images.
+
+```python title="multimodal_agent.py"
+def build_message_with_base64() -> list[Message]:
+    # A 10x10 red PNG, base64 encoded
+    png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAE0lEQVR4nGP8z4APMOGVZRip0gBBLAETee26JgAAAABJRU5ErkJggg=="
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="Here is a tiny red pixel image encoded as base64."),
+                ImageBlock(
+                    media=MediaRef(kind="data", data_base64=png_b64, mime_type="image/png")
+                ),
+            ],
+        ),
+    ]
 ```
 
-### Uploaded `file_id`
+## Upload once and send by file_id
 
-```python
-file_id = loop.run_until_complete(media_store.store(data=sample_image, mime_type="image/png"))
+A `file_id` reference points to media you stored earlier. `store()` is async, takes `data` and `mime_type`, and returns the generated key, which you use as the `file_id`. Upload once and reference many times; this is the pattern for production and large files.
 
-ImageBlock(
-    media=MediaRef(
-        kind="file_id",
-        file_id=file_id,
-        mime_type="image/png",
-    )
-)
+```python title="multimodal_agent.py"
+def build_message_with_file_id() -> list[Message]:
+    # Placeholder bytes: replace with a real image, a provider will reject these
+    sample_image = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+    file_id = asyncio.run(media_store.store(data=sample_image, mime_type="image/png"))
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="Analyze this uploaded image."),
+                ImageBlock(media=MediaRef(kind="file_id", file_id=file_id, mime_type="image/png")),
+            ],
+        ),
+    ]
 ```
 
-## Step 5 — Use other media blocks
+## Send audio, video and documents
 
-The example also demonstrates:
+`AudioBlock`, `VideoBlock` and `DocumentBlock` take the same `media=MediaRef(...)` argument. `DocumentBlock` also accepts a `text` field with the extracted text.
 
-- `AudioBlock`
-- `DocumentBlock`
-- `VideoBlock`
+```python title="multimodal_agent.py"
+def build_message_with_audio() -> list[Message]:
+    audio_bytes = b"RIFF" + b"\x00" * 50  # placeholder WAV bytes
+    b64 = base64.b64encode(audio_bytes).decode()
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="Transcribe this audio."),
+                AudioBlock(media=MediaRef(kind="data", data_base64=b64, mime_type="audio/wav")),
+            ],
+        ),
+    ]
 
-That means a single message can mix multiple modalities.
 
-## Mixed-media execution flow
+def build_message_with_video() -> list[Message]:
+    video_bytes = b"\x00\x00\x00\x1cftypmp42" + b"\x00" * 50  # placeholder MP4 bytes
+    b64 = base64.b64encode(video_bytes).decode()
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="Describe this video."),
+                VideoBlock(media=MediaRef(kind="data", data_base64=b64, mime_type="video/mp4")),
+            ],
+        ),
+    ]
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Graph
-    participant Agent
-    participant Provider
 
-    User->>Graph: message with text + image + document
-    Graph->>Agent: blocks
-    Agent->>Provider: adapted multimodal payload
-    Provider-->>Agent: multimodal response
-    Agent-->>Graph: assistant message
-    Graph-->>User: final result
+def build_message_with_document() -> list[Message]:
+    return [
+        Message(
+            role="user",
+            content=[
+                TextBlock(text="Summarize this document."),
+                DocumentBlock(
+                    text="10xGraph is a multi-agent framework. "
+                    "It provides checkpointing, storage, and media handling.",
+                    media=MediaRef(kind="file_id", file_id="doc-001", mime_type="text/plain"),
+                ),
+            ],
+        ),
+    ]
 ```
 
-## Step 6 — Run examples
+The example also has a `mixed` scenario that puts a URL image and a document in one message, because `content` is just a list of blocks.
 
-The example defines named scenarios:
+## Invoke the graph and print the reply
 
-```python
+Each scenario is registered by name, then `run_example` invokes the compiled graph with `{"messages": [...]}` and a config containing `thread_id` and `recursion_limit`. The result's `messages` list holds the conversation, including the model reply.
+
+```python title="multimodal_agent.py"
 EXAMPLES = {
-    "url": ("External URL image", build_message_with_external_url),
-    "base64": ("Inline base64 image", build_message_with_base64),
-    "file_id": ("Uploaded file_id image", build_message_with_file_id),
-    "audio": ("Audio input", build_message_with_audio),
-    "document": ("Document input", build_message_with_document),
-    "video": ("Video input", build_message_with_video),
-    "mixed": ("Mixed media types", build_mixed_message),
+    "url": build_message_with_external_url,
+    "base64": build_message_with_base64,
+    "file_id": build_message_with_file_id,
+    "audio": build_message_with_audio,
+    "document": build_message_with_document,
+    "video": build_message_with_video,
 }
+
+
+def run_example(name: str) -> None:
+    config = {"thread_id": f"demo-{name}", "recursion_limit": 10}
+    result = app.invoke({"messages": EXAMPLES[name]()}, config=config)
+    for msg in result.get("messages", []):
+        print(f"[{msg.role}]")
+        for block in msg.content:
+            if getattr(block, "type", None) == "text":
+                print("  ", block.text[:300])
+
+
+if __name__ == "__main__":
+    for scenario in ("url", "base64"):
+        run_example(scenario)
 ```
 
-Run a few:
+The model's description varies between runs, so there is no fixed output to compare against. A successful run prints a `[user]` entry followed by an `[assistant]` entry with the model's text.
 
-```bash
-python examples/multimodal/multimodal_agent.py url base64 file_id
-```
+## Choose a media strategy
 
-Or let the script run the default examples:
+Pick the delivery strategy by where the media lives and how large it is.
 
-```bash
-python examples/multimodal/multimodal_agent.py
-```
-
-## When to use each media strategy
-
-| Strategy | Best for |
-|---|---|
-| URL | public remote media already hosted elsewhere |
-| base64 | small inline test data and quick experiments |
-| `file_id` | production usage, reuse, and repeated access |
+| Strategy | Best for | Trade-off |
+|---|---|---|
+| `url` | Public media already hosted elsewhere | The provider must be able to fetch it |
+| `data` (base64) | Small test data and quick experiments | Large payloads bloat every request |
+| `file_id` | Production, reuse, large files | Requires a media store |
 
 ## Common mistakes
 
-- Using inline base64 for large files in production.
-- Forgetting a media store when you rely on `file_id`.
-- Choosing a model that does not support your target media type.
-- Sending MIME types that do not match the payload.
+- **Base64 for large files.** It inflates request size and can time out. Use `file_id` instead.
+- **Referencing a `file_id` that is not in a store.** The lookup fails. Store the bytes first and use the key `store()` returned.
+- **Wrong MIME type.** Match `mime_type` to the real bytes; providers can reject a mismatch.
+- **Unsupported media for the model.** Some models accept images but not audio or video.
+- **Placeholder bytes.** The fake PNG, WAV and MP4 bytes in the example only demonstrate wiring. Use real files to get meaningful answers.
 
-## Key concepts
+## What to try next
 
-| Concept | Details |
-|---|---|
-| `MediaRef` | Canonical reference to media payloads |
-| block-based content | Messages can contain text and media together |
-| `MultimodalConfig` | Controls adaptation for image and document handling |
-| `InMemoryMediaStore` | Supports uploaded file workflows through `file_id` |
+- Replace the placeholder bytes with real files and re-run the `file_id` and `audio` scenarios.
+- Swap `InMemoryMediaStore` for `LocalFileMediaStore` or `CloudMediaStore` from `tenxgraph.storage.media.storage` to persist uploads.
+- Change `ImageHandling` to `URL` or `FILE_ID` and compare how the adapter prepares the image.
+- Combine multimodal input with tools and memory to build a document analysis agent.
 
-## What you learned
-
-- How to structure multimodal messages in 10xGraph.
-- How to choose between URL, base64, and `file_id`.
-- How multimodal agent configuration affects provider adaptation.
-
-## Next step
-
-→ [Multiagent](/docs/examples/multiagent) to route between multiple specialized nodes in one graph.
+For production handling, read [Send media](/docs/guides/send-media). To route between several specialized nodes in one graph, continue with [Multiagent](/docs/examples/multiagent).

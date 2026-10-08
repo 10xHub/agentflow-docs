@@ -5,7 +5,7 @@ description: Sourced comparisons of 10xGraph with LangGraph, CrewAI, AutoGen, Ll
 section: Compare
 order: 10
 label: Overview
-updated: "2026-10-06"
+updated: "2026-10-08"
 ---
 
 These pages compare **10xGraph** with other Python agent frameworks, written by the 10xGraph team. Every claim about a competitor links to its official documentation or package metadata, and each page lists its sources with the date they were checked (2026-10-06). Each page also says where the other framework is the better choice, and where 10xGraph is weaker.
@@ -25,7 +25,7 @@ Most agent frameworks give you a graph or a crew. The comparisons start with wha
 - **A production server.** REST, SSE, WebSocket and realtime-audio endpoints from the compiled graph, with JWT or custom auth, role scopes and owner-only threads
 - **Rate limits and deploy files.** Memory or Redis rate limiting, and `10xgraph build --docker-compose --k8s` for Docker Compose and Kubernetes manifests
 - **Correct behavior under failure.** Replay-safe tool calls, versioned (compare-and-swap) state writes, and node and tool timeouts
-- **A typed TypeScript client.** `10xgraph-client` for invoking and streaming from any frontend
+- **A typed TypeScript client.** `@10xgraph/client` for invoking and streaming from any frontend
 
 Table stakes such as graph orchestration, multi-provider models, MCP, streaming and checkpointing are listed at the bottom of each table, because the frameworks here have them too.
 

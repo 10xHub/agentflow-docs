@@ -4,6 +4,11 @@ description: Understand how 10xGraph works, from its three-layer architecture to
 section: Concepts
 order: 1
 updated: "2026-10-08"
+faq:
+  - q: "Do I need the API server and TypeScript client to use 10xGraph?"
+    a: "No. The Python library works on its own, so you can run a compiled graph in a script or embed it in your own app. Add the API server to serve it over HTTP and the client to call it from a frontend."
+  - q: "What is the difference between a node and an edge?"
+    a: "A node is a function that does work and returns a message or state update. An edge connects two nodes and decides which one runs next, either always (static) or based on the state (conditional)."
 ---
 
 The Concepts section explains how 10xGraph works: the three-layer architecture (library, server, client), how a request flows from client through the server to your graph, the execution model (state, messages, nodes, edges), and advanced patterns for memory, reliability, and production deployments. Read this section to understand the mental model before building.
@@ -12,9 +17,9 @@ The Concepts section explains how 10xGraph works: the three-layer architecture (
 
 10xGraph uses a graph-based execution model instead of a linear pipeline or free-form function calls. This model gives you:
 
-- **Reproducibility**: The same input with the same `thread_id` always produces the same output. Tool calls are [replay-safe](/docs/concepts/replay-safe-tools), so if a tool runs and the process crashes, resuming the same thread never re-executes the finished call.
+- **Reproducibility**: The workflow is an explicit graph, so the same state takes the same route. Tool calls are [replay-safe](/docs/concepts/replay-safe-tools), so if a tool runs and the process crashes, resuming the same thread does not re-execute the finished call.
 - **Durability**: Intermediate state is [checkpointed](/docs/concepts/checkpointing-and-threads) at each step, so you can pause an agent for human approval, resume it later, and it continues from exactly where it left off.
-- **Observability**: Every state change, tool call, and error is captured as an event you can stream, log, or send to tracing systems.
+- **Observability**: Execution emits events you can stream, log, or send to tracing systems (see [Events and observability](/docs/concepts/events-and-observability)).
 - **Control**: You route between nodes using conditional logic you define, so complex multi-step and multi-agent workflows are explicit and testable.
 - **Concurrency**: Tools run in parallel by default, and the graph engine scales across stateless servers with per-thread durability.
 
@@ -47,21 +52,21 @@ flowchart TB
 | **API server & CLI** | `10xgraph-api` (import `tenxgraph_api`, command `10xgraph`) | FastAPI server that wraps your compiled graph, REST and WebSocket endpoints, auth, authorization, rate limiting, thread management. Use this to serve agents over HTTP. |
 | **TypeScript client** | `10xgraph-client` (npm `@10xgraph/client`) | Typed HTTP wrapper for browser and Node.js, handles auth, streaming, thread management, file uploads. Use this to call the server from your frontend or backend. |
 
-Python code imports from `tenxgraph`: `from tenxgraph.core.graph import StateGraph`. The deprecated alias `agentflow` still works until 2.0.
+Python code imports from `tenxgraph`, for example `from tenxgraph.core.graph import StateGraph`. The deprecated alias `agentflow` still works until 2.0. The TypeScript class is named `AgentFlowClient`.
 
 ## How a request flows through the system
 
 When you call an agent over HTTP, here is what happens:
 
-1. **Client sends a request** (TypeScript SDK or curl) to `POST /v1/graph/invoke` with messages and a `thread_id`.
+1. **Client sends a request** (TypeScript SDK or curl) to `POST /v1/graph/invoke` with `messages` and a `config` that carries the `thread_id`.
 2. **API server verifies auth** via JWT or custom auth middleware.
 3. **Server loads the graph** from the module path in `10xgraph.json`, then loads the thread state (if resuming) or starts fresh.
 4. **Server calls the compiled graph** with the input state and config.
-5. **Graph runs**: nodes execute, state is updated via reducers, tool calls are dispatched in parallel, intermediate steps are checkpointed.
-6. **Graph returns the final state** (updated messages, execution metadata, thread-level side effects).
-7. **Server saves the checkpoint**, then returns the final messages (and stream events, if streaming) to the client.
+5. **Graph runs**: nodes execute, state is updated via reducers, tool calls are dispatched in parallel, and the state is checkpointed.
+6. **Graph returns the result**, including the updated messages.
+7. **Server returns the response** to the client (as one JSON body, or as a stream).
 
-For streaming, the graph emits `StreamChunk` events as execution progresses (message appended, tool called, tool result received, node entered/exited, error). The server sends these as NDJSON over HTTP, or as WebSocket events over the `/v1/graph/ws` endpoint.
+For streaming, the graph emits `StreamChunk` objects as it runs. Each chunk has an `event` of `state`, `message`, `error` or `updates`. `POST /v1/graph/stream` sends them as server-sent events (`text/event-stream`), and the `/v1/graph/ws` WebSocket endpoint sends them over a socket. See [Streaming](/docs/concepts/streaming) for the details.
 
 ## The execution model
 
@@ -69,7 +74,7 @@ Four core concepts form the foundation of every 10xGraph agent.
 
 ### Message
 
-The unit of all communication. Every piece of information flowing through a graph is a `Message`: user questions, assistant responses, tool calls, tool results, and errors.
+`Message` is the unit of all communication. Every piece of information flowing through a graph is a `Message`: user questions, assistant responses, tool calls, tool results, and errors.
 
 ```python
 from tenxgraph.core.state import Message
@@ -81,17 +86,17 @@ Message.text_message("What is the weather?", role="user")
 Message.text_message("Let me check...", role="assistant")
 ```
 
-A message carries one or more **content blocks**: `TextBlock`, `ToolCallBlock`, `ToolResultBlock`, `ImageBlock`, `AudioBlock`, `VideoBlock`, `DocumentBlock`, `ReasoningBlock`, `ErrorBlock`. Nodes read the content blocks to decide what to do next.
+A message carries one or more **content blocks**, such as `TextBlock`, `ToolCallBlock`, `ToolResultBlock`, `ImageBlock`, `AudioBlock`, `VideoBlock`, `DocumentBlock`, `DataBlock`, `ReasoningBlock`, `AnnotationBlock` and `ErrorBlock`. Nodes read the content blocks to decide what to do next.
 
 ### AgentState
 
-The moving container passed from node to node. `AgentState` has three built-in fields; subclass it and add your own.
+`AgentState` is the container passed from node to node. It has three built-in fields; subclass it and add your own.
 
 | Field | Type | Purpose |
 |-------|------|---------|
 | `context` | `list[Message]` | Live message list; appended to by every node via the `add_messages` reducer. |
 | `context_summary` | `str \| None` | Optional summary written by `SummaryContextManager` when old messages are trimmed. |
-| `execution_meta` | `ExecMeta` | Internal runtime bookkeeping (current node, step count, interrupt status, parent thread), managed by the framework. |
+| `execution_meta` | `ExecMeta` | Internal runtime bookkeeping (current node, step count, status, interrupt details, thread ID), managed by the framework. |
 
 ```python
 from tenxgraph.core.state import AgentState
@@ -114,19 +119,20 @@ context: Annotated[list[Message], add_messages]
 
 ### Node
 
-Any Python function that receives `AgentState` and returns a message or a state update. Nodes are the unit of work.
+A node is any Python function that receives `AgentState` and returns a message or a state update. Nodes are the unit of work.
 
 ```python
+# Registered with graph.add_node("GREET", my_node)
 async def my_node(state: MyState) -> Message:
     # The graph injects state, config, and any Inject[T] dependencies
     return Message.text_message(f"Hello {state.user_name}", role="assistant")
 ```
 
-Nodes are never called manually. The graph discovers them, injects dependencies, and calls them in order (or in parallel, if the graph topology allows).
+You do not call nodes yourself. The graph injects dependencies and calls them in the order the edges define.
 
 ### Node execution cycle
 
-Each node receives the full state, does its work, and returns a message or partial state update. The graph merges the result via reducers, saves a checkpoint, then routes to the next node.
+In each step a node receives the full state, does its work, and returns a message or partial state update. The graph merges the result via reducers, saves a checkpoint, then routes to the next node.
 
 ```mermaid
 flowchart LR
@@ -146,52 +152,77 @@ The key insight: **state is immutable during a single step**. Each node receives
 
 ### Edge and routing
 
-Edges connect nodes. You define them as static (always goes to node B) or conditional (a function decides where to go):
+Edges connect nodes. A static edge always goes to one node, and a conditional edge calls a function that returns where to go next:
 
 ```python
-graph.add_edge("AGENT", "TOOLS")                    # static
+graph.add_edge("TOOL", "MAIN")                      # static
 
-graph.add_conditional_edges("AGENT", route_fn)      # dynamic
+graph.add_conditional_edges("MAIN", route_fn)       # route_fn returns a node name
 # or
-graph.add_conditional_edges("AGENT", route_fn, {    # mapped
-    "tool":  "TOOLS",
-    "done":  END,
+graph.add_conditional_edges("MAIN", route_fn, {     # route_fn returns a key in this map
+    "tool": "TOOL",
+    "done": END,
 })
 ```
 
 ## Building and running a graph
 
-Every graph has three stages: **Define** (add nodes and edges), **Compile** (wire dependency injection, checkpointer, and storage), and **Run** (invoke, stream, or resume).
+Every graph has three stages: define (add nodes and edges), compile (attach a checkpointer and other services), and run (invoke, stream, or resume). The example below is complete once you install `pip install "10xgraph[openai]"` and set your OpenAI API key.
 
-```python
-from tenxgraph.core.graph import StateGraph, Agent, ToolNode
-from tenxgraph.utils import START, END
-from tenxgraph.prebuilt.agent import ReactAgent
+```python title="graph.py"
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state import AgentState, Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils import END, START
 
-# Define nodes
-agent = Agent(model="gpt-4o", tools=[tool_1, tool_2])
-tool_node = ToolNode([tool_1, tool_2])
+
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
+    return f"The weather in {location} is sunny"
+
+
+# Define nodes: a tool node and an agent that can call its tools
+tool_node = ToolNode([get_weather])
+agent = Agent(model="gpt-4o", tool_node=tool_node)
+
+
+# Routing: go to tools when the assistant asked for one, otherwise finish
+def route(state: AgentState) -> str:
+    last = state.context[-1]
+    if last.role == "assistant" and last.tools_calls:
+        return "TOOL"
+    return END
+
 
 # Define edges
 graph = StateGraph()
-graph.add_edge(START, "AGENT")
-graph.add_conditional_edges("AGENT", route_fn, {"tool": "TOOLS", "done": END})
-graph.add_edge("TOOLS", "AGENT")
+graph.add_node("MAIN", agent)
+graph.add_node("TOOL", tool_node)
+graph.add_edge(START, "MAIN")
+graph.add_conditional_edges("MAIN", route, {"TOOL": "TOOL", END: END})
+graph.add_edge("TOOL", "MAIN")
 
-# Compile
-compiled = graph.compile()
+# Compile with a checkpointer so threads can resume
+compiled = graph.compile(checkpointer=InMemoryCheckpointer())
 
-# Run
-result = compiled.invoke(input_state, config={"thread_id": "abc"})
+# Run: the thread_id lives in config
+result = compiled.invoke(
+    {"messages": [Message.text_message("What is the weather in Paris?")]},
+    config={"thread_id": "abc"},
+)
+print(result["messages"][-1])
 ```
 
 Or use a prebuilt agent to skip graph definition:
 
-```python
-compiled = ReactAgent(model="gpt-4o", tools=[tool_1, tool_2]).compile()
+```python title="prebuilt.py"
+from tenxgraph.prebuilt.agent import ReactAgent
+from graph import get_weather  # the tool from the example above
+
+compiled = ReactAgent(model="gpt-4o", tools=[get_weather]).compile()
 ```
 
-Pass the same `thread_id` on the next call and the graph resumes where it left off, with all tool calls replayed safely.
+Calling `invoke` again with the same `thread_id` resumes that thread from its last checkpoint, and finished tool calls are not re-run. See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) and [Choosing a building block](/docs/concepts/choosing-a-building-block).
 
 ## What's in this section
 

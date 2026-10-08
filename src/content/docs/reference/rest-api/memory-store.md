@@ -1,34 +1,33 @@
 ---
 title: Memory store endpoints
-description: Reference for /v1/store — storing, searching, listing, updating, deleting, and forgetting memories through the 10xGraph API server.
+description: "Reference for /v1/store endpoints: storing, searching, listing, updating, deleting, and forgetting memories through the 10xGraph API server."
 section: Reference
 group: "REST API"
 order: 350
 label: Memory store
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-The memory store endpoints are available only when a `store` is configured in
-`10xgraph.json`. They provide cross-thread, semantic-search-enabled memory.
+The `/v1/store` endpoints let you store, search, list, read, update, delete and bulk-forget long-term memories through the 10xGraph API server. They work only when a `store` is configured in `10xgraph.json`; without one, every endpoint returns `503` with "Store is not configured". Responses use the standard `data` and `metadata` envelope.
 
 Base path: `/v1/store`
 
-Every request body extends a common base, so all endpoints accept these two
-optional fields in addition to their own:
+## Request fields shared by every endpoint
+
+Every request body accepts two optional fields besides the endpoint-specific ones, and the server decides whose memories a request touches from the authenticated user, not from the body.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `config` | object | Configuration values forwarded to the store backend (for example `user_id`, `agent_id`, or backend-specific keys). Defaults to `{}`. |
-| `options` | object | Extra keyword arguments forwarded verbatim to the store backend. |
+| `config` | object | Values forwarded to the store backend. Defaults to `{}`. The keys `user_id`, `user`, `authz`, `remote_tools`, `collection` and any key starting with `_` are dropped by the server. |
+| `options` | object | Extra keyword arguments forwarded to the store backend. The key `memory_id` is dropped, so the store always generates IDs. |
 
-Scoping a memory to a user or agent is done through `config`, not through
-top-level fields.
+The server sets `user_id` from the authenticated user (or `anonymous` when auth is off). Sending `user_id` in `config` has no effect. See the [REST conventions](/docs/reference/rest-api/conventions) for the envelope and error format.
 
 ---
 
 ## POST /v1/store/memories
 
-Store a memory record. Requires `store:write`.
+Store a memory record. Requires `store:write` permission.
 
 **Request body:**
 
@@ -38,32 +37,55 @@ Store a memory record. Requires `store:write`.
   "memory_type": "episodic",
   "category": "preference",
   "metadata": {"source": "chat"},
-  "config": {"user_id": "user-123"}
+  "config": {}
 }
 ```
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `content` | string or `Message` | yes | | Memory text, or a structured `Message` object |
-| `memory_type` | string | no | `episodic` | Memory classification used by the backend |
-| `category` | string | no | `general` | Category label |
-| `metadata` | object | no | `null` | Arbitrary metadata stored with the memory |
+| `memory_type` | string | no | `episodic` | One of `episodic`, `semantic`, `procedural`, `entity`, `relationship`, `custom`, `declarative` |
+| `category` | string | no | `general` | Category label for organizing memories |
+| `metadata` | object | no | `null` | Arbitrary metadata stored alongside the memory |
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
-  "message": "Memory stored successfully",
-  "data": {"memory_id": "mem_abc123"}
+  "data": {
+    "memory_id": "mem_abc123"
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "Memory stored successfully"
+  }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:write`)
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/v1/store/memories \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "User prefers concise responses.",
+    "memory_type": "episodic",
+    "category": "preference"
+  }'
 ```
 
 ---
 
 ## POST /v1/store/search
 
-Search memories by semantic similarity. Requires `store:read`.
+Search memories by semantic similarity. Requires `store:read` permission.
 
 **Request body:**
 
@@ -72,166 +94,294 @@ Search memories by semantic similarity. Requires `store:read`.
   "query": "How does this user like to receive information?",
   "category": "preference",
   "limit": 5,
-  "config": {"user_id": "user-123"}
+  "config": {}
 }
 ```
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `query` | string | yes | | Search query. Empty or whitespace-only returns `422` |
-| `memory_type` | string | no | `null` | Filter by memory type |
-| `category` | string | no | `null` | Filter by category |
-| `limit` | integer | no | `10` | Maximum results. Must be between 1 and 100 |
-| `score_threshold` | float | no | `null` | Minimum similarity score for a result to be returned |
+| `query` | string | yes | | Search query for semantic similarity; empty or whitespace-only returns `422` |
+| `memory_type` | string | no | `null` | Filter results by memory type (same values as when storing) |
+| `category` | string | no | `null` | Filter results by category |
+| `limit` | integer | no | `10` | Maximum results to return; must be between 1 and 100 |
+| `score_threshold` | float | no | `null` | Minimum similarity score (between 0 and 1) for a result to be included |
 | `filters` | object | no | `null` | Additional store-specific filters |
-| `retrieval_strategy` | string | no | `similarity` | Retrieval strategy used by the backend |
-| `distance_metric` | string | no | `cosine` | Distance metric applied during similarity search |
-| `max_tokens` | integer | no | `4000` | Token budget used for truncation during similarity search. At most 16000 |
+| `retrieval_strategy` | string | no | `similarity` | One of `similarity`, `temporal`, `relevance`, `hybrid`, `graph_traversal`; support depends on the backend |
+| `distance_metric` | string | no | `cosine` | One of `cosine`, `euclidean`, `dot_product`, `manhattan` |
+| `max_tokens` | integer | no | `4000` | Token budget for truncation during search; at most 16000 |
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
   "data": {
     "results": [
       {
-        "memory_id": "mem_abc123",
+        "id": "mem_abc123",
         "content": "User prefers concise responses.",
         "score": 0.91,
-        "metadata": {"category": "preference"}
+        "memory_type": "episodic",
+        "metadata": {"source": "chat", "category": "preference"},
+        "user_id": "user-123",
+        "thread_id": null,
+        "timestamp": "2026-10-08T10:30:00Z"
       }
     ]
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "OK"
   }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:read`)
+- `422` Unprocessable Entity: query is empty or whitespace-only, or limit outside valid range
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/v1/store/search \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "user preferences",
+    "limit": 5,
+    "config": {}
+  }'
 ```
 
 ---
 
 ## POST /v1/store/memories/list
 
-List stored memories. Requires `store:read`.
+List stored memories (subject to backend limits). Requires `store:read` permission.
 
-This is a `POST` because the request carries a `config` object; there is no
-`GET` variant.
+This is a `POST` endpoint (not `GET`) because the request carries a `config` object for scoping. An empty or null body is valid and applies defaults.
 
 **Request body (optional):**
 
 ```json
 {
   "limit": 50,
-  "config": {"user_id": "user-123"}
+  "config": {}
 }
 ```
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `limit` | integer | no | `100` | Maximum memories to return, between 1 and 1000. Other values return `422` |
+| `limit` | integer | no | `100` | Maximum memories to return; must be between 1 and 1000 |
 
-Sending no body at all is valid and applies the defaults.
-
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
   "data": {
     "memories": [
       {
-        "memory_id": "mem_abc123",
+        "id": "mem_abc123",
         "content": "User prefers concise responses.",
-        "metadata": {"category": "preference"}
+        "score": 0.0,
+        "memory_type": "episodic",
+        "metadata": {"category": "preference"},
+        "user_id": "user-123",
+        "thread_id": null,
+        "timestamp": "2026-10-08T10:30:00Z"
       }
     ]
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "OK"
   }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:read`)
+- `422` Unprocessable Entity: `limit` is outside the 1 to 1000 range
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/v1/store/memories/list \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "limit": 50,
+    "config": {}
+  }'
 ```
 
 ---
 
-## POST /v1/store/memories/`{memory_id}`
+## POST /v1/store/memories/{memory_id}
 
-Get a single memory by ID. Requires `store:read`.
+Retrieve a single memory by ID. Requires `store:read` permission.
 
-The body is optional and carries only `config` and `options`. An empty or
-whitespace-only `memory_id` returns `422`.
+The request body is optional and carries only `config` and `options`. A `memory_id` that is empty or whitespace-only returns `422`.
 
-**Response:**
+<aside class="callout callout-note" role="note"><p class="callout-title">Route precedence</p>
 
-```json
-{
-  "success": true,
-  "data": {
-    "memory": {
-      "memory_id": "mem_abc123",
-      "content": "User prefers concise responses.",
-      "metadata": {}
-    }
-  }
-}
-```
-
-<aside class="callout callout-note" role="note"><p class="callout-title">Note</p>
-
-`list` and `forget` are registered before this catch-all route, so
-`POST /v1/store/memories/list` lists memories rather than fetching a memory
-whose ID is the literal string `list`.
+The static routes `/list` and `/forget` are registered before this catch-all, so `POST /v1/store/memories/list` and `POST /v1/store/memories/forget` match their own handlers, not this one with `memory_id="list"` or `memory_id="forget"`.
 
 </aside>
 
+**Request body (optional):**
+
+```json
+{
+  "config": {}
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "data": {
+    "memory": {
+      "id": "mem_abc123",
+      "content": "User prefers concise responses.",
+      "score": 0.0,
+      "memory_type": "episodic",
+      "metadata": {"category": "preference"},
+      "user_id": "user-123",
+      "thread_id": null,
+      "timestamp": "2026-10-08T10:30:00Z"
+    }
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "OK"
+  }
+}
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:read`)
+- `422` Unprocessable Entity: `memory_id` is empty or whitespace-only
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/v1/store/memories/mem_abc123 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {}
+  }'
+```
+
 ---
 
-## PUT /v1/store/memories/`{memory_id}`
+## PUT /v1/store/memories/{memory_id}
 
-Update a stored memory. Requires `store:write`.
+Update the content or metadata of a stored memory. Requires `store:write` permission.
 
 **Request body:**
 
 ```json
 {
   "content": "Updated memory content.",
-  "metadata": {"updated": true}
+  "metadata": {"updated": true},
+  "config": {}
 }
 ```
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `content` | string or `Message` | yes | Replacement content |
-| `metadata` | object | no | Replacement metadata |
+| `content` | string or `Message` | yes | Replacement memory content or structured message |
+| `metadata` | object | no | Replacement metadata (merged or replaced per backend) |
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
-  "message": "Memory updated successfully",
-  "data": {"success": true}
+  "data": {
+    "success": true,
+    "data": null
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "Memory updated successfully"
+  }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:write`)
+- `422` Unprocessable Entity: `memory_id` is empty or whitespace-only
+
+**Example:**
+
+```bash
+curl -X PUT http://localhost:8000/v1/store/memories/mem_abc123 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Updated memory content.",
+    "metadata": {"updated_at": "2026-10-08"}
+  }'
 ```
 
 ---
 
-## DELETE /v1/store/memories/`{memory_id}`
+## DELETE /v1/store/memories/{memory_id}
 
-Delete one memory record. Requires `store:delete`.
+Delete a single memory record by ID. Requires `store:delete` permission.
 
-The body is optional and carries only `config` and `options`.
+The request body is optional and carries only `config` and `options`. A `memory_id` that is empty or whitespace-only returns `422`.
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
-  "message": "Memory deleted successfully",
-  "data": {"success": true}
+  "data": {
+    "success": true,
+    "data": null
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "Memory deleted successfully"
+  }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:delete`)
+- `422` Unprocessable Entity: `memory_id` is empty or whitespace-only
+
+**Example:**
+
+```bash
+curl -X DELETE http://localhost:8000/v1/store/memories/mem_abc123 \
+  -H "Authorization: Bearer <token>"
 ```
 
 ---
 
 ## POST /v1/store/memories/forget
 
-Delete every memory matching the given filters. Requires `store:delete`.
+Delete all memories matching the given filters. Requires `store:delete` permission.
+
+Use this to bulk-delete memories by type, category, or custom filters without listing them first.
 
 **Request body:**
 
@@ -240,32 +390,86 @@ Delete every memory matching the given filters. Requires `store:delete`.
   "memory_type": "episodic",
   "category": "preference",
   "filters": {"source": "chat"},
-  "config": {"user_id": "user-123"}
+  "config": {}
 }
 ```
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `memory_type` | string | no | Restrict deletion to one memory type |
-| `category` | string | no | Restrict deletion to one category |
-| `filters` | object | no | Additional backend filters |
+| `memory_type` | string | no | Restrict deletion to this memory type (same values as when storing) |
+| `category` | string | no | Restrict deletion to this category |
+| `filters` | object | no | Additional backend-specific filters |
 
-**Response:**
+**Response (200 OK):**
 
 ```json
 {
-  "success": true,
-  "message": "Memories removed successfully",
-  "data": {"success": true}
+  "data": {
+    "success": true,
+    "data": null
+  },
+  "metadata": {
+    "request_id": "req_xyz",
+    "timestamp": "2026-10-08T10:30:00Z",
+    "message": "Memories removed successfully"
+  }
 }
+```
+
+**Error codes:**
+
+- `401` Unauthorized: missing or invalid auth token
+- `403` Forbidden: insufficient permission (not `store:delete`)
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/v1/store/memories/forget \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "old_session",
+    "config": {}
+  }'
 ```
 
 ---
 
-## Permissions
+## Memory object fields
 
-| Operation | Required permission |
-| --- | --- |
-| Store, update | `store:write` |
-| Search, get, list | `store:read` |
-| Delete, forget | `store:delete` |
+Search, list and get return memory objects with these fields. `score` is a relevance score for search and `0.0` for list and get; `vector` is also part of the model and is `null` unless the backend returns it.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | Memory identifier, used as `memory_id` in the other endpoints |
+| `content` | string | Memory text |
+| `score` | float | Similarity or relevance score |
+| `memory_type` | string | Memory classification |
+| `metadata` | object | Client metadata plus backend fields such as `category` |
+| `user_id` | string or null | Owning user |
+| `thread_id` | string or null | Thread the memory came from, if any |
+| `timestamp` | string or null | Creation time |
+
+Client `metadata` keys that the store owns (`content`, `user_id`, `thread_id`, `memory_type`, `category`, `timestamp`, `memory_id`) are dropped on store and update.
+
+The `data` of update, delete and forget responses is `{"success": true, "data": <backend result>}`, where the inner `data` depends on the store backend and is often `null`.
+
+## Permissions and authentication
+
+All endpoints require the authenticated user to hold the appropriate permission:
+
+| Operation | Required permission | HTTP status on failure |
+| --- | --- | --- |
+| Store, update | `store:write` | 403 Forbidden |
+| Search, get, list | `store:read` | 403 Forbidden |
+| Delete, forget | `store:delete` | 403 Forbidden |
+| Any endpoint | (valid auth) | 401 Unauthorized |
+| Any endpoint, no store configured | none | 503 Service Unavailable |
+
+Auth tokens are passed via the `Authorization: Bearer <token>` header. See [Authentication and authorization](/docs/server/auth) for JWT setup and custom auth backends.
+
+## Related pages
+
+- [Use the memory store](/docs/guides/use-memory-store) for a task walkthrough.
+- [Memory stores (Python)](/docs/reference/python/memory-stores) for the `BaseStore` API behind these routes.
+- [Memory API (client)](/docs/reference/client/memory) for the TypeScript wrappers.

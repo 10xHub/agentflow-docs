@@ -1,168 +1,328 @@
 ---
-title: "Build a RAG AI Agent in Python: Done Right"
-description: How to build a RAG AI agent in Python that scales beyond chat-with-your-PDFs. Hybrid retrieval, reranking, citations, and 10xGraph code.
+title: "RAG agent example walkthrough"
+description: Build a knowledge-base Q&A agent with RAGAgent, from a runnable keyword-search demo to Qdrant retrieval and optional reranking.
 section: Examples
 group: "Use cases"
 order: 270
 label: RAG
-updated: "2026-07-27"
+updated: "2026-10-08"
+faq:
+  - q: "Do I need a vector database to try RAGAgent?"
+    a: "No. RAGAgent accepts any BaseStore. The example on this page uses a small in-memory store with keyword matching, so you only need an OpenAI API key. Switch to QdrantStore when you need semantic search over a real knowledge base."
+  - q: "When should I add a reranker?"
+    a: "Add one when the first retrieval step returns relevant documents mixed with noise. Retrieve a wide set with top_k, then let the reranker keep the best top_n for the model."
+  - q: "Can RAGAgent run several retrieval rounds?"
+    a: "No. It retrieves once per question. For multi-step or filtered retrieval, build a custom graph and give the agent a search tool."
 ---
 
-"Chat with my docs" is the most-prototyped, often-shipped, frequently-broken AI use case. Most teams ship a single retrieve-and-generate call, hit quality limits, and stall.
+A RAG (retrieval-augmented generation) agent answers questions from your own documents: it searches a knowledge base, optionally reranks the hits, and passes the best ones to an LLM as context. `RAGAgent` is a prebuilt graph that does this, so you supply a store and an `Agent`.
 
-This page shows the production-shaped pattern: agentic RAG with hybrid retrieval, reranking, and forced citations.
+The runnable demo is based on `agentflow/examples/rag/rag_example.py` in the repository. This page adapts it, then shows how to move to Qdrant and add reranking.
 
-## Architecture at a glance
+## When to use RAGAgent
 
-```
-[ User question ]
-       │
-       ▼
-[ Query understanding ] ── decompose into subqueries
-       │
-       ▼
-[ Retrieval loop ]
-   ├── hybrid_search (dense + keyword)
-   ├── rerank (top-20 → top-5)
-   └── enough?
-       │
-       ▼
-[ Synthesize with citations ]
-       │
-       ▼
-[ Validator: citations present, low hallucination ]
-```
+Use `RAGAgent` for question answering over a fixed body of text, such as product docs, FAQs or an internal wiki, where one retrieval per question is enough. The pipeline is deterministic and easy to debug, because retrieval never depends on the model's decisions.
 
-This is **agentic RAG**. The agent decides what to query, when to dig deeper, and when it has enough. It outperforms naive RAG on multi-hop questions and ambiguous queries.
+Do not use it when:
 
-## Why this shape, not naive RAG
+- A question needs several searches, query rewriting or filters chosen by the model. Build a [custom graph](/docs/guides/build-a-graph) and give the agent a search tool instead.
+- You want to combine retrieval with other tools in one loop.
+- The answer does not live in documents (live data, calculations, actions).
 
-Naive RAG looks like:
+For the other prebuilt graphs, see [prebuilt agents](/docs/guides/prebuilt-agents) and the [RAGAgent guide](/docs/guides/prebuilt/rag-agent).
 
-```python
-context = vector_store.search(user_question)
-response = llm.complete(f"Answer using context:\n{context}\n\nQ: {user_question}")
+## How the pipeline works
+
+`RAGAgent` runs three nodes in a fixed order: RETRIEVE searches the store, RERANK (only when you pass a reranker) narrows the candidates, and SYNTHESIZE calls your agent with the documents attached.
+
+```text
+START -> RETRIEVE -> [RERANK] -> SYNTHESIZE -> END
 ```
 
-It works for "What does our pricing page say about enterprise?" It fails on:
+RETRIEVE uses the latest user message as the query and keeps the result texts in `state.execution_meta.internal_data["rag_docs"]`. SYNTHESIZE rewrites that user message as a numbered `<context>` block followed by the original question, then runs the agent. The agent's own `system_prompt` is left untouched, so use it to tell the model to answer only from the context.
 
-- "Compare our pricing to AcmeCorp's". Needs two retrievals
-- "What changed in our refund policy last quarter?". Needs filtering
-- "Does our docs explain how to set up SSO with Okta specifically?". Needs follow-up retrieval
+## Run a minimal RAG agent
 
-Agentic RAG handles all three.
+This script needs no vector database. A small in-memory store ranks chunks by shared words, which is enough to see the pipeline work end to end.
 
-## The retrieval tools
+Install the OpenAI extra and set your key:
 
-```python
-def hybrid_search(query: str, filters: str = "") -> str:
-    """Search the knowledge base using both semantic and keyword retrieval.
-
-    Args:
-        query: Natural-language search query.
-        filters: Optional JSON object with metadata filters, e.g. '{"product": "billing"}'.
-    """
-    f = json.loads(filters) if filters else {}
-
-    dense = vector_client.search(query, top_k=10, filters=f)
-    sparse = bm25_client.search(query, top_k=10, filters=f)
-
-    # Reciprocal rank fusion
-    fused = fuse_results(dense, sparse, k=20)
-    reranked = rerank_client.rerank(query, fused, top_k=5)
-
-    return "\n\n".join(
-        f"[doc-{h.id}] {h.title}\n{h.text[:400]}" for h in reranked
-    ) or "No matching documents."
-
-def fetch_doc(doc_id: str) -> str:
-    """Fetch the full content of a document by ID. Use after hybrid_search to read deeply."""
-    doc = doc_store.get(doc_id)
-    return doc.full_text[:15_000] if doc else f"Doc {doc_id} not found."
+```bash
+pip install "10xgraph[openai]"
+export OPENAI_API_KEY="sk-..."
 ```
 
-Notes:
+```python title="rag_demo.py"
+import asyncio
 
-- **Hybrid > pure dense.** Dense retrieval misses exact-match queries; BM25 misses semantic queries. Combine.
-- **Reranking is cheap and worth it.** Cohere Rerank or a small cross-encoder. Top-5 reranked beats top-20 raw.
-- **Filters in the tool signature.** Lets the agent narrow by product, date, or audience.
-- **Two-step retrieval.** Search first, fetch full content only for the most promising hits.
+from tenxgraph.core.graph.agent import Agent
+from tenxgraph.core.state.message import Message
+from tenxgraph.prebuilt.agent.rag import RAGAgent
+from tenxgraph.storage.store.base_store import BaseStore
+from tenxgraph.storage.store.store_schema import MemorySearchResult
 
-## The agent
+# The knowledge base: a few support-policy chunks
+DOCS = [
+    "Our refund policy allows returns within 30 days of purchase with a receipt.",
+    "Products must be in original packaging to qualify for a full refund.",
+    "Digital downloads are non-refundable once accessed.",
+    "Shipping costs are non-refundable unless the return is due to our error.",
+    "Contact support@example.com with your order number to start a return.",
+]
 
-```python
-from tenxgraph.core.graph import Agent, StateGraph, ToolNode
 
-tool_node = ToolNode([hybrid_search, fetch_doc])
+class StubStore(BaseStore):
+    """Demo store: ranks chunks by word overlap with the query."""
 
-rag_agent = Agent(
-    model="anthropic/claude-3-5-sonnet",
-    system_prompt=[{"role": "system", "content": (
-        "You answer questions using the company knowledge base. "
-        "ALWAYS use hybrid_search first. Use fetch_doc to read full content for key sources. "
-        "If the question has multiple parts, search for each separately. "
-        "Cite every fact with [doc-N] from the search results. "
-        "If you cannot find the answer, say so. Do not invent details."
-    )}],
-    tool_node="TOOL",
+    async def asetup(self):
+        pass
+
+    async def asearch(self, config, query: str, limit: int = 5, **kwargs):
+        query_words = set(query.lower().split())
+        scored = sorted(
+            ((len(query_words & set(chunk.lower().split())), chunk) for chunk in DOCS),
+            reverse=True,
+        )
+        return [
+            MemorySearchResult(content=chunk, score=float(score))
+            for score, chunk in scored[:limit]
+            if score > 0
+        ]
+
+    # RAGAgent only calls asearch. The rest satisfy the abstract BaseStore API.
+    async def astore(self, config, content, **kwargs):
+        return "id"
+
+    async def aget(self, config, memory_id, **kwargs):
+        return None
+
+    async def aget_all(self, config, **kwargs):
+        return []
+
+    async def aupdate(self, config, memory_id, content, **kwargs):
+        pass
+
+    async def adelete(self, config, memory_id, **kwargs):
+        pass
+
+    async def aforget_memory(self, config, **kwargs):
+        pass
+
+
+# The agent that writes the answer from the retrieved context
+answerer = Agent(
+    model="gpt-4o-mini",
+    provider="openai",
+    system_prompt=[
+        {
+            "role": "system",
+            "content": (
+                "You are a customer-support agent. "
+                "Answer using ONLY the provided context. "
+                "If the context does not contain the answer, say so."
+            ),
+        }
+    ],
+)
+
+# Retrieve the 4 best chunks for each question
+rag = RAGAgent(store=StubStore(), agent=answerer, top_k=4)
+app = rag.compile()
+
+
+async def main():
+    question = "Can I return a digital product?"
+    result = await app.ainvoke(
+        {"messages": [Message.text_message(question, role="user")]},
+        config={"thread_id": "demo"},
+    )
+    answer = next(m for m in reversed(result["messages"]) if m.role == "assistant")
+    print(f"Q: {question}")
+    print(f"A: {answer.text()}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Run it with `python rag_demo.py`. The model's wording varies, but the answer should say that digital downloads are non-refundable once accessed. If it says the context has no answer, check that your question shares words with a chunk, because the demo store matches whole words only.
+
+`ainvoke` takes a dict with a `messages` list and returns a dict. By default (low granularity) `result["messages"]` holds the messages produced during the run.
+
+## Use Qdrant for a real knowledge base
+
+For production, replace the stub with `QdrantStore`, which embeds your chunks and searches by vector similarity. Index once, then reuse the store.
+
+```bash
+pip install "10xgraph[openai,qdrant]"
+```
+
+```python title="rag_qdrant.py"
+import asyncio
+
+from tenxgraph.core.graph.agent import Agent
+from tenxgraph.core.state.message import Message
+from tenxgraph.prebuilt.agent.rag import RAGAgent
+from tenxgraph.storage import create_local_qdrant_store
+from tenxgraph.storage.store.embedding import OpenAIEmbedding
+
+# Replace with your own chunks (split by headings or paragraphs, not fixed size)
+CHUNKS = [
+    "Digital downloads are non-refundable once accessed.",
+    "Returns are accepted within 30 days with a receipt.",
+]
+
+# Search and indexing must use the same user_id, because QdrantStore filters by it
+CONFIG = {"user_id": "kb"}
+
+store = create_local_qdrant_store(
+    path="./knowledge_base",
+    embedding=OpenAIEmbedding(model="text-embedding-3-small"),
+)
+
+
+async def main():
+    # Index once; skip this step on later runs
+    for chunk in CHUNKS:
+        await store.astore(config=CONFIG, content=chunk)
+
+    rag = RAGAgent(
+        store=store,
+        agent=Agent(model="gpt-4o-mini", provider="openai"),
+        top_k=5,
+        store_config=CONFIG,  # passed to every store.asearch call
+    )
+    app = rag.compile()
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("Can I return a download?", role="user")]},
+        config={"thread_id": "kb-demo"},
+    )
+    print(result["messages"][-1].text())
+
+
+asyncio.run(main())
+```
+
+`QdrantStore` reads `user_id`, `thread_id` and `collection` from the config dict it receives. That makes `store_config` the way to scope retrieval per user or to pick a collection, for example `store_config={"user_id": "u42", "collection": "support_docs"}`. A `tenant_id` key is not read.
+
+<aside class="callout callout-note" role="note"><p class="callout-title">Retrieval strategy</p>
+
+`RAGAgent` forwards `retrieval_strategy` to the store, but `QdrantStore.asearch` runs a vector similarity query whatever value you pass. Hybrid (dense plus keyword) retrieval needs a store you write yourself.
+
+</aside>
+
+## Add a reranker
+
+A reranker rescoring step improves precision: retrieve many candidates with `top_k`, then keep only the best `top_n` for the model. RERANK is added to the graph only when you pass a reranker.
+
+| Reranker | Install | Runs | Notes |
+|---|---|---|---|
+| `CohereReranker(api_key, model="rerank-v4.0-pro")` | `pip install cohere` | Cohere API | Needs a Cohere API key |
+| `CrossEncoderReranker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")` | `pip install sentence-transformers` | Locally | No API key, suits private data |
+
+```python title="rerank.py"
+import os
+
+from tenxgraph.core.graph.agent import Agent
+from tenxgraph.prebuilt.agent.rag import CohereReranker, CrossEncoderReranker, RAGAgent
+
+# Hosted reranking: 20 candidates in, best 5 go to the model
+rag = RAGAgent(
+    store=store,  # the QdrantStore from the previous section
+    agent=Agent(model="gpt-4o", provider="openai"),
+    reranker=CohereReranker(api_key=os.environ["COHERE_API_KEY"]),
+    top_k=20,
+    top_n=5,
+)
+
+# Local reranking: 15 candidates in, best 4 go to the model
+rag = RAGAgent(
+    store=store,
+    agent=Agent(model="gpt-4o-mini", provider="openai"),
+    reranker=CrossEncoderReranker(),
+    top_k=15,
+    top_n=4,
 )
 ```
 
-## Indexing pipeline
+Any object with `async def arerank(self, query, documents, top_n) -> list[str]` works as a reranker, so you can plug in your own.
 
-The agent only works if the index is good. Quick checklist for indexing:
+## Constructor parameters
 
-- **Chunk by structure**, not fixed size. Markdown headers, HTML sections, paragraph breaks.
-- **Add metadata.** Product, audience, last-modified date. Filters need them.
-- **Both dense and sparse.** Index for vector + BM25 from day one.
-- **Reindex on doc changes.** A daily diff is usually enough.
+These are the retrieval options. The full reference is on the [prebuilt agents reference](/docs/reference/python/prebuilt-agents) page.
 
-For an end-to-end indexing example with Qdrant, see the [memory tutorial](/docs/examples/memory).
+| Parameter | Default | Purpose |
+|---|---|---|
+| `store` | required | Knowledge-base `BaseStore` searched by RETRIEVE |
+| `agent` | required | Agent that writes the final answer |
+| `reranker` | `None` | Adds the RERANK node when set |
+| `top_k` | `5` | Candidates retrieved from the store (must be at least 1) |
+| `top_n` | `3` | Documents kept after reranking (must be at least 1, ignored without a reranker) |
+| `retrieval_strategy` | `RetrievalStrategy.SIMILARITY` | Passed to `store.asearch` |
+| `score_threshold` | `None` | Minimum similarity score, `None` means no cutoff |
+| `store_config` | `{}` | Config dict passed to every `store.asearch` call |
 
-## When to call human
+`RAGAgent` also accepts `state`, `context_manager`, `publisher`, `id_generator` and `container`, which it forwards to the underlying `StateGraph`.
 
-If the agent searches and finds nothing relevant, do not let it freelance an answer. Two patterns:
+## Inspect what was retrieved
 
-1. **Surface the gap to the user.** "I couldn't find this in our docs. You can ask in #support."
-2. **Escalate to a human agent.** Especially for support flows. See [the customer support use case](/docs/examples/customer-support-agent).
+To see which chunks reached the model, enable debug logging or request the full state. When a question gets a poor answer, check retrieval first: the model can only use what RETRIEVE and RERANK passed along.
 
-## Operational notes
+```python title="debug_rag.py"
+import logging
 
-- **Cache by canonical query.** Multiple users asking the same thing should hit cache.
-- **Per-tenant indexes** for multi-tenant SaaS. Filtering by `tenant_id` is fine for small tenants; separate indexes for large ones.
-- **Freshness.** Stale docs are worse than no docs. Track last-indexed-at and warn when a doc is > 30 days old.
-- **Cost.** Reranking adds latency and cost; budget about 100ms and $0.001 per query.
+from tenxgraph.utils import ResponseGranularity
 
-## Variants
+# Logs the query, candidate count and rerank step
+logging.getLogger("tenxgraph.prebuilt.rag").setLevel(logging.DEBUG)
 
-- **Internal knowledge base**. Confluence, Notion, Slack archives
-- **Customer-facing docs**. Your public documentation site
-- **Support deflection**. Old tickets + KB articles
-- **Research over a corpus**. Papers, contracts, reports
+# Inside an async function, with `app` compiled as above
+result = await app.ainvoke(
+    {"messages": [Message.text_message("Can I return a download?", role="user")]},
+    config={"thread_id": "debug"},
+    response_granularity=ResponseGranularity.FULL,
+)
+docs = result["state"].execution_meta.internal_data.get("rag_docs", [])
+print(f"{len(docs)} documents reached the model")
+```
 
-Same shape. Different documents and different filters.
+## Keep a multi-turn conversation
 
-## Metrics that matter
+Pass a checkpointer to `compile` and reuse the same `thread_id` so follow-up questions see earlier turns. Each turn still triggers a fresh retrieval for the latest user message.
 
-| Metric | Target |
-|---|---|
-| Recall@5 (manual eval) | > 80% |
-| Citation coverage | > 95% of claims |
-| Hallucination rate | < 3% |
-| p95 latency | < 6 s |
-| Cost per query | < $0.05 |
+```python title="multi_turn.py"
+from tenxgraph.core.state.message import Message
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
-## Common mistakes
+app = rag.compile(checkpointer=InMemoryCheckpointer())
+config = {"thread_id": "user_123"}
 
-1. **One giant chunk.** Chunks > 1500 tokens lose specificity. Aim for 200–500 tokens with overlap.
-2. **No reranking.** Top-5 from hybrid search is usually OK; top-5 from dense alone misses too much.
-3. **No metadata filters.** Without `product`, `audience`, `tenant`, the index is a soup.
-4. **Skipping the validator.** Citations are the firewall against hallucination. Enforce them.
+# Inside an async function
+first = await app.ainvoke(
+    {"messages": [Message.text_message("What is the refund window?", role="user")]},
+    config=config,
+)
+second = await app.ainvoke(
+    {"messages": [Message.text_message("Does that apply to downloads?", role="user")]},
+    config=config,
+)
+```
 
-## Further reading
+The retrieval query is only the latest user message, so a follow-up like "Does that apply to downloads?" is searched without the earlier turns. Ask self-contained questions, or rewrite follow-ups before they reach the agent. Production deployments should use a durable checkpointer, see [set up checkpointing](/docs/guides/set-up-checkpointing).
 
-- [Memory and store](/docs/concepts/memory-and-store)
-- [Memory tutorial](/docs/examples/memory)
-- [AI agent memory and checkpointing](/docs/concepts/memory)
-- [Compare 10xGraph vs LlamaIndex Agents](/docs/compare/10xgraph-vs-llamaindex-agents). When to pair them
-- [Get started](/docs/get-started)
+To cap how much history the model sees, pass a context manager such as `MessageContextManager(max_messages=50)` from `tenxgraph.core.state` as `context_manager`. See [use a context manager](/docs/guides/use-context-manager).
+
+## Indexing tips
+
+Answer quality depends on the index at least as much as on the model.
+
+- Chunk by structure (headings, paragraphs), and keep chunks small enough to stay specific, roughly 200 to 500 tokens.
+- Re-index when documents change, and track when each document was last indexed.
+- Tell the model to say so when the context has no answer, as the system prompt above does, instead of letting it guess.
+
+## What to try next
+
+- [RAGAgent guide](/docs/guides/prebuilt/rag-agent): graph shape and customization.
+- [Prebuilt agents](/docs/guides/prebuilt-agents): other ready-made graphs.
+- [Long-term memory](/docs/concepts/memory-and-store): how stores differ from checkpointers.
+- [Prebuilt agents reference](/docs/reference/python/prebuilt-agents): full signatures.

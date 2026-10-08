@@ -5,7 +5,7 @@ description: Durable execution saves a run's progress so it resumes after a cras
 section: Glossary
 order: 100
 label: What is durable execution?
-updated: "2026-10-06"
+updated: "2026-10-08"
 faq:
   - q: Is durable execution the same as checkpointing?
     a: Checkpointing is one part of it. A checkpoint saves state so a run can resume. Durable execution also has to decide what happens to work that was in flight when the process died, which is why side effects such as tool calls need their own record of what already ran.
@@ -65,7 +65,8 @@ This is not a general workflow engine. It does not orchestrate work outside the 
 
 ## Example
 
-```python
+```python title="durable_agent.py"
+# pip install "10xgraph[google-genai,pg_checkpoint]"
 from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
@@ -81,7 +82,7 @@ app = ReactAgent(
     tools=[refund_order],
 ).compile(
     checkpointer=PgCheckpointer(
-        postgres_dsn="postgresql://user:password@db/agentflow",
+        postgres_dsn="postgresql://user:password@db/mydb",
         redis_url="redis://redis:6379/0",
     )
 )
@@ -96,6 +97,6 @@ If the process dies after `refund_order` returns, resuming the same `thread_id` 
 <LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="How the tool ledger works and what it does not guarantee." eyebrow="Concept" />
 <LinkCard title="Idempotent tool calls" href="/docs/glossary/what-is-an-idempotent-tool-call" description="Why repeating a call must be harmless, and how to design for it." eyebrow="Glossary" />
 <LinkCard title="Checkpointing" href="/docs/server/production-checklist" description="Choose and configure a checkpointer for production." eyebrow="Guide" />
-<LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="How Redis and PostgreSQL share the work." eyebrow="Concept" />
+<LinkCard title="How PgCheckpointer works" href="/docs/concepts/memory" description="How Redis and PostgreSQL share the work." eyebrow="Concept" />
 
 </CardGrid>

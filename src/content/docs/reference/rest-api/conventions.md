@@ -1,80 +1,82 @@
 ---
 title: Conventions and permissions
-description: "The 10xGraph REST API response envelope, HTTP and WebSocket authentication, the endpoint permission table, and the HTTP status codes the server returns."
+description: "The 10xGraph REST API response envelope, HTTP and WebSocket authentication, the endpoint permission table, WebSocket close codes and HTTP status codes."
 section: Reference
 group: "REST API"
 order: 300
 label: Conventions and permissions
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
-Everything on this page applies to every endpoint in this section.
+Every route in the 10xGraph REST API lives under `/v1/` (except `/ping`), returns the same JSON envelope, authenticates with a Bearer token, and is guarded by a resource and action permission pair. This page lists those shared rules, the full permission table, the WebSocket close codes and the HTTP status codes.
 
-## Base URL
+## Base URL and response envelope
 
-All API routes (except `/ping`) are prefixed with `/v1/`.
-
-## Response envelope
-
-Every successful endpoint wraps its payload in a uniform envelope:
+Successful responses wrap the payload in `data` and add a `metadata` object with `request_id`, `timestamp` and `message`. Errors raised by the application return `error` instead, with the same `metadata`. The `details` list is empty unless the error carries extra context (validation errors, for example).
 
 ```json
 {
-  "success": true,
-  "data": { ... },
-  "message": "optional message",
-  "timestamp": "2026-05-23T10:00:00Z"
+  "data": {},
+  "metadata": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2026-05-23T10:00:00",
+    "message": "OK"
+  }
 }
 ```
-
-Errors (4xx / 5xx) return FastAPI's standard detail format:
 
 ```json
 {
-  "detail": "Not authorized to invoke graph"
+  "error": {
+    "code": "EXPIRED_TOKEN",
+    "message": "Token has expired, please login again",
+    "details": []
+  },
+  "metadata": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "timestamp": "2026-05-23T10:00:00",
+    "message": "Token has expired, please login again"
+  }
 }
 ```
+
+Errors from `HTTPException` (permission denied, not found, empty upload) use the code `HTTPException`. Request validation failures use `VALIDATION_ERROR`. Three responses come from middleware and do not use this exact shape: `409`, `413` and `429` (see [HTTP status codes](#http-status-codes)).
 
 ## Authentication
 
-When auth is configured in `10xgraph.json`, all endpoints except `/ping` require a Bearer token:
+When `auth` is configured in `10xgraph.json`, every endpoint except `/ping` (and the public eval routes) needs a Bearer token. Send it as an `Authorization` header on HTTP routes. WebSocket clients that cannot set headers have two fallbacks, listed here in order of preference.
 
-```
+```text
 Authorization: Bearer <token>
 ```
-
-WebSocket connections that cannot set an `Authorization` header have two options, in order of preference:
 
 ```javascript
 // Preferred for browsers: the token rides in a request header, not the URL
 new WebSocket("ws://host/v1/graph/ws", ["10xgraph-bearer", token]);
 ```
 
-```
-# Last-resort fallback: the token lands in URLs and access logs
+```text
+# Last-resort fallback (WebSocket only): the token lands in URLs and access logs
 /v1/graph/ws?token=<token>
 ```
 
-The server echoes the sentinel back on `accept()`, which browsers require to complete the handshake. The older `agentflow-bearer` sentinel is still accepted until 2.0.
+The server echoes the `10xgraph-bearer` sentinel back on accept, which browsers require to complete the handshake. The older `agentflow-bearer` sentinel is accepted until 2.0. The `?token=` query parameter is read only on WebSocket connections.
 
-If auth is not configured (`"auth": null`), credentials are not required and the auth layer is skipped entirely.
-
-Authentication failures return HTTP `403` with an `error.code` such as `REVOKED_TOKEN` or `EXPIRED_TOKEN`, not `401`. On WebSocket routes the same failures become close code `1008`.
+If auth is not configured (`"auth": null`), credentials are not required. Missing, invalid or expired credentials return HTTP `401`. A permission failure returns `403`. On WebSocket routes both become close code `1008`. See [authentication](/docs/server/auth) for setup.
 
 ## Permission model
 
-Each endpoint requires a specific `(resource, action)` pair. The table below lists them. When an `AuthorizationBackend` is configured, the `authorize(user, resource, action)` method is called. The built-in `DefaultAuthorizationBackend` allows all requests as long as `user_id` is present.
+Each endpoint declares one `(resource, action)` pair. On every request the server calls `authorize(user, resource, action)` on the configured `AuthorizationBackend`. The built-in `DefaultAuthorizationBackend` allows any request whose user has a `user_id`, so write your own backend for real access control.
 
----
+### Permission reference
 
-## Permission reference
-
-The table below lists every `(resource, action)` pair enforced by the server. When an `AuthorizationBackend` is configured, each request calls `authorize(user, resource, action)`.
+The table lists every `(resource, action)` pair the server enforces. `POST /v1/ag-ui` exists only when `ag_ui.enabled` is true in `10xgraph.json`. The `/v1/evals/*` routes are mounted only when `MODE` is not `production`.
 
 | Endpoint | Resource | Action |
 | --- | --- | --- |
 | `POST /v1/graph/invoke` | `graph` | `invoke` |
 | `POST /v1/graph/stream` | `graph` | `stream` |
+| `POST /v1/ag-ui` | `graph` | `stream` |
 | `WebSocket /v1/graph/ws` | `graph` | `stream` |
 | `WebSocket /v1/graph/live` | `graph` | `stream` |
 | `GET /v1/graph` | `graph` | `read` |
@@ -113,21 +115,36 @@ The last three rows are the complete public allowlist. Every other route must ca
 
 <aside class="callout callout-warning" role="note"><p class="callout-title">The eval endpoints are unauthenticated</p>
 
-`/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port, regardless of your `auth` setting. Keep `eval_reports/` out of the deployed working directory, or block `/v1/evals/*` at your ingress. See [eval endpoints](/docs/reference/rest-api/evals).
+`/v1/evals/runs*` serves the contents of `eval_reports/` to anyone who can reach the port, regardless of your `auth` setting. They are not mounted when `MODE=production`. Outside production, keep `eval_reports/` out of the deployed working directory or block `/v1/evals/*` at your ingress. See [eval endpoints](/docs/reference/rest-api/evals).
 
 </aside>
 
----
+## WebSocket close codes
+
+WebSocket routes report failures with close codes instead of HTTP statuses. `1008` also covers a graph that is on the wrong socket: a realtime graph on `/v1/graph/ws`, or a turn-based graph on `/v1/graph/live`.
+
+| Code | Name | When |
+| --- | --- | --- |
+| `1000` | Normal closure | The client disconnected cleanly |
+| `1008` | Policy violation | Authentication or authorization failed, or the graph type does not match the route |
+| `1011` | Server error | Unexpected server error |
+| `1013` | Try again later | Rate limit or connection cap exceeded at the handshake |
 
 ## HTTP status codes
+
+These are the status codes the server returns. Routes document their own specific causes on their pages.
 
 | Code | When |
 | --- | --- |
 | `200` | Success |
-| `400` | Empty file upload or missing required field |
-| `401` | Token missing or invalid (when auth is configured) |
-| `403` | Authorization check failed |
-| `404` | Resource not found (file, thread, message) |
-| `413` | Uploaded file exceeds `MEDIA_MAX_SIZE_MB` |
-| `422` | Request validation error (malformed body or invalid param) |
+| `400` | Empty file upload, missing filename, or malformed `Content-Length` |
+| `401` | Missing, invalid or expired credentials |
+| `403` | Insufficient permissions, or access to a thread you do not own |
+| `404` | File, thread, message or eval run not found |
+| `409` | Another run updated the thread while yours was in flight. Body is `{"error": "state_conflict", "detail": "...", "thread_id": ...}`. Reload the thread and retry |
+| `413` | Request body over `MAX_REQUEST_SIZE` (default 10 MB), or upload over `MEDIA_MAX_SIZE_MB` (default 25) |
+| `415` | Uploaded content type not allowed |
+| `422` | Request validation error (malformed body or invalid parameter) |
+| `429` | Rate limit exceeded. Body has `error.code` `RATE_LIMIT_EXCEEDED`; the `Retry-After` and `X-RateLimit-*` headers say when to retry |
 | `500` | Unexpected server error |
+| `503` | Checkpointer or storage temporarily unavailable |

@@ -1,282 +1,184 @@
 ---
 title: Coming from agentflow
-description: Migrate from the old agentflow package names to the new 10xGraph naming convention.
+description: Migrate from the old Agentflow package, import, command, config and environment variable names to 10xGraph, step by step.
 updated: "2026-10-08"
 order: 130
 group: "Next steps"
 section: "Get started"
+faq:
+  - q: Do I have to migrate now?
+    a: No. The old names keep working until 2.0 and are removed then. Migrating now removes deprecation warnings and avoids a breaking upgrade later.
+  - q: Do my REST API clients need changes?
+    a: No. The HTTP routes are unchanged. Only a WebSocket client that sends the old agentflow-bearer subprotocol should move to 10xgraph-bearer, although the server still accepts both.
+  - q: Can I keep the old and new packages installed together?
+    a: No. Both ship an agentflow module, so uninstall 10xscale-agentflow and 10xscale-agentflow-cli before installing 10xgraph and 10xgraph-api.
 ---
 
-The 10xGraph project was renamed from Agentflow to avoid name collisions in search. The new package names are `10xgraph` (core) and `10xgraph-api` (server/CLI), with Python imports `tenxgraph` and `tenxgraph_api`. The old names work until version 2.0 with deprecation warnings, but you should migrate now. This guide walks you through the steps.
+10xGraph is the new name of Agentflow. The packages are now `10xgraph` (core) and `10xgraph-api` (server and CLI), imported as `tenxgraph` and `tenxgraph_api`, with the command `10xgraph` and the config file `10xgraph.json`. Old names still work until 2.0. This page walks through the rename.
 
-## Prerequisites
+## What changed
 
-You have a project using one or more of:
-- `10xscale-agentflow` (core package)
-- `10xscale-agentflow-cli` (API server/CLI)
-- The old imports `agentflow` or `agentflow_cli`
-- The `agentflow` or `agentflow.json` config
+Every old name has a new one, and the old one is a deprecated alias that is removed in 2.0. Use this table as a checklist for your project.
 
-Python 3.12 or higher is required for the new packages.
+| Item | Old | New |
+|---|---|---|
+| Core package (PyPI) | `10xscale-agentflow` | `10xgraph` |
+| API and CLI package (PyPI) | `10xscale-agentflow-cli` | `10xgraph-api` |
+| Core import | `agentflow` | `tenxgraph` |
+| API import | `agentflow_cli` | `tenxgraph_api` |
+| CLI command | `agentflow` | `10xgraph` |
+| Config file | `agentflow.json` | `10xgraph.json` |
+| CLI environment variables | `AGENTFLOW_*` | `TENXGRAPH_*` |
+| WebSocket subprotocol | `agentflow-bearer` | `10xgraph-bearer` |
+| Home directory | `~/.agentflow` | `~/.10xgraph` |
+| Internal media scheme | `agentflow://media/` | `graph://media/` |
+| Logger names | `agentflow.*` | `tenxgraph.*` |
 
-## Migration steps
+The graph model does not change. Nodes, edges, state, messages and the checkpointer API behave as before, so this is a rename and not a rewrite. Python 3.12 or later is required.
 
-### Step 1: Uninstall the old packages
+## Replace the old packages with the new ones
 
-The old and new packages provide overlapping modules, so you must uninstall the old ones first.
+Uninstall the old packages first, then install the new ones. Both generations ship a module called `agentflow`, so leaving the old packages in place causes conflicts.
 
 ```bash
+# Remove the old distributions
 pip uninstall 10xscale-agentflow 10xscale-agentflow-cli -y
-```
 
-### Step 2: Install the new packages
-
-Install the core framework and any provider extras you need.
-
-```bash
-pip install 10xgraph 10xgraph-api
-```
-
-If you use a specific LLM provider, include the extra:
-
-```bash
-# For Google Gemini
+# Install the new core and API packages (pick the provider extra you use)
 pip install "10xgraph[google-genai]" 10xgraph-api
-
-# For OpenAI
-pip install "10xgraph[openai]" 10xgraph-api
-
-# For Anthropic Claude
-pip install "10xgraph[anthropic]" 10xgraph-api
-
-# For multiple providers
-pip install "10xgraph[google-genai,openai,anthropic]" 10xgraph-api
 ```
 
-For production deployments, also add optional features:
+Other provider extras are `openai` and `anthropic`, and you can combine them, for example `"10xgraph[google-genai,openai,anthropic]"`. Add storage extras such as `pg_checkpoint` or `redis` the same way if you use them. See [Installation](/docs/get-started/installation) for the full list.
 
-```bash
-pip install "10xgraph[google-genai,pg_checkpoint,redis]" 10xgraph-api
-```
+## Update Python imports
 
-### Step 3: Update Python imports
-
-Replace `agentflow` with `tenxgraph` and `agentflow_cli` with `tenxgraph_api` throughout your codebase.
-
-**Core framework imports** (in graph definitions, nodes, tools):
+Replace `agentflow` with `tenxgraph` and `agentflow_cli` with `tenxgraph_api`. The old imports keep working because they resolve to the same module objects as the new ones, but they emit a deprecation warning.
 
 ```python
-# Old
+# Before
 from agentflow import StateGraph, Agent, Message
 from agentflow.storage.checkpointer import PgCheckpointer
-
-# New
-from tenxgraph import StateGraph, Agent, Message
-from tenxgraph.storage.checkpointer import PgCheckpointer
-```
-
-**API server imports** (in `10xgraph.json` agent paths, custom auth):
-
-```python
-# Old
 from agentflow_cli import BaseAuth
 
-# New
+# After
+from tenxgraph import StateGraph, Agent, Message
+from tenxgraph.storage.checkpointer import PgCheckpointer
 from tenxgraph_api import BaseAuth
 ```
 
-Use the import paths from the `/docs/reference` pages to verify the correct location for any symbol you need.
+Only the top-level name changes. Submodule paths below it stay the same, so `agentflow.core.graph` becomes `tenxgraph.core.graph`. A search-and-replace of the two package names across your code and your `10xgraph.json` agent path is enough. The [reference](/docs/reference) lists the import path of every public symbol.
 
-### Step 4: Rename the config file
+## Rename the config file
 
-The API server looks for `10xgraph.json` first, then falls back to `agentflow.json`. Rename your configuration file to avoid ambiguity.
+The server reads `10xgraph.json` first and falls back to `agentflow.json` when it is missing. Rename the file so there is no ambiguity. The keys are unchanged.
 
 ```bash
+# Rename the project config (and any environment-specific variants)
 mv agentflow.json 10xgraph.json
 ```
 
-If you have multiple environment-specific configs, rename them too:
+If you pass a path explicitly, use `--config`, for example `10xgraph api --config ./config/prod.json`. The default value is `10xgraph.json`. See [Configure the server](/docs/server/configure) for every key.
 
-```bash
-mv agentflow.dev.json 10xgraph.dev.json
-mv agentflow.prod.json 10xgraph.prod.json
-```
+## Rename CLI environment variables
 
-The config structure has not changed. You only need to rename the file.
-
-### Step 5: Update environment variables (optional)
-
-The CLI respects both old and new environment variable names. If you set any of these, update them for consistency:
+For each CLI variable the CLI checks `TENXGRAPH_<NAME>` first and uses `AGENTFLOW_<NAME>` only when the new one is not set. Rename any you set, on your machine, in CI and in container files.
 
 | Old name | New name |
 |---|---|
 | `AGENTFLOW_NO_FULLSCREEN` | `TENXGRAPH_NO_FULLSCREEN` |
+| `AGENTFLOW_FULLSCREEN` | `TENXGRAPH_FULLSCREEN` |
 | `AGENTFLOW_NO_SPINNER` | `TENXGRAPH_NO_SPINNER` |
 | `AGENTFLOW_ASCII` | `TENXGRAPH_ASCII` |
 
-The old names continue to work but print a deprecation warning. Updating them is optional until version 2.0.
+Variables that configure your own app or the server, such as `JWT_SECRET_KEY`, `REDIS_URL` or `DATABASE_URL`, are not renamed. Core also still reads `AGENTFLOW_LLM_TIMEOUT` for the LLM client timeout.
 
-### Step 6: Update WebSocket authentication (if applicable)
+## Update the WebSocket subprotocol
 
-If your client uses WebSocket connections with authentication, the subprotocol name changed.
+Browser clients that authenticate a WebSocket with a bearer token send it in the `Sec-WebSocket-Protocol` header as two entries: the sentinel, then the token. The sentinel is now `10xgraph-bearer`. The server still accepts the legacy `agentflow-bearer` sentinel.
 
-**Old protocol:**
+```ts
+// Before
+// new WebSocket("ws://localhost:8000/v1/graph/ws", ["agentflow-bearer", token]);
 
-```typescript
-// Old
-const ws = new WebSocket(
-  'ws://localhost:8000/v1/graph/ws',
-  'agentflow-bearer.v1'
-);
+// After: the sentinel first, then the JWT
+const ws = new WebSocket("ws://localhost:8000/v1/graph/ws", ["10xgraph-bearer", token]);
 ```
 
-**New protocol:**
+The REST routes are unchanged. For the TypeScript client, see [the client section](/docs/client).
 
-```typescript
-// New
-const ws = new WebSocket(
-  'ws://localhost:8000/v1/graph/ws',
-  '10xgraph-bearer.v1'
-);
-```
+## Check the migration
 
-The server accepts both subprotocol names for backward compatibility, but you should update your client code.
-
-### Step 7: Verify the migration
-
-Start the API server and invoke your agent to confirm everything works.
-
-```bash
-# Start the server
-10xgraph api
-
-# In another terminal, invoke the agent
-curl -X POST http://localhost:8000/v1/graph/invoke \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "Hello"}],
-    "thread_id": "test-thread"
-  }' | jq .
-
-# Or run a local Python test
-python -c "
-from tenxgraph import StateGraph, Agent
-from tenxgraph.storage.checkpointer import InMemoryCheckpointer
-
-# Quick sanity check
-graph = Agent(model='google/gemini-2.5-flash')
-config = {'checkpointer': InMemoryCheckpointer()}
-compiled = graph.compile(**config)
-print('Graph compiled successfully')
-"
-```
-
-If your imports resolve and the agent runs, the migration is complete.
-
-## Handling old aliases (deprecated but functional)
-
-The old names work until 2.0 but emit deprecation warnings:
-
-- `import agentflow` still works and imports `tenxgraph` internally.
-- The CLI command `agentflow` still exists; it prints a notice and runs the command.
-- Old environment variable names (`AGENTFLOW_*`) still work.
-- The config file `agentflow.json` still loads if `10xgraph.json` does not exist.
-
-You do not need to fix these immediately, but expect warnings. Migration is encouraged to avoid breakage when 2.0 is released.
-
-## Directory and naming changes
-
-Beyond code and config, a few runtime paths have changed. These are usually transparent, but know where they are:
-
-| What | Old location | New location |
-|---|---|---|
-| Home directory | `~/.agentflow` | `~/.10xgraph` |
-| Media scheme | `agentflow://media/` | `graph://media/` |
-| Logger names | `agentflow.*` | `tenxgraph.*` |
-
-**Home directory.** Used by SQLite checkpointer defaults. If you set a custom path, no change needed. Otherwise, the first run creates `~/.10xgraph` and reads from `~/.agentflow` as a fallback if that does not exist.
-
-**Media scheme.** If your code references media URIs directly (e.g., for logging or storage backends), update the scheme. Old `agentflow://` URIs still resolve, so code works without change, but new code should use `graph://media/`.
-
-**Logger names.** If you configure logging by module name (e.g., `logging.getLogger("agentflow.core")`), update to `tenxgraph.core`.
-
-## Common issues
-
-### Issue: `ModuleNotFoundError: No module named 'agentflow'`
-
-After uninstalling the old package, Python cannot find the `agentflow` module if you still import from it. **Action:** Update all imports to use `tenxgraph` and `tenxgraph_api` as shown in step 3.
-
-### Issue: Import paths like `agentflow.graph` or `agentflow.state` fail
-
-The package was restructured; there are no top-level `state` or `graph` shims. **Action:** Use the canonical paths from the reference pages. Example:
+Compile a graph with the new imports and start the server. This check does not call a model, so it needs no API key.
 
 ```python
-# Wrong
-from agentflow.graph import StateGraph
+# check_migration.py
+from tenxgraph import StateGraph
+from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import InMemoryCheckpointer
+from tenxgraph.utils.constants import END
 
-# Correct
-from tenxgraph.core.graph import StateGraph
+
+def hello(state: AgentState):
+    return state
+
+
+graph = StateGraph()
+graph.add_node("HELLO", hello)
+graph.add_edge("HELLO", END)
+graph.set_entry_point("HELLO")
+
+app = graph.compile(checkpointer=InMemoryCheckpointer())
+print("Graph compiled with tenxgraph")
 ```
-
-### Issue: `10xgraph api` fails with config file not found
-
-The server looks for `10xgraph.json` in the current directory. If you renamed `agentflow.json` to something else or placed it elsewhere, the server cannot find it. **Action:** Ensure `10xgraph.json` is in the working directory, or pass `--config /path/to/config.json`.
 
 ```bash
-10xgraph api --config ./config/10xgraph.json
+# Run the compile check, then start the API server with your renamed config
+python check_migration.py
+10xgraph api
 ```
 
-### Issue: Deprecation warnings from old imports
+Seeing no deprecation warnings means all imports are migrated. If the server starts from your renamed `10xgraph.json`, the config rename worked.
 
-Old imports like `from agentflow import ...` work but print warnings. **Action:** This is normal during migration. Update imports to silence warnings.
+## Know what still works until 2.0
 
-### Issue: WebSocket connection fails with subprotocol error
+The old names keep working so you can migrate in stages. They are all removed in 2.0.
 
-Old clients using the `agentflow-bearer` subprotocol may fail if the server strictly requires the new subprotocol. **Action:** Update the subprotocol name to `10xgraph-bearer.v1` in your client code (step 6).
+- `import agentflow` and `import agentflow_cli` resolve to the new modules and emit a deprecation warning.
+- The `agentflow` command prints a deprecation notice and runs the same command as `10xgraph`.
+- `agentflow.json` is loaded when no `10xgraph.json` exists.
+- `AGENTFLOW_*` CLI variables are used when the `TENXGRAPH_*` one is not set.
+- The `agentflow-bearer` WebSocket subprotocol is accepted.
+- `agentflow://media/` URIs and objects stored under the old media prefix still resolve. New media URIs are written as `graph://media/`.
 
-## What stays the same
+## Runtime paths and names
 
-The agent graph logic, message format, checkpointer API, and evaluation framework are unchanged. You do not need to rewrite your graphs or tests.
+A few runtime locations moved. They are transparent in most projects, but know where they are if you script around them.
 
-- Graph definitions (nodes, edges, state) are identical.
-- Message and state APIs have not changed.
-- `10xgraph.json` structure is the same; only the filename changed.
-- All checkpoint data and thread history remain valid.
+The SQLite checkpointer stores its default database at `~/.10xgraph/checkpointer.db`. If `~/.10xgraph` does not exist and `~/.agentflow` does, it keeps using the old directory, so existing data is not orphaned. Setting an explicit path avoids the question.
 
-Migration is a rename, not a rewrite.
+Logger names changed from `agentflow.*` to `tenxgraph.*`. If you configure logging by name, for example `logging.getLogger("agentflow.core")`, change it to `tenxgraph.core`.
 
-## What's next
+## Fix common errors
 
-Once you have migrated, explore the new features and guides:
+### ModuleNotFoundError: No module named 'agentflow'
 
-- `/docs/concepts/state-graph` — dive deeper into graph mechanics.
-- `/docs/guides/prebuilt-agents` — use prebuilt agents for common patterns.
-- `/docs/server/configure` — configure the API server for production.
-- `/docs/reference` — the full API reference for Python and REST endpoints.
+You uninstalled the old package but some code still imports from it. Change those imports to `tenxgraph` or `tenxgraph_api`.
 
-All guides use the new `tenxgraph` and `10xgraph-api` names.
+### The server cannot find its config file
 
-## FAQ
+`10xgraph api` looks for `10xgraph.json` in the working directory. Run it from the project root, or pass `--config` with the path.
 
-### Do I have to migrate now?
+### Deprecation warnings keep appearing
 
-No, the old names work until version 2.0. However, migrating now avoids future breakage and gives you access to new features and bug fixes that are released under the new names.
+Something still imports `agentflow` or `agentflow_cli`, or you still run the `agentflow` command. Search your code, scripts, Dockerfiles and CI for the old names.
 
-### Can I use both old and new names in the same project?
+### A WebSocket client fails the handshake
 
-Not recommended. Uninstall the old packages before installing the new ones, as both provide an `agentflow` module and will conflict.
+Check that the client offers exactly two protocol entries: `10xgraph-bearer` (or the legacy `agentflow-bearer`) followed by the token. Browsers fail the handshake if the server does not confirm one of the offered subprotocols.
 
-### Will my old API calls still work?
+## Next steps
 
-Yes. The HTTP API is unchanged; only the CLI command and package names changed. If your client uses the REST API (not the CLI), no changes are needed on the client side. You only need to update your server-side code and configuration.
-
-### What about the TypeScript client?
-
-The TypeScript client package is still `@10xscale/agentflow-client` for now (renamed npm package not yet released). It will be renamed to `@10xgraph/client` in a future release. Update when you upgrade.
-
-### How do I report issues with the migration?
-
-File an issue on [GitHub](https://github.com/10xGraph/10xGraph) with:
-- The old package/import you were using.
-- The new one you migrated to.
-- The error or unexpected behavior.
+- [State graph](/docs/concepts/state-graph): how graphs compile and run.
+- [Prebuilt agents](/docs/guides/prebuilt-agents): ready-made agent patterns.
+- [Configure the server](/docs/server/configure): every `10xgraph.json` key.
+- [Reference](/docs/reference): import paths and signatures for the public API.

@@ -1,159 +1,352 @@
 ---
 title: Build a Research AI Agent in Python
-description: How to build a research AI agent in Python. Web search, source verification, synthesis, and citations. With 10xGraph code and production guardrails.
+description: "Build a research agent that searches the web, reads full pages and writes answers with [source-N] citations, plus a check for uncited claims."
 section: Examples
 group: "Use cases"
 order: 260
 label: Research
-updated: "2026-07-27"
+updated: "2026-10-08"
+faq:
+  - q: "Does this example need an API key besides Anthropic?"
+    a: "Yes. The web_search tool calls the Tavily API, so you need a TAVILY_API_KEY in the environment. The Anthropic key is read from ANTHROPIC_API_KEY."
+  - q: "Does the citation validator stop the agent from answering?"
+    a: "No. It runs after the graph and only reports sentences without a [source-N] marker. You decide whether to log, retry or add a disclaimer."
 ---
 
-A research agent answers questions that need *external information*. Current events, technical references, deep web searches. The hard part is not the search; it is getting the agent to cite sources and avoid making things up.
+A research agent answers questions that need outside information, and it must cite what it found. This example gives a 10xGraph agent two tools, web search and page fetch, loops until it has at least three sources, then checks that each sentence of the answer carries a `[source-N]` marker.
 
-Here is the production architecture.
+## What you'll build
 
-## Architecture at a glance
+The agent receives a question, searches the web with the Tavily API, reads promising pages in full, and writes a cited answer. A plain Python check then flags answers with uncited sentences.
 
+| Part | Role |
+|---|---|
+| `web_search` tool | Calls Tavily and returns numbered sources with title, URL and snippet |
+| `fetch_url` tool | Downloads a page, strips HTML and returns up to 20,000 characters |
+| `MAIN` node | An `Agent` that plans subqueries, calls tools and writes the answer |
+| `TOOL` node | A `ToolNode` that runs the tool calls |
+| `validate_citations` | A post-run check, outside the graph, that counts uncited sentences |
+
+## Run the example
+
+This page is a self-contained walkthrough: copy the code below into one file named `graph.py`. There is no matching folder in `agentflow/examples`. The code needs the Anthropic extra, `httpx` and a Tavily key.
+
+```bash
+pip install "10xgraph[anthropic]" httpx
+export ANTHROPIC_API_KEY=sk-ant-...
+export TAVILY_API_KEY=tvly-...
+python graph.py
 ```
+
+## How the graph flows
+
+The agent loops between `MAIN` and `TOOL` until the model stops requesting tools, then the run ends and the validator inspects the final answer.
+
+```text
 [ User question ]
-       │
-       ▼
-[ Plan: identify subqueries (LLM) ]
-       │
-       ▼
-[ Search loop ]
-   ├── web_search (Tavily / Perplexity / Bing)
-   ├── fetch_url (full content for promising hits)
-   ├── search_internal_docs (your vector store)
-   └── done?
-       │
-       ▼
-[ Synthesize with citations ]
-       │
-       ▼
-[ Validator: every claim has [source-N] ]
+       |
+       v
+[ MAIN: Agent plans 2-3 subqueries ] <------+
+       |                                    |
+       | tool calls?                        |
+       v                                    |
+[ TOOL: web_search / fetch_url ] -----------+
+       |
+       | no tool calls
+       v
+[ END: cited answer ] --> validate_citations()
 ```
 
-This is an agent that loops on tool calls until satisfied, then runs a deterministic post-step to enforce citation discipline.
+The loop is bounded by `recursion_limit` in the run config, not by a counter in the prompt.
 
-## Why this shape
+## Write the code
 
-- **Subquery decomposition** beats one giant search. "Compare X and Y on dimension Z" → three searches.
-- **Forced citations** are the only reliable way to prevent hallucinated facts. The agent must include `[source-N]` markers; the validator strips out claims that don't have them.
-- **Validator separation.** Citation enforcement is deterministic. A regex, not an LLM call.
+The code lives in one file in three parts: the tools, the graph, and the citation check with a runner. Each part below is complete; together they form `graph.py`.
 
-## The tools
+### Tools: search and fetch
 
-```python
+The two tools give the model web access and number every search hit so it can cite it. Put them at the top of `graph.py`.
+
+```python title="graph.py (part 1: tools)"
+import os
+import re
 import httpx
+from html.parser import HTMLParser
+from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core.state.agent_state import AgentState
+from tenxgraph.core.state.message import Message
+from tenxgraph.utils.constants import END
+
+# Load the Tavily key from the environment (the Anthropic key is read by 10xGraph)
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+if not TAVILY_API_KEY:
+    raise ValueError("TAVILY_API_KEY not set in environment")
+
+# Global counter so [source-N] tags stay unique across several searches
+_source_counter = 0
+
 
 def web_search(query: str, max_results: int = 5) -> str:
-    """Search the public web. Returns titles, URLs, and snippets for top results."""
-    response = httpx.post(
-        "https://api.tavily.com/search",
-        json={"api_key": TAVILY_KEY, "query": query, "max_results": max_results},
-        timeout=10.0,
-    ).json()
-    return "\n\n".join(
-        f"[source-{i}] {r['title']}\n{r['url']}\n{r['content']}"
-        for i, r in enumerate(response.get("results", []), start=1)
-    ) or "No results."
+    """Search the web using Tavily. Returns sources with title, URL, and snippet."""
+    global _source_counter
+    if not query.strip():
+        return "No query provided."
+    
+    try:
+        response = httpx.post(
+            "https://api.tavily.com/search",
+            json={"api_key": TAVILY_API_KEY, "query": query, "max_results": max_results},
+            timeout=10.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        return f"Search error: {e}"
+    
+    results = data.get("results", [])
+    if not results:
+        return "No search results found."
+    
+    output = []
+    for result in results:
+        _source_counter += 1
+        i = _source_counter
+        title = result.get("title", "No title")
+        url = result.get("url", "No URL")
+        content = result.get("content", "No snippet")
+        output.append(f"[source-{i}] {title}\n{url}\n{content}")
+    
+    return "\n\n".join(output)
+
+def strip_html_tags(text: str) -> str:
+    """Simple HTML tag stripper for fetched pages."""
+    class MLStripper(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.reset()
+            self.fed = []
+        def handle_data(self, data):
+            self.fed.append(data)
+        def get_data(self):
+            return ''.join(self.fed)
+    
+    stripper = MLStripper()
+    try:
+        stripper.feed(text)
+        return stripper.get_data()
+    except Exception:
+        return text
 
 def fetch_url(url: str) -> str:
-    """Fetch the full text of a URL. Use after web_search to read promising sources."""
+    """Fetch the full text of a URL. Call after web_search to read promising sources."""
+    if not url.strip():
+        return "No URL provided."
+    
     try:
-        text = httpx.get(url, timeout=15.0, follow_redirects=True).text
-        return strip_html(text)[:20_000]  # cap to keep context manageable
+        response = httpx.get(url, timeout=15.0, follow_redirects=True)
+        response.raise_for_status()
+        text = response.text
+        text = strip_html_tags(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text[:20_000]  # Cap at 20k chars to keep context manageable
     except Exception as e:
         return f"Error fetching {url}: {e}"
-
-def search_internal_docs(query: str) -> str:
-    """Search internal documentation (your private knowledge base)."""
-    hits = vector_client.search(query, top_k=3)
-    return "\n\n".join(f"[doc-{h.id}] {h.title}\n{h.text[:500]}" for h in hits)
 ```
 
-Notes:
+**Notes on the tools:**
 
-- **Source IDs are part of the tool output.** `[source-1]`, `[doc-42]`. These are what the agent cites in the final answer.
-- **Caps everywhere.** A 1 MB scraped page eats your context.
-- **`fetch_url` only after `web_search`.** Direct URL fetches without prior search are an attack vector.
+- **Source IDs in output:** `[source-1]`, `[source-2]` are tags that the agent cites in the final answer. A module-level counter keeps them unique when the agent searches more than once.
+- **web_search:** Calls Tavily API. Errors come back as text so the agent can see them. Check the current Tavily API reference for the request format (this code sends the key as `api_key` in the JSON body) and adjust if it has changed.
+- **fetch_url:** Strips HTML, limits to 20k characters (a 1 MB page eats context), and includes error messages.
+- **HTML stripping:** A simple parser removes tags; for production, use `trafilatura` or `readability-lxml`.
 
-## The agent
+### The agent
 
-```python
-from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+The graph has two nodes. `MAIN` is an `Agent` whose prompt tells it to plan subqueries, gather sources and cite them, and `TOOL` runs whatever tools it calls.
 
-tool_node = ToolNode([web_search, fetch_url, search_internal_docs])
+```python title="graph.py (part 2: graph)"
+tool_node = ToolNode([web_search, fetch_url])
 
-agent = Agent(
-    model="anthropic/claude-3-5-sonnet",
-    system_prompt=[{"role": "system", "content": (
-        "You are a research assistant. "
-        "Break the question into subqueries. Use web_search and fetch_url to gather sources. "
-        "Use search_internal_docs for company-specific information. "
-        "When you have enough information, write a clear answer. "
-        "EVERY factual claim must include a citation marker like [source-1] or [doc-2] from the tool outputs. "
-        "If you cannot find sources, say so explicitly. Do not invent facts."
-    )}],
-    tool_node="TOOL",
+graph = StateGraph()
+graph.add_node(
+    "MAIN",
+    Agent(
+        model="anthropic/claude-opus-5",
+        system_prompt=[{
+            "role": "system",
+            "content": (
+                "You are a research assistant. Given a question, break it into 2-3 subqueries "
+                "to cover different angles. Use web_search to find sources, then fetch_url to read "
+                "promising articles in full. Gather at least 3 distinct sources before synthesizing. "
+                "\n"
+                "When you have enough information, write a clear, concise answer. "
+                "EVERY factual claim must include a citation marker like [source-1] from the search results. "
+                "Inline the citations: 'According to [source-2], Python is X.' "
+                "\n"
+                "If you cannot find reliable sources, say so explicitly. Do not invent facts."
+            )
+        }],
+        tool_node="TOOL",
+    ),
 )
+graph.add_node("TOOL", tool_node)
+
+def route_after_agent(state: AgentState) -> str:
+    """Route to tools if the agent called them, otherwise end."""
+    if not state.context or len(state.context) == 0:
+        return END
+    
+    last_message = state.context[-1]
+    
+    # If last message is from assistant with tool calls, go to TOOL
+    if hasattr(last_message, "tools_calls") and last_message.tools_calls:
+        return "TOOL"
+    
+    # If last message is a tool result, go back to agent for synthesis
+    if last_message.role == "tool":
+        return "MAIN"
+    
+    # Otherwise end
+    return END
+
+graph.add_conditional_edges(
+    "MAIN",
+    route_after_agent,
+    {"TOOL": "TOOL", END: END},
+)
+graph.add_edge("TOOL", "MAIN")
+graph.set_entry_point("MAIN")
 ```
 
-## The validator (post-step)
+**Agent setup:**
 
-```python
-import re
+- **Model:** the `anthropic/` prefix selects the Anthropic provider and `claude-opus-5` handles synthesis. Substitute `anthropic/claude-sonnet-5` for lower cost.
+- **System prompt:** Guides the agent to decompose, fetch full content, and cite sources inline.
+- **tool_node="TOOL":** References the `TOOL` node by name.
+- **Routing:** After the agent runs, if it called tools, go to `TOOL`. After tools, go back to `MAIN` for synthesis. Otherwise, end.
 
-CITATION_RE = re.compile(r"\[(?:source|doc)-\d+\]")
+### Citation validator and runner
+
+The validator is plain Python that runs after the graph finishes. It splits the answer into sentences and counts those without a `[source-N]` marker. The runner compiles the graph, asks a question and prints the result.
+
+```python title="graph.py (part 3: validator and runner)"
+CITATION_RE = re.compile(r"\[source-\d+\]")
 
 def validate_citations(answer: str, max_uncited_sentences: int = 1) -> tuple[bool, str]:
+    """Validate that all factual sentences have citations."""
     sentences = re.split(r"(?<=[.!?])\s+", answer)
-    uncited = [s for s in sentences if not CITATION_RE.search(s)]
+    uncited = [s for s in sentences if s.strip() and not CITATION_RE.search(s)]
+    
     if len(uncited) > max_uncited_sentences:
-        return False, f"{len(uncited)} sentences without citations. Reject."
+        return False, f"{len(uncited)} sentences lack citations: {uncited[:2]}"
     return True, "OK"
+
+def compile_and_run():
+    """Compile the graph and run a query."""
+    compiled_graph = graph.compile()
+    
+    question = "Compare Python and Rust on performance and ease of learning."
+    
+    print(f"\n{'='*60}")
+    print(f"Question: {question}")
+    print(f"{'='*60}\n")
+    
+    config = {"thread_id": "research-1", "recursion_limit": 10}
+    result = compiled_graph.invoke(
+        {"messages": [Message.text_message(question)]},
+        config=config,
+    )
+    
+    # Extract the final answer (the last assistant message with text)
+    final_answer = None
+    for msg in reversed(result.get("messages", [])):
+        if msg.role == "assistant" and msg.text().strip():
+            final_answer = msg.text()
+            break
+
+    if final_answer:
+                break
+    
+    if final_answer:
+        print("Answer:")
+        print(final_answer)
+        print()
+        
+        is_valid, msg = validate_citations(final_answer)
+        print(f"Citation validation: {'PASS' if is_valid else 'FAIL'} ({msg})")
+    else:
+        print("No answer generated.")
+
+if __name__ == "__main__":
+    compile_and_run()
 ```
 
-If the answer fails validation, you can either retry the agent with feedback or downgrade the response with a "limited sources" disclaimer.
+**Validator:**
 
-## Operational notes
+- **Regex match:** `[source-\d+]` matches any citation marker.
+- **Sentence split:** Uses standard sentence boundaries (`[.!?]` followed by space).
+- **Tolerance:** Allows up to `max_uncited_sentences` (default 1) uncited sentences, such as a greeting.
+- **Fail behavior:** You can log, retry the agent with feedback, or degrade the response with "Limited sources" disclaimer.
 
-- **Choose a search provider.** Tavily and Perplexity are LLM-friendly (return clean text). Bing API works but you do more parsing.
-- **Cache aggressively.** Identical queries from different users should hit the same cache for a few hours.
-- **Rate-limit per user.** A research agent can rack up a $5 API bill in 30 seconds if it loops.
-- **Domain filters.** For trustworthy research, restrict to a curated allowlist (papers, official docs, news).
-- **Time budget.** Cap total research time at 30–60 seconds. Past that, return what you have.
+## Check the output
 
-## Variants
+A successful run prints the question, the answer and the validation result. The answer varies per run because it depends on live search results, so the output below is an illustration.
 
-- **Competitive research**. Research a list of competitors against a fixed dimensions matrix
-- **Due diligence**. Research a company across financials, news, and reviews
-- **Academic research**. Search arXiv + Semantic Scholar + Google Scholar with citation graphs
-- **News briefing**. Daily digest with citations
+```text
+============================================================
+Question: Compare Python and Rust on performance and ease of learning.
+============================================================
 
-Same shape; different search tools and validators.
+Answer:
+Python and Rust serve different purposes in software development. [source-1] Python excels in rapid development and has a gentler learning curve due to its readable syntax and extensive library ecosystem. [source-2] Rust prioritizes memory safety and performance, making it ideal for systems programming where efficiency is critical, though it has a steeper learning curve [source-3] due to its ownership model and borrow checker.
 
-## Metrics that matter
+Citation validation: PASS (OK)
+```
 
-| Metric | Target |
+## When to use this pattern
+
+**Good fit:**
+
+- Fact-checking and verification (every claim must cite a source).
+- Competitive analysis (research multiple competitors).
+- Due diligence (financials, press, reviews).
+- Knowledge synthesis (aggregate multiple viewpoints).
+
+**Not a good fit:**
+
+- Questions answerable from the model's training data (wastes API calls).
+- Real-time updates needed every request (consider caching).
+- Highly specialized or proprietary information (search APIs may not reach it).
+- Conversational chat (better to embed search as one tool among many).
+
+## Harden it for production
+
+The example is a reference architecture. Before real traffic, add the guardrails below.
+
+- **Caching:** Cache identical queries for hours. Prevent duplicate searches within the same research session.
+- **Rate limits:** Cap search calls per user per minute (a looping agent can make many paid search and model calls quickly).
+- **Domain filters:** For trustworthy research, restrict to curated domains (`.edu`, `.org`, news outlets).
+- **Time budget:** Lower `recursion_limit` and add your own timeout; return a best-effort answer if time runs out.
+- **Better HTML parsing:** Use `trafilatura` or `readability-lxml` instead of basic tag stripping.
+- **Cost tracking:** Log Tavily API calls per user/session; monitor spend.
+- **Fallback sources:** Keep an internal knowledge base as a fallback when web search fails.
+
+## Metrics to track
+
+Track these to judge answer quality and cost. The targets are suggested starting points, not measured benchmarks.
+
+| Metric | Suggested target |
 |---|---|
 | Citation coverage | > 95% of factual sentences |
-| Source diversity per answer | ≥ 3 distinct sources |
-| Hallucination rate (manual eval) | < 2% |
-| p95 latency | < 30 s |
-| Cost per query | $0.05–$0.50 depending on depth |
+| Source diversity per answer | At least 3 distinct sources |
+| Hallucination rate (manual eval) | As low as your use case requires |
+| p95 latency | Set a limit that fits your product |
+| Cost per query | Set a budget per query and alert on outliers |
 
-## Common mistakes
+## What to try next
 
-1. **No citation enforcement.** The model will summarize and forget where the facts came from.
-2. **Trusting the search snippet.** Snippets are often misleading; use `fetch_url` for important claims.
-3. **Single-source reliance.** Force the agent to gather ≥ 3 sources before synthesizing.
-4. **No time / cost cap.** Researchy agents love to loop.
-
-## Further reading
-
-- [Multi-agent orchestration patterns](/docs/glossary/what-is-multi-agent-orchestration)
-- [AI agent memory](/docs/concepts/memory). Long-term recall for repeat research
-- [ReAct agent with real APIs](/docs/glossary/what-is-a-react-agent)
-- [Get started](/docs/get-started)
+- **Multi-source synthesis:** Add internal knowledge base search alongside web search (see [Use the memory store](/docs/guides/use-memory-store)).
+- **Human approval loop:** Interrupt before finalizing an answer; let a human review sources (see [Add human approval](/docs/guides/add-human-approval)).
+- **Evaluation framework:** Run eval cases against your research agent to catch hallucinations (see [Evaluation](/docs/testing/evaluation)).
+- **Streaming:** Stream the agent's research process token-by-token to show the user progress (see [Stream a graph](/docs/guides/stream-graph)).
+- **Custom validators:** Extend citation checking to verify fact consistency or factual correctness with an LLM judge.

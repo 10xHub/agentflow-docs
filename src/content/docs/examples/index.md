@@ -2,7 +2,6 @@
 title: Examples
 description: Runnable examples and reference architectures demonstrating 10xGraph agents, tools, streaming, MCP, memory, and multi-agent patterns.
 section: Examples
-group: null
 order: 10
 label: Overview
 updated: "2026-10-08"

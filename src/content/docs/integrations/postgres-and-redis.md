@@ -1,37 +1,48 @@
 ---
-title: "10xGraph with Postgres: Durable Agent Threads"
-description: How to wire 10xGraph's PgCheckpointer to a Postgres + Redis backend for durable agent threads. Setup, schema, sizing, and operational patterns.
+title: "Postgres and Redis checkpointing"
+description: "Set up PgCheckpointer for durable, resumable agent threads: Postgres as the source of truth, Redis as a cache, plus schema, pooling and operations."
+seoTitle: "Postgres and Redis checkpointer"
 section: Integrations
 group: "Storage"
 order: 80
-label: with Postgres
-updated: "2026-07-27"
+label: "Postgres and Redis"
+updated: "2026-10-08"
+faq:
+  - q: "Does PgCheckpointer work without Redis?"
+    a: "No. The constructor raises a ValueError unless you pass redis_url, redis_pool or a redis client, and it raises an ImportError if the redis package is missing. Redis only holds a cache, so losing it does not lose data."
+  - q: "What is the Postgres DSN format?"
+    a: "Use a plain asyncpg-style DSN such as postgresql://user:password@host:5432/dbname. The value goes straight to asyncpg.create_pool, so SQLAlchemy driver suffixes like postgresql+asyncpg:// are not accepted."
+  - q: "What happens if I do not pass a thread_id?"
+    a: "The compiled graph generates a random thread_id and logs a warning. That run cannot be resumed or stopped later, because your code does not know the id."
 ---
 
-For production agents, every conversation needs durable, resumable state. 10xGraph's `PgCheckpointer` writes graph state to Postgres after every node, with Redis on the hot path for fast reads.
+`PgCheckpointer` stores every thread's graph state in Postgres, which is the durable source of truth, and caches the latest state in Redis for fast reads. Use it when conversations must survive restarts, deploys and multiple server processes. For a single process or local work, a lighter checkpointer is enough.
 
-This guide covers setup, schema, and the operational patterns we see in practice.
+## How the two layers divide the work
 
-## Why Postgres + Redis
+Postgres holds all durable data: threads, state snapshots, messages and the tool execution ledger. Redis holds only a cached copy of the latest state per thread, with a time to live. If a Redis read fails or misses, the checkpointer reads from Postgres and refills the cache.
 
-- **Postgres** is durable, transactional, queryable. The source of truth for thread history.
-- **Redis** caches recent thread state for fast reads. Cheap to scale; safe to invalidate.
+| Layer | Holds | Loss impact |
+|---|---|---|
+| Postgres | Threads, versioned state snapshots, messages, tool execution results | Thread history is lost unless restored from backup |
+| Redis | Cached latest state, keyed `state_cache:<thread_id>:<user_id>`, TTL 86400 seconds by default | None; the next read falls back to Postgres |
 
-Together they give you sub-50ms checkpoint reads and durability across restarts.
+Concurrent writers are serialized in Postgres, not Redis. Each durable write takes a row lock on the thread and checks a per-thread `version` number, so a stale run fails with `StaleStateError` instead of overwriting newer state. See [Durability and concurrency](/docs/guides/durability-and-concurrency) for that behavior.
 
-## Install dependencies
+## Install the extra
 
-`PgCheckpointer` ships with 10xGraph but needs the Postgres driver + Redis client:
+The `pg_checkpoint` extra installs the async Postgres driver and the Redis client.
 
 ```bash
-pip install "agentflow[postgres,redis]"
-# Equivalent to:
-# pip install agentflow asyncpg redis
+# installs asyncpg>=0.29.0 and redis>=4.2
+pip install "10xgraph[pg_checkpoint]"
 ```
 
-## Run Postgres + Redis locally
+Without the extra, constructing `PgCheckpointer` raises an `ImportError` that points back to this command. The example below also needs a model provider, so add one, for example `pip install "10xgraph[pg_checkpoint,google-genai]"`.
 
-Quickest path. Docker Compose:
+## Run Postgres and Redis locally
+
+For development, run both services with Docker Compose.
 
 ```yaml
 # docker-compose.yml
@@ -39,9 +50,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: agentflow
-      POSTGRES_PASSWORD: agentflow
-      POSTGRES_DB: agentflow
+      POSTGRES_USER: tenx
+      POSTGRES_PASSWORD: tenx
+      POSTGRES_DB: tenx
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
@@ -53,137 +64,197 @@ volumes:
   pgdata:
 ```
 
-`docker compose up -d`.
+Start them with `docker compose up -d`.
 
-## Wire the checkpointer
+## Create a checkpointer and resume a thread
+
+Pass the checkpointer to `compile`, then invoke the graph with the same `thread_id` to continue a conversation. The tables are created on first use, so no manual migration step is needed for a new database.
 
 ```python
-from tenxgraph.core.graph import Agent, StateGraph
+# app.py
+from dotenv import load_dotenv
+
 from tenxgraph.core.state import AgentState, Message
+from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.checkpointer import PgCheckpointer
-from tenxgraph.utils import END
+
+load_dotenv()
 
 checkpointer = PgCheckpointer(
-    db_url="postgresql+asyncpg://agentflow:agentflow@localhost:5432/agentflow",
+    # Plain DSN: it is passed directly to asyncpg.create_pool
+    postgres_dsn="postgresql://tenx:tenx@localhost:5432/tenx",
     redis_url="redis://localhost:6379/0",
 )
 
-# ... build graph ...
-app = graph.compile(checkpointer=checkpointer)
-```
+agent = ReactAgent(
+    model="google/gemini-2.5-flash",
+    provider="google",
+    system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
+    tools=[],
+)
+app = agent.compile(checkpointer=checkpointer)
 
-The first call to `app.invoke(...)` creates the schema if it does not exist. For controlled migrations, see the schema section below.
-
-## Use it
-
-```python
-# Turn 1
+# First turn on thread "user-42"
 app.invoke(
     {"messages": [Message.text_message("My name is Alex.")]},
-    config={"thread_id": "user-42"},
+    config={"thread_id": "user-42", "user_id": "alex"},
 )
 
-# Turn 2 — same thread_id reuses prior state from Postgres
-app.invoke(
-    {"messages": [Message.text_message("What's my name?")]},
-    config={"thread_id": "user-42"},
+# Later turn, even from another process: same thread_id and user_id
+result = app.invoke(
+    {"messages": [Message.text_message("What is my name?")]},
+    config={"thread_id": "user-42", "user_id": "alex"},
 )
+print(result["messages"][-1])
 ```
 
-Process restarts, replica swaps, blue-green deploys. None of them lose the thread.
+The model's reply varies, but it can answer from the earlier turn because the state was loaded from the checkpointer. Thread ids survive process restarts and deploys because the data lives in Postgres.
+
+A graph built directly with `StateGraph` takes the same argument: `graph.compile(checkpointer=checkpointer)`.
+
+### Constructor parameters
+
+You must supply one Postgres source (`postgres_dsn` or `pg_pool`) and one Redis source (`redis_url`, `redis_pool` or `redis`), otherwise a `ValueError` is raised.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `postgres_dsn` | `str` | `None` | Postgres connection string for a pool the checkpointer creates |
+| `pg_pool` | asyncpg `Pool` | `None` | Existing pool to use instead |
+| `pool_config` | `dict` | `None` | Extra keyword arguments for `asyncpg.create_pool` (for example `min_size`, `max_size`) |
+| `redis_url` | `str` | `None` | Redis URL for a pool the checkpointer creates |
+| `redis` | Redis client | `None` | Existing `redis.asyncio.Redis` instance |
+| `redis_pool` | `ConnectionPool` | `None` | Existing Redis connection pool |
+| `redis_pool_config` | `dict` | `None` | Extra keyword arguments for `ConnectionPool.from_url` |
+| `schema` | `str` | `"public"` | Postgres schema for the tables. Must match `^[a-zA-Z_][a-zA-Z0-9_]*$` |
+| `cache_ttl` | `int` (kwarg) | `86400` | Redis cache lifetime in seconds |
+| `state_history_limit` | `int` (kwarg) | `20` | State snapshots kept per thread; older ones are pruned on each durable write |
+| `enforce_user_isolation` | `bool` (kwarg) | `True` | Scope threads, state and messages to the `user_id` in the config |
+| `user_id_type` | `str` (kwarg) | `"string"` | Column type for `user_id`: `string`, `int` or `bigint` |
+| `release_resources` | `bool` (kwarg) | `False` | Also close pools you passed in when `arelease()` runs |
 
 ## Schema
 
-`PgCheckpointer` creates a small set of tables. The shapes (subject to 10xGraph version):
+The checkpointer creates five tables in the configured schema and records the schema version in `schema_version`. Schema creation and upgrades run under a Postgres advisory lock, so several processes starting at once are safe, and the DDL is idempotent.
 
-- `agentflow_threads`. One row per thread (thread_id, created_at, updated_at, metadata)
-- `agentflow_checkpoints`. Graph state snapshots, one row per node boundary
-- `agentflow_messages`. Message history per thread
+| Table | Purpose | Main columns |
+|---|---|---|
+| `threads` | One row per thread | `thread_id` (primary key), `thread_name`, `user_id`, `created_at`, `updated_at`, `meta` (jsonb) |
+| `states` | Versioned state snapshots | `state_id`, `thread_id`, `version` (bigint), `state_data` (jsonb), `created_at`, `updated_at`, `meta` |
+| `messages` | Messages per thread | `message_id`, `thread_id`, `role` (enum), `content`, `tool_calls` (jsonb), `tool_call_id`, `reasoning`, `total_tokens`, `usages` (jsonb), `meta` |
+| `tool_executions` | Tool results keyed by `(thread_id, tool_call_id)`, so a replayed node does not re-run finished tools | `thread_id`, `tool_call_id`, `result` (jsonb), `created_at` |
+| `schema_version` | Applied schema versions (currently 3) | `version`, `applied_at` |
 
-For exact DDL and migration guidance, see [the production checkpointing guide](/docs/server/production-checklist).
+Notes on the types:
 
-## Sizing Postgres
+- `states` has a unique index on `(thread_id, version)`. That index is what makes concurrent appends collide instead of duplicating a version.
+- `messages.role` is a Postgres enum `message_role` with the values `user`, `assistant`, `system` and `tool`.
+- `thread_id` is `VARCHAR(255)` by default. The id type follows the `generated_id_type` setting (`string`, `int` or `bigint`).
+- `states` and `messages` reference `threads` with `ON DELETE CASCADE`, so deleting a thread row deletes its history.
 
-Rough budget for a moderate production load:
+## Sizing
 
-| Metric | Estimate |
+These figures are planning estimates for your own load tests, not measured limits. State is stored as JSON, so row size follows your messages and custom state.
+
+| Resource | Rule of thumb |
 |---|---|
-| Rows per thread (10-turn chat) | ~30 (3 per turn) |
-| Bytes per row | 2–10 KB depending on message size |
-| Active threads | depends on your DAU |
-| Storage per 1M threads | ~20 GB (with vacuum + indexes) |
+| Postgres storage | Rows per thread grow with turns, but `state_history_limit` caps snapshots at 20 per thread by default. Messages are not pruned. |
+| Postgres connections | Pool size near `workers * concurrent_invokes_per_worker`, then adjust from observed queueing |
+| Redis memory | One cached state document per active thread, expiring after `cache_ttl`. Multiply your typical serialized state size by active threads. |
 
-A `db.t4g.medium` RDS instance handles tens of thousands of concurrent threads comfortably. Scale up when your p95 write latency exceeds 50ms.
+Watch p95 write latency and connection wait time rather than relying on a fixed instance size.
 
-## Sizing Redis
+## Pooling and concurrency
 
-Redis holds:
-
-- Recent thread state (LRU eviction)
-- Per-thread locks (to avoid concurrent writes to the same thread)
-
-Memory budget: ~5 KB per actively-cached thread. `cache.t4g.small` (1.5 GB) holds ~300k cached threads with headroom.
-
-## Connection pooling
-
-The `PgCheckpointer` shares a connection pool. Right-size it:
+By default the checkpointer builds its own asyncpg pool lazily on first use from `postgres_dsn`. Tune it with `pool_config`, whose keys are passed to `asyncpg.create_pool`.
 
 ```python
-from sqlalchemy.ext.asyncio import create_async_engine
+from tenxgraph.storage.checkpointer import PgCheckpointer
 
-engine = create_async_engine(
-    "postgresql+asyncpg://...",
-    pool_size=20,           # concurrent connections
-    max_overflow=10,        # burst capacity
-    pool_pre_ping=True,     # detect dead conns
-    pool_recycle=600,       # rotate every 10 min
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://tenx:tenx@localhost:5432/tenx",
+    redis_url="redis://localhost:6379/0",
+    pool_config={"min_size": 5, "max_size": 20},  # asyncpg pool bounds
 )
-
-checkpointer = PgCheckpointer.from_engine(engine, redis_url="...")
 ```
 
-Pool sizing rule of thumb: `n_replicas × n_concurrent_streams_per_replica × 2`. Too small → queueing; too large → waste of DB resources.
-
-## Multi-tenant patterns
-
-For multi-tenant SaaS, scope threads by tenant:
+If your application already owns a pool, pass it as `pg_pool`. The checkpointer uses it and does not close it on `arelease()` unless you set `release_resources=True`.
 
 ```python
-config = {"thread_id": f"tenant-{tenant_id}:user-{user_id}:session-{session_id}"}
+import asyncio
+
+import asyncpg
+
+from tenxgraph.storage.checkpointer import PgCheckpointer
+
+
+async def main() -> None:
+    # Shared pool owned by the application
+    pool = await asyncpg.create_pool(
+        "postgresql://tenx:tenx@localhost:5432/tenx", min_size=5, max_size=20
+    )
+    checkpointer = PgCheckpointer(pg_pool=pool, redis_url="redis://localhost:6379/0")
+    try:
+        ...  # compile a graph with this checkpointer and run it
+    finally:
+        await checkpointer.arelease()  # closes only what the checkpointer created (Redis here)
+        await pool.close()
+
+
+asyncio.run(main())
 ```
 
-Or partition Postgres by tenant if you have huge tenants. For most apps, prefixed thread IDs are enough.
+Replace the `...` line with your own graph run.
 
-## Backups and disaster recovery
+## Multi-tenant scoping
 
-- **Postgres**. Daily automated backups via your managed service. Point-in-time recovery for the last 7 days minimum.
-- **Redis**. Ephemeral by design. If Redis goes down, the next reads fall through to Postgres. No backup needed.
+`enforce_user_isolation` is on by default, so every query is scoped to the `user_id` in the config. Knowing another user's `thread_id` is not enough to read or delete their thread. Put the tenant in the thread id or the user id so tenants stay separate.
 
-If you lose Postgres, you lose threads. That is what makes it the durable layer.
+```python
+config = {
+    "thread_id": f"tenant-{tenant_id}:session-{session_id}",
+    "user_id": f"{tenant_id}:{user_id}",  # ownership boundary enforced by the checkpointer
+}
+```
 
-## Cleanup and TTL
+If you omit `user_id`, the compiled graph substitutes a shared anonymous id and logs a warning, so every caller without a user id shares one identity. Enable auth, or pass `user_id` yourself, for any multi-user deployment. Set `enforce_user_isolation=False` only for single-tenant apps with no real user identity. Then queries key on `thread_id` alone and the id must be treated as a secret.
 
-Threads accumulate. Two patterns:
+## Backups and recovery
+
+Back up Postgres; do not back up Redis. Use your managed service's automated backups with point-in-time recovery. If Postgres is lost, thread history is lost to the extent of your backup window.
+
+Redis is a cache. If it restarts or evicts keys, reads fall through to Postgres and repopulate the cache. After restoring Postgres from a backup, flush the cached `state_cache:*` keys so Redis cannot serve state newer than the restored data.
+
+## Maintenance and cleanup
+
+Snapshots are pruned automatically, but threads and messages accumulate. Delete old threads in SQL; the cascade removes their states, messages and tool executions.
 
 ```sql
--- Soft-delete threads not touched in 90 days
-DELETE FROM agentflow_threads WHERE updated_at < NOW() - INTERVAL '90 days';
+-- Remove threads idle for 90 days (cascades to states, messages, tool_executions)
+DELETE FROM "public"."threads"
+WHERE updated_at < NOW() - INTERVAL '90 days';
 ```
 
-Or run a periodic vacuum job. For tenant offboarding, delete by `thread_id LIKE 'tenant-X:%'`.
+SQL deletes do not touch Redis. Cached entries expire on their own after `cache_ttl`. To remove one thread cleanly, including its cache key, call `await checkpointer.aclean_thread({"thread_id": "user-42", "user_id": "alex"})`.
 
-## Common gotchas
+Run autovacuum or a periodic `VACUUM` to reclaim space after large deletes.
 
-1. **Forgot Redis.** `PgCheckpointer` requires it. Without Redis, you'll see lock contention and slow reads.
-2. **Connection pool too small.** Shows up as queue latency under load.
-3. **No `thread_id`** in invoke config. Then surprised when it does not remember. Always pass `thread_id`.
-4. **Long messages bloat rows.** Trim before storing. See [state and messages](/docs/concepts/state-and-messages).
-5. **Treating Redis as the source of truth.** Redis can lose data. Postgres is canonical.
+## Common issues
 
-## Further reading
+| Symptom | Cause and fix |
+|---|---|
+| `ValueError: Either redis_url, redis_pool or redis instance must be provided.` | Redis is mandatory. Add a Redis source. |
+| `ValueError: Either postgres_dsn or pg_pool must be provided.` | Pass a DSN or an asyncpg pool. |
+| `ImportError` mentioning `asyncpg` or `redis` | Run `pip install "10xgraph[pg_checkpoint]"`. |
+| Connection error with a `postgresql+asyncpg://` URL | Use `postgresql://`. The DSN goes directly to asyncpg. |
+| Every call starts a fresh conversation | You did not pass a stable `thread_id`; a random one is generated per call. |
+| Thread not found for a user who knows the id | Working as intended with `enforce_user_isolation=True`; the `user_id` must match the owner. |
+| Large database | Messages are stored in full. Trim long outputs or keep large files in the media store. See [state and messages](/docs/concepts/state-and-messages). |
+| `ValueError: Invalid schema name` | `schema` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`. |
 
-- [Checkpointing concept](/docs/concepts/checkpointing-and-threads)
-- [Production checkpointing guide](/docs/server/production-checklist)
-- [AI agent memory and checkpointing](/docs/concepts/memory)
-- [Deploy AI agent (Docker + AWS)](/docs/server/deploy)
-- [Get started](/docs/get-started)
+## Related pages
+
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads)
+- [Long-term memory](/docs/concepts/memory-and-store)
+- [Set up checkpointing](/docs/guides/set-up-checkpointing)
+- [Durability and concurrency](/docs/guides/durability-and-concurrency)
+- [Production checklist](/docs/server/production-checklist)

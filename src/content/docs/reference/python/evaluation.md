@@ -1,31 +1,22 @@
 ---
 title: Evaluation
 seoTitle: "Evaluation API reference (Python)"
-description: AgentEvaluator, EvalSet, EvalCase, EvalConfig, EvalReport and TrajectoryCollector — how a scored evaluation run is wired together.
+description: "The evaluation API: classes for datasets, criteria, execution and results."
 section: Reference
 group: "Python library"
 order: 270
 label: Evaluation
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-## When to use this
+The evaluation API scores an agent against labelled datasets. You build an `EvalSet`, choose criteria in an `EvalConfig` or `EvalPresets`, run `AgentEvaluator` on a graph paired with a `TrajectoryCollector`, and read an `EvalReport`. Simulators add LLM-driven users. This page lists every class and signature.
 
-Use the evaluation framework when you need to:
-- Score agent accuracy on a labelled dataset (golden answers).
-- Assert that the agent follows the correct tool-call sequence (trajectory matching).
-- Run LLM-as-judge scoring against a rubric.
-- Run goal-driven user simulation against the agent.
+For an end-to-end walkthrough, see [Evaluation](/docs/testing/evaluation).
 
-The evaluation runner is separate from unit tests. It is designed to run as a CI
-step or a recurring offline report.
+Two companion pages explain the details:
 
-This page covers the data model and the runner. Two companion pages go deeper:
-
-- [Evaluation criteria](/docs/reference/python/evaluation-criteria) — every criterion class, its
-  constructor and its scoring behaviour.
-- [Evaluation harness](/docs/reference/python/evaluation-harness) — `EvaluationRunner`,
-  `ReporterManager`, and the pytest helpers.
+- [Evaluation criteria](/docs/reference/python/evaluation-criteria) covers every criterion class, its constructor and its scoring behaviour.
+- [Evaluation harness](/docs/reference/python/evaluation-harness) covers `EvaluationRunner`, `ReporterManager`, and the pytest helpers.
 
 ## Import paths
 
@@ -33,6 +24,7 @@ This page covers the data model and the runner. Two companion pages go deeper:
 from tenxgraph.qa.evaluation import (
     AgentEvaluator,
     EvalConfig,
+    EvalPresets,
     CriteriaConfig,
     CriterionConfig,
     MatchType,
@@ -51,6 +43,12 @@ from tenxgraph.qa.evaluation import (
     CriterionResult,
     TrajectoryCollector,
     make_trajectory_callback,
+    create_eval_app,
+    UserSimulator,
+    UserSimulatorConfig,
+    BatchSimulator,
+    ConversationScenario,
+    SimulationResult,
 )
 ```
 
@@ -84,8 +82,7 @@ _, callback_mgr = make_trajectory_callback(collector, config={"thread_id": "eval
 app = my_state_graph.compile(callback_manager=callback_mgr)
 ```
 
-`make_trajectory_callback()` returns a **tuple** `(collector, callback_manager)` —
-pass the second element to `compile()`.
+`make_trajectory_callback()` returns a **tuple** `(collector, callback_manager)`. Pass the second element to `compile()`.
 
 ---
 
@@ -103,9 +100,7 @@ A single labelled test case. Fields:
 | `tags` | `list[str]` | `[]` | Used by `EvalSet.filter_by_tags()`. |
 | `metadata` | `dict[str, Any]` | `{}` | Free-form. `HallucinationCriterion` reads `metadata["context"]`; `FactualAccuracyCriterion` reads `metadata["reference_facts"]`. |
 
-There is no `expected_response` or `expected_tools` attribute on `EvalCase` itself —
-those are constructor arguments of the factory methods, stored on the `Invocation`
-objects inside `conversation`.
+There is no `expected_response` or `expected_tools` attribute on `EvalCase` itself. Those are constructor arguments of the factory methods, stored on the `Invocation` objects inside `conversation`.
 
 ### `EvalCase.single_turn`
 
@@ -198,9 +193,7 @@ tc.matches(other, check_args=True, check_call_id=False)  # -> bool
 ```
 
 Compares against another `ToolCall`. Names must always be equal. Arguments are only
-compared when `check_args=True` **and** the expected call defines non-empty `args` —
-an expected `ToolCall` with `args={}` accepts any arguments. Trajectory criteria call
-this with `check_call_id=False`.
+compared when `check_args=True` **and** the expected call defines non-empty `args`. An expected `ToolCall` with `args={}` accepts any arguments. Trajectory criteria call this with `check_call_id=False`.
 
 ---
 
@@ -264,9 +257,7 @@ eval_set = EvalSet(eval_set_id="capitals", name="Capitals", eval_cases=[case1, c
 | `filter_by_tags(tags)` | Cases carrying **all** of the given tags. |
 | `len(eval_set)` / iteration | Case count / iterate over cases. |
 
-The on-disk format is a single JSON object, not JSONL. `EvalSetBuilder` offers a
-fluent way to construct one — see
-[Building eval sets](/docs/testing/eval-sets).
+The on-disk format is a single JSON object, not JSONL. `EvalSetBuilder` offers a fluent way to construct one (see [Building eval sets](/docs/testing/eval-sets)).
 
 ---
 
@@ -326,8 +317,7 @@ Every field is `CriterionConfig | None`, defaulting to `None` (criterion off).
 | `safety` | `SafetyCriterion` | `safety_v1` |
 | `simulation_goals` | `SimulationGoalsCriterion` | `simulation_goals` |
 
-The "reported as" column is the criterion's `name` — the key you will see in
-`EvalSummary.criterion_stats` and in `CriterionResult.criterion`.
+The "reported as" column is the criterion's `name`, the key you will see in `EvalSummary.criterion_stats` and in `CriterionResult.criterion`.
 
 ### Built-in configurations
 
@@ -351,6 +341,203 @@ The "reported as" column is the criterion's `name` — the key you will see in
 `CriterionConfig` fields and factory methods are documented in
 [Criteria](/docs/testing/criteria#criterionconfig-reference); the criterion
 classes themselves in [Evaluation criteria](/docs/reference/python/evaluation-criteria).
+
+---
+
+## `EvalPresets`
+
+Ready-made evaluation configurations for common scenarios.
+
+```python
+from tenxgraph.qa.evaluation import EvalPresets
+
+config = EvalPresets.response_quality(judge_model="gpt-4o")
+config = EvalPresets.tool_usage(strict=True)
+config = EvalPresets.comprehensive()
+```
+
+| Classmethod | Returns | Description |
+|---|---|---|
+| `response_quality(threshold=0.7, use_llm_judge=True, judge_model=DEFAULT_JUDGE_MODEL)` | `EvalConfig` | LLM-as-judge scoring focused on response quality. |
+| `tool_usage(threshold=1.0, strict=True, check_args=True)` | `EvalConfig` | Validates correct tool calls and arguments. `strict=True` requires exact matches (EXACT); `False` allows extras (IN_ORDER). |
+| `conversation_flow(threshold=0.8, judge_model=DEFAULT_JUDGE_MODEL)` | `EvalConfig` | Tests multi-turn conversations with response quality and trajectory matching. |
+| `quick_check()` | `EvalConfig` | Fast sanity check using ROUGE-1 token overlap (no LLM calls). Switch to `response_quality()` for semantic accuracy. |
+| `comprehensive(threshold=0.8, use_llm_judge=True, judge_model=DEFAULT_JUDGE_MODEL)` | `EvalConfig` | All criteria: tool names, trajectory, ROUGE, LLM judge, factual accuracy, hallucination, safety. |
+| `safety_check(threshold=0.8, judge_model=DEFAULT_JUDGE_MODEL)` | `EvalConfig` | Focused on safety and hallucination detection. |
+| `combine(*configs)` | `EvalConfig` | Merge multiple presets into one. Later criteria override earlier ones. |
+| `custom(response_threshold=None, tool_threshold=None, llm_judge_threshold=None, tool_match_type=MatchType.IN_ORDER, check_tool_args=True, hallucination_threshold=None, safety_threshold=None, factual_accuracy_threshold=None, judge_model=DEFAULT_JUDGE_MODEL)` | `EvalConfig` | Enable only the criteria whose threshold you pass. |
+
+---
+
+## `EvalSetBuilder`
+
+Fluent builder for creating eval sets in code.
+
+```python
+from tenxgraph.qa.evaluation import EvalSetBuilder
+
+eval_set = (
+    EvalSetBuilder("my_tests")
+    .add_case("What is 2+2?", "4")
+    .add_case(
+        "Get the weather",
+        "It is sunny",
+        expected_tools=["get_weather"],
+    )
+    .add_multi_turn([
+        ("Hello", "Hi"),
+        ("How are you?", "I'm good"),
+    ])
+    .build()
+)
+
+eval_set.save("my_tests.json")
+```
+
+| Method | Parameters | Returns | Description |
+|---|---|---|---|
+| `__init__` | `name: str = "eval_set"` | `EvalSetBuilder` | Create a builder with a given set name. |
+| `add_case` | `query: str, expected: str, case_id: str = None, expected_tools: list[str \| ToolCall] = None, expected_node_order: list[str] = None, name: str = "", description: str = ""` | `self` | Add a single-turn test case. |
+| `add_multi_turn` | `conversation: list[tuple[str, str]], case_id: str = None, expected_tools: list[str \| ToolCall] = None, name: str = "", description: str = ""` | `self` | Add a multi-turn conversation. |
+| `add_tool_test` | `query: str, tool_name: str, tool_args: dict = None, expected_response: str = None, case_id: str = None` | `self` | Add a single test focused on one tool call. |
+| `build` | none | `EvalSet` | Build and return the final EvalSet. |
+| `save` | `path: str` | `EvalSet` | Build and save to a JSON file. |
+| `from_conversations` | classmethod `(conversations: list[dict[str, str]], name: str = "conversation_tests")` | `EvalSet` | Build from dicts with `user` and `assistant` keys. |
+| `from_file` | classmethod `(path: str)` | `EvalSetBuilder` | Load an existing eval set JSON to extend it. |
+| `quick` | classmethod `(*test_pairs: tuple[str, str])` | `EvalSet` | Build a set from `(query, expected)` pairs. |
+
+---
+
+## `UserSimulator`
+
+`UserSimulator` uses an LLM to play the user, so you can test an agent with dynamic conversations instead of fixed prompts. Call `run()` with a compiled graph and a `ConversationScenario`. It returns a `SimulationResult`. For where simulation fits in a test plan, see [Evaluation](/docs/testing/evaluation).
+
+```python
+import asyncio
+
+from tenxgraph.qa.evaluation import ConversationScenario, UserSimulator
+
+
+async def check_weather_flow(graph) -> None:
+    # `graph` is a compiled agent graph (for example the `app` from create_eval_app)
+    simulator = UserSimulator(model="gemini/gemini-2.5-flash", temperature=0.7)
+
+    scenario = ConversationScenario(
+        scenario_id="weather_lookup",
+        description="User wants the weather for travel planning",
+        starting_prompt="I'm planning a trip to New York next week",
+        goals=["Get weather info"],
+        max_turns=5,
+    )
+
+    result = await simulator.run(graph, scenario)
+    print(result.completed, result.goals_achieved)
+    for turn in result.conversation:
+        print(turn["role"], turn["content"])
+
+
+# asyncio.run(check_weather_flow(app))
+```
+
+### `UserSimulator` constructor
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `model` | `str` | `"gemini/gemini-2.5-flash"` | Model that generates the simulated user's messages. |
+| `temperature` | `float` | `0.7` | Sampling temperature for user messages. |
+| `max_turns` | `int` | `10` | Default turn limit, used when the scenario's `max_turns` is falsy. |
+| `config` | `UserSimulatorConfig \| None` | `None` | When given, `model`, `temperature`, `max_turns` (from `max_invocations`) and `api_style` are taken from it. |
+| `criteria` | `list[BaseCriterion] \| None` | `None` | Criteria (for example `SimulationGoalsCriterion`) run after the simulation to score it. |
+| `api_style` | `str` | `"responses"` | OpenAI API style: `"responses"` or `"chat"` for legacy or third-party models. |
+
+### `UserSimulator.run`
+
+```python
+async def run(
+    graph: CompiledGraph,
+    scenario: ConversationScenario,
+    config: dict[str, Any] | None = None,
+) -> SimulationResult
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `graph` | `CompiledGraph` | required | The compiled agent graph to test. |
+| `scenario` | `ConversationScenario` | required | The scenario to simulate. |
+| `config` | `dict \| None` | `None` | Config passed to each graph call. A `thread_id` is generated per run when you do not set one, so runs do not share checkpointer state. |
+
+If `scenario.starting_prompt` is empty, the simulator generates the opening message. Each turn sends the full conversation history to the graph. If the agent raises, the run ends and the result carries the error.
+
+### `ConversationScenario`
+
+A scenario describes who the simulated user is and what they want.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `scenario_id` | `str` | `""` | Identifier, also used to build the per-run `thread_id`. |
+| `description` | `str` | `""` | Description of the overall scenario. |
+| `starting_prompt` | `str` | `""` | First user message. Generated when empty. |
+| `conversation_plan` | `str` | `""` | High-level plan of how the conversation should flow. |
+| `goals` | `list[str]` | `[]` | Goals the user wants to achieve. |
+| `max_turns` | `int` | `10` | Maximum conversation turns. |
+| `metadata` | `dict[str, Any]` | `{}` | Free-form data. |
+
+### `SimulationResult`
+
+| Attribute | Type | Description |
+|---|---|---|
+| `scenario_id` | `str` | ID of the scenario that was run. |
+| `turns` | `int` | Number of turns executed. |
+| `conversation` | `list[dict[str, str]]` | Messages as `{"role": ..., "content": ...}` dicts. |
+| `goals_achieved` | `list[str]` | Goals judged as achieved. |
+| `completed` | `bool` | Whether the simulation completed. |
+| `error` | `str \| None` | Set if the simulation failed. |
+| `criterion_scores` | `dict[str, float]` | Score per criterion in `criteria`, 0.0 to 1.0. |
+| `criterion_details` | `dict[str, Any]` | Detail output per criterion. |
+| `simulator_token_usage` | `TokenUsage` | Tokens used by the simulator's own LLM calls. |
+| `criterion_results` | `list[CriterionResult]` | Full results with per-criterion token usage. |
+
+`UserSimulatorConfig` (`model`, `max_invocations`, `temperature`, `thinking_enabled`, `thinking_budget`, `api_style`) is also the type of `EvalConfig.user_simulator_config`.
+
+---
+
+## `BatchSimulator`
+
+`BatchSimulator` runs many scenarios concurrently against one graph, with a semaphore capping parallelism. Results come back in the same order as the scenarios, and each run gets its own `thread_id`.
+
+```python
+from tenxgraph.qa.evaluation import BatchSimulator, ConversationScenario, UserSimulator
+
+
+async def run_scenarios(graph) -> None:
+    batch = BatchSimulator(
+        simulator=UserSimulator(model="gemini/gemini-2.5-flash"),
+        max_concurrency=4,
+    )
+
+    scenarios = [
+        ConversationScenario(
+            scenario_id="weather", starting_prompt="Weather in Paris?", goals=["Get weather"]
+        ),
+        ConversationScenario(
+            scenario_id="hotel", starting_prompt="I need a hotel", goals=["Book a hotel"]
+        ),
+    ]
+
+    results = await batch.run_batch(graph, scenarios)
+    print(batch.summary(results))
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `simulator` | `UserSimulator \| None` | `None` | A preconfigured simulator. When omitted, one is built from `**kwargs`. |
+| `max_concurrency` | `int` | `5` | Maximum scenarios running at once. |
+| `**kwargs` | | | Passed to `UserSimulator` when `simulator` is not given. |
+
+| Method | Signature | Description |
+|---|---|---|
+| `run_batch` | **async** `(graph, scenarios, config=None) -> list[SimulationResult]` | Run all scenarios concurrently. |
+| `summary` | `(results) -> dict[str, Any]` | Keys: `total_scenarios`, `completed`, `completion_rate`, `total_goals_achieved`, `average_turns`, `errors`. |
 
 ---
 
@@ -454,8 +641,7 @@ print(report.format_summary())
 | `collector` | `TrajectoryCollector` | required | Collector wired into that graph. |
 | `config` | `EvalConfig \| None` | `None` | Falls back to `EvalConfig.default()`. |
 
-Concurrency is **not** a constructor argument — pass `parallel` and
-`max_concurrency` to `evaluate()`, or set them on `EvalConfig`.
+Concurrency is **not** a constructor argument. Pass `parallel` and `max_concurrency` to `evaluate()`, or set them on `EvalConfig`.
 
 ### `evaluate`
 
@@ -511,9 +697,7 @@ Returned by `evaluate()`.
 | `to_file(path)` / `EvalReport.from_file(path)` | JSON round-trip. |
 | `EvalReport.create(eval_set_id, results, eval_set_name="", config_used=None)` | Build a report and compute its summary. |
 
-The report has no `overall_score` or `pass_rate` attribute of its own — the rate
-lives on `report.summary.pass_rate`. Full `EvalSummary` fields are documented in
-[Evaluation harness](/docs/reference/python/evaluation-harness#evalsummary).
+The report has no `overall_score` or `pass_rate` attribute of its own. The rate lives on `report.summary.pass_rate`. Full `EvalSummary` fields are documented in [Evaluation harness](/docs/reference/python/evaluation-harness#evalsummary).
 
 ### `EvalCaseResult`
 
@@ -548,7 +732,7 @@ lookups by name.
 | Attribute | Type | Description |
 |---|---|---|
 | `criterion` | `str` | The criterion's `name`. |
-| `score` | `float` | Score 0.0–1.0. |
+| `score` | `float` | Score 0.0-1.0. |
 | `passed` | `bool` | `score >= threshold`. |
 | `threshold` | `float` | Threshold used. |
 | `details` | `dict[str, Any]` | Criterion-specific detail. |
@@ -561,10 +745,7 @@ lookups by name.
 
 ## Reporters
 
-Reporters run automatically after `evaluate()` unless disabled. To drive them
-yourself, use `ReporterManager` — see
-[Evaluation harness](/docs/reference/python/evaluation-harness#reporting). The individual reporters are
-also usable directly:
+Reporters run automatically after `evaluate()` unless disabled. To drive them yourself, use `ReporterManager` (see [Evaluation harness](/docs/reference/python/evaluation-harness#reporting)). The individual reporters are also usable directly:
 
 ```python
 from tenxgraph.qa.evaluation import (
@@ -598,89 +779,3 @@ from tenxgraph.qa.evaluation.config.types import DEFAULT_JUDGE_MODEL
 
 The default LLM for every judge-based criterion. Override per criterion with
 `judge_model=` on the relevant `CriterionConfig` factory method.
-
----
-
-## Full end-to-end example
-
-```python
-import asyncio
-
-from tenxgraph.qa.evaluation import (
-    AgentEvaluator,
-    CriteriaConfig,
-    CriterionConfig,
-    EvalCase,
-    EvalConfig,
-    EvalSet,
-    MatchType,
-    ToolCall,
-    create_eval_app,
-)
-
-from my_project.graph import build_graph   # returns an uncompiled StateGraph
-
-async def main():
-    # 1. Compile with a collector attached
-    app, collector = create_eval_app(build_graph())
-
-    # 2. Build the eval set
-    eval_set = EvalSet(
-        eval_set_id="capitals",
-        name="Capital cities",
-        eval_cases=[
-            EvalCase.single_turn(
-                eval_id="capitals-001",
-                user_query="What is the capital of France?",
-                expected_response="The capital of France is Paris.",
-                expected_tools=[ToolCall(name="lookup_capital")],
-            ),
-            EvalCase.single_turn(
-                eval_id="capitals-002",
-                user_query="What is the capital of Germany?",
-                expected_response="The capital of Germany is Berlin.",
-                expected_tools=[ToolCall(name="lookup_capital")],
-            ),
-        ],
-    )
-
-    # 3. Configure criteria
-    config = EvalConfig(
-        criteria=CriteriaConfig(
-            trajectory=CriterionConfig.trajectory(
-                threshold=1.0,
-                match_type=MatchType.IN_ORDER,
-            ),
-            response_match=CriterionConfig.response_match(threshold=0.8),
-        ),
-    )
-
-    # 4. Run
-    evaluator = AgentEvaluator(app, collector, config=config)
-    report = await evaluator.evaluate(eval_set, verbose=True)
-
-    # 5. Inspect
-    print(report.format_summary())
-    print(f"Pass rate: {report.summary.pass_rate:.0%}")
-    for case in report.failed_cases:
-        for cr in case.failed_criteria:
-            print(f"{case.eval_id} · {cr.criterion}: {cr.score:.2f} < {cr.threshold}")
-
-asyncio.run(main())
-```
-
----
-
-## Common errors
-
-| Error | Cause | Fix |
-|---|---|---|
-| `ValidationError: Extra inputs are not permitted` on `EvalConfig` | `criteria` was given a free-form dict. `CriteriaConfig` has fixed field names and forbids extras. | Use `CriteriaConfig(trajectory=..., response_match=...)`. |
-| `AttributeError` on the object returned by `make_trajectory_callback()` | It returns `(collector, manager)`, not a manager. | `_, mgr = make_trajectory_callback(collector)`. |
-| Trajectory and node-order criteria always score `0.0` | The graph was compiled without the collector's callback manager. | Use `create_eval_app()`, or pass the manager to `compile()`. |
-| `FileNotFoundError: Eval set file not found` | Path passed to `evaluate()` does not exist. | Check the path relative to the working directory. |
-| `AttributeError: 'EvalReport' object has no attribute 'overall_score'` | No such attribute. | Use `report.summary.pass_rate` and `summary.criterion_stats`. |
-| `AttributeError: 'EvalCaseResult' object has no attribute 'case_id'` | The field is `eval_id`. | Use `result.eval_id`. |
-| Criterion score is `0.5` with reasoning `"No LLM provider available"` | The judge model could not be resolved to a configured provider. | Install the provider extra and set its API key. |
-| `MatchType.EXACT` failures when the run looks correct | The actual trajectory has extra tool calls. | Switch to `MatchType.IN_ORDER`. |
-| `report.summary.error_cases` equals the case count | The graph raises on every case. | Run one `evaluate_case()` and read `result.error`. |

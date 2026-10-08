@@ -5,14 +5,16 @@ section: Reference
 group: "REST API"
 order: 380
 label: Observability
-updated: "2026-07-21"
+updated: "2026-10-08"
 ---
 
-`GET /v1/observability/{thread_id}` reconstructs a run trace for a thread from the events its runs emitted: a span tree, a flat event list, aggregated token usage, and call counts. It is what the playground's trace view renders.
+`GET /v1/observability/{thread_id}` returns a reconstructed trace for a run on a thread: a span tree, a flat event list, aggregated token usage, and call counts. It reads from an in-memory store that is only available outside production, so use it for development and the playground, not for production tracing.
 
-Base path: `/v1/observability`
-
-Permission: `graph:read`.
+| Property | Value |
+| --- | --- |
+| Method and path | `GET /v1/observability/{thread_id}` |
+| Permission | `graph:read` |
+| Availability | Development only (`MODE` other than `production`) |
 
 ---
 
@@ -30,7 +32,21 @@ Permission: `graph:read`.
 | --- | --- | --- | --- |
 | `run_id` | string | latest run | Return this specific run instead of the most recent one |
 
-**Response:**
+**Example request:**
+
+```bash
+# Latest run for the thread
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/v1/observability/my-thread-1"
+
+# A specific run
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/v1/observability/my-thread-1?run_id=run-a"
+```
+
+Omit the `Authorization` header if the server runs without auth.
+
+**Response:** the standard success envelope (`data`, plus `message` and `metadata`), shown here with the `data` payload.
 
 ```json
 {
@@ -175,9 +191,13 @@ Events are returned **newest first**, so a UI can render the list without revers
 
 Traces come from an in-process telemetry store that records chunks as runs execute. It is bound **only outside production**: when `MODE=production` the store is not created and this endpoint returns an empty payload (`run_count: 0`, `run: null`) rather than an error.
 
-The store is in-memory and not durable. It is a development and playground aid, not a production observability system. For production tracing, configure OpenTelemetry (`OTEL_ENABLED`) or the `observability` block in `10xgraph.json`.
+The store is in-memory and not durable, and a restart clears it. It keeps at most 200 threads, 20 runs per thread, and 2000 records per run, dropping the oldest first. Deleting a thread through the threads API also clears its traces. It is a development and playground aid, not a production observability system. For production tracing, configure OpenTelemetry (`OTEL_ENABLED`) or the `observability` block in `10xgraph.json`.
 
 Both `POST /v1/graph/invoke` and `POST /v1/graph/stream` record runs. Invoke has no chunk stream, so its trace is reconstructed from the final messages, which is enough for usage and cost but produces a coarser span tree than a streamed run.
+
+### Errors and empty results
+
+An unknown thread or an unknown `run_id` is not an error: the endpoint returns 200 with `run: null` (and `run_count` and `run_ids` for any runs that do exist). A missing or invalid token returns 401, and a token without `graph:read` returns 403.
 
 ---
 

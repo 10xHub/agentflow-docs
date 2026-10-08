@@ -1,243 +1,243 @@
 ---
 title: Google GenAI Adapter
-description: Use the GoogleGenAIConverter to integrate raw google-genai SDK calls into 10xGraph's message format, including streaming.
+description: "Convert google-genai SDK responses to 10xGraph Message format with GoogleGenAIConverter"
 section: Examples
 group: "Foundations"
 order: 70
 label: Google GenAI Adapter
-updated: "2026-07-21"
+updated: "2026-10-08"
+faq:
+  - q: "When should I use GoogleGenAIConverter instead of Agent?"
+    a: "Use it when you call the google-genai SDK yourself, outside a StateGraph or in a custom node, and still want 10xGraph Message objects. Inside a graph, the Agent class handles the conversion for you."
+  - q: "Does the converter support streaming?"
+    a: "Yes. convert_streaming_response yields Message objects with delta set to True for each chunk, followed by a final assembled message with delta set to False."
 ---
 
-**Source example:** [`examples/google_genai_example.py`](https://github.com/10xGraph/10xGraph/blob/main/examples/google_genai_example.py)
-
-## What you will build
-
-Three standalone examples that demonstrate how to use the `GoogleGenAIConverter` adapter:
-
-1. **Standard response** — convert a single `generate_content` response into a 10xGraph `Message`.
-2. **Streaming response** — consume a `generate_content_stream` and yield `StreamChunk` messages as they arrive.
-3. **Function calling** — inspect tool call blocks from a model response.
+`GoogleGenAIConverter` turns raw google-genai SDK responses into 10xGraph `Message` objects, so you can call Gemini directly and still work with one message format. This walkthrough covers a standard response, a streamed response, and function calling, using the example at `agentflow/examples/google_genai_example.py` in the [10xGraph repository](https://github.com/10xGraph/10xGraph).
 
 ## Prerequisites
 
-- Python 3.12 or later
-- `10xgraph` installed
-- `google-genai` SDK installed:
+Install 10xGraph with the Google GenAI provider extra:
 
-  ```bash
-  pip install google-genai
-  ```
-
-- `GEMINI_API_KEY` or `GOOGLE_API_KEY` set in your environment (or `.env` file)
-
-<aside class="callout callout-note" role="note"><p class="callout-title">Optional dependency</p>
-
-`google-genai` is **not** bundled with `10xgraph`. You must install it separately. The examples catch `ImportError` and print a clear install message if the package is missing.
-
-</aside>
-
-## Adapter architecture
-
-```mermaid
-flowchart LR
-    A[google-genai SDK\nResponse / Stream] -->|GoogleGenAIConverter| B[10xGraph Message]
-    B --> C[StateGraph / context]
-
-    subgraph 10xGraph
-        B
-        C
-    end
-
-    style A fill:#4A90D9,color:#fff
-    style B fill:#7B68EE,color:#fff
-    style C fill:#50C878,color:#fff
+```bash
+pip install "10xgraph[google-genai]"
 ```
 
-The `GoogleGenAIConverter` lives in `tenxgraph.runtime.adapters.llm`. It is the bridge between the raw SDK objects (which are provider-specific) and the provider-neutral `Message` format that the rest of 10xGraph operates on.
+Set your Google API key:
 
-## Example 1 — Standard response
+```bash
+export GEMINI_API_KEY="your-key-here"
+# or
+export GOOGLE_API_KEY="your-key-here"
+```
 
-```python
+Run the full example with `python examples/google_genai_example.py` from the `agentflow` folder. It prints an install message if google-genai is missing and returns early if no key is set.
+
+## How GoogleGenAIConverter works
+
+The converter lives in `tenxgraph.runtime.adapters.llm` and maps an SDK response to a `Message`. It extracts content blocks, tool calls, token usage and reasoning into one structure. The three examples below share the imports shown in the first one.
+
+## Example 1: Standard response
+
+Convert a single model response to a `Message`:
+
+```python title="google_genai_example.py"
 import asyncio
 import os
 
-from tenxgraph.runtime.adapters.llm import GoogleGenAIConverter
 from google import genai
 from google.genai import types
 
+from tenxgraph.runtime.adapters.llm import GoogleGenAIConverter
+
+
 async def standard_response_example():
+    """Convert a standard Google GenAI response to a Message."""
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        print("Error: GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set")
+        return
+
     client = genai.Client(api_key=api_key)
 
     try:
+        # Call the model
         response = client.models.generate_content(
             model="gemini-2.0-flash-exp",
             contents="Write a haiku about Python programming",
-            config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=100),
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=100,
+            ),
         )
 
+        # Convert to 10xGraph Message
         converter = GoogleGenAIConverter()
         message = await converter.convert_response(response)
 
-        print(f"Message ID   : {message.message_id}")
-        print(f"Role         : {message.role}")
-        print(f"Token usage  : {message.usages}")
+        # Inspect the message
+        print(f"Message ID: {message.message_id}")
+        print(f"Role: {message.role}")
+        print(f"Content blocks: {len(message.content)}")
         for block in message.content:
             if hasattr(block, "text"):
-                print(f"Text         : {block.text}")
+                print(f"Text: {block.text}")
+
     finally:
         client.close()
+
 
 asyncio.run(standard_response_example())
 ```
 
-### What `convert_response` returns
+The `convert_response()` method is async and returns a single `Message` with:
 
-```mermaid
-classDiagram
-    class Message {
-        +str message_id
-        +str role
-        +list~ContentBlock~ content
-        +list~ToolCall~ tools_calls
-        +dict metadata
-        +UsageInfo usages
-    }
-    class ContentBlock {
-        +str text
-    }
-    class ToolCallBlock {
-        +str name
-        +dict args
-    }
-    Message --> ContentBlock : contains
-    Message --> ToolCallBlock : contains (function calls)
-```
+- `message_id`: ID for the message
+- `role`: Always `"assistant"` for model responses
+- `content`: List of content blocks (TextBlock, ImageBlock, ToolCallBlock, etc.)
+- `tools_calls`: List of function call objects if the model called functions
+- `usages`: Token count summary (prompt, completion, cached)
+- `metadata`: A dict with `provider` (`google_genai`), `model` and `finish_reason`
 
-## Example 2 — Streaming response
+## Example 2: Streaming response
 
-```python
+Handle streaming responses that yield chunks as they arrive:
+
+```python title="google_genai_example.py (continued)"
 async def streaming_response_example():
+    """Convert a streaming response, emitting chunks as they arrive."""
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        print("Error: GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set")
+        return
+
     client = genai.Client(api_key=api_key)
 
     try:
+        # Request a streaming response
         stream = client.models.generate_content_stream(
             model="gemini-2.0-flash-exp",
             contents="Count from 1 to 5, one number at a time",
             config=types.GenerateContentConfig(temperature=0.7),
         )
 
+        # Convert the stream
         converter = GoogleGenAIConverter()
         config = {"thread_id": "example-thread"}
 
+        print("Streaming chunks:")
         async for message in converter.convert_streaming_response(
             config=config,
             node_name="google_genai_node",
             response=stream,
         ):
+            # Each message has a delta flag
             if message.delta:
-                # Streaming chunk — print text as it arrives
+                # This is a streaming chunk, show it immediately
                 for block in message.content:
                     if hasattr(block, "text"):
                         print(block.text, end="", flush=True)
             else:
-                # Final assembled message
-                print(f"\nFinal message ID: {message.message_id}")
+                # This is the final assembled message
+                print(f"\n\nFinal message ID: {message.message_id}")
+                print(f"Total blocks: {len(message.content)}")
+
     finally:
         client.close()
+
+
+asyncio.run(streaming_response_example())
 ```
 
-### Streaming event flow
+The `convert_streaming_response()` method yields multiple `Message` objects. Check `message.delta`:
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant Converter as GoogleGenAIConverter
-    participant SDK as google-genai SDK
+- `delta=True`: A partial chunk; buffer or display immediately
+- `delta=False`: The final complete message with full context
 
-    App->>SDK: generate_content_stream(...)
-    SDK-->>Converter: raw chunk 1
-    Converter-->>App: Message(delta=True, content=[TextBlock("1")])
-    SDK-->>Converter: raw chunk 2
-    Converter-->>App: Message(delta=True, content=[TextBlock("2")])
-    SDK-->>Converter: raw chunk N
-    Converter-->>App: Message(delta=True, content=[TextBlock("N")])
-    Converter-->>App: Message(delta=False) — final assembled message
-```
+This pattern lets you display tokens as they arrive while still having the complete message at the end.
 
-The `delta` flag distinguishes streaming chunks from the final assembled `Message`. Your code should buffer or display delta messages and store/use the final one.
+## Example 3: Function calling
 
-## Example 3 — Function calling
+Inspect tool calls when the model requests them:
 
-```python
+```python title="google_genai_example.py (continued)"
 async def function_calling_example():
+    """Extract and inspect function calls from a model response."""
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        print("Error: GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set")
+        return
+
     client = genai.Client(api_key=api_key)
 
     try:
+        # Define a tool function
         def get_weather(location: str) -> str:
-            """Get the weather for a location."""
+            """Get the weather for a location.
+
+            Args:
+                location: The city and state, e.g. San Francisco, CA
+            """
             return "sunny"
 
+        # Request a response with function calling enabled
         response = client.models.generate_content(
             model="gemini-2.0-flash-exp",
             contents="What's the weather like in Boston?",
             config=types.GenerateContentConfig(
                 tools=[get_weather],
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                    disable=True  # Disable auto-calling to see the function call
+                ),
             ),
         )
 
+        # Convert the response
         converter = GoogleGenAIConverter()
         message = await converter.convert_response(response)
 
-        print(f"Tool calls: {len(message.tools_calls or [])}")
+        # Inspect tool calls
+        print(f"Tool calls in message: {len(message.tools_calls or [])}")
         if message.tools_calls:
-            for tc in message.tools_calls:
-                print(f"  Function : {tc['function']['name']}")
-                print(f"  Arguments: {tc['function']['arguments']}")
+            for tool_call in message.tools_calls:
+                print(f"\nTool call:")
+                print(f"  Function: {tool_call.get('function', {}).get('name')}")
+                print(f"  Arguments: {tool_call.get('function', {}).get('arguments')}")
+
+        # Also available as ToolCallBlock objects in message.content
+        for block in message.content:
+            if hasattr(block, "name"):
+                print(f"\nToolCallBlock:")
+                print(f"  Name: {block.name}")
+                print(f"  Args: {block.args}")
+
     finally:
         client.close()
-```
 
-## Running all examples
 
-```python
-import asyncio
-
-asyncio.run(standard_response_example())
-asyncio.run(streaming_response_example())
 asyncio.run(function_calling_example())
 ```
 
-## When to use `GoogleGenAIConverter` directly
+The `Message.tools_calls` field contains function calls as a list of dicts in OpenAI format, and `message.content` contains them as `ToolCallBlock` objects. Both represent the same information.
 
-The `Agent` class already handles Google GenAI internally when you set `provider="google"`. Use `GoogleGenAIConverter` directly when:
+## When to use GoogleGenAIConverter directly
 
-- You need to call the SDK outside of a `StateGraph` (e.g. in a background job).
-- You want fine-grained control over model config parameters that `Agent` does not expose.
-- You are building a custom node that calls the SDK and needs to produce 10xGraph-compatible messages.
+The `Agent` class already integrates Google GenAI when you set `provider="google"`. Use `GoogleGenAIConverter` directly when:
 
-For the common case — an LLM that calls tools inside a graph — use the `Agent` class instead. See [Agent Class Pattern](/docs/examples/agent-class).
+- You call the SDK outside of a StateGraph (background jobs, utilities)
+- You need fine-grained control over model parameters that `Agent` does not expose
+- You are building a custom graph node that calls the SDK
 
-## Key concepts
+For the common case (an LLM inside a graph that calls tools), use `Agent` instead. See [Agent Class Pattern](/docs/examples/agent-class).
 
-| Concept | Details |
-|---|---|
-| `GoogleGenAIConverter` | Translates google-genai SDK responses into 10xGraph `Message` objects |
-| `convert_response()` | Awaitable — converts a single completed response |
-| `convert_streaming_response()` | Async generator — yields delta messages and a final assembled message |
-| `message.delta` | `True` for streaming chunks, `False` for the final complete message |
-| `message.tools_calls` | List of tool call dicts when the LLM requested function execution |
+## Key takeaways
 
-## What you learned
-
-- How to install and import `GoogleGenAIConverter`.
-- How to convert both standard and streaming google-genai responses into `Message` objects.
-- How to detect and inspect function call responses.
-- When to use the converter directly vs. using the `Agent` class.
+- `GoogleGenAIConverter` translates raw SDK responses to 10xGraph `Message` format
+- `convert_response()` handles single responses
+- `convert_streaming_response()` handles streams with delta chunks
+- Both extract content, tool calls, and token usage automatically
+- The converter module imports without google-genai installed, but you need the extra to call the SDK
 
 ## Next step
 
-→ [Tool Decorator](/docs/examples/tool-decorator) — use the `@tool` decorator to attach metadata, tags, and capabilities to your tool functions.
+Read [Tool Decorator](/docs/examples/tool-decorator) to learn how to decorate functions as tools with metadata, tags, and error handling.

@@ -5,7 +5,7 @@ description: How StateGraph models an agent as nodes, edges and shared state, co
 section: Concepts
 order: 20
 group: "Foundations"
-updated: 2026-10-08
+updated: "2026-10-08"
 faq:
   - q: What is the difference between StateGraph and ReactAgent?
     a: ReactAgent is a prebuilt that creates a StateGraph for you, with one agent node, one tool node and a conditional edge between them. Build a StateGraph yourself when you need your own nodes, routing or several agents.
@@ -16,7 +16,16 @@ faq:
 
 ---
 
-A `StateGraph` is the core orchestration engine for building agent workflows. It models an agent as a directed graph of nodes (functions, agents, or tool dispatchers) connected by edges. All nodes read and write a shared state object, enabling multi-step reasoning, tool use, and human-in-the-loop control. You define the graph structure, call `compile()` to validate and prepare it, then execute it with `invoke()` for single runs or `stream()` for incremental results.
+A `StateGraph` models an agent as a directed graph: nodes (functions, agents or tool dispatchers) connected by edges, all reading and writing one shared state. You define the structure, call `compile()` to validate it, then run it with `invoke()` for a final result or `stream()` for incremental output. A recursion limit stops runaway loops.
+
+```mermaid
+flowchart LR
+    S([START]) --> A[intake]
+    A -->|urgent| B[urgent]
+    A -->|backlog| C[backlog]
+    B --> E([END])
+    C --> E
+```
 
 ## What are the parts of a graph?
 
@@ -135,12 +144,12 @@ graph = StateGraph(TicketState())
 Compilation performs several checks:
 
 - **Entry point validation**: Ensures you have called `set_entry_point()` or added an edge from `START` to a node. If not, raises `GraphError` with code `GRAPH_002`.
-- **Node reachability**: Detects orphaned nodes (nodes with no incoming or outgoing edges), which are typically a sign of incomplete routing logic.
-- **Edge target validation**: Confirms that every edge points to a node you have actually registered with `add_node()`.
-- **Interrupt node validation**: If you specified nodes to interrupt before or after, checks that they exist in the graph.
+- **Node reachability**: Detects orphaned nodes (nodes with no incoming or outgoing edges), which are typically a sign of incomplete routing logic. Raises `GraphError` with code `GRAPH_003`.
+- **Edge target validation**: Confirms that every edge points to a node you have actually registered with `add_node()`, otherwise `GRAPH_004`.
+- **Interrupt node validation**: If you specified nodes to interrupt before or after, checks that they exist in the graph. Unknown names raise `GraphError` with code `GRAPH_004`, the same code as an edge that targets an unregistered node.
 - **Dependency resolution**: Binds checkpointers, stores, publishers, and other runtime services into a dependency container so they are available to nodes during execution.
 
-Once compiled, the `CompiledGraph` is an immutable, ready-to-execute graph. You can invoke it multiple times with different inputs without recompiling.
+Once compiled, you can invoke the `CompiledGraph` many times with different inputs and thread ids without recompiling. Compile once at startup.
 
 ```python
 app = graph.compile(
@@ -154,7 +163,7 @@ app = graph.compile(
 )
 ```
 
-If you omit `checkpointer`, 10xGraph provides an `InMemoryCheckpointer` so the graph can always run. However, an in-memory checkpointer does not persist state between runs, so every call starts fresh.
+If you omit `checkpointer`, 10xGraph uses an `InMemoryCheckpointer` so the graph can always run. It keeps state only in process memory, so nothing survives a restart. See [Checkpointing and threads](/docs/concepts/checkpointing-and-threads) for durable options and [Interrupts](/docs/concepts/interrupts) for `interrupt_before` and `interrupt_after`.
 
 <Callout type="warning" title="Compile-time vs. runtime errors">
 
@@ -166,7 +175,7 @@ Compilation catches structural problems (missing nodes, unreachable paths, bad e
 
 Every graph execution has a recursion limit: a maximum number of steps before 10xGraph forces the run to stop. The limit prevents infinite loops caused by faulty routing logic. The default limit is 25 steps per run.
 
-A step is one node execution. If your graph has an agent node that calls a tool, then a tool node that processes the result, that counts as two steps. Conditional edges themselves do not count as steps; they only determine which node to visit next.
+A step is one node execution. An agent node followed by a tool node counts as two steps, and each trip around an agent-tool loop adds two more. Conditional edges themselves do not count as steps; they only determine which node to visit next.
 
 When you invoke a graph, you can override the default limit in the config:
 
@@ -177,7 +186,7 @@ result = app.invoke(
 )
 ```
 
-If a run reaches the limit while the graph is still processing (the current node is not `END`), execution stops immediately and raises `GraphRecursionError` with code `RECURSION_001`. The partial state is returned so you can inspect what happened.
+If a run reaches the limit while the graph is still processing (the current node is not `END`), execution stops and raises `GraphRecursionError` with code `RECURSION_001`. The check runs after each node completes, when the step counter has reached the limit, so a run that needs exactly 25 steps also fails at the default. Its `context` holds `max_steps`, `current_step` and `current_node`. When streaming, an `error` chunk is yielded before the exception is raised. See [Errors and limits](/docs/concepts/errors-and-limits).
 
 **When to raise the limit:**
 
@@ -192,20 +201,22 @@ If a run reaches the limit while the graph is still processing (the current node
 
 Fix the routing logic first. Only raise the limit if you have verified that the loop is intentional and necessary.
 
-```python
-# Example: detect and fix a loop
-# If you see step 25/25 and the current node is still "agent",
-# your routing function probably returns "agent" unconditionally.
-# Add logic to exit the loop:
+```python title="loop_guard.py"
+from tenxgraph.core.state import AgentState
+
+
+# A routing function that loops back to "agent" unconditionally will hit the
+# recursion limit. Give it an exit condition based on state.
 def route(state: AgentState) -> str:
-    if some_stopping_condition:
+    last = state.context[-1] if state.context else None
+    if last is not None and last.role == "assistant" and not last.tools_calls:
         return "final"
     return "agent"
 ```
 
 <Callout type="tip" title="Monitoring recursion depth">
 
-Stream the graph to monitor its progress in real time. If you see the step counter approaching the limit, you can stop the stream and investigate the routing logic.
+Stream with `ResponseGranularity.PARTIAL` or `FULL` and read `chunk.state.execution_meta.step` on `state` chunks. If the counter climbs toward the limit, stop consuming and inspect the routing logic.
 
 </Callout>
 
@@ -222,27 +233,32 @@ Both methods take the same `input_data` and `config`, but differ in how results 
 
 `invoke` calls `asyncio.run` internally, so from within an event loop, call `ainvoke` instead to avoid a "running event loop" error.
 
-**Example with stream:**
+**Example with stream:** this reuses `app` from the triage example. At the default granularity only `message` and `error` chunks are delivered, so ask for `PARTIAL` to also receive `state` chunks.
 
-```python
+```python title="stream_run.py"
+from tenxgraph.core.state import Message
+from tenxgraph.utils.constants import ResponseGranularity
+
 for chunk in app.stream(
-    {"messages": [Message.text_message("Summarize the latest AI news")]},
+    {"messages": [Message.text_message("Checkout is down for all users")]},
     config={"thread_id": "session-42"},
+    response_granularity=ResponseGranularity.PARTIAL,
 ):
     if chunk.event == "message":
-        # LLM output as it arrives
+        # Output from a node as it arrives
         print(chunk.message.text())
     elif chunk.event == "state":
-        # Full state after a node execution
-        print(f"Step complete: {chunk.state.execution_meta.current_node}")
+        # State after a node has finished
+        print("Step:", chunk.state.execution_meta.step)
 ```
 
 Each `StreamChunk` has:
-- `event`: `"message"` (LLM output), `"state"` (node complete), `"updates"` (state delta), or `"error"`.
-- `message`: The message content if `event == "message"`.
-- `state`: The full state if `event == "state"`.
 
-Stream is useful for tracking progress, providing live UI feedback, and detecting when to interrupt.
+- `event`: `"message"`, `"state"` (after a node completes), `"updates"` (run status data) or `"error"`.
+- `message`: The message if `event == "message"`.
+- `state`: The state if `event == "state"`.
+
+`LOW` yields `message` and `error` chunks, `PARTIAL` adds `state`, and `FULL` adds `updates`. See [Streaming](/docs/concepts/streaming) for the full model.
 
 ## What goes in the run config?
 
@@ -266,6 +282,10 @@ The config dict passed to `invoke()` and `stream()` controls how the graph execu
 Pass `response_granularity` directly to `invoke()` or `stream()`, not in the config dict:
 
 ```python
+from tenxgraph.core.state import Message
+from tenxgraph.utils.constants import ResponseGranularity
+
+input_data = {"messages": [Message.text_message("Checkout is down")]}
 result = app.invoke(
     input_data,
     config={"thread_id": "session-1", "recursion_limit": 50},
@@ -278,6 +298,8 @@ result = app.invoke(
 <CardGrid>
 
 <LinkCard title="Quickstart" href="/docs/get-started/first-agent" description="Run a ReactAgent locally and over HTTP." eyebrow="Get started" />
-<LinkCard title="Memory: hot and cold" href="/docs/concepts/memory" description="How checkpointers persist threads." eyebrow="Concept" />
+<LinkCard title="Build a graph" href="/docs/guides/build-a-graph" description="Step-by-step graph building and routing." eyebrow="Guide" />
+<LinkCard title="How PgCheckpointer works" href="/docs/concepts/memory" description="How checkpointers persist threads." eyebrow="Concept" />
 <LinkCard title="Replay-safe tools" href="/docs/concepts/replay-safe-tools" description="Resume a crashed run without repeating tools." eyebrow="Concept" />
+
 </CardGrid>

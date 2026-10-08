@@ -1,12 +1,19 @@
 ---
 title: API Server Troubleshooting
-description: Symptoms, causes, and fixes for common 10xGraph API server startup and runtime issues.
+description: Symptoms, causes, and fixes for 10xGraph API server problems at startup, at request time, and in production deployments.
 section: Troubleshooting
 order: 40
-updated: "2026-09-29"
+updated: "2026-10-08"
+faq:
+  - q: Why does the server refuse to start with "routes are not protected"?
+    a: Every route except /ping and the two eval report routes must carry a RequirePermission guard. The check runs at startup so a forgotten guard cannot ship as an open endpoint. Add the dependency to the handler.
+  - q: Why do /ping and the health check pass but graph requests fail?
+    a: The server started, but the graph fails when invoked. Read the runtime logs for bad provider keys, missing packages or tool errors.
+  - q: Why do threads disappear after a restart?
+    a: The in-memory checkpointer is still in use. Switch to a durable checkpointer such as PgCheckpointer.
 ---
 
-Use this page when `10xgraph api` starts incorrectly, crashes, or serves requests unreliably.
+Use this page when `10xgraph api` fails to start, rejects requests, or behaves differently in production than locally. Find your symptom under startup, request-time or production issues, then apply the fix. Each entry lists symptoms, the cause and a concrete fix verified against the server code.
 
 ## Server troubleshooting map
 
@@ -19,7 +26,9 @@ flowchart TD
     D --> E
 ```
 
-## Issue: server does not start
+## Startup issues
+
+### Issue: server does not start
 
 **Symptoms**
 
@@ -30,15 +39,15 @@ flowchart TD
 
 - invalid `10xgraph.json`
 - graph import failure
-- missing required environment variables
+- missing required environment variables or provider keys
 
 **Fix**
 
 - verify the config file path
-- test the graph import manually
-- verify required provider keys and dependencies are set before startup
+- test the graph import manually: `python -c "from graph.react import app; print(app)"`
+- verify required provider keys and dependencies are installed before startup
 
-## Issue: `RuntimeError: Refusing to start: the following routes are not protected`
+### Issue: `RuntimeError: Refusing to start: the following routes are not protected`
 
 **Symptoms**
 
@@ -52,41 +61,43 @@ Add the dependency, or add the path to the public allowlist if it is intentional
 
 **Cause**
 
-Every non-public route must carry a `RequirePermission` guard. The check runs once at startup and
-walks the whole dependency subtree of every route. This is deliberate: a forgotten guard would
-otherwise ship a silently open endpoint.
+Every non-public route must carry a `RequirePermission` guard. The check runs once at startup and walks the entire dependency subtree of every route. This is deliberate: a forgotten guard would otherwise ship a silently open endpoint.
 
 **Fix**
 
-Add the dependency to the handler:
+Add the dependency to the handler (the import path is `tenxgraph_api.src.app.core.auth.permissions`):
 
-```python
+```python title="my_router.py"
+from typing import Any
+
+from fastapi import APIRouter, Depends
+
+from tenxgraph_api.src.app.core.auth.permissions import RequirePermission
+
+router = APIRouter()
+
+
 @router.post("/v1/my-new-endpoint")
 async def my_endpoint(
     user: dict[str, Any] = Depends(RequirePermission("graph", "read")),
 ):
-    ...
+    return {"ok": True}
 ```
 
-Only three paths are public: `/ping`, `/v1/evals/runs`, and `/v1/evals/runs/{run_id}`. Adding to
-that allowlist means editing the frozenset in the source, which is intentional. Do not reach for
-it to silence this error on a route that handles user data.
+Only three paths are public: `/ping`, `/v1/evals/runs`, and `/v1/evals/runs/{run_id}`. Modifying the public allowlist requires editing the source code frozenset, which is intentional. Do not use it to silence this error on a route that handles user data.
 
-## Issue: `InsecureCorsConfigError` on startup
+### Issue: `InsecureCorsConfigError` on startup
+
 
 **Symptoms**
 
-- the server refuses to start in production with a message about CORS and credentials
+- the server refuses to start in production with a message beginning "Refusing to start: CORS is configured with ORIGINS='*'"
 
 **Cause**
 
-`ORIGINS="*"` combined with `CORS_ALLOW_CREDENTIALS=true` while `MODE=production`. Starlette
-reflects the caller's `Origin` back alongside `Access-Control-Allow-Credentials: true`, which
-makes every origin a trusted, credentialed one. Warning about it would not have helped, since the
-server would still have served it.
+`ORIGINS="*"` combined with `CORS_ALLOW_CREDENTIALS=true` while `MODE=production`. Starlette reflects the caller's `Origin` back alongside `Access-Control-Allow-Credentials: true`, which makes every origin a trusted, credentialed one.
 
-In development the same combination only logs a warning, so this failure usually appears the first
-time a working local config is promoted.
+In development the same combination only logs a warning, so this failure usually appears the first time a working local config is promoted to production.
 
 **Fix**
 
@@ -102,53 +113,7 @@ ORIGINS=https://yourapp.com,https://api.yourapp.com
 CORS_ALLOW_CREDENTIALS=false
 ```
 
-## Issue: `403 Missing required scope: <resource>:<action>`
-
-**Symptoms**
-
-- an authenticated user is rejected on a specific endpoint while others work
-
-**Cause**
-
-The identity carries a scope list that does not include this endpoint's
-`"<resource>:<action>"` pair. Scopes resolve from the authorization backend's `scopes_for` first,
-and only fall back to the token's own `scopes` claim when that returns `None`.
-
-A common version of this: switching to the RBAC backend. `RoleBasedAuthorizationBackend` always
-returns a list, never `None`, so a user whose role is absent from the `roles` table and for whom
-`default_scopes` is empty resolves to `[]` and is denied **everything**. An empty list is not the
-same as no scopes.
-
-**Fix**
-
-- Add the pair to the role's scopes, or to `default_scopes`
-- Confirm the user's `roles` or `role` claim actually matches a key in the `roles` table
-- To go back to unrestricted, ensure `scopes_for` returns `None` rather than `[]`
-
-## Issue: WebSocket closes immediately
-
-**Symptoms**
-
-- the socket opens and closes before any application frame is exchanged
-
-**Cause and fix by close code**
-
-| Code | Cause | Fix |
-| --- | --- | --- |
-| `1008` | Auth or authorization rejected at the handshake, or the wrong socket for the graph type | Check the token transport; browsers should offer `["10xgraph-bearer", token]` as the subprotocol. Read `info.is_realtime` on `GET /v1/graph` to pick between `/v1/graph/ws` and `/v1/graph/live`. |
-| `1013` | The global rate limit or `websocket.max_connections` was exceeded | Handshakes share the REST rate-limit bucket. Raise the limit, raise `max_connections`, or back off and retry. |
-| `1003` | Invalid init frame on `/v1/graph/live`: not JSON, or JSON that is not an object | Send the init control frame as a JSON object first, before any audio |
-| `1011` | Unexpected server error during the session | Check server logs; this is not an auth or config rejection |
-
-A `404` on `/v1/evals/*` means the server runs with `MODE=production`: the eval report viewer
-has no auth, so it is mounted only outside production. A `404` on `POST /v1/ag-ui` means
-[`ag_ui.enabled`](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability) is not `true`. The threads,
-store, and files routers are always mounted.
-
-A `1008` accompanied by an `error` event with `code: "not_live"` or `"not_authorized"` tells you
-which of the two `1008` causes applies.
-
-## Issue: port already in use
+### Issue: port already in use
 
 **Symptoms**
 
@@ -160,27 +125,10 @@ which of the two `1008` causes applies.
 
 **Fix**
 
-- change the port
-- stop the conflicting process
+- change the port with `--port 8001`
+- stop the conflicting process: `lsof -i :8000 | tail -1 | awk '{print $2}' | xargs kill`
 
-## Issue: `/ping` works but graph routes fail
-
-**Symptoms**
-
-- health check succeeds
-- `/v1/graph/invoke` returns 500 or import-related errors
-
-**Likely cause**
-
-- the server itself started, but graph dependencies fail when invoked
-
-**Fix**
-
-- inspect runtime logs
-- verify graph dependencies, provider keys, and tool integrations
-- reproduce with a minimal invoke payload
-
-## Issue: auto-reload causes unstable behavior
+### Issue: auto-reload causes unstable behavior
 
 **Symptoms**
 
@@ -200,7 +148,82 @@ which of the two `1008` causes applies.
 
 Use reload only for active local development.
 
-## Issue: thread endpoints fail
+## Request-time issues
+
+### Issue: `/ping` works but graph routes fail
+
+This is the most common request-time symptom: the server is up, but the graph fails when it runs. The production entry "deployment starts but requests fail immediately" below covers the deploy-specific causes.
+
+**Symptoms**
+
+- health check succeeds
+- `/v1/graph/invoke` returns 500 or import-related errors
+
+**Likely cause**
+
+- the server itself started, but graph dependencies fail when invoked (bad provider keys, network issues with external services, tool initialization errors)
+
+**Fix**
+
+- inspect runtime logs: the error appears there
+- verify graph dependencies, provider keys, and tool integrations work outside the server
+- test with a minimal invoke payload (e.g., no tools)
+
+### Issue: `403 Missing required scope: <resource>:<action>`
+
+**Symptoms**
+
+- an authenticated user is rejected on a specific endpoint while others work
+
+**Cause**
+
+The identity carries a scope list that does not include this endpoint's `"<resource>:<action>"` pair. Scopes resolve from the authorization backend's `scopes_for` method first, and only fall back to the token's own `scopes` claim when that returns `None`.
+
+A common case: switching to the RBAC backend. `RoleBasedAuthorizationBackend` always returns a list (never `None`), so a user whose role is absent from the `roles` table and for whom `default_scopes` is empty resolves to `[]` and is denied everything. An empty list is not the same as no scopes.
+
+**Fix**
+
+- Add the pair to the role's scopes in your authorization backend, or to `default_scopes`
+- Confirm the user's `roles` or `role` claim matches a key in the `roles` table
+- To go back to unrestricted, ensure `scopes_for` returns `None` rather than `[]`
+
+### Issue: requests are unexpectedly public
+
+**Symptoms**
+
+- protected routes work without credentials
+
+**Cause**
+
+- auth is disabled in `10xgraph.json` or config change did not reload into the running process
+
+**Fix**
+
+- set `auth` in `10xgraph.json` (for example `"auth": "jwt"`)
+- set `JWT_SECRET_KEY` in your environment
+- restart the server
+- verify with an unauthenticated curl request: `curl -v http://localhost:8000/v1/graph/invoke 2>&1 | grep 401`
+
+### Issue: WebSocket closes immediately
+
+**Symptoms**
+
+- the socket opens and closes before any application frame is exchanged
+
+**Cause and fix by close code**
+
+| Code | Cause | Fix |
+| --- | --- | --- |
+| `1008` | Auth or authorization rejected at the handshake, or the wrong socket for the graph type | Check the token transport; browsers should offer `["10xgraph-bearer", token]` as the subprotocol. Call `GET /v1/graph` and read `info.is_realtime` to pick between `/v1/graph/ws` (turn-based) and `/v1/graph/live` (realtime). |
+| `1013` | The global rate limit or `websocket.max_connections` was exceeded | Handshakes share the REST rate-limit bucket. Raise the limit, increase `max_connections`, or back off and retry. |
+| `1003` | Invalid init frame on `/v1/graph/live`: not JSON, or JSON that is not an object | Send the init control frame as a JSON object first, before any audio |
+| `1011` | Unexpected server error during the session | Check server logs; this is not an auth or config rejection |
+
+A `404` on `/v1/evals/*` means the server runs with `MODE=production`: the eval report viewer has no auth, so it is mounted only outside production. A `404` on `POST /v1/ag-ui` means `ag_ui.enabled` is not `true` in `10xgraph.json`. The threads, store, and files routers are always mounted.
+
+A `1008` accompanied by an `error` event with `code: "not_live"` or `"not_authorized"` tells you which of the two `1008` causes applies.
+
+### Issue: thread endpoints fail
 
 **Symptoms**
 
@@ -209,53 +232,188 @@ Use reload only for active local development.
 **Likely causes**
 
 - no checkpointer configured
-- checkpointer backend unavailable
+- checkpointer backend unavailable (Postgres, Redis, or SQLite)
 - inconsistent `thread_id` usage
-
-**Error codes**: `STORAGE_NOT_FOUND_000`, `STORAGE_TRANSIENT_000`
 
 **Fix**
 
-- configure a checkpointer
-- verify backend connectivity
-- use a stable `thread_id`
+- configure a checkpointer in `10xgraph.json`
+- verify backend connectivity and health
+- use a stable `thread_id` (do not generate a new one per request)
 
----
+For more details, see [Checkpointing and threads](/docs/concepts/checkpointing-and-threads).
 
-## Error Code Quick Reference
+## Production and deployment issues
 
-| Symptom | Error Code | Action |
-|---------|------------|--------|
-| Infinite loop / max iterations | `RECURSION_000` | Increase recursion_limit or fix routing |
-| Thread not found | `STORAGE_NOT_FOUND_000` | Verify thread_id, check storage |
-| Database timeout | `STORAGE_TRANSIENT_000` | Retry with backoff, check DB health |
-| Schema mismatch | `STORAGE_SCHEMA_000` | Run migrations after upgrade |
-
-See [Error Codes Reference](/docs/reference/error-codes) for full documentation.
-
-## Issue: requests are unexpectedly public
+### Issue: deployment starts but requests fail immediately
 
 **Symptoms**
 
-- protected routes work without credentials
+- `/ping` works but graph routes fail
+- first invoke request returns 500
+- logs mention import or dependency errors
 
-**Cause**
+**Likely causes**
 
-- auth is disabled or config change did not reload into the running process
+- graph import path is wrong in `10xgraph.json`
+- environment variables required by the graph are missing
+- production image does not include all dependencies
 
 **Fix**
 
-- set `auth` in `10xgraph.json`
-- restart the server
-- verify with an unauthenticated curl request
+- verify the graph import works: `python -c "from graph.react import app; print(app)"`
+- verify all deploy-time secrets and API keys are present
+- verify the image or runtime installed all required Python packages (including provider extras like `google-genai`)
+
+### Issue: threads vanish after restart
+
+**Symptoms**
+
+- conversation history works until the process restarts
+- `/v1/threads` becomes empty after deployment recycle
+
+**Likely cause**
+
+- `InMemoryCheckpointer` is still being used
+
+**Fix**
+
+- switch to a durable shared checkpointer such as `PgCheckpointer`
+- verify restart behavior before re-releasing
+
+### Issue: one replica sees thread history and another does not
+
+**Symptoms**
+
+- state appears inconsistent across instances
+- one request remembers context, the next does not
+
+**Likely cause**
+
+- instances are not sharing the same persistence backend
+
+**Fix**
+
+- point all replicas to the same Postgres/Redis-backed checkpointer
+- confirm the same `thread_id` is being used by the caller
+- verify the backend (Postgres, Redis) is reachable from all replicas
+
+### Issue: auth works in curl but fails in browser clients
+
+**Symptoms**
+
+- curl with bearer token succeeds: `curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/v1/graph/invoke`
+- frontend requests fail or never send credentials
+
+**Likely causes**
+
+- browser client is not attaching the auth header
+- reverse proxy strips or corrupts the `Authorization` header
+- CORS configuration blocks browser requests
+
+**Fix**
+
+- inspect the browser network tab to confirm the header is sent
+- verify frontend client config (token is set correctly)
+- verify reverse proxy configuration forwards `Authorization` header unchanged
+- verify `ORIGINS` includes the real frontend origin
+- confirm `CORS_ALLOW_CREDENTIALS=true` if the frontend sends credentials
+
+### Issue: `X-Forwarded-For` is ignored behind a proxy
+
+**Symptoms**
+
+- rate limiting sees the proxy's IP instead of the client's
+- requests through a reverse proxy are affected
+
+**Cause**
+
+Rate limiting ignores `X-Forwarded-For` unless you opt in. `rate_limit.trusted_proxy_headers` defaults to `false`, so behind a proxy every client appears to share the proxy's IP.
+
+**Fix**
+
+Enable the option in `10xgraph.json` only when the app sits behind a proxy you control, and list the proxy networks so direct clients cannot spoof the header:
+
+```json
+{
+  "rate_limit": {
+    "trusted_proxy_headers": true,
+    "trusted_proxy_hops": 1,
+    "trusted_proxies": ["10.0.0.0/8"]
+  }
+}
+```
+
+`trusted_proxies` takes the IPs or CIDR ranges the proxy connects from. `X-Forwarded-For` is ignored for any other source. See [Configure the server](/docs/server/configure) for the full `rate_limit` block.
+
+### Issue: requests time out only in production
+
+**Symptoms**
+
+- local requests are fine
+- deployed requests are slow or timing out
+
+**Likely causes**
+
+- external tools or providers are slower in the deployed environment
+- reverse proxy timeouts are too aggressive
+- graph is making too many sequential tool calls
+
+**Fix**
+
+- inspect server logs for slow nodes or tools
+- tune reverse proxy timeout settings (for example Nginx `proxy_connect_timeout`, `proxy_send_timeout`, `proxy_read_timeout`)
+- prefer streaming where appropriate
+- reduce expensive tool-call chains if possible
+
+### Issue: production deployment exposes too much
+
+**Symptoms**
+
+- the Swagger and ReDoc pages (default paths `/docs` and `/redocs`) are publicly reachable
+- cross-origin browser access is broader than intended
+
+**Likely causes**
+
+- `DOCS_PATH` or `REDOCS_PATH` set explicitly (in production they default to empty, which disables the pages and the OpenAPI schema; the server logs a warning when either is set)
+- `MODE` is not `production`, so the development defaults apply
+- `ORIGINS=*` still set
+
+**Fix**
+
+- set `MODE=production` and remove explicit `DOCS_PATH` and `REDOCS_PATH` values, or set both to empty strings
+- replace wildcard origins with explicit domains: `ORIGINS=https://yourapp.com,https://api.yourapp.com`
+
+### Issue: `10xgraph play` works locally but deployed users cannot connect
+
+**Symptoms**
+
+- local playground sessions are fine
+- deployed frontend or shared users fail to connect reliably
+
+**Likely cause**
+
+- `10xgraph play` was used as a testing tool, but the deployed system needs a proper hosted API endpoint and browser-safe networking setup
+
+**Fix**
+
+- deploy with `10xgraph api` behind HTTPS and correct CORS/auth settings
+- treat `10xgraph play` as an interactive test path, not the deployment architecture
+
+## Error codes
+
+For a complete list of error codes and their meanings, see [Error codes reference](/docs/reference/error-codes).
 
 ## Related docs
 
 - [Run the API Server](/docs/server/run-the-server)
-- [Production Troubleshooting](/docs/troubleshooting/api-server)
+- [Configure the server](/docs/server/configure)
 - [Auth and Authorization](/docs/server/auth)
+- [Observability and logging](/docs/server/observability)
+- [Checkpointing and threads](/docs/concepts/checkpointing-and-threads)
 
 ## What you learned
 
-- How to separate startup failures from request-time failures.
-- How to trace common API issues back to config, reload mode, auth, or persistence.
+- How to separate startup failures from request-time failures
+- How to trace common API issues back to config, reload mode, auth, or persistence
+- How to troubleshoot production failures by isolating runtime, config, network, auth, and persistence layers
