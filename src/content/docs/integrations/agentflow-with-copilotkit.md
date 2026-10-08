@@ -6,15 +6,15 @@ section: Learn more
 group: Integrations
 order: 2060
 label: with CopilotKit (AG-UI)
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
 [AG-UI](https://docs.ag-ui.com) is an open event protocol between an agent backend and a
-frontend. `agentflow-api` can serve your graph over AG-UI, so any AG-UI client, including
+frontend. `10xgraph-api` can serve your graph over AG-UI, so any AG-UI client, including
 [CopilotKit](https://docs.copilotkit.ai), can use it through CopilotKit's generic `HttpAgent`.
 No CopilotKit-specific integration is involved: the translation happens in your 10xGraph server.
 
-The endpoint is off by default.
+The endpoint is off by default. For the server-side steps and a production checklist, see [Serve your agent over AG-UI](/docs/how-to/api-cli/serve-over-ag-ui). Every request field, event and error code is in the [AG-UI endpoint reference](/docs/reference/rest-api/ag-ui).
 
 ## Architecture
 
@@ -25,7 +25,7 @@ The endpoint is off by default.
 [ Next.js: CopilotRuntime + HttpAgent ]   (/api/copilotkit)
           │  POST RunAgentInput, SSE of AG-UI events
           ▼
-[ agentflow-api ]  POST /v1/ag-ui
+[ 10xgraph-api ]  POST /v1/ag-ui
           │
           ▼
 [ Your StateGraph + checkpointer ]

@@ -6,7 +6,7 @@ section: How-to guides
 group: Production
 order: 740
 label: Overview
-updated: "2026-09-29"
+updated: "2026-10-08"
 ---
 
 The `10xgraph api` command starts a FastAPI + Uvicorn server that exposes your compiled graph as a fully-featured REST + WebSocket API. This section is the single source of truth for everything you need to run 10xGraph in production.
@@ -20,6 +20,7 @@ The `10xgraph api` command starts a FastAPI + Uvicorn server that exposes your c
 | **Threads** | `/v1/threads/...` | CRUD for thread state and messages (requires checkpointer) |
 | **Store** | `/v1/store/...` | Semantic memory CRUD and search (requires store backend) |
 | **Files** | `/v1/files/...` | Multimodal file upload and retrieval |
+| **AG-UI** | `/v1/ag-ui` | Run the graph over the AG-UI protocol for CopilotKit and other AG-UI clients. Off until `ag_ui.enabled` is set. See [Serve over AG-UI](/docs/how-to/api-cli/serve-over-ag-ui) |
 | **Config** | `/v1/config/...` | Read server configuration (e.g. multimodal settings) |
 | **Observability** | `/v1/observability/...` | Reconstructed run traces. Development only; returns an empty payload in production. |
 | **Evals** | `/v1/evals/...` | Eval report viewer. **Unauthenticated**, so it is not mounted when `MODE=production`. |
@@ -50,7 +51,7 @@ Guide: [Auth and Authorization](/docs/how-to/production/auth-and-authorization)
 
 Configured under the `rate_limit` key in `10xgraph.json`. Three backends: `memory` (dev), `redis` (production), `custom`.
 
-Guide: [Rate limiting](/docs/how-to/production/agentflow-json)
+Guide: [Configure rate limiting](/docs/how-to/api-cli/configure-rate-limiting)
 
 ## Checkpointing
 

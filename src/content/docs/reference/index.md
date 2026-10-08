@@ -55,6 +55,7 @@ if you do not want it public.
 | --- | --- |
 | [Graph](/docs/reference/rest-api/graph) | Invoke and stream a compiled graph |
 | [Live WebSocket](/docs/reference/rest-api/live) | Bidirectional runs and realtime audio |
+| [AG-UI](/docs/reference/rest-api/ag-ui) | Run the graph over the AG-UI protocol, for CopilotKit |
 | [Threads](/docs/reference/rest-api/threads) | Conversation history and thread management |
 | [Memory store](/docs/reference/rest-api/memory-store) | Store, search, list, forget |
 | [Files](/docs/reference/rest-api/files) | Upload and retrieval |
