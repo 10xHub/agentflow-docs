@@ -49,19 +49,19 @@ The client automatically instantiates the appropriate error class based on HTTP 
 Wrap `invoke()` or `stream()` in a try-catch block:
 
 ```ts
-import { TenxGraphClient, TransientStorageError } from '10xgraph-client';
+import { TenxGraphClient, Message, TenxGraphError, TransientStorageError } from '10xgraph-client';
 
 const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
-  authToken: process.env.AGENTFLOW_TOKEN,
+  authToken: process.env.TENXGRAPH_TOKEN,
 });
 
 try {
-  const result = await client.invoke({
-    threadId: 'user-123',
-    messages: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
-  });
-  console.log('Response:', result.data.messages);
+  const result = await client.invoke(
+    [Message.text_message('Hello', 'user')],
+    { config: { thread_id: 'user-123' } }
+  );
+  console.log('Response:', result.messages);
 } catch (err) {
   if (err instanceof TransientStorageError) {
     console.log('Storage temporarily unavailable. Try again in a moment.');
@@ -84,7 +84,7 @@ try {
 
 ```ts
 try {
-  await client.invoke({ /* ... */ });
+  await client.invoke([Message.text_message('Hello', 'user')]);
 } catch (err) {
   if (err instanceof TenxGraphError) {
     // Suitable for displaying to an end user
@@ -120,7 +120,7 @@ Some errors are temporary and safe to retry. The client itself does not retry au
 **Transient errors** are those where the problem is temporary and will likely resolve on its own:
 - `TransientStorageError` (503): the checkpointer or memory store is momentarily unavailable
 - `ServerError` with status 502/504: a gateway or upstream service is temporarily down
-- Network timeouts or connection resets (not an `TenxGraphError`)
+- Network timeouts or connection resets (a plain `Error`, such as `Request timeout after 300000ms`, not a `TenxGraphError`)
 
 **Non-transient errors** should not be retried the same way:
 - `AuthenticationError` (401): fix your token before retrying
@@ -157,9 +157,8 @@ async function retryWithBackoff<T>(
 
 // Usage
 const result = await retryWithBackoff(() =>
-  client.invoke({
-    threadId: 'user-123',
-    messages: [{ role: 'user', content: [{ type: 'text', text: 'Query' }] }],
+  client.invoke([Message.text_message('Query', 'user')], {
+    config: { thread_id: 'user-123' },
   })
 );
 ```
@@ -180,9 +179,8 @@ export enum StreamEventType {
 Iterate through the stream and check the `event` field. When an error occurs, the server sends a chunk with `event: 'error'`:
 
 ```ts
-const stream = client.stream({
-  threadId: 'user-123',
-  messages: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
+const stream = client.stream([Message.text_message('Hello', 'user')], {
+  config: { thread_id: 'user-123' },
 });
 
 try {
@@ -190,12 +188,8 @@ try {
     if (chunk.event === 'error') {
       // Error in the stream
       console.error('Stream error:', chunk.data);
-      // chunk.data has the error details:
-      // {
-      //   "code": "GRAPH_ERROR",
-      //   "message": "Node failed",
-      //   "details": [...]
-      // }
+      // chunk.data carries the failure reason, for example:
+      // { "reason": "..." }
       break; // Stop processing stream
     } else if (chunk.event === 'message') {
       console.log('Message:', chunk.message);
@@ -215,20 +209,16 @@ try {
 
 ## Graph and node errors
 
-When a graph node raises an exception or a tool fails, the error is captured by the server and returned as `GraphError` or `NodeError`. These errors are returned as HTTP 500 responses and carry context about which node failed and why.
+When a graph node raises an exception or a tool fails, the error is captured by the server and returned as `GraphError` or `NodeError`. These errors are returned as HTTP 500 responses. The error message describes which node failed and why.
 
 ```ts
 try {
-  const result = await client.invoke({
-    threadId: 'user-123',
-    messages: [{ role: 'user', content: [{ type: 'text', text: 'Search for X' }] }],
+  const result = await client.invoke([Message.text_message('Search for X', 'user')], {
+    config: { thread_id: 'user-123' },
   });
 } catch (err) {
   if (err instanceof NodeError) {
-    console.error(`Node '${err.nodeName}' failed:`, err.message);
-    if (err.context) {
-      console.error('Context:', err.context);
-    }
+    console.error('Node failed:', err.message);
   } else if (err instanceof GraphError) {
     console.error('Graph execution failed:', err.message);
   }

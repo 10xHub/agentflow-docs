@@ -33,7 +33,7 @@ Messages flow end to end: the user types in CopilotKit, the route handler forwar
 You need:
 
 - A 10xGraph API server running with the `ag-ui` extra installed and `/v1/ag-ui` enabled in `10xgraph.json` (follow [Serve your agent over AG-UI](/docs/server/ag-ui) first).
-- A Next.js project (16+).
+- A Next.js project.
 - Basic familiarity with React hooks and async code.
 
 ## Set up the Next.js route handler
@@ -148,7 +148,7 @@ useFrontendTool({
 });
 ```
 
-When the model calls a frontend tool, the run pauses, CopilotKit executes the handler in the browser, and sends the result back to the graph on the same thread. The graph continues from the tool node. Server tools in that node still run normally. Frontend tools never override server tools; if a tool with the same name exists on the server, the server version is used.
+When the model calls a frontend tool, the run ends with the tool call unanswered, CopilotKit executes the handler in the browser, and starts a new run on the same thread with the result. The graph continues after the tool node. Server tools in that node still run normally. Frontend tools never override server tools; if a tool with the same name exists on the server, the server version is used.
 
 ## Human-in-the-loop: approvals with interrupt()
 
@@ -156,7 +156,7 @@ Call [`interrupt()`](/docs/guides/add-human-approval) in a node or tool to pause
 
 ```python
 # graph.py
-from tenxgraph.utils import interrupt
+from tenxgraph.utils import interrupt, tool
 
 @tool
 async def transfer_funds(amount: float, recipient: str) -> str:
@@ -175,7 +175,8 @@ async def transfer_funds(amount: float, recipient: str) -> str:
         },
     )
     if not decision or not decision.get("approved"):
-        return f"Transfer declined. Comment: {decision.get('comment', '')}"
+        comment = (decision or {}).get("comment", "")
+        return f"Transfer declined. Comment: {comment}"
     return f"Transferred ${amount} to {recipient}"
 ```
 
@@ -229,7 +230,7 @@ useInterrupt({
 });
 ```
 
-When the user clicks Approve, `interrupt()` returns the object `{ approved: true, comment }` and the graph continues. If they click Reject or dismiss, `interrupt()` returns the value you passed.
+When the user clicks Approve, `interrupt()` returns the object `{ approved: true, comment }` and the graph continues. If they click Reject, `interrupt()` returns `{ approved: false, comment: "" }`. If they call `cancel()`, it returns `None`.
 
 ## Shared state and real-time updates
 
@@ -269,34 +270,23 @@ export function StatusBar() {
 }
 ```
 
-The state updates in real-time as the graph runs. Set initial state from the frontend by passing it in `RunAgentInput.state`; it becomes the run's starting state.
+The state updates in real-time as the graph runs. Set initial state from the frontend by passing it in `RunAgentInput.state`; it becomes the run's starting state. The `context`, `context_summary` and `execution_meta` keys are ignored.
 
 ## Frontend context and configuration
 
-Pass data from the frontend to your graph nodes and tools via `RunAgentInput.context`. This data is available inside any node or tool as `config["ag_ui"]["context"]`:
+Pass data from the frontend to your graph nodes and tools via `RunAgentInput.context`. The AG-UI request extras are available inside any node or tool as `config["ag_ui"]`:
 
 ```python
 # graph.py
 async def main_node(state: AppState, config: dict):
-    frontend_context = config.get("ag_ui", {}).get("context", {})
-    user_locale = frontend_context.get("locale", "en-US")
-    theme = frontend_context.get("theme", "light")
+    ag_ui = config.get("ag_ui", {})
+    # A list of AG-UI context items, each with "description" and "value".
+    frontend_context = ag_ui.get("context", [])
+    client_tools = ag_ui.get("tools", [])
+    forwarded_props = ag_ui.get("forwarded_props")
 ```
 
-```tsx
-// Frontend: pass context when calling the agent
-const { sendMessage } = useAgent({ agentId: "graph" });
-
-sendMessage("Help me with this task", {
-  agentInput: {
-    context: {
-      locale: navigator.language,
-      theme: document.documentElement.getAttribute("data-theme"),
-      userPreferences: { /* ... */ },
-    },
-  },
-});
-```
+`context`, `tools` and `forwarded_props` are the AG-UI `RunAgentInput` fields of the same names. In CopilotKit, context registered with its context hooks arrives as `context`.
 
 ## Limitations and known behavior
 
@@ -306,7 +296,7 @@ sendMessage("Help me with this task", {
 
 - **Message filtering.** Messages the client marks as coming from the system, developer, or assistant are ignored on resume; the graph treats the checkpoint as the record of what was said and done.
 
-- **Browser vs. server tools.** The graph needs a `ToolNode` (the one your `Agent` uses, or a custom node). Browser tools from `RunAgentInput.tools` are added to the tool list for that run only and do not persist. A browser tool never replaces a server tool; if a tool with that name exists on the server, the server tool is used.
+- **Browser vs. server tools.** The graph needs a `ToolNode` (passed to your `Agent` node as `tool_node`). Browser tools from `RunAgentInput.tools` are added to the tool list for that run only and do not persist. A browser tool never replaces a server tool; if a tool with that name exists on the server, the server tool is used. Client tools are limited to 64 per run, names of 1 to 64 letters, digits, `_` or `-`, and set `"ag_ui": {"allow_client_tools": false}` in `10xgraph.json` to refuse them (only `remote_tools` are then offered).
 
 ## What maps to what
 
@@ -324,84 +314,9 @@ sendMessage("Help me with this task", {
 | Application state fields | `STATE_SNAPSHOT` (only fields you add to `AgentState`, not messages) |
 | Graph error | `RUN_ERROR` |
 
-## Threads and history
+## Interrupt mapping
 
-AG-UI's `threadId` is the 10xGraph thread. CopilotKit sends the whole conversation on every run,
-but the checkpointer already holds it, so 10xGraph only passes the graph what is new: the
-latest user message, or the tool results that answer a pending frontend tool call. Messages the
-client says came from the assistant, system, or developer are ignored; the checkpoint is the
-record of what the model said and was told.
-
-Use a persistent checkpointer (Postgres, SQLite) if threads must survive a server restart.
-
-## Frontend tools
-
-Register a tool in the browser with `useFrontendTool`. Nothing is needed on the server:
-CopilotKit sends its tools with every run, and 10xGraph offers them to the model for that run.
-
-```tsx
-import { useFrontendTool } from "@copilotkit/react-core/v2";
-import { z } from "zod";
-
-useFrontendTool({
-  name: "change_background",
-  description: "Change the page background color.",
-  parameters: z.object({ color: z.string() }),
-  handler: async ({ color }) => {
-    document.body.style.background = color;
-    return `background is now ${color}`;
-  },
-});
-```
-
-The graph needs a `ToolNode` (the one your `Agent` uses): browser tools are added to its tool
-list for the run, and a call to one is handed back to the browser instead of running on the
-server. When the model calls it, the run ends with the tool call unanswered. CopilotKit runs the
-handler and starts a new run on the same thread with the result, and the graph continues after
-the tool node. Server tools called in the same step still run and are kept.
-
-A browser tool never replaces a server tool: if the `ToolNode` already has a tool with that name,
-the browser's is ignored (and logged). Tools declared under
-[`remote_tools`](/docs/reference/api-cli/configuration#remote_tools) in `10xgraph.json` keep
-working as before.
-
-## Approvals with interrupt()
-
-Call [`interrupt()`](/docs/guides/add-human-approval) in a node or tool to ask the user
-something. The run ends with an AG-UI `interrupt` outcome, and CopilotKit's `useInterrupt`
-renders the question:
-
-```python
-from tenxgraph.utils import interrupt
-
-async def refund(amount: int) -> str:
-    """Refund an order, after a human approves it."""
-    decision = interrupt(
-        {"amount": amount},
-        message=f"Approve a refund of ${amount}?",
-        reason="tool_approval",
-    )
-    if decision and decision.get("approved"):
-        return f"refunded ${amount}"
-    return "refund declined"
-```
-
-```tsx
-import { useInterrupt } from "@copilotkit/react-core/v2";
-
-useInterrupt({
-  render: ({ interrupt, resolve, cancel }) => (
-    <div>
-      <p>{interrupt?.message}</p>
-      <button onClick={() => resolve({ approved: true })}>Approve</button>
-      <button onClick={() => resolve({ approved: false })}>Reject</button>
-      <button onClick={() => cancel()}>Dismiss</button>
-    </div>
-  ),
-});
-```
-
-How the pieces map:
+How `interrupt()` maps to the AG-UI `Interrupt`:
 
 | 10xGraph `interrupt()` | AG-UI `Interrupt` |
 | --- | --- |
@@ -416,36 +331,3 @@ How the pieces map:
 with `None`. While a thread is paused, a run that does not answer the interrupt (for example a
 new chat message) reports the same interrupt again without running the graph. A `resume` for a
 different interrupt id ends the run with `RUN_ERROR`.
-
-## Shared state
-
-Fields you add to your state class are sent as `STATE_SNAPSHOT` whenever they change, and read on
-the frontend with `useAgent`:
-
-```python
-class AppState(AgentState):
-    city: str = ""
-```
-
-```tsx
-const { agent } = useAgent({ agentId: "agentflow" });
-const city = (agent.state as { city?: string }).city;
-```
-
-State the client sends in `RunAgentInput.state` becomes the run's initial state. The
-`context`, `context_summary`, and `execution_meta` keys are ignored.
-
-## Frontend context
-
-`RunAgentInput.context`, `tools`, and `forwardedProps` are available to your nodes and tools as
-`config["ag_ui"]`:
-
-```python
-async def main_node(state: AgentState, config: dict):
-    frontend_context = config.get("ag_ui", {}).get("context", [])
-```
-
-## Not supported yet
-
-- **`MESSAGES_SNAPSHOT`.** The endpoint does not send the checkpoint's messages back, so
-  reloading an old thread in the browser depends on the client's own storage.

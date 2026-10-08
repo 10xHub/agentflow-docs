@@ -25,10 +25,10 @@ The file pipeline flows in four steps:
 2. **Reference**: Client includes the `file_id` in a content block (image, audio, or document) on a message sent to the graph.
 3. **Rewrite**: Before execution, the server resolves the reference:
    - **Images and audio** → converted to `graph://media/{file_id}` URLs, resolved by model adapters at call time.
-   - **Documents** → replaced with extracted plain text (if extraction was cached at upload), or left as-is for your graph to handle.
+   - **Documents** → replaced with extracted plain text if extraction was cached at upload; otherwise the block is rewritten to a `graph://media/{file_id}` reference like images and audio.
 4. **Execute**: Your graph receives the rewritten messages with fully resolved media.
 
-This rewrite happens in the same input-preparation step for all three endpoints, so behavior is identical whether the client sends over REST, WebSocket, or the server-to-server AG-UI protocol. Ownership is checked at every step: a file uploaded by user A returns `404` when user B tries to reference it, never `403`, so the API never confirms that a foreign `file_id` exists.
+This rewrite happens in the same input-preparation step for all three endpoints, so behavior is identical whether the client sends over REST, WebSocket, or the server-to-server AG-UI protocol. Ownership is checked at every step: when user B downloads or inspects a file uploaded by user A, the API returns `404`, never `403`. When user B references it in a message, the request fails with a "File not found" error (`422` on invoke). Either way the API never confirms that a foreign `file_id` exists.
 
 The rewrite is a no-op when no media service is configured, so development without file uploads requires no extra setup.
 
@@ -48,7 +48,6 @@ The server responds with metadata and a unique `file_id`:
 
 ```json
 {
-  "success": true,
   "data": {
     "file_id": "a8f2k9x1m5p3",
     "mime_type": "image/png",
@@ -58,13 +57,14 @@ The server responds with metadata and a unique `file_id`:
     "url": "/v1/files/a8f2k9x1m5p3",
     "direct_url": null,
     "direct_url_expires_at": null
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
 ### Permissions and ownership
 
-The uploading user is automatically recorded as the file's owner. Every read operation, including retrieval, metadata queries, and message rewriting, checks ownership and rejects requests from other users with `404`. This owner recording is immutable and survives as long as the file does.
+The uploading user is automatically recorded as the file's owner. Every read operation, including retrieval, metadata queries, and message rewriting, checks ownership and rejects requests from other users (`404` on the file routes, a "File not found" error on message references). This owner recording is immutable and survives as long as the file does.
 
 The server reads uploads in 1 MiB chunks, so oversized files are rejected before the entire body is buffered in memory. Two HTTP status codes signal problems:
 
@@ -180,9 +180,9 @@ Three modes control what happens to document blocks when referenced:
 
 | Mode | Behavior |
 |---|---|
-| `extract_text` | Replace the document block with cached plain text (or extract if not cached). Default. |
-| `pass_raw` | Leave the document block unchanged; let your graph or model adapter handle the raw file. |
-| `skip` | Drop the document block entirely. |
+| `extract_text` | Extract text at upload and replace the document block with the cached text on reference. Default. |
+| `pass_raw` | No extraction at upload; the document block stays a media reference for your graph or model adapter to handle. |
+| `skip` | No extraction at upload; documents are not turned into text. |
 
 Set the mode via the `DOCUMENT_HANDLING` environment variable.
 
@@ -201,12 +201,12 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```json
 {
-  "success": true,
   "data": {
     "media_storage_type": "local",
     "media_max_size_mb": 25.0,
     "document_handling": "extract_text"
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -280,7 +280,7 @@ Or set `GOOGLE_APPLICATION_CREDENTIALS` and omit `MEDIA_CLOUD_CREDENTIALS_JSON`.
 
 ## Signed URLs and direct access
 
-Clients can request signed direct URLs to bypass the API server:
+With a cloud storage backend, clients can request signed direct URLs to bypass the API server. With `local` or `memory` storage there is no direct URL, and `url` is the API path `/v1/files/{file_id}`. `expires_at` is a Unix timestamp in seconds.
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
@@ -289,15 +289,17 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```json
 {
-  "success": true,
   "data": {
     "url": "https://s3.amazonaws.com/bucket/10xgraph-media/abc123?X-Amz-Algorithm=...",
-    "expires_at": "2026-10-08T14:30:00Z"
-  }
+    "file_id": "a8f2k9x1m5p3",
+    "expires_at": 1791470000,
+    "mime_type": "image/png"
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
-Signed URLs are useful for large files or direct browser downloads. Ownership is checked before issuing a URL, so a signed URL is only valid for the original uploader.
+Signed URLs are useful for large files or direct browser downloads. Ownership is checked before issuing a URL, but the signed URL itself is a bearer link: anyone who holds it can download the file until it expires.
 
 ### Signed URL configuration
 
@@ -306,7 +308,7 @@ Signed URLs are useful for large files or direct browser downloads. Ownership is
 | `MEDIA_SIGNED_URL_TTL_SECONDS` | `3600` | Lifetime of a signed URL (1 hour). |
 | `MEDIA_SIGNED_URL_REFRESH_BUFFER_SECONDS` | `60` | Re-sign this many seconds before expiry instead of handing out a URL about to die. |
 
-For example, if TTL is 3600 and buffer is 60, the server re-signs a URL when 59 minutes remain, so clients always receive URLs with at least 1 hour of remaining validity.
+The server caches the signed URL and reuses it until fewer than `MEDIA_SIGNED_URL_REFRESH_BUFFER_SECONDS` remain, then signs a new one. With the defaults, a client always receives a URL with at least 60 seconds of validity left.
 
 ## Production deployment checklist
 

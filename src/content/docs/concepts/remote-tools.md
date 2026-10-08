@@ -156,8 +156,10 @@ Handlers receive the tool parameters and must return a serializable object. See 
 Sometimes a client needs to offer a tool for just one run without modifying the shared graph. Pass `remote_tools` in the run config:
 
 ```python
+from tenxgraph.core.state import Message
+
 await graph.ainvoke(
-    {"messages": [{"role": "user", "content": "Change the page background to red"}]},
+    {"messages": [Message.text_message("Change the page background to red")]},
     config={
         "thread_id": "session-1",
         "remote_tools": [

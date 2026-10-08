@@ -25,6 +25,7 @@ The API server authenticates every request and builds an authorization context f
 
 ```python
 from tenxgraph.core.authz import get_authz, has_scope
+from tenxgraph.utils import tool
 
 @tool
 def sensitive_operation(*, config):
@@ -47,7 +48,7 @@ When you run over the API server with auth enabled, `get_authz()` always returns
 - `scope`: The data isolation policy (`"owner"` or `"none"`).
 - `scopes`: A list of resource:action permissions the caller holds.
 
-When no auth is configured, `get_authz()` returns `None`, and all scopes are implicitly allowed.
+When no auth is configured, `get_authz()` returns `None`, and all scopes are implicitly allowed. If auth is on but the identity carries no scopes and the backend defines none, the block is stamped with an empty `scopes` list and `has_scope()` returns `False` for every scope.
 
 ## Check if a caller has a specific scope
 
@@ -82,6 +83,7 @@ The `user_id` from the authz block tells you who made the request. Use it to log
 
 ```python
 from tenxgraph.core.authz import get_authz
+from tenxgraph.utils import tool
 
 @tool
 def query_user_threads(*, config):
@@ -97,7 +99,7 @@ def query_user_threads(*, config):
     return find_threads_for_user(user_id)
 ```
 
-Combining `user_id` with a checkpointer that supports owner-only access (like `PgCheckpointer` with the ownership authorization backend) ensures that data isolation is enforced at the storage layer too.
+Combining `user_id` with a checkpointer that supports owner-only access (like `PgCheckpointer`, which enforces user isolation by default) ensures that data isolation is enforced at the storage layer too.
 
 ## Understand isolation scope
 
@@ -131,13 +133,24 @@ In practice, the checkpointer and store already respect the isolation policy, so
 
 ## Example: Multi-tenant agent with scope checks
 
-Here is a complete example of a graph that uses authorization scopes to enforce multi-tenant data isolation and fine-grained permissions:
+Install with `pip install "10xgraph[google-genai]"`. Here is a complete example of a graph that uses authorization scopes to enforce multi-tenant data isolation and fine-grained permissions:
 
 ```python
-from tenxgraph import StateGraph, Agent, ToolNode
-from tenxgraph.core.authz import get_authz, has_scope, isolation_scope
-from tenxgraph.core.state import AgentState, Message
+from tenxgraph.core.authz import get_authz, has_scope
+from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.utils import tool
+
+# Stand-in storage layer for the example; use your own database.
+NOTES: dict[str, list[str]] = {}
+
+
+def fetch_user_notes(user_id):
+    return NOTES.get(user_id, [])
+
+
+def save_note(user_id, text):
+    NOTES.setdefault(user_id, []).append(text)
+    return len(NOTES[user_id])
 
 @tool
 def list_notes(*, config) -> str:
@@ -174,18 +187,12 @@ def export_data(format: str, *, config) -> str:
     user_id = authz.get("user_id")
     return f"Exported {format} for {user_id}"
 
-# Build a simple agent that uses these tools
-tools = [list_notes, create_note, export_data]
-tool_node = ToolNode(tools)
-
-graph = StateGraph(AgentState)
-graph.add_node("agent", Agent(model="gemini/gemini-2.5-flash", tools=tools))
-graph.add_node("tools", tool_node)
-graph.add_edge("agent", "tools")
-graph.add_edge("tools", "agent")
-graph.set_entry_point("agent")
-
-compiled = graph.compile()
+# ReactAgent wires the agent node, tool node and routing for you
+agent = ReactAgent(
+    model="gemini/gemini-2.5-flash",
+    tools=[list_notes, create_note, export_data],
+)
+compiled = agent.compile()
 ```
 
 When you invoke this over the API server:
@@ -203,6 +210,7 @@ When you call `CompiledGraph.invoke()` directly in Python (not over the API serv
 
 ```python
 from tenxgraph.core.authz import build_authz
+from tenxgraph.core.state import Message
 
 authz_block = build_authz(
     user_id="alice",
@@ -223,12 +231,12 @@ Without an authz block, `get_authz()` returns `None`, and all functions default 
 When a request reaches the API server, the `RequirePermission` dependency (in the route's `Depends()`) performs this flow:
 
 1. **Authenticate**: Extract and verify the bearer token (JWT or custom `BaseAuth`). Decode claims to get `user_id`, `roles`, `scopes`, etc.
-2. **Check scopes**: Call the authorization backend's `scopes_for(user)` to map roles to scopes. Verify that the required scope (e.g., `"graph:invoke"` for a POST to `/v1/graph/invoke`) is granted.
+2. **Check scopes**: Call the authorization backend's `scopes_for(user)` (for example `RoleBasedAuthorizationBackend` maps roles to scopes), falling back to `user["scopes"]`. If scopes are declared, verify that the required scope (e.g., `"graph:invoke"` for a POST to `/v1/graph/invoke`) is granted.
 3. **Check object access**: Call `authorize(user, resource, action, resource_id)` to enforce object-level rules (e.g., ownership checks).
 4. **Build and stamp authz**: Call `build_authz(user_id, scope=isolation_policy, scopes=granted_scopes)` and place it in `user["authz"]`. This overwrites anything the client sent, it is non-hijackable.
 5. **Place in config**: Every service (graph execution, checkpointer, store) copies `user` into `config["user"]`, so the authz block reaches your code.
 
-This flow is defined in `/tenxgraph_api/src/app/core/auth/permissions.py`. For details on configuring backends, see `/docs/server/auth`.
+This flow is defined in `tenxgraph_api/src/app/core/auth/permissions.py`. For details on configuring backends, see `/docs/server/auth`.
 
 ## Common errors and fixes
 
@@ -237,8 +245,8 @@ This flow is defined in `/tenxgraph_api/src/app/core/auth/permissions.py`. For d
 The caller doesn't have the required scope. This happens when:
 
 - The user's role is not mapped to that scope in your authorization backend.
-- The JWT `scope` claim doesn't include the required scope.
-- The user is authenticated but no authorization backend is configured (all routes are allowed).
+- The identity's `scopes` (for example from the JWT claims) don't include the required scope.
+- The identity declares no scopes, so `has_scope()` sees an empty list.
 
 Fix: Check your `authorization` setting in `10xgraph.json` and your role-scope mappings.
 
@@ -258,7 +266,7 @@ The caller tried to access a thread they don't own, but the ownership check pass
 - The ownership backend is configured but your code is checking ownership a second time.
 - Or, you're using a custom authorization backend that does not enforce ownership.
 
-Fix: Ensure your authorization backend's `OwnershipAuthorizationBackend` or custom implementation is checking thread ownership. If you need a custom check, call `get_thread_owner()` from the checkpointer and compare.
+Fix: Ensure your authorization backend (`OwnershipAuthorizationBackend` or a custom one) checks thread ownership. For a custom check, call `await checkpointer.aget_thread_owner(thread_id)` and compare.
 
 ## Related pages
 

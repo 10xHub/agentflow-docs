@@ -42,7 +42,7 @@ const client = new TenxGraphClient({
 
 ## How it works
 
-Your app calls the client with messages and config. The client connects to the 10xGraph API over your chosen transport, runs the graph, and returns the result with full session state restored from the checkpointer.
+Your app calls the client with messages and config. The client connects to the 10xGraph API over your chosen transport, runs the graph, and returns the result. The server restores the thread's history from the checkpointer.
 
 ```mermaid
 flowchart LR
@@ -59,7 +59,7 @@ flowchart LR
   REST --> GRAPH
   GRAPH -->|StreamChunk via NDJSON / WS| REST
   REST -->|typed events| SDK
-  SDK -->|AgentState| APP
+  SDK -->|InvokeResult / StreamChunk| APP
 ```
 
 ## Transport modes
@@ -81,14 +81,14 @@ All modes restore your conversation history from the thread automatically, so yo
 
 **Remote tools**: Tool schemas live on the server (in `10xgraph.json`), but implementation runs in your client. This lets you call browser APIs (clipboard, geolocation), keep secrets local, or run integrations the server cannot access.
 
-**Session state**: Every response includes the full `AgentState` (messages, config snapshot, checkpoint). You can inspect thread history, node-level decision logs, and tool results without querying the server again.
+**Response granularity**: `response_granularity` controls how much comes back. `'low'` returns only the latest messages, `'partial'` adds context and summary, and `'full'` adds the graph state.
 
 ## Pages in this section
 
 ### Basics
 
 - [Create and configure a client](/docs/client/create-client): Set auth tokens, timeout, proxy headers, and environment-specific URLs
-- [Invoke and get results](/docs/client/invoke-agent): Call the agent once and await the final response
+- [Invoke and get results](/docs/client/invoke-agent): Call the agent and await the final response
 - [Stream responses](/docs/client/stream-responses): Consume token-by-token or message-by-message as they arrive
 - [Manage threads](/docs/client/manage-threads): List threads, fetch history, update state, delete old conversations
 
@@ -98,7 +98,7 @@ All modes restore your conversation history from the thread automatically, so yo
 - [Send files and media](/docs/client/files-and-multimodal): Upload images, audio, documents; send them in messages
 - [Use the memory API](/docs/client/use-memory-api): Store and search long-term memory (semantic, metadata, facts)
 - [Graph utilities](/docs/client/graph-utilities): Inspect schemas, stop runs, fix state, observe execution metadata
-- [Realtime audio](/docs/client/realtime-audio): Voice-to-voice with Anthropic's realtime API (passthrough transport)
+- [Realtime audio](/docs/client/realtime-audio): Voice-to-voice audio over the `/v1/graph/live` WebSocket bridge
 - [Handle errors](/docs/client/error-handling): Catch and retry transient failures, parse error details
 
 ### Frameworks

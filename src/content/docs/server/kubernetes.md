@@ -12,7 +12,7 @@ faq:
   - question: "Do I need to scale horizontally?"
     answer: "Start with 2 replicas for redundancy. Scale up for concurrent demand. All replicas share Postgres and Redis, so scaling is straightforward. Configure your load balancer idle timeout for long streaming connections."
   - question: "What if I want to use the generated manifest as-is?"
-    answer: "You must pin the container image tag and set a real CORS origin. Never deploy with wildcard CORS and credentials enabled in production. API keys and secrets must come from Kubernetes Secrets."
+    answer: "You must pin the container image tag and set a real CORS origin. Production mode refuses to start with wildcard CORS and credentials enabled. API keys and secrets must come from Kubernetes Secrets."
 ---
 
 ## The problem: long runs and short timeouts
@@ -28,27 +28,27 @@ Kubernetes' default pod lifecycle is hostile to this. When you trigger a rolling
 Create a `Dockerfile` and Kubernetes manifest in one command:
 
 ```bash
-10xgraph build --docker-compose --k8s --service-name my-agent --port 8000
+10xgraph build --k8s --service-name my-agent --port 8000
 ```
 
 This produces three files:
 
-- `Dockerfile` with a production-ready image
-- `docker-compose.yml` for local testing
+- `Dockerfile` with a production-ready image that starts Gunicorn with a 600-second graceful timeout
+- `.dockerignore`
 - `k8s.yaml` containing a Deployment and a Service
 
-The `--force` flag overwrites existing files. You can also generate just the Kubernetes manifest by omitting `--docker-compose`, or just Docker files by omitting `--k8s`.
+The `--force` flag overwrites existing files. Do not add `--docker-compose` for an image you will run on Kubernetes: with that flag the `Dockerfile` omits its `CMD` and relies on the compose file's `command`. Generate the compose file in a separate run if you need it.
 
 ### What the generated manifest includes
 
-The manifest is a working skeleton. It sets four critical values that are easy to get wrong:
+The manifest is a working skeleton. It sets these values, which are easy to get wrong:
 
 | Setting | Value | Purpose |
 | --- | --- | --- |
 | `terminationGracePeriodSeconds` | 660 | Exceeds the app's 600-second graceful timeout. Ensures SIGKILL does not arrive until the app has fully drained. |
 | `preStop` sleep | 15 seconds | Gives the load balancer time to notice the pod is terminating and stop routing new requests. Without it, new traffic arrives while the app shuts down. |
-| `readinessProbe` | 10s interval | Removes unhealthy pods from the load balancer quickly. Checked via `GET /ping`. |
-| `livenessProbe` | 30s interval, 5 failures | Deliberately slack. A worker handling a long run must not be restarted. Checked via `GET /ping`. |
+| `readinessProbe` | 10s interval, 5s initial delay | Removes unhealthy pods from the load balancer quickly. Checked via `GET /ping`. |
+| `livenessProbe` | 30s interval, 30s initial delay, 5 failures | Deliberately slack. A worker handling a long run must not be restarted. Checked via `GET /ping`. |
 
 The readiness probe is strict (10-second intervals) because false positives only temporarily remove a pod from rotation. The liveness probe is slack (30-second intervals, 5 consecutive failures required) because a false positive kills the pod mid-run. Both hit the `/ping` endpoint, which does not require authentication.
 
@@ -61,7 +61,7 @@ The manifest is not production-ready as-is. You must edit these values:
 ```yaml
 containers:
   - name: my-agent
-    image: 10xgraph-api:latest        # Pin to a digest or version tag, never use latest
+    image: 10xgraph-api:latest        # Replace with your own pinned image reference
     env:
       - name: ORIGINS
         value: "https://your-frontend.example.com"   # Set to your actual origin
@@ -69,48 +69,46 @@ containers:
         value: "production"             # Already set, but verify
       - name: IS_DEBUG
         value: "false"                  # Already set, but verify
-    envFrom:
-      - secretRef:
-          name: agentflow-secrets       # Must exist in your cluster
 ```
 
 ### Pin the image
 
-The manifest defaults to `10xgraph-api:latest`. Every deploy pulls the latest tag, making rollbacks ambiguous and making it harder to debug issues caused by image changes. Always use an immutable reference:
+The manifest uses `10xgraph-api:latest` as a placeholder image name. Build your own image from the generated `Dockerfile`, push it to your registry, and reference it immutably. A moving `latest` tag makes rollbacks ambiguous and makes image-related issues hard to debug:
 
-- A digest: `10xgraph-api@sha256:abc123...`
-- A version tag: `10xgraph-api:0.7.0`
-- A git-based tag: `my-registry/my-agent:latest-abc123def`
+- A digest: `my-registry/my-agent@sha256:abc123...`
+- A version tag: `my-registry/my-agent:1.4.0`
+- A git-based tag: `my-registry/my-agent:git-abc123def`
 
 ### Set CORS origins explicitly
 
-The manifest sets `ORIGINS` to a placeholder. If you do not change this, production mode refuses to start with an error. Set it to your actual frontend domain(s), comma-separated if there are multiple:
+The manifest sets `ORIGINS` to the placeholder `https://your-frontend.example.com`. Replace it with your actual frontend domain(s), comma-separated if there are multiple:
 
 ```yaml
 - name: ORIGINS
   value: "https://app.example.com,https://app-staging.example.com"
 ```
 
-Wildcard origins (`*`) are rejected when credentials are enabled in production mode, which they are by default. If you truly need wildcard origins, you must disable credentials, which is rare.
+With `MODE=production`, the server refuses to start if `ORIGINS` is the wildcard `*` while credentials are enabled, which is the default (`CORS_ALLOW_CREDENTIALS=true`). If you truly need wildcard origins, set `CORS_ALLOW_CREDENTIALS=false`, which is rare.
 
 ### Mount secrets, do not bake them
 
-API keys, database passwords, and JWT secrets must come from Kubernetes Secrets, never from environment variables in the manifest or baked into the image. The manifest includes a placeholder `secretRef`:
+API keys, database passwords, and JWT secrets must come from Kubernetes Secrets, never from plain values in the manifest or baked into the image. The generated manifest does not reference a Secret, so add an `envFrom` entry to the container yourself:
 
 ```yaml
 envFrom:
   - secretRef:
-      name: agentflow-secrets
+      name: my-agent-secrets
 ```
 
-Create the secret in your cluster before deploying:
+Create the secret in your cluster before deploying. The server reads `JWT_SECRET_KEY`, `JWT_ALGORITHM` and `REDIS_URL` itself; names such as the Postgres DSN variable below are whatever your graph module reads when it builds the checkpointer:
 
 ```bash
-kubectl create secret generic agentflow-secrets \
+kubectl create secret generic my-agent-secrets \
   --from-literal=GOOGLE_API_KEY="..." \
   --from-literal=OPENAI_API_KEY="..." \
   --from-literal=JWT_SECRET_KEY="..." \
-  --from-literal=DATABASE_URL="postgres://..." \
+  --from-literal=JWT_ALGORITHM="HS256" \
+  --from-literal=POSTGRES_DSN="postgresql://..." \
   --from-literal=REDIS_URL="redis://..."
 ```
 
@@ -138,7 +136,7 @@ kubectl port-forward svc/my-agent 8000:80
 curl http://127.0.0.1:8000/ping
 ```
 
-If `/ping` returns `{"status": "ok"}`, the deployment is live.
+If `/ping` returns a JSON body with `"data": "pong"`, the deployment is live.
 
 ### Test graceful termination
 
@@ -148,7 +146,7 @@ The true test is that a long-running request survives a deploy. Start a streamin
 # Terminal 1: Stream a request (this will take minutes)
 curl -X POST http://127.0.0.1:8000/v1/graph/stream \
   -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "explain quantum physics in detail"}]}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "explain quantum physics in detail"}]}]}'
 ```
 
 While that request is in flight, trigger a rolling restart in another terminal:
@@ -174,7 +172,7 @@ kubectl scale deployment my-agent --replicas=5
 
 Before scaling, understand how 10xgraph handles distributed state:
 
-1. **Shared checkpointer is mandatory.** All replicas must read and write to the same Postgres and Redis. If they do not, the same thread will resolve differently depending on which pod answers, causing data loss. Use [PgCheckpointer](/docs/guides/set-up-checkpointing) in production.
+1. **Shared checkpointer is mandatory.** All replicas must read and write to the same Postgres and Redis. If they do not, the same thread will resolve differently depending on which pod answers, causing data loss. Use `PgCheckpointer` in production (see [Set up checkpointing](/docs/guides/set-up-checkpointing)).
 
 2. **Threads are not sticky.** State lives in the checkpointer, not in the pod. You do not need (and should not use) session affinity. A client can invoke a thread on any replica.
 
@@ -219,9 +217,10 @@ CPU is the provided metric, but it is a poor signal for agent workloads. Agents 
 | Runs truncate on every deploy | `terminationGracePeriodSeconds` is too short, or the process is not PID 1 | Increase to 660+ seconds. Ensure your Dockerfile uses `CMD` or `ENTRYPOINT`, not a shell wrapper. |
 | Requests fail for a few seconds after a deploy | `preStop` sleep removed or load balancer does not respect endpoint removal | Restore the `preStop` sleep in the manifest. Increase your load balancer's connection drain time. |
 | Pods restart during long runs | Liveness probe is too strict (failing too quickly) | Loosen the liveness probe (`periodSeconds: 30`, `failureThreshold: 5`). The readiness probe should be strict; the liveness probe should not. |
-| Thread history disappears or threads resolve differently | Replicas do not share a checkpointer | Ensure `DATABASE_URL` and `REDIS_URL` point to shared instances. Do not use `InMemoryCheckpointer` in production. |
+| Thread history disappears or threads resolve differently | Replicas do not share a checkpointer | Ensure the Postgres DSN and `REDIS_URL` your graph module uses point to shared instances. Do not use `InMemoryCheckpointer` in production. |
 | Random 409 errors under high load | Two requests wrote to the same thread concurrently | This is expected with optimistic concurrency. Retry with exponential backoff, or serialize writes to the same thread. |
-| Server exits at startup with a CORS error | `ORIGINS` still set to placeholder, or wildcard with credentials | Update `ORIGINS` to your real domain. If you need wildcard, disable credentials (unusual). |
+| Server exits at startup with a CORS error | `ORIGINS` is `*` while credentials are enabled | Set `ORIGINS` to your real domain. If you need wildcard, set `CORS_ALLOW_CREDENTIALS=false` (unusual). |
+| Browser requests fail CORS checks | `ORIGINS` still holds the placeholder | Set `ORIGINS` to your real domain. |
 
 ## Related
 

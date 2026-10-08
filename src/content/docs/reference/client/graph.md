@@ -98,7 +98,7 @@ interface GraphResponse {
 |---|---|
 | `checkpointer` / `checkpointer_type` | `false` means `config.thread_id` will not persist anything between calls. |
 | `store` | `false` means the memory methods have no backend. |
-| `interrupt_before` / `interrupt_after` | Node names where the graph pauses for human input. See `AgentState.execution_meta.interrupt` below. |
+| `interrupt_before` / `interrupt_after` | Node names where the graph pauses for human input. See `execution_meta.status` below. |
 | `id_type` / `id_generator` | How thread and message ids are minted on this server. |
 | `state_fields` | The field names of the graph's state type; `graphStateSchema()` returns their full schema. |
 
@@ -333,32 +333,23 @@ class AgentState {
   context_summary: string | null;
   execution_meta: ExecutionMeta;
 }
-
-interface ExecutionMeta {
-  current_node: string;
-  step: number;
-  interrupt?: {
-    node: string;
-    reason: string;
-    status: string;
-    data?: Record<string, any>;
-  };
-  is_running: boolean;
-  is_interrupted: boolean;
-  is_stopped_requested: boolean;
-}
 ```
+
+The exported `ExecutionMeta` TypeScript interface declares `interrupt`, `is_running`, `is_interrupted` and `is_stopped_requested`, but the server does not send those fields. What arrives on the wire is the Python `ExecutionState`, so read these fields instead (cast `execution_meta` to `any` or to your own interface):
 
 | Field | Description |
 |---|---|
 | `context` | The conversation as the graph sees it: every `Message` currently in the working window. |
 | `context_summary` | A rolling summary of messages trimmed out of `context`, or `null` when nothing has been summarized. |
-| `execution_meta.current_node` | Node the graph is at. Starts at `'START'`. |
+| `execution_meta.current_node` | Node the graph is at. |
 | `execution_meta.step` | Steps executed in this run. Compare against `recursion_limit`. |
-| `execution_meta.interrupt` | Present only when the graph paused. This is how a client detects a human-in-the-loop pause. |
-| `execution_meta.is_running` | `true` while the run is in flight. |
-| `execution_meta.is_interrupted` | `true` when the graph is paused at an interrupt point. |
-| `execution_meta.is_stopped_requested` | `true` after `stopGraph()` has been accepted but before the graph has halted. |
+| `execution_meta.status` | One of `running`, `interrupted_before`, `interrupted_after`, `completed` or `error`. A value starting with `interrupted` means the graph is paused for human input. |
+| `execution_meta.interrupted_node` | Node where the graph paused, or `null`. |
+| `execution_meta.interrupt_reason` | Reason recorded for the pause, or `null`. |
+| `execution_meta.interrupt_data` | Extra data attached to the pause, or `null`. |
+| `execution_meta.stop_current_execution` | `none`, `stop_requested` or `stopped`, set by `stopGraph()`. |
+
+State is only returned when you request `response_granularity: 'full'`.
 
 The constructor takes a partial object and `Object.assign`s it, so a graph compiled with a custom state type carries its extra fields through at runtime even though they are not on the TypeScript class. Read `graphStateSchema()` for the authoritative field list of a given deployment.
 
@@ -381,13 +372,15 @@ const userMessage = Message.text_message('Delete the old reports', 'user');
 
 const result = await client.invoke([userMessage], {
   config: { thread_id: 'approval-1' },
+  response_granularity: 'full',
 });
 
-const interrupt = result.state?.execution_meta.interrupt;
+// The wire shape differs from the exported ExecutionMeta type, so cast it.
+const meta = result.state?.execution_meta as any;
 
-if (interrupt) {
-  // Show the approval UI. `data` carries whatever the node attached.
-  const approved = await askUser(interrupt.reason, interrupt.data);
+if (meta?.status?.startsWith('interrupted')) {
+  // Show the approval UI. `interrupt_data` carries whatever the node attached.
+  const approved = await askUser(meta.interrupt_reason ?? meta.interrupted_node, meta.interrupt_data ?? undefined);
 
   // Resume by invoking the same thread again.
   await client.invoke([Message.text_message(approved ? 'approved' : 'rejected', 'user')], {
@@ -406,7 +399,7 @@ if (interrupt) {
 - `graphTools()` shows what the model can actually call, tagged `local`, `mcp`, or `remote`.
 - `observability()` reconstructs a run as spans and events with token usage, and `run_ids` lists all runs.
 - `stopGraph()` halts execution cooperatively; `fixGraph()` removes messages with empty tool calls from a thread.
-- `AgentState.execution_meta.interrupt` tells you when the graph is paused waiting for human input.
+- `execution_meta.status` starting with `interrupted` tells you the graph is paused waiting for human input.
 
 ## Next step
 

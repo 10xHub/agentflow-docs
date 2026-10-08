@@ -49,11 +49,19 @@ import os
 AGENT_URL = os.getenv("AGENT_URL", "http://localhost:8001")
 app = FastAPI()
 
+def forward_headers(req: Request) -> dict[str, str]:
+    headers = {"content-type": "application/json"}
+    if "authorization" in req.headers:
+        headers["authorization"] = req.headers["authorization"]
+    return headers
+
 @app.post("/agent/invoke")
 async def proxy_invoke(req: Request):
     body = await req.body()
-    async with httpx.AsyncClient() as client:
-        r = await client.post(f"{AGENT_URL}/v1/graph/invoke", content=body)
+    async with httpx.AsyncClient(timeout=None) as client:
+        r = await client.post(
+            f"{AGENT_URL}/v1/graph/invoke", content=body, headers=forward_headers(req)
+        )
         return r.json()
 
 @app.post("/agent/stream")
@@ -61,7 +69,9 @@ async def proxy_stream(req: Request):
     body = await req.body()
     async def gen():
         async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("POST", f"{AGENT_URL}/v1/graph/stream", content=body) as r:
+            async with client.stream(
+                "POST", f"{AGENT_URL}/v1/graph/stream", content=body, headers=forward_headers(req)
+            ) as r:
                 async for chunk in r.aiter_bytes():
                     yield chunk
     return StreamingResponse(
@@ -71,7 +81,7 @@ async def proxy_stream(req: Request):
     )
 ```
 
-Add auth, rate limiting, and validation in the proxy layer; let 10xGraph handle agent execution. This pattern scales well because the agent service can be replicated independently.
+The request body must be a valid `/v1/graph/invoke` or `/v1/graph/stream` body (message `content` is a list of blocks such as `[{"type": "text", "text": "..."}]`, and `thread_id` goes inside `config`). Add auth, rate limiting, and validation in the proxy layer; let 10xGraph handle agent execution. This pattern scales well because the agent service can be replicated independently.
 
 ## Option 2: Embed the graph directly
 
@@ -87,10 +97,10 @@ import json
 
 from tenxgraph.core.state import Message
 from tenxgraph.utils.constants import ResponseGranularity
-from tenxgraph.core.state.stream_chunks import StreamEvent
+from tenxgraph.core.state import StreamEvent
 
 from my_app.graph import compiled_graph
-from my_app.auth import current_user
+from my_app.auth import current_user  # returns a dict like {"id": ...}
 
 app = FastAPI()
 
@@ -100,12 +110,12 @@ class InvokeRequest(BaseModel):
 
 @app.post("/agent/invoke")
 async def invoke(body: InvokeRequest, user = Depends(current_user)):
-    thread_id = body.thread_id or f"user-{user.id}"
+    thread_id = body.thread_id or f"user-{user['id']}"
     result = await compiled_graph.ainvoke(
         {"messages": [Message.text_message(body.text)]},
         config={
             "thread_id": thread_id,
-            "user_id": user.id,
+            "user_id": user["id"],
             "recursion_limit": 25,
         },
     )
@@ -114,14 +124,14 @@ async def invoke(body: InvokeRequest, user = Depends(current_user)):
 
 @app.post("/agent/stream")
 async def stream(body: InvokeRequest, user = Depends(current_user)):
-    thread_id = body.thread_id or f"user-{user.id}"
-    
+    thread_id = body.thread_id or f"user-{user['id']}"
+
     async def gen():
         async for chunk in compiled_graph.astream(
             {"messages": [Message.text_message(body.text)]},
             config={
                 "thread_id": thread_id,
-                "user_id": user.id,
+                "user_id": user["id"],
                 "recursion_limit": 25,
             },
             response_granularity=ResponseGranularity.LOW,
@@ -144,7 +154,7 @@ async def stream(body: InvokeRequest, user = Depends(current_user)):
     )
 ```
 
-The config dict is passed through to your nodes and tools. Keys like `user_id`, `thread_id`, and `recursion_limit` are standard; add your own for custom behavior. Tools receive config via an injectable `config` parameter.
+The config dict is passed through to your nodes and tools. Keys like `user_id`, `thread_id`, and `recursion_limit` are standard; add your own for custom behavior. Tools receive config through a `config` parameter.
 
 ## Authentication patterns
 
@@ -281,83 +291,66 @@ def query_order(order_id: str, db: Database = Inject[Database]) -> dict:
     return db.query(order_id)
 ```
 
-The same tool works whether the graph is embedded or served as a sidecar because injected parameters are filled from the container, not the HTTP request.
+Injected parameters are filled from the InjectQ container, not the HTTP request. The container must be populated in the same process that runs the graph, so this works for the embedded setup.
 
 ## Testing embedded routes
 
 Use `TestClient` from FastAPI to test your routes without spinning up a server. This approach tests the real auth, middleware, and dependency injection:
 
 ```python title="tests/test_agent_routes.py"
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from injectq import InjectQ
-from injectq.integrations.fastapi import setup_fastapi
+import json
 
-from my_app.graph import compiled_graph
+import pytest
+from fastapi.testclient import TestClient
+
 from my_app.auth import current_user
-from api.main import app, lifespan
+from api.main import app
+
 
 @pytest.fixture
 def client():
-    """Create a test client with the real app and lifespan."""
-    app_test = FastAPI(lifespan=lifespan)
-    setup_fastapi(app_test)
-    
-    # Include your routes
-    @app_test.post("/agent/invoke")
-    async def invoke(body, user=Depends(current_user)):
-        # ... your invoke logic
-        pass
-    
-    return TestClient(app_test)
+    """Test client that replaces the real auth dependency."""
+    app.dependency_overrides[current_user] = lambda: {"id": "test-user"}
+    with TestClient(app) as c:  # runs the lifespan
+        yield c
+    app.dependency_overrides.clear()
+
 
 def test_invoke_success(client):
-    """Test a successful invoke."""
-    response = client.post(
-        "/agent/invoke",
-        json={"text": "Hello, agent!"},
-        headers={"Authorization": "Bearer fake-token"},
-    )
+    response = client.post("/agent/invoke", json={"text": "Hello, agent!"})
     assert response.status_code == 200
     data = response.json()
     assert "role" in data
     assert "content" in data
 
+
 def test_stream_success(client):
-    """Test streaming."""
-    response = client.post(
-        "/agent/stream",
-        json={"text": "Hello, agent!"},
-        headers={"Authorization": "Bearer fake-token"},
-    )
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "text/event-stream"
-    
-    # Collect all events
-    events = []
-    for line in response.iter_lines():
-        if line.startswith("data: "):
-            import json
-            event_data = json.loads(line[6:])
-            events.append(event_data)
-    
-    assert len(events) > 0
+    with client.stream("POST", "/agent/stream", json={"text": "Hello, agent!"}) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        events = [
+            json.loads(line[len("data: "):])
+            for line in response.iter_lines()
+            if line.startswith("data: ")
+        ]
     assert any(e.get("done") for e in events), "Stream should end with done event"
 
-def test_auth_required(client):
-    """Test that auth is enforced."""
-    response = client.post(
-        "/agent/invoke",
-        json={"text": "Hello, agent!"},
-    )
+
+def test_auth_required():
+    """Without the override, a bad token is rejected by your own dependency."""
+    with TestClient(app) as c:
+        response = c.post(
+            "/agent/invoke",
+            json={"text": "Hello, agent!"},
+            headers={"Authorization": "Bearer not-a-token"},
+        )
     assert response.status_code == 401
 ```
 
 **For more realistic auth testing**, create a test auth backend:
 
 ```python
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
 from tenxgraph_api import BaseAuth
 
 class TestAuth(BaseAuth):
@@ -365,11 +358,11 @@ class TestAuth(BaseAuth):
         # Extract user from a test header
         user_id = request.headers.get("X-Test-User")
         if not user_id:
-            return None
-        return {"id": user_id, "email": f"{user_id}@test.local"}
+            raise HTTPException(status_code=401, detail="Missing X-Test-User")
+        return {"user_id": user_id, "email": f"{user_id}@test.local"}
 ```
 
-Then configure your test app to use it.
+This is for the sidecar setup, where `10xgraph api` runs the auth class named in `10xgraph.json`. `authenticate` must return a dict with a `user_id` key (or raise on failure); the returned keys are merged into the graph config.
 
 ## Dependency injection and shared state
 
@@ -397,10 +390,10 @@ def lookup_order(
 ) -> dict:
     """Look up an order. `config` arrives at runtime; `db` is resolved from the container."""
     user_id = config["user_id"]
-    return db.query(Order).filter_by(id=order_id, user_id=user_id).first()
+    return db.query(order_id, user_id)
 ```
 
-The graph passes `config` at runtime (thread_id, user_id, custom fields); injected parameters are resolved once at startup and cached. This pattern works the same way whether the graph is embedded or served separately.
+The graph passes `config` at runtime (thread_id, user_id, custom fields); `db` is resolved from the container.
 
 See [dependency injection guide](/docs/guides/use-dependency-injection) for the full list of injectable parameters and patterns.
 
@@ -408,13 +401,13 @@ See [dependency injection guide](/docs/guides/use-dependency-injection) for the 
 
 | Concern | Sidecar | Embedded |
 |---|---|---|
-| **Independent deploys** | ✅ | ❌ |
-| **Shared DB session** | ❌ (over HTTP) | ✅ |
-| **Scale agent independently** | ✅ | ❌ |
-| **Single Docker image** | ❌ | ✅ |
-| **Simpler setup** | ❌ | ✅ |
-| **Less coupling** | ✅ | ❌ |
-| **Direct Python calls** | ❌ | ✅ |
+| **Independent deploys** | Yes | No |
+| **Shared DB session** | No (over HTTP) | Yes |
+| **Scale agent independently** | Yes | No |
+| **Single Docker image** | No | Yes |
+| **Simpler setup** | No | Yes |
+| **Less coupling** | Yes | No |
+| **Direct Python calls** | No | Yes |
 
 **Default to sidecar.** It decouples your app from the agent, scales independently, and lets you deploy them on different schedules. Embed only when you have shared state that is expensive to serialize (a database connection pool, a large model).
 

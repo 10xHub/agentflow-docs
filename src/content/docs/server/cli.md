@@ -30,8 +30,8 @@ The CLI requires Python 3.12+. It depends on the core framework (`10xgraph`), wh
 | Command | Purpose |
 | --- | --- |
 | [`10xgraph init`](/docs/server/project-setup) | Scaffold a new agent project interactively |
-| `10xgraph dev` | Start development server and open the playground |
-| [`10xgraph api`](/docs/server/run-the-server) | Start the production API server |
+| `10xgraph dev` | Start the development server and open the playground (`--no-open` to skip) |
+| [`10xgraph api`](/docs/server/run-the-server) | Start the API server (single-worker development server) |
 | [`10xgraph play`](/docs/server/playground) | Start the server and open the playground |
 | [`10xgraph build`](/docs/server/deploy) | Generate Docker files for containerization |
 | [`10xgraph skills`](/docs/integrations/coding-assistants) | Install coding-agent skills (Claude, Codex, GitHub) |
@@ -64,19 +64,19 @@ See [Initialize a project](/docs/server/project-setup) for the full guide.
 
 ### Run locally during development
 
-`10xgraph dev` is the default choice while building your agent. It starts the server on `127.0.0.1:8000`, enables auto-reload on file changes, opens the hosted playground in your browser, and shows real-time logs in the terminal.
+`10xgraph dev` is the usual choice while building your agent. It starts the server on `127.0.0.1:8000`, enables auto-reload on file changes, and opens the hosted playground in your browser once the API responds.
 
 ```bash
 10xgraph dev
 ```
 
-Disable any of these features with flags:
+Change any of these with flags:
 
 ```bash
 10xgraph dev --no-open --port 9000 --no-reload
 ```
 
-Optionally, use `10xgraph api` (no playground) or `10xgraph play` (playground without auto-reload) for specific use cases.
+Alternatively, use `10xgraph api` (no playground) or `10xgraph play` (always opens the playground). All three reload on file changes by default.
 
 ### Test and evaluate
 
@@ -102,7 +102,7 @@ See [Run tests](/docs/testing/run-tests) and [Run evaluations](/docs/testing/run
 
 ### Containerize for production
 
-`10xgraph build` generates a production-ready Dockerfile that runs your agent on Gunicorn with Uvicorn workers. Optionally generate docker-compose.yml for local multi-service deployments or k8s.yaml for Kubernetes:
+`10xgraph build` generates a Dockerfile that runs your agent on Gunicorn with Uvicorn workers (`WEB_CONCURRENCY` sets the worker count). Optionally generate docker-compose.yml for local multi-service deployments or k8s.yaml for Kubernetes:
 
 ```bash
 10xgraph build                         # Generate Dockerfile
@@ -126,7 +126,7 @@ The editor is loopback-only for security. See [Configure the server](/docs/serve
 
 ### Verify the environment
 
-Before deploying, use `10xgraph audit` to run a read-only check of everything that must be true: the Python interpreter, installed packages, `10xgraph.json` syntax and agent key, remote-tool definitions, and port availability. The check exits with code 1 on failure (helping with CI gates) and 0 on warnings only:
+Before deploying, use `10xgraph audit` to run a read-only check: the Python interpreter, installed packages, evaluation API compatibility, `10xgraph.json` syntax and agent key, remote-tool definitions, and whether port 8000 is free. The check exits with code 1 on failure (helping with CI gates) and 0 on warnings only:
 
 ```bash
 10xgraph audit                         # Run all checks
@@ -138,7 +138,7 @@ Before deploying, use `10xgraph audit` to run a read-only check of everything th
 
 ### Install coding-agent skills
 
-`10xgraph skills` bundles integrations for Claude Code, Codex, and GitHub Copilot. Install skills interactively or by agent name:
+`10xgraph skills` installs bundled skills for Codex, Claude Code, and GitHub. Install skills interactively or by agent name:
 
 ```bash
 10xgraph skills                        # Interactive menu
@@ -168,7 +168,7 @@ Output example:
 
 ### Preview animations
 
-`10xgraph demo` shows CLI animations and timelines without affecting your project. Useful for terminal customization or testing:
+`10xgraph demo` previews CLI animations without changing your project:
 
 ```bash
 10xgraph demo --style eval

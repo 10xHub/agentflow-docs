@@ -74,10 +74,9 @@ class PromptGuardCallback(BeforeInvokeCallback):
     """Block requests that contain suspicious patterns."""
     
     async def __call__(self, context: CallbackContext, input_data):
-        # input_data is a list of Message objects
-        for msg in input_data:
-            text = msg.text() if hasattr(msg, "text") else str(msg)
-            if "ignore previous" in text.lower():
+        # For AI invocations, input_data is {"state": AgentState, "config": dict}
+        for msg in input_data["state"].context or []:
+            if "ignore previous" in msg.text().lower():
                 raise ValueError("Prompt injection detected")
         return input_data
 
@@ -101,7 +100,7 @@ class AuditLogCallback(AfterInvokeCallback):
     async def __call__(self, context: CallbackContext, input_data, output_data):
         logger.info(
             f"[AUDIT] node={context.node_name} type={context.invocation_type} "
-            f"input_len={len(input_data) if isinstance(input_data, list) else 1}"
+            f"function={context.function_name}"
         )
         return output_data
 
@@ -203,7 +202,7 @@ print(f"Final messages: {len(result['messages'])}")
 **Expected output:**
 ```
 [START] thread=user_123 trace=a1b2c3d4-...
-[AUDIT] node=agent type=ai input_len=1
+[AUDIT] node=agent type=ai function=Agent
 [END] trace=a1b2c3d4-... steps=1 messages=2 duration=0.45s
 Final messages: 2
 ```
@@ -214,8 +213,8 @@ This example builds a graph that logs every operation and redacts sensitive data
 
 ```python
 import logging
-from tenxgraph.core.graph import StateGraph, END
-from tenxgraph.core.state import AgentState, Message
+import re
+from tenxgraph.core.state import Message
 from tenxgraph.utils import tool, CallbackManager, InvocationType
 from tenxgraph.utils.callbacks import (
     GraphLifecycleHook, GraphLifecycleContext,
@@ -225,6 +224,8 @@ from tenxgraph.prebuilt.agent import ReactAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+EMAIL_RE = re.compile(r"\b[\w.-]+@[\w.-]+\.\w+\b")
 
 # Define a simple tool
 @tool
@@ -237,13 +238,9 @@ class ComplianceHook(GraphLifecycleHook):
     async def on_checkpoint(self, context: GraphLifecycleContext, state, messages, is_context_trimmed):
         """Redact email addresses before persisting."""
         for msg in messages:
-            text = msg.text()
-            if "@" in text:
-                # Replace email addresses
-                msg.content[0].text = text.replace(
-                    r'\b[\w\.-]+@[\w\.-]+\.\w+\b',
-                    "[REDACTED_EMAIL]"
-                )
+            for block in msg.content:
+                if getattr(block, "type", None) == "text":
+                    block.text = EMAIL_RE.sub("[REDACTED_EMAIL]", block.text)
         
         logger.info(f"[COMPLIANCE] Checkpointed {len(messages)} messages (redacted)")
         return state, messages
@@ -255,25 +252,18 @@ class ToolAuditCallback(AfterInvokeCallback):
             logger.info(f"[AUDIT] Tool called: {context.function_name}")
         return output_data
 
-# Build the graph
-def agent_node(state):
-    return {"messages": [state["messages"][-1]]}
-
-builder = StateGraph(AgentState)
-builder.add_node("agent", ReactAgent(
+# ReactAgent builds the graph (agent node plus tool node) for you
+agent = ReactAgent(
     model="gemini/gemini-2.5-flash",
     tools=[lookup_email],
-))
-builder.add_node("end", lambda x: x)
-builder.add_edge("agent", "end")
-builder.set_entry_point("agent")
+)
 
 # Register callbacks
 cbm = CallbackManager()
 cbm.register_lifecycle_hook(ComplianceHook())
 cbm.register_after_invoke(InvocationType.TOOL, ToolAuditCallback())
 
-app = builder.compile(callback_manager=cbm)
+app = agent.compile(callback_manager=cbm)
 
 # Run
 result = await app.ainvoke(
@@ -287,11 +277,11 @@ result = await app.ainvoke(
 | Error | Cause | Fix |
 |---|---|---|
 | `callbacks never fire` | `callback_manager` not passed to `compile()`. | Use `graph.compile(callback_manager=cbm)` explicitly. |
-| `before_invoke receives empty list` | LLM called with no messages. | Check for empty lists before accessing `[0]`. |
-| `on_error callback changes return type` | Returning wrong type from `__call__`. | Always return the same type as `output_data`, or `None`. |
+| `KeyError` or `TypeError` in a before_invoke callback | `input_data` is a dict, not a message list. AI calls get `{"state", "config"}`; tool calls get the tool arguments. | Read `input_data["state"].context` for messages. |
+| `on_error callback changes return type` | An `on_error` callback returned something other than a `Message` or `None`. | Non-`Message` values are ignored with a warning. Return a `Message` to recover, or `None` to re-raise. |
 | `lifecycle hook never fires` | Hook registered after `compile()`. | Register hooks before calling `compile(callback_manager=cbm)`. |
 | `on_graph_error doesn't suppress error` | Hooks cannot suppress graph errors. | Use `on_error` callbacks for invocation-level recovery. |
-| `callback blocks the graph` | Callback is synchronous (not async). | Make `__call__` and all methods `async`. |
+| `callback blocks the graph` | A callback does slow synchronous work. | Class-based callbacks must define `async def __call__`; avoid blocking I/O inside them. |
 
 ## Variations and options
 

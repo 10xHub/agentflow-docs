@@ -167,7 +167,7 @@ flowchart TD
 
 For local development, `10xgraph api` and `10xgraph play` are sufficient. For shared or production use:
 
-- **Persistence required:** Set a durable checkpointer (for example `PgCheckpointer`) in your graph code, not in the config. In-memory checkpointing loses all threads on restart.
+- **Persistence required:** Set a durable checkpointer (for example `PgCheckpointer`), either in your graph code or with the `checkpointer` key in `10xgraph.json`. In-memory checkpointing loses all threads on restart.
 - **Multiple instances:** Use a shared durable checkpointer and a shared store (if using long-term memory). Each instance must access the same database backend.
 - **Rate limiting across instances:** Use the `redis` rate-limit backend (the memory backend counts per process and is not shared).
 
@@ -177,16 +177,16 @@ The generated files set `MODE=production` and `IS_DEBUG=false`. Add the followin
 
 | Variable | Set to | Why |
 |---|---|---|
-| `ORIGINS` | Comma-separated list of your frontend origins | Required. Wildcard `*` is refused when `CORS_ALLOW_CREDENTIALS` is true |
-| `ALLOWED_HOST` | Your hostnames | Required. `*` triggers a startup warning in production |
+| `ORIGINS` | Comma-separated list of your frontend origins | Wildcard `*` is refused when `CORS_ALLOW_CREDENTIALS` is true |
+| `ALLOWED_HOST` | Your hostnames | Comma-separated. The default `*` triggers a startup warning in production |
 | `JWT_SECRET_KEY` | 32+ bytes, from a secret manager | Required if `auth` is `jwt`. See [Add JWT authentication](/docs/server/auth) |
 | `JWT_ALGORITHM` | `HS256` or your choice | Required with `jwt` |
-| `REDIS_URL` | Your Redis connection URL | Required if using shared rate limiting or a shared cache. Reuses the `redis` rate-limit config key |
+| `REDIS_URL` | Your Redis connection URL | Optional. The server falls back to it for the shared tier of the authorization ownership cache when the `redis` key in `10xgraph.json` is unset. For shared rate limiting, point `rate_limit.redis.url` at it as `${REDIS_URL}` |
 | `WEB_CONCURRENCY` | Workers per container | Default 2. Tune for your CPU and load |
 
 For durable persistence and distributed deployments, also configure:
 
-- A `PgCheckpointer` or equivalent in your graph code (never rely on in-memory checkpointing in production).
+- A `PgCheckpointer` or equivalent (never rely on in-memory checkpointing in production).
 - A `BaseStore` subclass if you use long-term memory.
 - An `AuthorizationBackend` to enforce thread ownership or role-based access control.
 
@@ -221,8 +221,8 @@ Before deploying to production, run these checks to catch configuration issues e
    - Requests from disallowed origins are rejected
 
 5. **Documentation is hidden** (if intentional)
-   - Verify `/docs` and `/redocs` are disabled in production (they should return 404)
-   - Check `DOCS_PATH` and `REDOCS_PATH` environment variables
+   - In `MODE=production` the server turns `/docs` and `/redocs` off unless you set `DOCS_PATH` or `REDOCS_PATH` explicitly (they should return 404)
+   - Check that neither variable is set in your deployment
 
 6. **Persistence survives restart**
    - Invoke an agent and save the thread_id

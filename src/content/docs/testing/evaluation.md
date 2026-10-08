@@ -11,7 +11,7 @@ faq:
   - question: "How do evaluations differ from unit tests?"
     answer: "Evaluations measure agent quality: whether it called the right tools, gave correct responses, and avoided hallucinations. Unit tests verify code behavior."
   - question: "Can I run evaluations without LLM costs?"
-    answer: "Yes. Default criteria (tool names, ROUGE, node order) run free. LLM-as-judge criteria are optional."
+    answer: "Yes. Tool names, trajectory, node order, ROUGE and keywords run without an LLM (for example `EvalPresets.tool_usage()` or `quick_check()`). The default `EvalConfig` includes the LLM-judged `response_match`."
   - question: "Can I run evaluations from code or just the CLI?"
     answer: "Both. Use AgentEvaluator or QuickEval for code; use `10xgraph eval` for CLI discovery and parallel runs."
 ---
@@ -59,14 +59,20 @@ eval_set = (
 
 ### 2. Run programmatically
 
-Pass the eval set to `AgentEvaluator` with a config, then await the result:
+The graph must be compiled with the collector's callback manager so tool calls and node visits are captured. Build your uncompiled `StateGraph` (`graph` below), wire the collector in at compile time, then pass the compiled graph to `AgentEvaluator` and await the result:
 
 ```python
-from tenxgraph.qa.evaluation import AgentEvaluator
+from tenxgraph.qa.evaluation import (
+    AgentEvaluator,
+    TrajectoryCollector,
+    make_trajectory_callback,
+)
 from tenxgraph.qa.evaluation.config.presets import EvalPresets
-from tenxgraph.qa.evaluation.collectors.trajectory_collector import TrajectoryCollector
 
-collector = TrajectoryCollector(capture_all_events=True)
+collector, callback_manager = make_trajectory_callback(
+    TrajectoryCollector(capture_all_events=True)
+)
+your_graph = graph.compile(callback_manager=callback_manager)
 config = EvalPresets.tool_usage(threshold=0.6)
 
 evaluator = AgentEvaluator(your_graph, collector, config=config)
@@ -83,7 +89,7 @@ For a single test without building an `EvalSet`, use `QuickEval.check()`:
 from tenxgraph.qa.evaluation import QuickEval
 
 report = await QuickEval.check(
-    graph=your_graph,
+    graph=your_graph,  # compiled as in step 2
     collector=collector,
     query="Weather in London?",
     expected_response_contains="sunny",
@@ -99,7 +105,7 @@ Put eval files in an `evals/` directory and run the command:
 10xgraph eval
 ```
 
-The CLI discovers `*_eval.py` and `eval_*.py` files, runs all cases, and writes HTML and JSON reports automatically. For full CLI options, see [How to run evaluations](/docs/testing/run-evals).
+The CLI discovers `*_eval.py` and `eval_*.py` files, loads your agent from `10xgraph.json`, runs all cases, and writes HTML and JSON reports to `eval_reports/` automatically. For full CLI options, see [How to run evaluations](/docs/testing/run-evals).
 
 ---
 
@@ -144,7 +150,7 @@ from tenxgraph.qa.evaluation.config.presets import EvalPresets
 config = EvalPresets.tool_usage(threshold=0.6)       # No LLM: tool names + sequence
 config = EvalPresets.response_quality(threshold=0.7) # LLM judge on response accuracy
 config = EvalPresets.quick_check()                   # ROUGE-only, no LLM cost
-config = EvalPresets.comprehensive(threshold=0.8)    # All criteria
+config = EvalPresets.comprehensive(threshold=0.8)    # Tool, trajectory, ROUGE and LLM-judged criteria
 ```
 
 See [Presets and configuration](/docs/testing/presets) for how to build custom configs.
@@ -180,7 +186,7 @@ See [User simulation](/docs/testing/user-simulation) for the full API and the `g
 
 ### Reports
 
-Every evaluation run produces an **HTML visual dashboard** showing pass rates, criterion scores, and failure details. JSON output is also available for programmatic consumption, and JUnit XML for CI integrations.
+By default, an evaluation run writes an **HTML visual dashboard** (pass rates, criterion scores, failure details) and a JSON report to `eval_reports/`. JUnit XML for CI integrations is opt-in through `ReporterConfig(junit_xml=True)`.
 
 See [Reports](/docs/testing/reports) for output formats and CI setup.
 

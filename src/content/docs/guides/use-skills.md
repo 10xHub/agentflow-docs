@@ -15,8 +15,10 @@ This guide covers writing a skill, attaching it to an `Agent`, checking it, and 
 ## Prerequisites
 
 ```bash
-pip install 10xgraph
+pip install "10xgraph[openai]"
 ```
+
+The examples use `gpt-4o` and need `OPENAI_API_KEY`. Any model your installed provider supports works.
 
 ---
 
@@ -179,12 +181,15 @@ The skills activated in a thread are also recorded in the state:
 from tenxgraph.core.skills.activation import get_active_skills
 from tenxgraph.core.state import Message
 
-result = await app.ainvoke(
-    {"messages": [Message.text_message("Can I approve invoice INV-203?")]},
-    config={"thread_id": "t1"},
-    response_granularity="full",
-)
-print(get_active_skills(result["state"]))  # ['invoice-review']
+from tenxgraph.utils.constants import ResponseGranularity
+
+async def main():
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("Can I approve invoice INV-203?")]},
+        config={"thread_id": "t1"},
+        response_granularity=ResponseGranularity.FULL,
+    )
+    print(get_active_skills(result["state"]))  # ['invoice-review']
 ```
 
 Recording activations is also how 10xGraph keeps skills from being lost. If a context manager later trims or summarises away the tool result that carried a skill's instructions, the agent puts them back into the system prompt on the next call.
@@ -210,7 +215,11 @@ agent = Agent(
         preload_from="active_skill",
     ),
 )
+
+graph = StateGraph(TenantState())
 ```
+
+Set `active_skill` in the initial `state` of each invoke (for example `"state": {"active_skill": "invoice-review"}`).
 
 `activate_skill` isn't registered in this mode. `read_skill_resource` is still registered when the skill has bundled files and the agent has a `ToolNode`.
 

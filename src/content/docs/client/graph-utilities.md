@@ -16,12 +16,12 @@ The `10xgraph-client` TypeScript client exposes utility methods for inspecting g
 | `graphTools()` | List all tools each tool node exposes, tagged by source (local, MCP, remote). |
 | `graphStateSchema()` | Fetch the JSON Schema describing all fields in the graph's state. |
 | `observability(threadId, runId?)` | Reconstruct and fetch the execution trace: spans, events, and token usage. |
-| `stopGraph(threadId)` | Signal a running graph to stop after the current node. |
-| `fixGraph(threadId)` | Remove incomplete tool-call messages that may have broken a thread. |
+| `stopGraph(threadId, config?)` | Signal a running graph to stop after the current node. |
+| `fixGraph(threadId, config?)` | Remove messages whose tool calls have empty content from a thread. |
 
 ## Prerequisites
 
-- A configured `TenxGraphClient`. See [how-to/client/create-client](/docs/client/create-client).
+- A configured `TenxGraphClient`. See [create a client](/docs/client/create-client).
 - The 10xGraph API server running.
 
 ---
@@ -375,52 +375,44 @@ Sends a stop signal to a running graph execution via `POST /v1/graph/stop`. The 
 ```ts
 const result = await client.stopGraph('thread-abc123');
 
-console.log('Stop accepted:', result.data.success);
-console.log('Message:', result.data.message);
-console.log('Stopped at:', result.data.stopped_at);
+console.log('Stop accepted:', result.data.ok);
+console.log('Was running:', result.data.running);
+console.log('Reason:', result.data.reason); // present when nothing was stopped
 ```
 
 ### StopGraphResponse shape
 
-```ts
-interface StopGraphResponse {
-  data: {
-    success: boolean;
-    message: string;
-    thread_id: string;
-    stopped_at?: string;  // ISO timestamp
-  };
-  metadata: ResponseMetadata;
-}
-```
+The server returns the result of the graph's stop request as `data`:
+
+| Field | Meaning |
+|---|---|
+| `ok` | `true` when the request was handled; `false` with `reason: 'no-checkpointer'` or `'no-state'` when it could not be. |
+| `running` | Whether the thread was running when the request arrived. |
+| `reason` | Set to `'not-running'` when the thread exists but was not running. |
+
+The exported `StopGraphResponse` TypeScript type declares `success`, `message`, `thread_id` and `stopped_at` instead. The server does not send those fields, so read `ok`, `running` and `reason`, and cast `result.data` to a type of your own (for example `result.data as unknown as { ok: boolean; running?: boolean; reason?: string }`) to get type checking.
 
 ### Stopping a stream in progress
 
 The most common pattern: a user clicks a stop button while a stream is running.
 
 ```ts
-let threadId: string | undefined;
+const threadId = 'long-thread';
 
 const stream = client.stream(
   [Message.text_message('Write a very long essay about the universe.')],
-  { config: { thread_id: 'long-thread' } }
+  { config: { thread_id: threadId } }
 );
 
 let stopped = false;
 
 document.getElementById('stop-btn')!.addEventListener('click', async () => {
   stopped = true;
-  if (threadId) {
-    await client.stopGraph(threadId);
-  }
+  await client.stopGraph(threadId);
 });
 
 for await (const chunk of stream) {
   if (stopped) break;
-
-  if (chunk.thread_id) {
-    threadId = chunk.thread_id;
-  }
 
   if (chunk.event === 'message' && chunk.message?.delta) {
     const text = chunk.message.content
@@ -436,13 +428,13 @@ for await (const chunk of stream) {
 
 - `stopGraph()` is a request, not a guarantee. The graph processes the flag between nodes, so it may produce one more response message before stopping.
 - After stopping, the thread state is preserved. The next `invoke()` or `stream()` call on the same `thread_id` starts from where execution was when the stop flag was checked.
-- If the thread is not running, `success` may still be `true`, the server accepted the request but there was nothing to stop.
+- If the thread exists but is not running, the call returns `ok: true` with `running: false` and `reason: 'not-running'`. If the thread has no saved state, it returns `ok: false` with `reason: 'no-state'`. Stopping needs a checkpointer.
 
 ---
 
 ## fixGraph()
 
-Removes incomplete tool-call messages from a thread's history via `POST /v1/graph/fix`. This is a recovery operation for threads that ended up in a broken state due to an interrupted execution, typically when the server was restarted mid-tool-call or when a network error cut a streaming connection.
+Removes messages whose tool calls have empty content from a thread's saved state via `POST /v1/graph/fix`. This is a recovery operation for threads that ended up in a broken state due to an interrupted execution, typically when the server was restarted mid-tool-call or when a network error cut a streaming connection.
 
 ```ts
 const result = await client.fixGraph('thread-abc123');
@@ -459,7 +451,7 @@ interface FixGraphResponse {
     success: boolean;
     message: string;
     removed_count: number;
-    state?: Record<string, any>;  // Updated state after fix, if available
+    state?: Record<string, any>;  // Updated state after the fix, when the thread has one
   };
   metadata: ResponseMetadata;
 }
@@ -467,7 +459,7 @@ interface FixGraphResponse {
 
 ### When to call fixGraph()
 
-Call `fixGraph()` when a thread gets stuck after an interrupted execution. The symptom is a `GRAPH_ERROR` or the graph refusing to accept new messages on a thread. The root cause is an assistant message with a `ToolCallBlock` that has no corresponding `ToolResultBlock`.
+Call `fixGraph()` when a thread gets stuck after an interrupted execution. The symptom is a `GRAPH_ERROR` or the graph refusing to accept new messages on a thread. The root cause is a message whose tool calls carry empty content, left behind by a tool call that never completed.
 
 ```ts
 async function invokeWithRecovery(threadId: string, message: string) {
@@ -495,43 +487,51 @@ async function invokeWithRecovery(threadId: string, message: string) {
 
 ### How it works
 
-`fixGraph()` scans the thread's message history and removes any assistant messages that contain `ToolCallBlock` entries with no corresponding `ToolResultBlock`. These orphaned tool calls are what cause the graph to be "stuck", the LLM sees them and believes it is still waiting for tool results.
+`fixGraph()` loads the thread's saved state from the checkpointer and drops every message in its context that has a tool call whose `content` is `null` or an empty string. It then saves the cleaned state. If the thread has no saved state, the call returns `success: false` with `removed_count: 0` instead of an error.
 
 ---
 
 ## Human-in-the-loop: checking and resuming after interrupts
 
-Graph execution can be paused at designated nodes for human review or approval. When an interrupt occurs, the graph stops and stores the pause reason and node in the execution state. The client detects this via `execution_meta.interrupt` returned in stream chunks or state queries.
+Graph execution can be paused before or after designated nodes (`interrupt_before` / `interrupt_after`) for human review or approval. When the graph pauses, it saves the pause in the thread's `execution_meta` and stops. The client sees the pause in two places: the `updates` stream chunk, and the saved thread state.
+
+The fields of `execution_meta` on the wire are:
+
+| Field | Meaning |
+|---|---|
+| `status` | `running`, `interrupted_before`, `interrupted_after`, `completed` or `error`. |
+| `interrupted_node` | Name of the node the graph paused at. `null` when not paused. |
+| `interrupt_reason` | Text such as `interrupt_before: approve`. |
+| `interrupt_data` | Optional extra data attached to the pause. |
+| `current_node`, `step` | Execution progress. |
+
+The exported `AgentState` TypeScript class declares an `execution_meta.interrupt` object and an `is_interrupted` flag. The server does not send those, so read the fields above from `threadState()` (cast to a type of your own for type checking).
 
 ### Detecting an interrupt in a stream
 
-When you stream execution, each chunk's `state?.execution_meta` field contains interrupt data if the graph has paused:
+The default `response_granularity` of `stream()` is `'low'`, which yields only `message` and `error` chunks. To see the pause as it happens, request `'full'`. The final `updates` chunk then carries `data.is_interrupted`:
 
 ```ts
 const stream = client.stream(
   [Message.text_message('Proceed with the high-cost operation.')],
-  { config: { thread_id: 'approval-thread' } }
+  { config: { thread_id: 'approval-thread' }, response_granularity: 'full' }
 );
 
 for await (const chunk of stream) {
-  // Check if execution was paused at a node
-  if (chunk.state?.execution_meta?.interrupt) {
-    const { node, reason, status } = chunk.state.execution_meta.interrupt;
-    console.log(`Paused at "${node}": ${reason} (${status})`);
-    console.log('No further action required; graph is waiting.');
+  if (chunk.event === 'updates' && chunk.data?.is_interrupted) {
+    console.log('Execution paused; the graph is waiting for approval.');
     break;
   }
 
-  // Process normal streaming responses...
-  if (chunk.event === 'message' && chunk.message?.content) {
-    console.log('Response:', chunk.message.content);
+  if (chunk.event === 'message' && chunk.message) {
+    console.log('Response:', chunk.message);
   }
 }
 ```
 
 ### Resuming after human approval
 
-To resume execution after an interrupt, invoke the same thread again with a new user message. The graph resumes from the paused node, preserving all prior state and context:
+To resume after an interrupt, invoke the same thread again. The graph clears the pause, continues from the paused node, and keeps all prior state:
 
 ```ts
 // User reviews the decision and approves
@@ -545,14 +545,18 @@ console.log('Final result:', approval.messages[approval.messages.length - 1]);
 
 ### Querying interrupt status outside of streaming
 
-Use `threadState()` to check if a thread is currently paused:
+Use `threadState()` to check whether a thread is currently paused. The state is at `data.state`:
 
 ```ts
-const state = await client.threadState('approval-thread');
+const { data } = await client.threadState('approval-thread');
+const meta = data.state.execution_meta as unknown as {
+  status: string;
+  interrupted_node: string | null;
+  interrupt_reason: string | null;
+};
 
-if (state.data.execution_meta?.interrupt) {
-  const { node, reason } = state.data.execution_meta.interrupt;
-  console.log(`Thread paused at "${node}": ${reason}`);
+if (meta.status.startsWith('interrupted')) {
+  console.log(`Thread paused at "${meta.interrupted_node}": ${meta.interrupt_reason}`);
 } else {
   console.log('Thread is not paused.');
 }
@@ -560,10 +564,9 @@ if (state.data.execution_meta?.interrupt) {
 
 ### Notes
 
-- Interrupts are only possible if the graph was compiled with `interrupt_before` or `interrupt_after` configuration. Check `graph().data.info.interrupt_before` and `.interrupt_after` to see which nodes support pausing.
-- Interrupted state is preserved in the checkpointer, so resumption is safe across server restarts.
-- The `interrupt` object contains `node` (the name of the paused node), `reason` (human-readable message), `status` (e.g., `waiting`), and optional `data` (caller-provided context).
-- After a paused graph resumes, the next invoke or stream call continues from the paused node and executes the remainder of the graph.
+- Interrupts are only possible if the graph was compiled with `interrupt_before` or `interrupt_after`. Check `graph().data.info.interrupt_before` and `.interrupt_after` to see which nodes pause.
+- Interrupted state is saved by the checkpointer. With a durable checkpointer (such as Postgres or SQLite), it survives server restarts.
+- A pause raised by the Python `interrupt()` function is different: resuming it needs a `resume` value in the invoke input, which this client's `invoke()` does not take as a parameter.
 
 ---
 
@@ -589,34 +592,33 @@ async function runWithApprovalGate(threadId: string, userMessage: string) {
   console.log(`\nExecuting on thread: ${threadId}`);
   const stream = client.stream(
     [Message.text_message(userMessage)],
-    { config: { thread_id: threadId } }
+    { config: { thread_id: threadId }, response_granularity: 'full' }
   );
 
-  let executionMeta = null;
-  let finalMessages = [];
+  const finalMessages: Message[] = [];
+  let paused = false;
 
   for await (const chunk of stream) {
     // Check for interrupt (approval gate paused execution)
-    if (chunk.state?.execution_meta?.interrupt) {
-      const { node, reason } = chunk.state.execution_meta.interrupt;
-      console.log(`\nExecution paused at "${node}"`);
-      console.log(`Reason: ${reason}`);
-      executionMeta = chunk.state.execution_meta;
+    if (chunk.event === 'updates' && chunk.data?.is_interrupted) {
+      paused = true;
       break;
     }
 
-    // Accumulate messages and state
     if (chunk.event === 'message' && chunk.message?.content) {
       finalMessages.push(chunk.message);
     }
-    if (chunk.state) {
-      executionMeta = chunk.state.execution_meta;
-    }
   }
 
-  // 3. If paused, show observability and resume
-  if (executionMeta?.interrupt) {
-    const threadState = await client.threadState(threadId);
+  // 3. If paused, show where, then observability, then resume
+  if (paused) {
+    const { data } = await client.threadState(threadId);
+    const meta = data.state.execution_meta as unknown as {
+      interrupted_node: string | null;
+      interrupt_reason: string | null;
+    };
+    console.log(`\nExecution paused at "${meta.interrupted_node}": ${meta.interrupt_reason}`);
+
     const obs = await client.observability(threadId);
 
     console.log(`\nObservability: ${obs.data.run?.llm_calls || 0} LLM calls, ` +
@@ -651,10 +653,10 @@ runWithApprovalGate('approval-demo-123', 'Process this high-cost operation.')
 
 | Symptom | Cause | Solution |
 |---|---|---|
-| `stopGraph` returns `404` | Thread ID not found on the server. | Verify the `threadId` matches an active thread. Use `threads()` to list threads. |
-| `fixGraph` returns `404` | Thread not found or the graph has no checkpointer. | Ensure the graph is compiled with a checkpointer and the thread has been invoked at least once. |
+| `stopGraph` returns `ok: false` | The graph has no checkpointer (`reason: 'no-checkpointer'`) or the thread has no saved state (`reason: 'no-state'`). | Compile the graph with a checkpointer and verify the `threadId`. Use `threads()` to list threads. |
+| `fixGraph` returns `success: false` | The thread has no saved state. | Ensure the graph has a checkpointer and the thread has been invoked at least once. |
 | `403` error on `stopGraph` or `fixGraph` | Caller lacks permission to modify the thread. | Check the `AuthorizationBackend` configured on the server; the caller may have read-only access. |
 | `observability` returns `run: null` | No runs have been recorded for the thread, or telemetry is disabled. | Invoke the thread at least once to generate a run. Check the server's telemetry configuration. |
-| Stream does not trigger interrupt even though `interrupt_before` is set | Interrupt logic is not configured in the graph or the paused node is unreachable. | Verify that `graph().data.info.interrupt_before` includes the expected node name. Ensure the graph's control flow reaches that node. |
+| Stream never shows the interrupt even though `interrupt_before` is set | The default `'low'` granularity hides `updates` chunks, or the node is never reached. | Pass `response_granularity: 'full'`, or check `threadState()` after the stream. Verify `graph().data.info.interrupt_before` includes the node. |
 | `graphTools` returns empty `nodes` array | The graph has no `ToolNode`s. | Not an error if the agent doesn't need external tools. Add a `ToolNode` if you expect to see tools. |
-| `fixGraph` returns `removed_count: 0` | No orphaned tool calls found; the thread is already valid. | No action needed. The thread can proceed with the next invoke. |
+| `fixGraph` returns `removed_count: 0` | No messages with empty tool calls found; nothing to repair. | No action needed. The thread can proceed with the next invoke. |

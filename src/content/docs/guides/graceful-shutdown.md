@@ -26,7 +26,7 @@ If you run agents with short timeouts or always expect to be killed abruptly, gr
 
 The `GracefulShutdownManager` intercepts SIGINT (Ctrl+C) and SIGTERM (kill) signals and sets a flag instead of terminating immediately. Your code checks this flag in its main loop and shuts down voluntarily when it sees the request.
 
-Signal handlers themselves cannot perform blocking operations in Python. The manager defers actual shutdown logic to your code, which runs synchronously in the event loop and can wait for tasks to complete, close connections, and log what happened.
+The manager registers its handlers on the asyncio event loop, so shutdown callbacks run inside the loop. The manager defers actual shutdown logic to your code, which can wait for tasks to complete, close connections, and log what happened.
 
 The `DelayedKeyboardInterrupt` context manager protects sections of code (like initialization and cleanup) from being interrupted. If a signal arrives while the context is active, it is logged and deferred until the context exits, then triggered.
 
@@ -51,7 +51,7 @@ manager = GracefulShutdownManager(shutdown_timeout=30.0)
 
 - `unregister_signal_handlers()`: Restore original signal handlers. Call this during cleanup.
 
-- `add_shutdown_callback(callback)`: Register a callable to invoke when shutdown is requested. The callback should not block (it runs from the signal handler). Useful for notifying tasks that shutdown has started.
+- `add_shutdown_callback(callback)`: Register a callable to invoke when shutdown is requested. The callback should not block (it runs in the event loop as soon as the signal arrives). Useful for notifying tasks that shutdown has started.
 
 - `protect_section()`: Returns a `DelayedKeyboardInterrupt` context manager for protecting critical code sections.
 
@@ -90,24 +90,31 @@ This example shows a graph running in a server-like loop, protected initializati
 ```python
 import asyncio
 import logging
-from tenxgraph import StateGraph, Agent
-from tenxgraph.utils.shutdown import GracefulShutdownManager, setup_exception_handler
+
+from tenxgraph import StateGraph
+from tenxgraph.core.state import Message
+from tenxgraph.utils.constants import END
+from tenxgraph.utils.shutdown import (
+    GracefulShutdownManager,
+    setup_exception_handler,
+    shutdown_with_timeout,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define a simple graph with one agent node
+# Define a simple graph with one node (no model call, so no provider extra is needed)
 def create_graph():
     graph = StateGraph()
-    
+
     async def agent_node(state):
         # Simulate a long-running operation
         await asyncio.sleep(2)
-        return {"messages": state.get("messages", []) + ["Agent response"]}
-    
+        return Message.text_message("Agent response", role="assistant")
+
     graph.add_node("agent", agent_node)
     graph.set_entry_point("agent")
-    graph.add_edge("agent", "END")
+    graph.add_edge("agent", END)
     
     return graph.compile()
 
@@ -123,7 +130,7 @@ async def run_agent_loop(graph, manager):
             
             # Run a graph invocation
             result = await graph.ainvoke(
-                {"messages": ["User: hello"]},
+                {"messages": [Message.text_message("hello")]},
                 config={"thread_id": f"thread-{request_count}"}
             )
             logger.info("Request %d completed", request_count)
@@ -147,7 +154,7 @@ async def cleanup_resources(graph):
     """Clean up resources (e.g., close database connections)."""
     logger.info("Starting cleanup...")
     
-    # Close the graph (flushes any pending state)
+    # Close the graph (background tasks, checkpointer, publisher, store)
     await graph.aclose()
     
     logger.info("Cleanup complete")
@@ -156,9 +163,10 @@ async def cleanup_resources(graph):
 async def main():
     """Main entry point with graceful shutdown setup."""
     manager = GracefulShutdownManager(shutdown_timeout=10.0)
-    
+    graph = None
+
     # Set up exception handler for the event loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     setup_exception_handler(loop)
     
     try:
@@ -166,8 +174,11 @@ async def main():
         with manager.protect_section():
             logger.info("Initializing application...")
             graph = create_graph()
-            manager.register_signal_handlers(loop)
             logger.info("Initialization complete, ready for requests")
+
+        # Register after the protected block: leaving it restores the previous
+        # signal handlers, which would undo handlers registered inside it.
+        manager.register_signal_handlers(loop)
         
         # Add a callback to log when shutdown is requested
         def on_shutdown():
@@ -182,23 +193,24 @@ async def main():
         logger.info("Keyboard interrupt received")
     finally:
         # Protect cleanup from interruption
-        with manager.protect_section():
-            logger.info("Shutting down...")
-            manager.unregister_signal_handlers()
-            
-            # Wait for cleanup with a timeout
-            result = await shutdown_with_timeout(
-                cleanup_resources(graph),
-                timeout=manager.shutdown_timeout,
-                task_name="cleanup"
-            )
-            
+        logger.info("Shutting down...")
+        manager.unregister_signal_handlers()
+
+        if graph is not None:
+            with manager.protect_section():
+                # Wait for cleanup with a timeout
+                result = await shutdown_with_timeout(
+                    cleanup_resources(graph),
+                    timeout=manager.shutdown_timeout,
+                    task_name="cleanup",
+                )
+
             if result["status"] == "timeout":
                 logger.warning("Cleanup did not complete within timeout")
             elif result["status"] == "error":
                 logger.error("Cleanup failed: %s", result["error"])
-            
-            logger.info("Application shutdown complete")
+
+        logger.info("Application shutdown complete")
 
 
 if __name__ == "__main__":
@@ -208,7 +220,7 @@ if __name__ == "__main__":
 To run this example:
 
 ```bash
-pip install "10xgraph[google-genai]"
+pip install 10xgraph
 python example.py
 ```
 
@@ -227,7 +239,7 @@ Press Ctrl+C to trigger shutdown. The manager catches the signal and waits for c
 
 ## Integration with the API server
 
-If you deploy your graph with `10xgraph api`, the server's process manager (uWSGI, Gunicorn, or the dev server) handles shutdown signals. You do not need to call `GracefulShutdownManager` directly in most cases. However, if you embed a 10xGraph in your own FastAPI application, you can use graceful shutdown to coordinate graph cleanup with the server shutdown lifecycle. See `/docs/integrations/fastapi` for details on embedding a graph.
+If you deploy your graph with `10xgraph api`, the server process (uvicorn) handles shutdown signals. You do not need to call `GracefulShutdownManager` directly in most cases. However, if you embed a 10xGraph in your own FastAPI application, you can use graceful shutdown to coordinate graph cleanup with the server shutdown lifecycle. See `/docs/integrations/fastapi` for details on embedding a graph.
 
 ## Best practices
 

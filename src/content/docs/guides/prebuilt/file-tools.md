@@ -75,12 +75,13 @@ Returns a JSON string:
 
 ```python
 from tenxgraph.prebuilt.tools import file_read
-from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
 # Create an agent with file_read access
-agent = Agent(
-    model="gpt-4o-mini",
-    tool_node=ToolNode([file_read]),
+agent = ReactAgent(
+    model=\"gpt-4o-mini\",
+    tools=[file_read],
     system_prompt=[{
         "role": "system",
         "content": "You are a code reviewer. Read the provided files and give feedback.",
@@ -90,7 +91,7 @@ graph = agent.compile()
 
 # Invoke with a workspace root
 result = await graph.ainvoke(
-    {"messages": [{"role": "user", "content": "Review src/utils.py"}]},
+    {"messages": [Message.text_message("Review src/utils.py")]},
     config={"thread_id": "review-1", "file_tool_root": "/home/user/project"}
 )
 ```
@@ -101,8 +102,8 @@ To avoid reading a huge file, specify a line range:
 
 ```python
 # Read lines 50-100 of a large file
-await agent.ainvoke(
-    {"messages": [{"role": "user", "content": "Show me lines 50-100 of main.py"}]},
+await graph.ainvoke(
+    {"messages": [Message.text_message("Show me lines 50-100 of main.py")]},
     config={"thread_id": "t1", "file_tool_root": "."}
 )
 ```
@@ -167,11 +168,12 @@ Returns a JSON string:
 
 ```python
 from tenxgraph.prebuilt.tools import file_read, file_write
-from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
-agent = Agent(
-    model="gpt-4o-mini",
-    tool_node=ToolNode([file_read, file_write]),
+agent = ReactAgent(
+    model=\"gpt-4o-mini\",
+    tools=[file_read, file_write],
     system_prompt=[{
         "role": "system",
         "content": (
@@ -183,7 +185,7 @@ agent = Agent(
 graph = agent.compile()
 
 result = await graph.ainvoke(
-    {"messages": [{"role": "user", "content": "Create a new test file for utils.py"}]},
+    {"messages": [Message.text_message("Create a new test file for utils.py")]},
     config={"thread_id": "t1", "file_tool_root": "/home/user/project"}
 )
 ```
@@ -194,7 +196,7 @@ By default, `file_write` fails if the parent directory doesn't exist. Use `creat
 
 ```python
 # Agent can now create nested directories automatically
-agent = Agent(
+agent = ReactAgent(
     model="gpt-4o-mini",
     system_prompt=[{
         "role": "system",
@@ -228,7 +230,7 @@ Searches text files under the workspace root by filename and content. Skips bina
 ### What it does
 
 - Accepts a search query (case-insensitive) and optional filename glob pattern
-- Matches query against file names first, then file contents line by line
+- Matches the query against each file's name, then against its contents line by line
 - Skips directories: `.git`, `.hg`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.tox`, `.venv`, `__pycache__`, `build`, `dist`, `htmlcov`, `node_modules`, `venv`
 - Skips binary files (checks for null bytes in the first 2 KB)
 - Skips files larger than 1 MB
@@ -241,7 +243,7 @@ Searches text files under the workspace root by filename and content. Skips bina
 |---|---|---|---|
 | `query` | `str` | required | Search term (case-insensitive, matched against filenames and content) |
 | `path` | `str` | `""` | Sub-directory to search within (relative to root); empty string searches the root |
-| `glob` | `str` | `"**/*"` | Filename glob pattern, e.g. `"*.py"` or `"*.md"`. Only simple patterns are supported. |
+| `glob` | `str` | `"**/*"` | Filename glob pattern, e.g. `"*.py"` or `"*.md"`. Only the file-name part of the pattern is matched (for example `*.py`). |
 | `max_results` | `int` | `20` | Maximum matches to return (capped at 100) |
 | `config` | `dict` | `None` | Runtime config; pass `file_tool_root` or `workspace_root` here |
 
@@ -284,11 +286,12 @@ The `match_type` is either `"filename"` (query found in the file name) or `"cont
 
 ```python
 from tenxgraph.prebuilt.tools import file_read, file_search
-from tenxgraph.core.graph import Agent, ToolNode
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
 
-agent = Agent(
-    model="gpt-4o-mini",
-    tool_node=ToolNode([file_read, file_search]),
+agent = ReactAgent(
+    model=\"gpt-4o-mini\",
+    tools=[file_read, file_search],
     system_prompt=[{
         "role": "system",
         "content": (
@@ -300,7 +303,7 @@ agent = Agent(
 graph = agent.compile()
 
 result = await graph.ainvoke(
-    {"messages": [{"role": "user", "content": "Find all files that import asyncio"}]},
+    {"messages": [Message.text_message("Find all files that import asyncio")]},
     config={"thread_id": "t1", "file_tool_root": "/home/user/project"}
 )
 ```
@@ -323,7 +326,7 @@ Search in a specific directory:
 
 ### Search behavior and limits
 
-- **Filename matches are returned first**, then content matches, up to `max_results`.
+- **Results are collected file by file**: for each file, a filename match is added first, then its matching lines, until `max_results` is reached.
 - **Binary files are skipped**: the tool detects null bytes in the first 2 KB to filter binaries (e.g., `.pyc`, `.so`, `.jpg`).
 - **Large files are skipped**: files over 1 MB are not searched to prevent timeouts.
 - **Preview truncation**: line previews are limited to 240 characters; longer lines are cut with `...`.
@@ -344,6 +347,7 @@ Here's an agent that combines all three file tools to search a codebase, read re
 
 ```python
 from tenxgraph.prebuilt.tools import file_read, file_write, file_search
+from tenxgraph.core.state import Message
 from tenxgraph.prebuilt.agent import ReactAgent
 
 # Create the agent with all file tools
@@ -369,10 +373,9 @@ graph = agent.compile()
 result = await graph.ainvoke(
     {
         "messages": [
-            {
-                "role": "user",
-                "content": "Analyze the project and write a README.md with an overview of the structure."
-            }
+            Message.text_message(
+                "Analyze the project and write a README.md with an overview of the structure."
+            )
         ]
     },
     config={
@@ -381,7 +384,7 @@ result = await graph.ainvoke(
     }
 )
 
-print(result["messages"][-1]["content"])
+print(result["messages"][-1].text())
 ```
 
 The agent will:

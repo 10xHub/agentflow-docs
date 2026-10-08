@@ -24,13 +24,13 @@ The `10xgraph-client` TypeScript package lets you invoke agents and manage threa
 
 ## Install the package
 
-The client ships as a single ESM module with no dependencies. Install it alongside your existing packages:
+Install it alongside your existing packages:
 
 ```bash
 npm install 10xgraph-client
 ```
 
-The package exports a single class, `TenxGraphClient`, plus helpers and types. Verify the installation:
+The package exports `TenxGraphClient` plus auth helpers, `Message`, error classes and types. Verify the installation:
 
 ```ts
 import { TenxGraphClient, bearerAuth } from '10xgraph-client';
@@ -214,7 +214,7 @@ const client = new TenxGraphClient(config);
 
 ## WebSocket support on Node 18 and 20
 
-The methods `wsStream()` and `realtime()` use WebSocket to stream responses. Node.js 18 and 20 do not expose a global `WebSocket` constructor, so you must install the `ws` package and pass it to the client:
+The methods `wsStream()` and `realtime()` use WebSocket to stream responses. Node.js 18 and 20 do not expose a global `WebSocket` constructor (Node 21 and later do), so you must install the `ws` package and pass it to the client:
 
 ```bash
 npm install ws
@@ -222,7 +222,7 @@ npm install ws
 
 ```ts
 import WebSocket from 'ws';
-import { TenxGraphClient } from '10xgraph-client';
+import { TenxGraphClient, bearerAuth } from '10xgraph-client';
 
 const client = new TenxGraphClient({
   baseUrl: 'http://localhost:8000',
@@ -278,7 +278,7 @@ Instead, either:
    }
    ```
 
-   The browser client then calls `POST /api/agent` with your message, and the backend handles the token.
+   The browser then calls `POST /api/agent` with your message, and the backend handles the token.
 
 2. **Session tokens.** If the 10xGraph server supports custom authentication (via `BaseAuth` in 10xgraph-api), issue a short-lived session token per user after they log in to your app. Pass the session token in `NEXT_PUBLIC_` since it is user-scoped and expires quickly.
 
@@ -311,13 +311,12 @@ Then import and use it in your components:
 
 ```ts
 // components/ChatWidget.tsx
+import { Message } from '10xgraph-client';
 import { agentClient } from '@/lib/agent-client';
 
 export function ChatWidget() {
   async function sendMessage(text: string) {
-    const result = await agentClient.invoke([
-      { type: 'text', text },
-    ]);
+    const result = await agentClient.invoke([Message.text_message(text)]);
     // Handle result
   }
 
@@ -334,7 +333,7 @@ export function ChatWidget() {
 | Symptom | Likely cause | Solution |
 |---|---|---|
 | `TypeError: Failed to fetch` | Server is not running or the address is wrong. | Start the server with `10xgraph api` and verify the `baseUrl` is correct. |
-| `TenxGraphError` with status `401` | Authentication failed (missing, invalid, or expired token). | Check the token in `auth.token` or `authToken`. Verify it matches the server's secret (`JWT_SECRET_KEY` in `.env`). |
+| `TenxGraphError` with status `401` | Authentication failed (missing, invalid, or expired token). | Check the token passed to `auth` or `authToken`. Verify it matches the server's secret (`JWT_SECRET_KEY` in `.env`). |
 | `TenxGraphError` with status `404` on `/ping` | Trailing slash in `baseUrl` or incorrect path. | Ensure `baseUrl` has no trailing slash. Example: `http://localhost:8000` not `http://localhost:8000/`. |
 | CORS error in a browser | The server's CORS policy blocks your origin. | On the server, set `ORIGINS` to include your app's origin. Or in the client, set `credentials: 'include'` if the server allows credentials. |
 | `No WebSocket implementation available` | `wsStream()` or `realtime()` called on Node 18/20 without `webSocketImpl`. | Install `ws` and pass it to the client as shown above. |

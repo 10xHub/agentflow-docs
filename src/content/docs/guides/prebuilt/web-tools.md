@@ -32,7 +32,7 @@ All tools require Python 3.12 or later.
 
 ## fetch_url: Fetch and parse web pages
 
-Use `fetch_url` when you need the full content of a specific URL. It is synchronous-friendly (runs in a thread pool), implements SSRF protection to block access to private networks, and strips HTML boilerplate to return clean text. The tool is ideal for following links that `google_web_search` surfaces, deep-reading documentation, or scraping specific data from known URLs.
+Use `fetch_url` when you need the full content of a specific URL. It is async (the blocking request runs in a thread pool), implements SSRF protection to block access to private networks, and strips HTML markup to return plain text. The tool is ideal for following links that `google_web_search` surfaces, deep-reading documentation, or scraping specific data from known URLs.
 
 ### How it works
 
@@ -41,7 +41,7 @@ Use `fetch_url` when you need the full content of a specific URL. It is synchron
 1. **Validates the URL**: accepts only HTTP and HTTPS schemes.
 2. **Blocks private addresses**: prevents Server-Side Request Forgery (SSRF) attacks by resolving the hostname and rejecting private, loopback, link-local, multicast, reserved, or unspecified IP ranges (RFC 1918, 127.0.0.0/8, fe80::/10, etc.).
 3. **Fetches with timeout**: requests data with a 10-second timeout by default, clamped between 1 and 30 seconds.
-4. **Extracts text**: if the content is HTML, parses it and strips tags, scripts, and style blocks, preserving semantic line breaks for readability.
+4. **Extracts text**: if the content is HTML, parses it and strips tags and the contents of `script`, `style` and `noscript` blocks. Whitespace is collapsed, so the result is a single line of text.
 5. **Truncates**: limits output to 20,000 characters by default to avoid overwhelming the LLM context.
 6. **Returns metadata**: includes the final URL (after redirects), HTTP status code, content type, and a `truncated` flag indicating overflow.
 
@@ -55,7 +55,7 @@ Use `fetch_url` when you need the full content of a specific URL. It is synchron
 
 ### Response structure
 
-All fields are always present in the response, returned as JSON:
+A successful call returns these fields as a JSON string:
 
 ```json
 {
@@ -67,12 +67,18 @@ All fields are always present in the response, returned as JSON:
 }
 ```
 
-If an error occurs (network failure, SSRF rejection, timeout), the response includes an `"error"` field and may include `"status_code"` for HTTP errors:
+If the fetch fails (unsupported scheme, SSRF rejection, network or HTTP error), the response has an `"error"` field instead, and includes `"status_code"` only for HTTP errors:
 
 ```json
 {
-  "error": "URL host is not public or could not be resolved",
-  "status_code": null
+  "error": "URL host is not public or could not be resolved"
+}
+```
+
+```json
+{
+  "error": "HTTP error: 404",
+  "status_code": 404
 }
 ```
 
@@ -83,6 +89,7 @@ The following agent uses `google_web_search` to find claims and `fetch_url` to r
 ```python
 from tenxgraph.prebuilt.tools import fetch_url, google_web_search
 from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
 
 agent = ReactAgent(
     model="gemini-2.5-flash",
@@ -100,20 +107,18 @@ agent = ReactAgent(
 graph = agent.compile()
 
 input_state = {
-    "messages": [
-        {"role": "user", "content": "Is Python the most popular programming language?"}
-    ]
+    "messages": [Message.text_message("Is Python the most popular programming language?")]
 }
 
-result = graph.invoke(input_state)
-print(result["messages"][-1]["content"])
+result = graph.invoke(input_state, config={"thread_id": "factcheck-1"})
+print(result["messages"][-1].text())
 ```
 
 ### Common errors and fixes
 
-**SSRF rejection:** If you see `"error": "URL host is not public or could not be resolved"`, the address is private (e.g., `192.168.1.1`, `localhost:8000`). This is intentional protection. Bypass by either using a public proxy or whitelisting specific hosts in your agent logic (not the tool itself).
+**SSRF rejection:** If you see `"error": "URL host is not public or could not be resolved"`, the address is private (e.g., `192.168.1.1`, `localhost:8000`). This is intentional protection. The tool has no allowlist option, so reach private hosts with your own custom tool instead.
 
-**Timeout:** If `fetch_url` does not return within the timeout window, you see `"error": "URL error: ..."`. Increase the `timeout` parameter up to 30 seconds, or implement retry logic in your agent.
+**Timeout:** If the request times out, the call fails with an error (for connection failures the tool returns `"error": "URL error: ..."`). Increase the `timeout` parameter up to 30 seconds, or implement retry logic in your agent.
 
 **Content truncated:** Check the `"truncated": true` flag. If essential content was cut off, increase `max_chars` (up to 20,000) or handle multi-part fetching in your agent by asking for specific sections.
 
@@ -132,8 +137,8 @@ The tool sends your query to the Gemini API with Google Search integration enabl
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `query` | `str` | required | Your search question or query |
-| `model` | `str` | `"gemini-2.5-flash"` | Gemini model for synthesis; supports `gemini-2.0-flash`, `gemini-2.0-flash-exp`, etc. |
-| `max_chars` | `int` | `20000` | Maximum characters in the synthesized content |
+| `model` | `str` | `"gemini-2.5-flash"` | Gemini model used for grounded synthesis |
+| `max_chars` | `int` | `20000` | Maximum characters in the synthesized content (capped at 20000) |
 
 ### Response structure
 
@@ -186,13 +191,12 @@ agent = ReactAgent(
 
 graph = agent.compile()
 
-result = graph.invoke({
-    "messages": [
-        Message.text_message("What is the current state of AI safety research?")
-    ]
-})
+result = graph.invoke(
+    {"messages": [Message.text_message("What is the current state of AI safety research?")]},
+    config={"thread_id": "research-1"},
+)
 
-print(result["messages"][-1]["content"])
+print(result["messages"][-1].text())
 ```
 
 ### When to use google_web_search vs. fetch_url
@@ -209,9 +213,9 @@ print(result["messages"][-1]["content"])
 
 **Missing google-genai:** If you see the install error, run `pip install "10xgraph[google-genai]"` and ensure `GOOGLE_API_KEY` is set.
 
-**Empty grounding_metadata:** If `grounding_metadata` is `null`, the query had no search results. Rephrase the query or check that your API key is valid.
+**Empty grounding_metadata:** If `grounding_metadata` is `null`, the response carried no grounding data (the model answered without searching). Rephrase the query.
 
-**Rate limits:** Google GenAI API has usage limits. If you hit limits, add a retry delay in your agent or use a lower `max_chars` to reduce processing load.
+**Rate limits:** Google GenAI API has usage limits. If you hit limits, add a retry delay in your agent or lower `max_chars` to shorten responses.
 
 ## vertex_ai_search: Search private datastores
 
@@ -219,13 +223,13 @@ Use `vertex_ai_search` to ground answers in a private document collection withou
 
 ### How it works
 
-The tool queries your configured Vertex AI Search datastore with the Gemini API (v1 endpoint), which returns grounded results similar to `google_web_search` but scoped to your datastore. You must provide the full Vertex AI Search resource path.
+The tool queries your configured Vertex AI Search datastore with the Gemini API (v1 API version), which returns grounded results similar to `google_web_search` but scoped to your datastore. The `datastore` argument is a required tool parameter the model fills in, so give it the full resource path in the system prompt.
 
 ### Prerequisites
 
 1. Create a Vertex AI Search datastore in Google Cloud Console (go to Vertex AI > Search and Information Retrieval > Datastores).
 2. Index your documents (structured or unstructured).
-3. Ensure your Google Cloud credentials have `discoveryengine.datastores.search` permission.
+3. Ensure your Google Cloud credentials can query the datastore.
 4. Obtain the full datastore resource path (shown in the console or via `gcloud`):
 
 ```
@@ -239,24 +243,16 @@ projects/YOUR_PROJECT_ID/locations/global/collections/default_collection/dataSto
 | `query` | `str` | required | Question or search text |
 | `datastore` | `str` | required | Full Vertex AI Search datastore resource path |
 | `model` | `str` | `"gemini-2.5-flash"` | Gemini model for synthesis |
-| `max_chars` | `int` | `20000` | Maximum characters in the response |
+| `max_chars` | `int` | `20000` | Maximum characters in the response (capped at 20000) |
 
 ### Response structure
 
-The response matches `google_web_search` in format:
+The response has the same `content`, `grounding_metadata` and `truncated` fields as `google_web_search`. The contents of `grounding_metadata` come from the Gemini response, so its inner structure varies:
 
 ```json
 {
   "content": "Our internal policy on remote work states...",
-  "grounding_metadata": {
-    "grounding_chunks": [
-      {
-        "web": {
-          "uri": "projects/.../documents/document-123"
-        }
-      }
-    ]
-  },
+  "grounding_metadata": { "...": "provider-defined grounding data" },
   "truncated": false
 }
 ```
@@ -266,6 +262,7 @@ The response matches `google_web_search` in format:
 ```python
 from tenxgraph.prebuilt.tools import vertex_ai_search
 from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.core.state import Message
 
 DATASTORE = "projects/my-company-123/locations/global/collections/default_collection/dataStores/policies-store"
 
@@ -276,21 +273,18 @@ agent = ReactAgent(
         "role": "system",
         "content": (
             "You are an HR assistant. Answer questions about company policies using "
-            "the internal knowledge base. If you find relevant documents, cite them."
+            "the internal knowledge base. If you find relevant documents, cite them. "
+            f"When calling vertex_ai_search, always pass datastore={DATASTORE!r}."
         ),
     }],
 )
 
-def search_internal(query: str) -> str:
-    """Inject the datastore path at agent initialization time."""
-    result = agent.compile().invoke({
-        "messages": [{"role": "user", "content": query}]
-    })
-    return result["messages"][-1]["content"]
-
-# Usage:
-answer = search_internal("What is our remote work policy?")
-print(answer)
+app = agent.compile()
+result = app.invoke(
+    {"messages": [Message.text_message("What is our remote work policy?")]},
+    config={"thread_id": "hr-1"},
+)
+print(result["messages"][-1].text())
 ```
 
 ### When to use vertex_ai_search
@@ -340,21 +334,24 @@ agent = ReactAgent(
 graph = agent.compile()
 
 query = "What are the latest developments in quantum computing?"
-result = graph.invoke({
-    "messages": [Message.text_message(query)]
-})
+result = graph.invoke(
+    {"messages": [Message.text_message(query)]},
+    config={"thread_id": "quantum-1"},
+)
 
-print(result["messages"][-1]["content"])
+print(result["messages"][-1].text())
 ```
 
 The agent autonomously decides when to search broadly (with `google_web_search`), dig deeper into specific sources (with `fetch_url`), and how to structure its findings. This pattern scales to larger research tasks like competitive analysis, due diligence, or continuous monitoring.
 
 ## Error handling and resilience
 
-All three tools return JSON responses. Successful or not, you receive a JSON object (never an exception). Check for the presence of `"error"` field:
+All three tools return JSON responses. Failures from the tool itself come back as a JSON object rather than an exception, though network timeouts during a read can still raise. Check for the presence of `"error"` field:
 
 ```python
 import json
+
+from tenxgraph.prebuilt.tools import google_web_search
 
 async def safe_web_search(query: str) -> dict:
     result = await google_web_search(query)
@@ -367,7 +364,7 @@ async def safe_web_search(query: str) -> dict:
     return data
 ```
 
-In production agents, implement retry logic at the graph level (using `RetryConfig` on the node) or at the tool level (wrap the tool to add exponential backoff). For network timeouts, increase the `timeout` parameter on `fetch_url` or add retry steps to your agent's system prompt.
+In production agents, implement retry logic at the graph level (using `RetryConfig`) or at the tool level (wrap the tool to add exponential backoff). For network timeouts, increase the `timeout` parameter on `fetch_url` or add retry steps to your agent's system prompt.
 
 ## See also
 

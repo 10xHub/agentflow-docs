@@ -22,7 +22,7 @@ This guide covers:
 
 ## Prerequisites
 
-- `10xgraph` >= 0.9.0
+- `10xgraph` installed with the `realtime` extra (Python 3.12 or newer)
 - A Gemini API key (or Vertex AI credentials)
 
 ---
@@ -40,12 +40,11 @@ Set your credentials:
 ```bash
 export GEMINI_API_KEY=your-api-key
 
-# Optional: pick a Gemini Live model name (check Google's docs for regional availability).
-# Defaults to gemini-live-2.5-flash-preview when GEMINI_LIVE_MODEL is not set.
-export GEMINI_LIVE_MODEL=gemini-live-2.5-flash-preview
 ```
 
-For Vertex AI, set `GOOGLE_GENAI_USE_VERTEXAI=1` and standard ADC environment variables instead of `GEMINI_API_KEY`.
+`GOOGLE_API_KEY` also works. The library reads no model variable; the model is the string you pass to `AudioAgent` and `RealtimeConfig`. The repo examples read an optional `GEMINI_LIVE_MODEL` variable and default to `gemini-live-2.5-flash-preview`. Check Google's docs for regional availability.
+
+For Vertex AI, pass `use_vertex_ai=True` to `AudioAgent(...)` and set `GOOGLE_CLOUD_PROJECT` (and optionally `GOOGLE_CLOUD_LOCATION`, default `us-central1`). Credentials come from Application Default Credentials. The `GOOGLE_GENAI_USE_VERTEXAI` variable is not used for realtime sessions.
 
 ---
 
@@ -305,6 +304,8 @@ Image frames are not stored or persisted. On reconnect, only text transcripts ar
 Pass a checkpointer to `compile()` to persist transcripts and resumption handles across connections.
 
 ```python
+import os
+
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer, PgCheckpointer
 
 # Development
@@ -312,9 +313,12 @@ app = AudioAgent(MODEL, ...).compile(
     checkpointer=InMemoryCheckpointer()
 )
 
-# Production
+# Production (needs the pg_checkpoint extra; Postgres plus Redis)
 app = AudioAgent(MODEL, ...).compile(
-    checkpointer=PgCheckpointer(database_url=os.environ["DATABASE_URL"])
+    checkpointer=PgCheckpointer(
+        postgres_dsn=os.environ["DATABASE_URL"],
+        redis_url=os.environ["REDIS_URL"],
+    )
 )
 ```
 
@@ -355,6 +359,8 @@ config = RealtimeConfig(
 When the configured graph is rooted at a `LiveAgent` (i.e. built with `AudioAgent`), `10xgraph api` automatically exposes a WebSocket endpoint at `/v1/graph/live`.
 
 ### Setup
+
+`10xgraph.json`:
 
 ```json
 {

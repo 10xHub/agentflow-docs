@@ -1,7 +1,7 @@
 ---
 title: Serving Agents
 seoTitle: "Serving agents with 10xgraph.json"
-description: How 10xgraph.json wires a compiled graph to the API server, plus authentication, authorization, and publisher configuration for production.
+description: How 10xgraph.json wires a compiled graph to the API server, plus authentication, authorization, and publisher setup for production.
 section: Concepts
 group: "Serving"
 order: 160
@@ -17,9 +17,9 @@ flowchart TB
   subgraph "10xgraph api process"
     UV[Uvicorn ASGI]
     FA[FastAPI]
-    AUTH[BaseAuth middleware]
+    RATE[RateLimitMiddleware]
+    AUTH[BaseAuth.authenticate]
     AUTHZ[AuthorizationBackend]
-    RATE[BaseRateLimitBackend]
     SVC[GraphService]
     GRAPH["Compiled Graph\n(loaded once at startup)"]
   end
@@ -30,7 +30,7 @@ flowchart TB
     PUB_Q[RabbitMQPublisher]
     PUB_O[OtelPublisher]
   end
-  REQ[HTTP Request] --> UV --> FA --> AUTH --> AUTHZ --> RATE --> SVC --> GRAPH
+  REQ[HTTP Request] --> UV --> FA --> RATE --> AUTH --> AUTHZ --> SVC --> GRAPH
   GRAPH -->|EventModel| PUB_C & PUB_R & PUB_K & PUB_Q & PUB_O
 ```
 
@@ -64,7 +64,6 @@ Import paths are **dotted module paths** (`module:attribute`), resolved with `im
   "env": ".env",
   "auth": "jwt",
   "authorization": "auth.agent_auth:MyAuthorizationBackend",
-  "checkpointer": "services.checkpointer:my_pg_checkpointer",
   "injectq": "graph.agent:container",
   "store": "services.store:my_store",
   "redis": "redis://localhost:6379",
@@ -75,7 +74,8 @@ Import paths are **dotted module paths** (`module:attribute`), resolved with `im
     "window": 60,
     "by": "ip",
     "trusted_proxy_headers": true,
-    "exclude_paths": ["/ping", "/docs"]
+    "exclude_paths": ["/ping", "/docs"],
+    "redis": {"url": "redis://localhost:6379"}
   }
 }
 ```
@@ -84,42 +84,42 @@ Import paths are **dotted module paths** (`module:attribute`), resolved with `im
 |---|---|---|
 | `agent` | module:callable | Returns a `CompiledGraph`. Required. |
 | `env` | file path | Path to a `.env` file, loaded at startup. |
-| `auth` | `"jwt"` \| module:path | `"jwt"` enables built-in JWT auth; a module path loads your `BaseAuth` subclass. |
-| `authorization` | module:path | Loads your `AuthorizationBackend` for per-tool / per-thread access control. |
-| `checkpointer` | module:path | Loads your `BaseCheckpointer`. Default is in-memory. |
+| `auth` | `"jwt"` \| object | `"jwt"` enables built-in JWT auth; `{"method": "custom", "path": "module:Class"}` loads your `BaseAuth` subclass. |
+| `authorization` | module:path \| name \| object | Your `AuthorizationBackend`, a built-in name, or an RBAC config. See Authorization. |
+| `checkpointer` | module:path | Accepted in the file, but the server does not load it. Pass the checkpointer to `compile(checkpointer=...)` in your graph module instead. |
 | `injectq` | module:path | Points to an `InjectQ` container instance. |
 | `store` | module:path | Loads your `BaseStore` for long-term memory. |
-| `redis` | URL string | Redis connection for `PgCheckpointer` cache and pub/sub. |
-| `thread_name_generator` | module:path | Loads your `ThreadNameGenerator`. Default generates adjective-noun pairs (e.g., `thoughtful-dialogue`). |
+| `redis` | URL string | Redis URL. The ownership authorization cache uses it as a shared cache tier. |
+| `thread_name_generator` | module:path | Loads your `ThreadNameGenerator` class or instance. |
 | `rate_limit` | object | Rate limiting config (see below). |
 
 **Starting the server:**
 
 ```bash
 10xgraph api                                    # development, auto-reload
-10xgraph api --config custom.json              # explicit config path
+10xgraph api --config custom.json              # explicit config path (also -c)
 10xgraph api --host 0.0.0.0 --port 8000        # bind address
 10xgraph play                                   # API + playground in browser
 ```
 
 ## REST endpoints and request flow
 
-The API exposes these routers under `/v1`:
+The API exposes these routers (all under `/v1` except `/ping`):
 
 | Router | Endpoints | Purpose |
 |---|---|---|
-| Graph | `POST /invoke`, `POST /stream`, `WebSocket /ws`, `POST /stop`, `POST /fix`, `GET /` | Invoke or stream the agent, stop a run, fix interrupted state, get graph info. |
-| Threads | `GET /threads`, `POST /threads`, `GET /threads/{id}/state`, `GET /threads/{id}/messages` | Manage thread state and message history. |
-| Store | `POST /store/memories`, `GET /store/memories/{id}`, `POST /store/search` | Long-term memory operations. |
-| Files | `POST /files/upload`, `GET /files/{id}`, `GET /files/{id}/info`, `GET /files/{id}/url` | Upload, retrieve, and get signed URLs for media. |
-| Config | `GET /config/multimodal` | Get multimodal settings. |
-| Ping | `/ping` | Health check. |
+| Graph | `POST /v1/graph/invoke`, `POST /v1/graph/stream`, `WebSocket /v1/graph/ws`, `WebSocket /v1/graph/live`, `POST /v1/graph/stop`, `POST /v1/graph/fix`, `GET /v1/graph`, `GET /v1/graph/tools` | Invoke or stream the agent, stop a run, fix interrupted state, get graph info. |
+| Threads | `GET /v1/threads`, `GET /v1/threads/{id}`, `GET`/`PUT`/`DELETE /v1/threads/{id}/state`, `GET`/`POST /v1/threads/{id}/messages` | Manage thread state and message history. |
+| Store | `POST /v1/store/memories`, `POST /v1/store/memories/list`, `POST /v1/store/memories/{id}`, `POST /v1/store/search` | Long-term memory operations. |
+| Files | `POST /v1/files/upload`, `GET /v1/files/{id}`, `GET /v1/files/{id}/info`, `GET /v1/files/{id}/url` | Upload, retrieve, and get signed URLs for media. |
+| Config | `GET /v1/config/multimodal` | Get multimodal settings. |
+| Ping | `GET /ping` | Health check. |
 
-Every routable request (except `/ping`) passes through authentication (`BaseAuth.authenticate`), then authorization (`AuthorizationBackend.authorize`), then rate limiting, before reaching the route handler.
+When configured, rate limiting runs first as middleware. Each protected route then runs authentication (`BaseAuth.authenticate`) and authorization (`AuthorizationBackend.authorize`) before the handler. If no `auth` is configured, authentication and authorization are skipped and every request runs as an anonymous user.
 
 ## Authentication
 
-Authentication is pluggable via `BaseAuth`. The framework ships with `JwtAuth`; you can subclass `BaseAuth` to add any other backend.
+Authentication is pluggable via `BaseAuth`. The framework ships with JWT auth; you can subclass `BaseAuth` to add any other backend.
 
 **Built-in: JWT**
 
@@ -135,7 +135,7 @@ Then set the required environment variables:
 
 ```bash
 export JWT_SECRET_KEY="your-secret"        # required; use at least 32 random chars
-export JWT_ALGORITHM="HS256"               # optional; default is HS256
+export JWT_ALGORITHM="HS256"               # required to be set in the environment
 ```
 
 Clients send credentials as `Authorization: Bearer <token>`.
@@ -151,27 +151,29 @@ from fastapi import Request, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from tenxgraph_api import BaseAuth
 
-class FirebaseAuth(BaseAuth):
+class FirebaseAuth(BaseAuth):  # assumes firebase_admin is installed and initialized
     def authenticate(
         self, request: Request, response: Response,
         credential: HTTPAuthorizationCredentials | None,
     ) -> dict[str, Any] | None:
         if credential is None:
-            return None  # → 401
+            return None  # treated as an anonymous user
         try:
             claims = firebase_admin.auth.verify_id_token(credential.credentials)
             return {"user_id": claims["uid"], **claims}
         except Exception:
-            return None  # → 401
+            return None  # treated as an anonymous user
 ```
 
 Important: `authenticate` is **synchronous**. Declaring it `async def` returns an un-awaited coroutine and breaks auth.
 
 ```json
 {
-  "auth": "auth.firebase_auth:FirebaseAuth"
+  "auth": {"method": "custom", "path": "auth.firebase_auth:FirebaseAuth"}
 }
 ```
+
+Returning `None` or an empty dict gives the request an empty identity rather than a 401 by itself. To reject a request, raise an `HTTPException` (the built-in JWT auth raises a 401 error). The returned keys must include `user_id`.
 
 ## Authorization
 
@@ -188,7 +190,7 @@ class TenantAuthorizationBackend(AuthorizationBackend):
         resource_id: str | None = None, **context: Any,
     ) -> bool:
         # resource: "graph" | "checkpointer" | "store" | "files" | "config"
-        # action: "invoke" | "stream" | "read" | "write" | "delete"
+        # action: "invoke" | "stream" | "stop" | "fix" | "read" | "write" | "delete" | "upload"
         # resource_id: thread_id or memory_id when applicable
         return user.get("tenant_id") == context.get("tenant_id")
 ```
@@ -200,14 +202,14 @@ class TenantAuthorizationBackend(AuthorizationBackend):
 ```
 
 If no `authorization` key is set, the default depends on `MODE`:
-- **production**: `"ownership"` (each user owns their own threads, read-only)
-- **development**: `"allow_all"` (all users can access all threads)
+- **production**: `"ownership"` (a user can read, run, stop and fix only threads they own)
+- **development**: `"allow_all"` (any authenticated user can access all threads)
 
-Override by setting `authorization` to a module path, a built-in name (`"ownership"`, `"allow_all"`, `"default"`), `null`, or an RBAC config object.
+Override by setting `authorization` to a `module:attr` path, a built-in name (`"ownership"`, `"allow_all"`, `"default"`, `"none"`), or an RBAC config object (`{"backend": "rbac", "roles": {...}}`).
 
 ## Rate limiting
 
-Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in; you can subclass for custom logic.
+Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in (`memory` and `redis`); set `backend` to `custom` to supply your own.
 
 ```json
 {
@@ -223,12 +225,15 @@ Rate limiting is pluggable via `BaseRateLimitBackend`. Two backends are built in
 }
 ```
 
+The memory backend counts per process, so use `redis` when you run several workers.
+
 | Config key | Default | Purpose |
 |---|---|---|
-| `backend` | `memory` | `memory` (single-worker dev), `redis` (multi-worker), or custom via InjectQ. |
+| `enabled` | true | Set `false` to turn rate limiting off. |
+| `backend` | `memory` | `memory` (single-worker dev), `redis` (multi-worker), or `custom` (a `BaseRateLimitBackend` bound in InjectQ). |
 | `requests` | 100 | Requests allowed per window. |
 | `window` | 60 | Time window in seconds. |
-| `by` | `global` | `global` (all users share one limit) or `ip` (per IP). |
+| `by` | `ip` | `ip` (per client IP), `user`, or `global` (all callers share one limit). |
 | `trusted_proxy_headers` | false | Honor `X-Forwarded-For` when true. |
 | `fail_open` | true | Allow requests if the backend is unreachable. |
 | `exclude_paths` | `[]` | Paths exempt from rate limiting. |
@@ -251,22 +256,27 @@ For the `redis` backend, add a `redis` key with the connection URL:
 
 ```python
 # services/rate_limit.py
-from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import (
+    BaseRateLimitBackend,
+    RateLimitDecision,
+)
 
 class CustomRateLimitBackend(BaseRateLimitBackend):
-    async def check(self, key: str, limit: int, window: int) -> bool:
-        # return True to allow, False to rate-limit (→ 429)
-        ...
+    async def check(self, key: str, *, limit: int, window: int) -> RateLimitDecision:
+        # Atomically count the request, then return a decision.
+        # allowed=False produces a 429 response.
+        return RateLimitDecision(allowed=True, remaining=limit - 1, reset_after=window)
 
     async def close(self) -> None:
         ...
 ```
 
-Register in `10xgraph.json` via dependency injection:
+Set `"backend": "custom"` in `rate_limit`, and register the backend through the container that `injectq` points to:
 
 ```json
 {
-  "injectq": "graph.agent:container"
+  "injectq": "graph.agent:container",
+  "rate_limit": {"backend": "custom", "requests": 100, "window": 60}
 }
 ```
 
@@ -275,6 +285,7 @@ Then in your graph module:
 ```python
 from injectq import InjectQ
 from services.rate_limit import CustomRateLimitBackend
+from tenxgraph_api.src.app.core.middleware.rate_limit.base import BaseRateLimitBackend
 
 container = InjectQ.get_instance()
 container.bind_instance(BaseRateLimitBackend, CustomRateLimitBackend())
@@ -282,18 +293,18 @@ container.bind_instance(BaseRateLimitBackend, CustomRateLimitBackend())
 
 ## Publishers
 
-Publishers emit `EventModel` on every execution event, node start/end, tool calls, state updates, errors. Wire them at `StateGraph` initialization, not at compile:
+Publishers emit `EventModel` on every execution event: node start/end, tool calls, state updates, errors. Each takes a config dict. Wire them at `StateGraph` initialization, not at compile. Install the extras you use, for example `pip install "10xgraph[redis,kafka]"`:
 
 ```python
 from tenxgraph.runtime.publisher import CompositePublisher, RedisPublisher, KafkaPublisher
 from tenxgraph.core.graph import StateGraph
 
 publisher = CompositePublisher([
-    RedisPublisher(url="redis://localhost:6379", channel="agent.events"),
-    KafkaPublisher(bootstrap_servers="kafka:9092", topic="agent-events"),
+    RedisPublisher({"url": "redis://localhost:6379/0", "channel": "agent.events"}),
+    KafkaPublisher({"bootstrap_servers": "kafka:9092", "topic": "agent-events"}),
 ])
 
-graph = StateGraph(publisher=publisher)
+graph = StateGraph(publisher=publisher)  # a list of publishers also works
 # ... add nodes and edges ...
 compiled = graph.compile()
 ```
@@ -314,13 +325,16 @@ from tenxgraph.runtime.publisher.events import EventModel
 
 class DatadogPublisher(BasePublisher):
     async def publish(self, event: EventModel) -> None:
-        datadog.send_event(event.dict())
+        datadog.send_event(event.model_dump())
 
     async def close(self) -> None:
         pass
+
+    def sync_close(self) -> None:
+        pass
 ```
 
-Composers (like `CompositePublisher`) automatically coordinate multiple publishers, so they work seamlessly with the API server.
+`CompositePublisher` fans each event out to all of its publishers concurrently; a failure in one is logged and does not block the others.
 
 ## Dependency injection
 
@@ -414,7 +428,7 @@ ORIGINS=https://example.com,https://app.example.com
 | Variable | Default | Purpose |
 |---|---|---|
 | `MODE` | `development` | Set to `production` to enable security checks |
-| `REDIS_URL` | none | Redis connection for state cache and pub/sub |
+| `REDIS_URL` | none | Redis connection used by server components such as the ownership cache |
 | `JWT_SECRET_KEY` | none | Required for JWT auth; use 32+ random chars |
 | `SENTRY_DSN` | none | Sentry error tracking |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing |

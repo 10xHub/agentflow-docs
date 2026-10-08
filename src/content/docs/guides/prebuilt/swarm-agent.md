@@ -32,7 +32,7 @@ Avoid SwarmAgent when:
 
 ## How SwarmAgent works
 
-Each member is a fully independent agent, a pre-built `Agent` instance with its own model, tools, memory, and skills. SwarmAgent wires them together with automatic handoff tools (`transfer_to_MEMBER_NAME`) that any member can call.
+Each member is a fully independent agent, a pre-built `Agent` instance with its own model, tools, memory, and skills. SwarmAgent wires them together with automatic handoff tools (`transfer_to_<member_name>`) that any member can call.
 
 ### Full graph, three-member example
 
@@ -62,22 +62,21 @@ flowchart TD
 
 After each member's LLM call, a routing function inspects the last message for tool calls and decides what happens next. The decision tree is simple:
 
-1. **Handoff tool call detected** (`transfer_to_MEMBER_NAME`): Route to that member immediately (if allowed by `can_handoff_to`). The handoff tool is never executed; the graph intercepts the call and navigates to the target.
+1. **Handoff tool call detected** (`transfer_to_<member_name>`): Route to that member immediately (if allowed by `can_handoff_to`). The handoff tool is never executed; the graph intercepts the call and navigates to the target.
 2. **Regular tool call detected**: If the member has tools (like web search or calculator), route to the member's `MEMBER_TOOL` node to execute those tools. The member loops back and tries again.
 3. **No tool calls detected**: The member finished its work. Route to `END` to complete the run.
 
 ```python
-# Pseudocode for the routing logic
-for tool_call in last_message.tool_calls:
-    if is_handoff_tool_name(tool_call.name):       # "transfer_to_researcher"?
-        target = extract_target(tool_call.name)     # → "RESEARCHER"
-        if target in allowed_handoff_targets:
-            return target                            # route to that member
-    
-if member_has_regular_tools:
-    return f"{member_name}_TOOL"                    # execute member's tools
-    
-return END                                          # done
+# Simplified from tenxgraph/prebuilt/agent/swarm.py
+for tc in last_message.tools_calls:
+    is_handoff, target = is_handoff_tool(tc.get("name", ""))  # "transfer_to_researcher"
+    if is_handoff and target and target.upper() in allowed_set:
+        return target.upper()                                  # route to that member
+
+if tool_node_name is not None:
+    return tool_node_name                                      # execute the member's tools
+
+return END                                                     # done
 ```
 
 This ensures:
@@ -87,9 +86,9 @@ This ensures:
 
 ### Handoff tools injected automatically
 
-SwarmAgent generates `transfer_to_MEMBER_NAME` tools for each member's allowed targets and injects them into the member's `ToolNode`. These are not executed as tools; when the LLM calls one, the routing logic intercepts the call and navigates the graph directly to the target member. This prevents spurious `tool` role messages in the conversation history, the handoff is clean, and the next member sees a natural continuation of the conversation.
+SwarmAgent generates `transfer_to_<member_name>` (lowercase member name) tools for each member's allowed targets and injects them into the member's `ToolNode`. These are not executed as tools; when the LLM calls one, the routing logic intercepts the call and navigates the graph directly to the target member. This prevents spurious `tool` role messages in the conversation history, the handoff is clean, and the next member sees a natural continuation of the conversation.
 
-Each handoff tool's docstring includes the target member's `description` field, so the LLM understands when and why to route there. For example, if RESEARCHER has `description="Gathers facts from the web"`, the handoff tool becomes `transfer_to_researcher(description="Gathers facts from the web")`.
+Each handoff tool's docstring includes the target member's `description` field, so the LLM understands when and why to route there. For example, if RESEARCHER has `description="Gathers facts from the web"`, the handoff tool is named `transfer_to_researcher`, takes no arguments, and carries "Gathers facts from the web" as its description.
 
 ### Member tool loops
 
@@ -149,13 +148,13 @@ Call `.compile()` on the SwarmAgent instance to wire the graph and prepare it fo
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persistence backend for conversation state. `None` = in-memory only (lost on restart). See `/docs/guides/set-up-checkpointing` for options. |
+| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persistence backend for conversation state. `None` = a default `InMemoryCheckpointer` (lost on restart). See `/docs/guides/set-up-checkpointing` for options. |
 | `store` | `BaseStore \| None` | `None` | Long-term memory store for facts and summaries across runs. See `/docs/guides/use-memory-store` for details. |
 | `interrupt_before` | `list[str] \| None` | `None` | Pause execution before entering any of these named members (or tool nodes). Useful for human-in-the-loop workflows. |
 | `interrupt_after` | `list[str] \| None` | `None` | Pause execution after exiting any of these named members. |
-| `callback_manager` | `CallbackManager` | `CallbackManager()` | Lifecycle hooks for observability: `on_start`, `on_end`, `on_error`, etc. See `/docs/guides/use-callbacks`. |
+| `callback_manager` | `CallbackManager` | `CallbackManager()` | Lifecycle hooks and invoke callbacks for observability. See `/docs/guides/use-callbacks`. |
 | `media_store` | `BaseMediaStore \| None` | `None` | Backend for storing images, audio, and documents. Enables multimodal workflows. |
-| `shutdown_timeout` | `float` | `30.0` | Graceful-shutdown timeout in seconds. If the graph does not finish within this window, the process is terminated. |
+| `shutdown_timeout` | `float` | `30.0` | Graceful-shutdown timeout in seconds. |
 
 ---
 
@@ -164,6 +163,12 @@ Call `.compile()` on the SwarmAgent instance to wire the graph and prepare it fo
 ### Basic three-member research workflow
 
 Build a swarm where a triage agent routes research and writing tasks, a researcher gathers facts, and a writer produces the final document. This example shows the full pattern: custom tools, member independence, and handoff routing.
+
+The examples use OpenAI models and `google_web_search`, so install both extras:
+
+```bash
+pip install "10xgraph[openai,google-genai]"
+```
 
 ```python
 import asyncio
@@ -242,7 +247,7 @@ async def main():
         )]},
         config={"thread_id": "swarm-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -294,7 +299,7 @@ async def main():
         {"messages": [Message.text_message("What is the GDP of Germany in USD? Convert at today's rate.")]},
         config={"thread_id": "two-member-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -327,22 +332,25 @@ swarm = SwarmAgent(
     entry="TRIAGE",
 )
 
-checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:pass@localhost/db",
+    redis_url="redis://localhost:6379",
+)
 app = swarm.compile(checkpointer=checkpointer)
 
 async def main():
     result = await app.ainvoke(
         {"messages": [Message.text_message("Who won the 2024 Nobel Prize in Physics?")]},
-        config={"thread_id": "user-99-session-1"},
+        config={"thread_id": "user-99-session-1", "user_id": "user-99"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
 
 ### Mixed providers: Gemini and OpenAI in one swarm
 
-Members are not constrained to the same provider. Here, a researcher uses Google Gemini 2.5 Flash (fast, cheap) while the writer uses OpenAI's GPT-4o-mini. SwarmAgent automatically adapts to each member's provider.
+Members are not constrained to the same provider. Here, a researcher uses Google Gemini 2.5 Flash while the writer uses OpenAI's GPT-4o-mini. SwarmAgent automatically adapts to each member's provider.
 
 ```python
 from tenxgraph.core.graph import Agent, ToolNode
@@ -351,7 +359,7 @@ from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
 from tenxgraph.prebuilt.tools import google_web_search
 
 researcher = Agent(
-    model="google/gemini-2.5-flash",
+    model="gemini-2.5-flash",
     provider="google",
     tool_node=ToolNode([google_web_search]),
     system_prompt=[{"role": "system", "content": "Research and hand off to writer."}],
@@ -446,7 +454,7 @@ app = swarm.compile()
 10xgraph play
 ```
 
-Open your browser (usually `http://localhost:5173`) and start a conversation. You will see:
+Open your browser (the command prints the URL) and start a conversation. You will see:
 - Which member is processing your message
 - Tool calls and results in real time
 - Handoff decisions and why they happened
@@ -502,13 +510,12 @@ swarm = SwarmAgent(
 
 This is useful when members loop and generate many messages. See `/docs/guides/use-context-manager` for options.
 
-### Per-member tools and memory
+### Per-member tools
 
-Each member can have unique tools and memory. For example, only the researcher accesses web search, and only the writer has a memory of past drafts:
+Each member can have its own tools. For example, only the researcher accesses web search, and only the writer has the calculator:
 
 ```python
-from tenxgraph.prebuilt.tools import google_web_search, memory_tool
-from tenxgraph.storage.store import MemoryConfig
+from tenxgraph.prebuilt.tools import google_web_search, safe_calculator
 
 researcher = Agent(
     model="gpt-4o",
@@ -517,8 +524,7 @@ researcher = Agent(
 
 writer = Agent(
     model="gpt-4o-mini",
-    tool_node=ToolNode([memory_tool]),
-    memory=MemoryConfig(strategy="summary"),
+    tool_node=ToolNode([safe_calculator]),
 )
 
 swarm = SwarmAgent(
@@ -532,17 +538,24 @@ swarm = SwarmAgent(
 
 ### Observability: publishers and callbacks
 
-Monitor what the swarm is doing with publishers (events) and callbacks (lifecycle hooks):
+Monitor what the swarm is doing with publishers (events) and lifecycle hooks:
 
 ```python
 from tenxgraph.runtime.publisher import ConsolePublisher
-from tenxgraph.utils.callbacks import CallbackManager
+from tenxgraph.utils.callbacks import CallbackManager, GraphLifecycleHook
 
 publisher = ConsolePublisher()  # print events to console
 
+class LogHook(GraphLifecycleHook):
+    async def on_graph_start(self, ctx, state):
+        print("Swarm started")
+
+    async def on_graph_end(self, ctx, final_state, messages, total_steps):
+        print("Swarm finished")
+
+
 callback_manager = CallbackManager()
-callback_manager.on_start(lambda: print("Swarm started"))
-callback_manager.on_end(lambda: print("Swarm finished"))
+callback_manager.register_lifecycle_hook(LogHook())
 
 swarm = SwarmAgent(members={...}, entry="TRIAGE", publisher=publisher)
 app = swarm.compile(callback_manager=callback_manager)

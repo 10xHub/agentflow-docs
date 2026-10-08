@@ -31,7 +31,6 @@ List every run found under `eval_reports/`, newest first.
 
 ```json
 {
-  "success": true,
   "data": {
     "runs": [
       {
@@ -44,7 +43,8 @@ List every run found under `eval_reports/`, newest first.
         "ago": "14m ago"
       }
     ]
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -76,7 +76,6 @@ Full drilldown for one run.
 
 ```json
 {
-  "success": true,
   "data": {
     "title": "Weather agent suite · run #3",
     "sub": "weather-suite · gpt-4o-mini · 2026-07-21 10:15 · 42.3s",
@@ -111,7 +110,8 @@ Full drilldown for one run.
       }
     ],
     "regression": null
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 

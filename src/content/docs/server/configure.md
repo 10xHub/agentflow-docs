@@ -56,7 +56,6 @@ Without an explicit checkpointer, `compile()` falls back to `InMemoryCheckpointe
 
 - Conversations are lost when the process restarts.
 - Each replica maintains its own separate history; the same user hitting a different pod sees a different thread history.
-- The server logs a warning on startup.
 
 For production, use `PgCheckpointer` (Postgres + Redis). It requires `pip install "10xgraph[pg_checkpoint]"` and maintains thread history durably in Postgres while using Redis as a fast cache layer. See [Set up checkpointing](/docs/guides/set-up-checkpointing) for the full setup, including SQLite for single-machine deployments.
 
@@ -69,6 +68,7 @@ The `store` key points at a `BaseStore` instance (not a class). Without it, the 
 from tenxgraph.storage.store import QdrantStore
 from tenxgraph.storage.store.embedding import OpenAIEmbedding
 
+# needs: pip install "10xgraph[qdrant,openai]"
 my_store = QdrantStore(embedding=OpenAIEmbedding(), path="./qdrant_data")
 ```
 
@@ -87,8 +87,15 @@ The `injectq` key points at an InjectQ container. Use it to inject services at s
 
 ```python
 # graph/dependencies.py
-from injectq import InjectQ
 import os
+
+from injectq import InjectQ
+
+
+class MyDatabase:
+    def __init__(self, dsn: str) -> None:
+        self.dsn = dsn
+
 
 container = InjectQ()
 container.bind_instance(MyDatabase, MyDatabase(dsn=os.environ["DATABASE_URL"]))
@@ -154,8 +161,8 @@ A minimally secured production config looks like this:
 }
 ```
 
-- `"auth": "jwt"` requires `JWT_SECRET_KEY` (at least 32 characters) in the environment. See [Authentication](/docs/server/auth) for custom auth.
-- `"authorization": "ownership"` makes threads private to their creator. Without authorization, anyone who knows a thread ID can read it.
+- `"auth": "jwt"` requires `JWT_SECRET_KEY` (at least 32 characters; shorter keys are rejected in production) and `JWT_ALGORITHM` (for example `HS256`) in the environment. See [Authentication](/docs/server/auth) for custom auth.
+- `"authorization": "ownership"` makes threads private to their creator. With `allow_all`, any authenticated user who knows a thread ID can read it.
 - The rate limit `backend: "redis"` shares the limit across all replicas. The `"memory"` backend counts per process, so three replicas allow three times the configured limit, making it unsuitable for production.
 
 ## Share a Redis connection for the thread cache
@@ -170,7 +177,7 @@ The top-level `redis` key is a URL string used by the optional shared thread-own
 }
 ```
 
-If the `redis` key is not set, the server falls back to the `REDIS_URL` environment variable. With neither, the ownership cache is per-process and the server logs a warning. Without a shared cache, each replica maintains its own view of which user owns each thread, leading to inconsistent access control across replicas.
+If the `redis` key is not set, the server falls back to the `REDIS_URL` environment variable. With neither, the ownership cache is per-process. Without a shared cache, each replica maintains its own view of which user owns each thread, leading to inconsistent access control across replicas.
 
 ## Set test and evaluation defaults
 
@@ -229,7 +236,7 @@ The `websocket` key manages connection limits for `/v1/graph/ws` (streaming) and
   "websocket": {
     "max_connections": 1000,
     "max_connections_per_user": 10,
-    "realtime_models": ["claude-3-5-sonnet-20241022"]
+    "realtime_models": ["gemini-2.5-flash-live"]
   }
 }
 ```
@@ -271,7 +278,8 @@ config/
 # Development: auto-reload, all features open
 10xgraph api --config config/dev.json
 
-# Production: no reload, hardened settings
+# Production-like local run: no reload, hardened settings
+# (for real deployments use `10xgraph build`, see the deploy guide)
 MODE=production 10xgraph api --config config/prod.json --no-reload
 ```
 
@@ -315,11 +323,11 @@ Before deploying to production, make five explicit decisions:
 
 ### 1. Turn on authentication
 
-With `auth` unset or `null`, every request is accepted. This is fine for internal development. In production, set `"auth": "jwt"` and a `JWT_SECRET_KEY` environment variable of at least 32 characters, or point at a custom `BaseAuth` subclass. See [Authentication](/docs/server/auth).
+With `auth` unset or `null`, every request is accepted. This is fine for internal development. In production, set `"auth": "jwt"` with `JWT_SECRET_KEY` (at least 32 characters) and `JWT_ALGORITHM` in the environment, or point at a custom `BaseAuth` subclass. See [Authentication](/docs/server/auth).
 
 ### 2. Set authorization policy
 
-Without authorization, anyone who knows a thread ID can read that conversation. In production, set `"authorization": "ownership"` so threads are visible only to their creator. Alternatively, implement a custom `AuthorizationBackend` for role-based access control. In development, `"allow_all"` is fine. Do not rely on `MODE` to choose this for you; set it explicitly.
+If `authorization` is unset, the server uses `ownership` when `MODE=production` and `allow_all` otherwise. With `allow_all`, any authenticated user who knows a thread ID can read that conversation. In production, set `"authorization": "ownership"` so threads are visible only to their creator. Alternatively, implement a custom `AuthorizationBackend` for role-based access control. In development, `"allow_all"` is fine. Set it explicitly rather than relying on the `MODE` default.
 
 ### 3. Use a shared, durable checkpointer
 
@@ -341,7 +349,7 @@ Run the audit command to check your setup:
 10xgraph audit
 ```
 
-This checks the interpreter, installed packages, `10xgraph.json` syntax, the agent module path, and whether the default port is available. It exits with status `0` if only warnings appear, or `1` if errors are found.
+This checks the Python interpreter, the installed `10xgraph-api` and `10xgraph` packages, evaluation API compatibility, `10xgraph.json` (valid JSON, an `agent` value in `module:attribute` form, valid `remote_tools`), and whether port 8000 is free. It does not import your graph. It exits with status `0` if only warnings appear, or `1` if errors are found.
 
 Then start the server and verify each control:
 
@@ -352,7 +360,7 @@ Then start the server and verify each control:
 # 2. The health endpoint works
 curl http://127.0.0.1:8000/ping
 
-# 3. Auth is on: an unauthenticated call must be rejected (expect 403, not 200)
+# 3. Auth is on: an unauthenticated call must be rejected (expect 401, not 200)
 curl -s -o /dev/null -w "%{http_code}\n" -X POST http://127.0.0.1:8000/v1/graph/invoke -d '{}'
 
 # 4. Rate limiting is on: after 100 requests in 60 seconds, you get 429
@@ -370,7 +378,7 @@ Finally, verify that persistence survives a restart: start a thread, restart the
 | `ModuleNotFoundError` or import fails | The module path is spelled correctly and exists in your project. Test with `python -c "from module import attr"`. |
 | `AttributeError: module has no attribute` | `graph.react:app` expects an `app` variable in the `graph/react.py` file. Check the name and that it is a compiled graph. |
 | Checkpointer connection fails | The Postgres DSN is correct and the database is reachable. Test: `psql <dsn>`. The Redis URL is reachable: `redis-cli -u <url> ping`. |
-| `JWT_SECRET_KEY not found` in environment | Export the variable, or set `"env": ".env"` and add the key there. Minimum 32 characters. |
+| `JWT_SECRET_KEY and JWT_ALGORITHM must be set` | Export both variables, or set `"env": ".env"` and add them there. The secret needs at least 32 characters. |
 | Rate limiting not working on multi-replica setup | Set `rate_limit.backend` to `"redis"`, not `"memory"`. Ensure all replicas point to the same Redis instance. |
 | Threads visible to users who did not create them | Set `"authorization": "ownership"` or implement a custom `AuthorizationBackend`. Check that all replicas use the same setting. |
 

@@ -58,7 +58,6 @@ curl -X POST http://127.0.0.1:8000/v1/files/upload \
 
 ```json
 {
-  "success": true,
   "data": {
     "file_id": "f_abc123",
     "mime_type": "image/jpeg",
@@ -68,7 +67,8 @@ curl -X POST http://127.0.0.1:8000/v1/files/upload \
     "url": "/v1/files/f_abc123",
     "direct_url": null,
     "direct_url_expires_at": null
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -111,7 +111,6 @@ Returns the metadata of a file without downloading its bytes.
 
 ```json
 {
-  "success": true,
   "data": {
     "file_id": "f_abc123",
     "mime_type": "image/jpeg",
@@ -120,7 +119,8 @@ Returns the metadata of a file without downloading its bytes.
     "extracted_text": null,
     "direct_url": null,
     "direct_url_expires_at": null
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -146,13 +146,13 @@ Returns a URL for fetching the file. With a cloud storage backend this is a sign
 
 ```json
 {
-  "success": true,
   "data": {
     "file_id": "f_abc123",
     "url": "https://storage.example.com/10xgraph-media/f_abc123?...",
     "expires_at": 1728427200,
     "mime_type": "image/jpeg"
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 

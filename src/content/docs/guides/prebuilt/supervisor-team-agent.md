@@ -124,7 +124,8 @@ Each worker's description comes from the `description` field in its `WorkerConfi
 | `max_rounds` | `int` | `10` | Hard cap on supervisor→worker delegations before terminating |
 | `state` | `AgentState \| None` | `None` | Optional custom state class for the entire graph |
 | `context_manager` | `BaseContextManager \| None` | `None` | Optional custom context manager (e.g. trimming, summarization) |
-| `publisher` | `BasePublisher \| None` | `None` | Event publisher for streaming events to external systems |
+| `publisher` | `BasePublisher \| list[BasePublisher] \| None` | `None` | Event publisher for streaming events to external systems |
+| `id_generator` | `BaseIDGenerator` | `DefaultIDGenerator()` | ID generation strategy |
 | `container` | `InjectQ \| None` | `None` | Dependency injection container for tool and node execution |
 | `**supervisor_kwargs` | `Any` | - | Extra arguments forwarded to the supervisor Agent only (e.g. `provider="openai"`, `temperature=0.7`) |
 
@@ -134,11 +135,11 @@ The `compile()` method wires the graph and returns a `CompiledGraph` ready to in
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `checkpointer` | `BaseCheckpointer` | `None` | Persistence backend for state snapshots and resumption |
+| `checkpointer` | `BaseCheckpointer` | `None` | Persistence backend for state snapshots and resumption. `None` uses an `InMemoryCheckpointer` |
 | `store` | `BaseStore` | `None` | Long-term cross-thread key-value storage |
 | `interrupt_before` | `list[str]` | `None` | Pause execution before these node names |
 | `interrupt_after` | `list[str]` | `None` | Pause execution after these node names |
-| `callback_manager` | `CallbackManager` | default | Lifecycle hooks (before_invoke, after_node, on_error) |
+| `callback_manager` | `CallbackManager` | default | Lifecycle hooks and invoke callbacks |
 | `media_store` | `BaseMediaStore` | `None` | Storage backend for media files and references |
 | `shutdown_timeout` | `float` | `30.0` | Seconds to wait for graceful shutdown |
 
@@ -149,7 +150,6 @@ The `compile()` method wires the graph and returns a `CompiledGraph` ready to in
 This example creates a two-worker team: a researcher who can search the web and a coder who can run Python. The supervisor decides which worker should handle each part of the task.
 
 ```python
-title="supervisor_team_example.py"
 import asyncio
 from dotenv import load_dotenv
 from tenxgraph.core.graph import Agent, ToolNode
@@ -210,15 +210,16 @@ async def main():
         )]},
         config={"thread_id": "supervisor-1"},
     )
-    print("Final output:", result["context"][-1].text())
+    print("Final output:", result["messages"][-1].text())
 
 asyncio.run(main())
 ```
 
-Run this example with your OpenAI API key:
+Install the extras the example uses and run it with your OpenAI and Google API keys set in the environment:
 
 ```bash
-OPENAI_API_KEY=sk-... python supervisor_team_example.py
+pip install "10xgraph[openai,google-genai]"
+python supervisor_team_example.py
 ```
 
 ---
@@ -230,8 +231,16 @@ OPENAI_API_KEY=sk-... python supervisor_team_example.py
 By default, the supervisor prompt is built automatically. To enforce a specific routing policy or add constraints, override it:
 
 ```python
+from tenxgraph.core.graph import Agent, ToolNode
 from tenxgraph.prebuilt.agent import SupervisorTeamAgent
 from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
+from tenxgraph.prebuilt.tools import google_web_search
+
+
+def run_python(code: str) -> str:
+    """Execute Python code (use a real sandbox in production)."""
+    ...
+
 
 agent = SupervisorTeamAgent(
     supervisor_model="gpt-4o",
@@ -297,7 +306,8 @@ agent = SupervisorTeamAgent(
 
 # Compile with Postgres + Redis for production
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql://user:pass@localhost/db"
+    postgres_dsn="postgresql://user:pass@localhost/db",
+    redis_url="redis://localhost:6379",
 )
 app = agent.compile(checkpointer=checkpointer)
 
@@ -307,18 +317,18 @@ async def main():
         {"messages": [Message.text_message(
             "What is the compound interest on $5000 at 7% over 10 years?"
         )]},
-        config={"thread_id": "user-10-finance"},
+        config={"thread_id": "user-10-finance", "user_id": "user-10"},
     )
-    print("Result:", result["context"][-1].text())
+    print("Result:", result["messages"][-1].text())
     
     # Second invocation on same thread, state is restored
     result2 = await app.ainvoke(
         {"messages": [Message.text_message(
             "Now calculate the difference if the rate was 8% instead."
         )]},
-        config={"thread_id": "user-10-finance"},
+        config={"thread_id": "user-10-finance", "user_id": "user-10"},
     )
-    print("Follow-up:", result2["context"][-1].text())
+    print("Follow-up:", result2["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -415,8 +425,8 @@ Then invoke it:
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "Research AI trends and calculate the growth rate."}],
-    "thread_id": "team-1"
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Research AI trends and calculate the growth rate."}]}],
+    "config": {"thread_id": "team-1"}
   }'
 ```
 

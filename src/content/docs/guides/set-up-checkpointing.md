@@ -79,7 +79,7 @@ graph = StateGraph()
 app = graph.compile(checkpointer=checkpointer)
 
 async def main():
-    await checkpointer.setup()  # optional; tables are created lazily if omitted
+    await checkpointer.asetup()  # optional; tables are created lazily if omitted
 
     # First turn
     await app.ainvoke(
@@ -127,10 +127,12 @@ pip install "10xgraph[pg_checkpoint]"
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
+    postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
     redis_url="redis://localhost:6379/0",
 )
 ```
+
+`PgCheckpointer` keys state by `user_id` as well as `thread_id`. If you omit `user_id` from the config, 10xGraph fills in `"anonymous"`, so pass a real one in multi-user apps.
 
 ### Configuration reference
 
@@ -162,18 +164,18 @@ PgCheckpointer(
 
 ### Schema setup
 
-For production deployments, call `setup()` before your first request to create the PostgreSQL tables and Redis indices. In development, tables are created automatically on first use.
+For production deployments, call `asetup()` (or the sync `setup()` outside a running event loop) before your first request to create the PostgreSQL tables. `PgCheckpointer` does not create them on first use.
 
 ```python
 import asyncio
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
+    postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
     redis_url="redis://localhost:6379/0",
 )
 
-asyncio.run(checkpointer.setup())
+asyncio.run(checkpointer.asetup())
 ```
 
 In a FastAPI lifespan handler:
@@ -184,7 +186,7 @@ from fastapi import FastAPI
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await checkpointer.setup()
+    await checkpointer.asetup()
     yield
     # Optional: await checkpointer.arelease()
 
@@ -257,7 +259,7 @@ graph = StateGraph()
 app = graph.compile(checkpointer=checkpointer)
 
 async def main():
-    await checkpointer.setup()
+    await checkpointer.asetup()
 
     # First user's request
     await app.ainvoke(
@@ -278,7 +280,7 @@ asyncio.run(main())
 Set the environment variables before starting:
 
 ```bash
-export DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/mydb"
+export DATABASE_URL="postgresql://user:pass@localhost:5432/mydb"
 export REDIS_URL="redis://localhost:6379/0"
 python app.py
 ```

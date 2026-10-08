@@ -9,7 +9,7 @@ faq:
   - question: Do I need rate limiting in development?
     answer: "In development, you can run without limits. In any production environment, rate limiting protects your infrastructure from both accidental overuse and abuse."
   - question: How much does Redis add to the setup?
-    answer: "If you already have Redis for the checkpointer, rate limiting reuses it. You only need a second Redis instance if you want to isolate rate-limit traffic."
+    answer: "The limiter reuses a Redis client already bound in the InjectQ container (under `redis`, `redis_client` or `Redis`). Otherwise it needs `rate_limit.redis.url` and opens its own connection."
   - question: What happens if Redis is unreachable?
     answer: "With `fail_open: true` (the default), requests pass through; with `fail_open: false`, requests are denied. Choose based on whether uptime matters more than protection."
 ---
@@ -61,13 +61,13 @@ In another terminal, test the limiter:
 for i in {1..100}; do
   curl -s http://localhost:8000/v1/graph/invoke \
     -H "Content-Type: application/json" \
-    -d '{"input": {"messages": [{"role": "user", "content": "test"}]}}' > /dev/null
+    -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "test"}]}]}' > /dev/null
 done
 
 # Next request is rate-limited
 curl -i http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
-  -d '{"input": {"messages": [{"role": "user", "content": "test"}]}}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "test"}]}]}'
 # Returns: 429 Too Many Requests
 ```
 
@@ -180,11 +180,15 @@ Register it in your InjectQ container and set `backend` to `"custom"`:
 ```python
 # graph/__init__.py
 from injectq import InjectQ
+from tenxgraph_api.src.app.core.middleware.rate_limit import BaseRateLimitBackend
+
 from graph.rate_limit import MyRateLimitBackend
 
 container = InjectQ()
-container.bind(MyRateLimitBackend, MyRateLimitBackend())
+container.bind_instance(BaseRateLimitBackend, MyRateLimitBackend())
 ```
+
+Bind the instance under `BaseRateLimitBackend`: that is the key the server looks up. If `backend` is `"custom"` and nothing is bound there, startup fails.
 
 Then in `10xgraph.json`:
 
@@ -241,9 +245,11 @@ Rate limiting is HTTP middleware, and Starlette runs middleware only for HTTP sc
 
 Opening a socket costs one request from the client's quota. When the quota is exhausted the handshake is refused before `accept()` with WebSocket close code `1013` (Try Again Later), not with an HTTP `429`.
 
-Budget for this when sizing limits for a streaming client. A browser that reconnects on every network blip spends a request each time, and a client that opens the socket and holds it for hours counts only once.
+Each graph run started over `/v1/graph/ws` also costs one request from the same bucket. A run over the limit is not executed: the server sends an `error` chunk with `retry_after_seconds` and keeps the socket open.
 
-Concurrent socket count is capped separately by `websocket.max_connections`, which uses the same close code. See [10xgraph.json configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
+Budget for this when sizing limits for a streaming client. A browser that reconnects on every network blip spends a request each time, and every run on a long-lived socket spends one more.
+
+Concurrent socket count is capped separately by `websocket.max_connections` (and `websocket.max_connections_per_user`), which use the same close code. See [10xgraph.json configuration](/docs/reference/api-cli/configuration#websocket-ag_ui-and-observability).
 
 ## Behind a reverse proxy
 
@@ -273,6 +279,8 @@ If your API runs behind nginx, a load balancer, or a cloud gateway, the real cli
 | One nginx or one load balancer | `1` |
 | CDN in front of a load balancer, both yours | `2` |
 | No proxy at all | leave `trusted_proxy_headers` off |
+
+To honor `X-Forwarded-For` only for connections that come from your proxies, also set `trusted_proxies` to a list of IPs or CIDR ranges. A client that reaches the app directly is then keyed by its own address.
 
 <aside class="callout callout-warning" role="note"><p class="callout-title">Getting the hop count wrong defeats the limiter</p>
 
@@ -343,7 +351,7 @@ Clients can check `X-RateLimit-Remaining` before sending the next request to avo
 
 **I still get unlimited requests even though I configured a limit.**
 
-Verify that `10xgraph.json` has `"enabled": true` and that you restarted the server after editing the file. Check the startup logs for rate-limit configuration messages. If the backend is Redis, ensure the connection is working: a backend error with `fail_open: true` allows all requests.
+Verify that `10xgraph.json` has a `rate_limit` block with `"enabled"` not set to `false` and that you restarted the server after editing the file. Check the startup logs for rate-limit configuration messages. If the backend is Redis, ensure the connection is working: a backend error with `fail_open: true` allows all requests.
 
 **Different workers seem to have different limits.**
 
@@ -351,7 +359,7 @@ You are using the memory backend with multiple workers. Each process maintains i
 
 **The proxy's real IP is not being recognized.**
 
-Verify `trusted_proxy_headers: true` is set and `trusted_proxy_hops` matches your topology (1 for single proxy, 2 for CDN + load balancer). Check the server logs for warnings about mismatched hop counts. If the hop count is wrong, all proxy IPs are rejected and the direct peer address is used instead.
+Verify `trusted_proxy_headers: true` is set and `trusted_proxy_hops` matches your topology (1 for single proxy, 2 for CDN + load balancer). Check the server logs for warnings about mismatched hop counts. If the header has fewer entries than the hop count, it is ignored and the direct peer address is used instead.
 
 **Rate-limit headers are not appearing in responses.**
 

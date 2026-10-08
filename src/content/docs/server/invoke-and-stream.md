@@ -20,35 +20,40 @@ curl -X POST http://localhost:8000/v1/graph/invoke \
     "messages": [
       {
         "role": "user",
-        "content": "What is the capital of France?"
+        "content": [{"type": "text", "text": "What is the capital of France?"}]
       }
     ]
   }'
 ```
 
-The response is a single JSON object with the graph output:
+Message `content` is a list of content blocks, not a plain string. The response wraps the graph output in a `data` envelope with request `metadata`:
 
 ```json
 {
-  "messages": [
-    {
-      "role": "user",
-      "content": "What is the capital of France?"
-    },
-    {
-      "role": "assistant",
-      "content": "The capital of France is Paris."
+  "data": {
+    "messages": [
+      {
+        "message_id": "msg-1",
+        "role": "assistant",
+        "content": [{"type": "text", "text": "The capital of France is Paris."}]
+      }
+    ],
+    "state": null,
+    "context": null,
+    "summary": null,
+    "meta": {
+      "thread_id": "conv-xyz",
+      "is_new_thread": true
     }
-  ],
-  "state": {
-    "step": 2
   },
-  "meta": {
-    "run_id": "abc123",
-    "thread_id": "conv-xyz"
+  "metadata": {
+    "request_id": "abc123",
+    "message": "OK"
   }
 }
 ```
+
+Each message also carries fields such as `timestamp`, `usages` and `metadata`; they are trimmed here.
 
 ### Request parameters
 
@@ -59,24 +64,25 @@ The request body is a JSON object with these fields:
 | `messages` | array | `[]` | List of message objects to send to the graph. At least one message is required unless `resume` is provided. |
 | `config` | object | `{}` | Optional configuration for the run, such as `thread_id` for continuing a conversation. |
 | `initial_state` | object | `null` | Optional initial state for the graph execution. |
+| `response_granularity` | string | `low` | How much to return: `low`, `partial` or `full`. `state` in the response is filled only at `full`. |
 | `recursion_limit` | integer | 25 | Maximum depth of graph execution (1-100). Raise this if your graph has deep loops. |
 | `resume` | any | `null` | Set this to resume a paused thread (see human-in-the-loop section below). |
 
 ### Response fields
 
-The response is a single JSON object:
+The `data` object has these fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `messages` | array | Final messages from the graph after all processing. |
-| `state` | object | The graph's final state (keys depend on your custom state schema). |
-| `context` | array | Context messages if your graph uses a context manager. |
-| `summary` | string | A summary if your graph generates one. |
-| `meta` | object | Metadata: `run_id`, `thread_id`, execution timing. |
+| `state` | object or null | The graph's final state. Returned only with `response_granularity: "full"`. |
+| `context` | array or null | Context messages, when the graph produces them. |
+| `summary` | string or null | A summary, when the graph produces one. |
+| `meta` | object | Metadata such as `thread_id` and `is_new_thread`. |
 
 ## Stream results in real time
 
-Use POST `/v1/graph/stream` to get results as they are produced. The response is a stream of NDJSON (newline-delimited JSON), with one event per line.
+Use POST `/v1/graph/stream` to get results as they are produced. The response body is NDJSON (newline-delimited JSON), one chunk per line. The `Content-Type` header is `text/event-stream`, but lines are plain JSON, not `data:` frames.
 
 ```bash
 curl -X POST http://localhost:8000/v1/graph/stream \
@@ -85,36 +91,35 @@ curl -X POST http://localhost:8000/v1/graph/stream \
     "messages": [
       {
         "role": "user",
-        "content": "Generate a short story"
+        "content": [{"type": "text", "text": "Generate a short story"}]
       }
     ]
   }'
 ```
 
-The stream emits events as the graph runs:
+The stream emits chunks as the graph runs (fields trimmed for readability):
 
 ```json
-{"event":"message","data":{"role":"assistant","content":"Once upon a time..."},"run_id":"run-123"}
-{"event":"message","data":{"role":"assistant","content":" there was a traveler..."},"run_id":"run-123"}
-{"event":"tool_call","data":{"id":"call-1","name":"search","arguments":{"query":"ancient forests"}},"run_id":"run-123"}
-{"event":"updates","data":{"status":"done"},"run_id":"run-123"}
+{"event":"updates","data":{"status":"invoking_graph","step":0},"thread_id":"thread-abc123","run_id":"run-123"}
+{"event":"message","message":{"role":"assistant","delta":true,"content":[{"type":"text","text":"Once upon"}]},"thread_id":"thread-abc123","run_id":"run-123"}
+{"event":"message","message":{"role":"assistant","delta":true,"content":[{"type":"text","text":" a time..."}]},"thread_id":"thread-abc123","run_id":"run-123"}
+{"event":"updates","data":{"status":"graph_invoked","reason":"Graph execution completed successfully"},"thread_id":"thread-abc123","run_id":"run-123"}
 ```
 
-Each line is a separate JSON object (StreamChunk). Your client must parse and process each line independently. The last event always has `"event":"updates"` with `"status":"done"` (or `"status":"stopped"` if stopped via `/v1/graph/stop`).
+Each line is a separate JSON object (a `StreamChunk`). Your client must parse each line independently. Message chunks carry the message in the `message` field, and `delta` is `true` for partial text. Chunks also carry `metadata` and `timestamp`. When the graph runs to completion, the last chunk is an `updates` chunk; if you have a thread name generator configured, a final `updates` chunk with `"status": "completed"` follows.
 
 ### Stream event types
 
-The `event` field in each chunk describes the data:
+The `event` field in each chunk is one of four values:
 
-| Event | When emitted | Data contents |
-|-------|--------------|---------------|
-| `message` | When the graph produces a message | Message object with role and content. |
-| `tool_call` | When the graph calls a tool | Tool ID, name, and arguments. |
-| `tool_result` | When a tool completes | Tool result message. |
-| `node_start` | Node execution begins | Node name and state. |
-| `node_end` | Node execution completes | Node name and output. |
-| `updates` | Status changes or run end | `status` field: `"running"`, `"done"`, `"stopped"`, or `"error"`. |
-| `error` | An error occurred | Error message and type. |
+| Event | When emitted | Where the content is |
+|-------|--------------|----------------------|
+| `message` | The graph produces a message or a partial message | `message` field (a message object; `delta` marks partial text). |
+| `updates` | Progress and lifecycle changes | `data.status`, for example `invoking_graph`, `invoking_node`, `graph_invoked`, `interrupted`, plus `node`, `step` and `reason`. |
+| `state` | The graph emits its state | `state` field. |
+| `error` | An error occurred | `data.reason` (a sanitized message in production). |
+
+A stop request ends the stream with an `updates` chunk whose `data.reason` is `Graph execution stopped by request`.
 
 ## Use threads for conversation memory
 
@@ -128,19 +133,22 @@ If you do not provide a `thread_id`, the server generates one:
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role":"user","content":"Hello"}],
+    "messages": [{"role":"user","content":[{"type":"text","text":"Hello"}]}],
     "config":{}
   }'
 ```
 
-The response includes a `meta.thread_id`:
+The response includes `data.meta.thread_id`:
 
 ```json
 {
-  "messages": [...],
-  "meta": {
-    "thread_id": "thread-abc123"
-  }
+  "data": {
+    "messages": [...],
+    "meta": {
+      "thread_id": "thread-abc123"
+    }
+  },
+  "metadata": {"request_id": "abc123", "message": "OK"}
 }
 ```
 
@@ -152,7 +160,7 @@ Pass the thread_id in the next request to continue the conversation:
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role":"user","content":"What did I say before?"}],
+    "messages": [{"role":"user","content":[{"type":"text","text":"What did I say before?"}]}],
     "config":{
       "thread_id":"thread-abc123"
     }
@@ -169,18 +177,21 @@ To see all messages in a thread without running the graph, use GET `/v1/threads/
 curl http://localhost:8000/v1/threads/thread-abc123/messages
 ```
 
-Returns an array of messages:
+Returns the thread messages:
 
 ```json
 {
-  "messages": [
-    {"role":"user","content":"Hello"},
-    {"role":"assistant","content":"Hi there"},
-    {"role":"user","content":"What did I say before?"},
-    {"role":"assistant","content":"You said hello"}
-  ]
+  "data": {
+    "messages": [
+      {"role":"user","content":[{"type":"text","text":"Hello"}]},
+      {"role":"assistant","content":[{"type":"text","text":"Hi there"}]}
+    ]
+  },
+  "metadata": {"request_id": "abc123", "message": "OK"}
 }
 ```
+
+The endpoint also accepts `search`, `offset` and `limit` query parameters.
 
 ## Stop a running execution
 
@@ -194,18 +205,16 @@ curl -X POST http://localhost:8000/v1/graph/stop \
   }'
 ```
 
-The server stops the graph at the next node boundary and returns the partial result:
+Stop is a request flag. The server marks the thread, and the running graph checks the flag between nodes and then exits. The response reports whether a run was active:
 
 ```json
 {
-  "success": true,
-  "message": "Graph execution stopped",
-  "messages": [...],
-  "state": {...}
+  "data": {"ok": true, "running": true},
+  "metadata": {"request_id": "abc123", "message": "OK"}
 }
 ```
 
-The graph does not crash; it cleanly exits, and the checkpoint is saved. You can resume the thread later by sending a new invoke or stream request with the same thread_id.
+If nothing is running, `running` is `false` (or `ok` is `false` with a `reason` such as `no-state` or `no-checkpointer`). A stopped graph exits cleanly and the checkpoint is saved. You can continue the thread later by sending a new invoke or stream request with the same thread_id.
 
 ## Fix corrupted graph state
 
@@ -219,14 +228,17 @@ curl -X POST http://localhost:8000/v1/graph/fix \
   }'
 ```
 
-The response shows how many messages were removed:
+The response shows how many messages were removed. `state` is the updated state serialized as a JSON string.
 
 ```json
 {
-  "success": true,
-  "message": "Fixed 2 messages with empty tool calls",
-  "removed_count": 2,
-  "state": {...}
+  "data": {
+    "success": true,
+    "message": "Successfully removed 2 message(s)",
+    "removed_count": 2,
+    "state": "..."
+  },
+  "metadata": {"request_id": "abc123", "message": "OK"}
 }
 ```
 
@@ -237,7 +249,7 @@ After fixing, the thread is safe to resume. Empty tool calls typically occur whe
 
 ## Human-in-the-loop: pause and resume
 
-If your graph calls `interrupt()` to pause for human approval, the stream or invoke response will include a `meta.execution_meta.interrupted_node` field with the node name. To resume, send a `resume` request with your approval:
+If your graph calls `interrupt()` to pause for human approval, the stream ends with an `updates` chunk whose `data.status` is `interrupted`, with the `node` that paused and the `interrupt` payload. To resume, send a `resume` request with your approval:
 
 ```bash
 curl -X POST http://localhost:8000/v1/graph/invoke \
@@ -257,28 +269,28 @@ The graph resumes from the paused node with your response. The `resume` value is
 If an error occurs during execution, the response will include an error chunk:
 
 ```json
-{"event":"error","data":{"message":"Tool call failed","error":"Invalid input"},"run_id":"run-123"}
+{"event":"error","data":{"reason":"Tool call failed"},"run_id":"run-123"}
 ```
 
-The stream continues after non-fatal errors (e.g., a tool fails but the graph can recover), or terminates if the error is fatal. For synchronous invoke, the entire call fails with an HTTP error status:
+Failures during a stream arrive as an `error` chunk, because the HTTP status is already 200 once streaming starts. Authentication, authorization and validation errors are returned before the stream begins. For synchronous invoke, the call fails with an HTTP error status:
 
 | Status | Meaning |
 |--------|---------|
-| 400 | Invalid request (bad schema or missing required fields). |
+| 422 | Invalid request (bad schema, missing messages, or invalid input). |
 | 401 | Authentication required (token missing or invalid). |
-| 403 | Permission denied (you do not own this thread). |
+| 403 | Permission denied (you do not own this thread, or a required scope is missing). |
 | 429 | Rate limit exceeded. Retry after the `Retry-After` header. |
 | 500 | Internal server error (bug in your graph or infrastructure failure). |
 
 ## Common issues
 
-**Message rejected: "messages must contain at least one message"**
+**Validation error: "messages must contain at least one message" (422)**
 
 You sent an empty messages array. Include at least one message, or use `resume` to continue an interrupted thread.
 
-**"Thread not found" error**
+**403 on a thread you expect to own**
 
-The thread_id does not exist or was deleted. Create a new thread or check the ID.
+With `"authorization": "ownership"` a thread belongs to the user who created it. Check that the token carries the same `user_id` as the original request.
 
 **Stream stops abruptly**
 
@@ -290,7 +302,7 @@ The client may not have sent the tool result back to the server. Resend it with 
 
 ## Next steps
 
-- See [Manage threads](/docs/server/websockets) for WebSocket real-time updates and bidirectional communication.
+- See [WebSocket streaming and realtime](/docs/server/websockets) for WebSocket real-time updates and bidirectional communication.
 - Learn how to [handle authentication](/docs/server/auth) for production deployments.
 - Read [stream and approve](/docs/get-started/tutorial/stream-and-approve) to add human-in-the-loop workflows.
 

@@ -50,13 +50,13 @@ To open the interactive playground alongside the API, use the `play` command ins
 
 This starts the server and opens the playground in your browser at the address shown. It is equivalent to `10xgraph api` with a browser tab launched when the server is ready.
 
-For goal-oriented development that shows the playground by default and focuses on iteration, use the `dev` command (newer, recommended):
+The `dev` command also opens the playground by default; pass `--no-open` to skip it:
 
 ```bash
 10xgraph dev
 ```
 
-All three commands accept the same options: `--host`, `--port`, `--reload/--no-reload`, `--config`, and verbosity flags.
+All three commands accept `--host`, `--port`, `--reload/--no-reload`, `--config`, and the verbosity flags. `dev` adds `--open/--no-open`.
 
 ## Verify the server is running
 
@@ -69,7 +69,7 @@ curl http://127.0.0.1:8000/ping
 Expected response:
 
 ```json
-{"success": true, "data": "pong"}
+{"data": "pong", "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}}
 ```
 
 The `/ping` endpoint requires no authentication and is designed for health checks (load balancers, monitoring systems).
@@ -92,7 +92,7 @@ Both show the full endpoint list, parameters, request/response shapes, and authe
 
 ```json
 {
-  "messages": [{"role": "user", "content": "Hello"}],
+  "messages": [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}],
   "config": {"thread_id": "test-thread-1"}
 }
 ```
@@ -183,10 +183,10 @@ For production, generate a Docker setup with multiple workers and production con
 This creates:
 
 - `Dockerfile` with production layers and multi-worker setup
-- `docker-compose.yml` (optional) for easy local testing of the built image
-- `k8s.yaml` (optional) for Kubernetes deployment
+- `docker-compose.yml` (with `--docker-compose`) for easy local testing of the built image
+- `k8s.yaml` (with `--k8s`) for Kubernetes deployment
 
-The generated Dockerfile runs the app via Gunicorn with multiple Uvicorn workers (the number depends on available CPU cores). This provides proper concurrency and graceful shutdown.
+The generated Dockerfile runs the app via Gunicorn with Uvicorn workers. The worker count comes from `WEB_CONCURRENCY` (the Dockerfile sets it to 2; override it at run time) and the graceful shutdown timeout is raised so in-flight runs can finish.
 
 To build and test locally:
 
@@ -198,7 +198,7 @@ docker run -p 8000:8000 my-agent:latest
 Set required environment variables:
 
 ```bash
-docker run -e MODE=production -e JWT_SECRET_KEY=your_secret -p 8000:8000 my-agent:latest
+docker run -e JWT_SECRET_KEY=your_secret -e WEB_CONCURRENCY=4 -p 8000:8000 my-agent:latest
 ```
 
 See [Deploy the server](/docs/server/deploy) for the complete production guide, Kubernetes setup, and deployment checklist.

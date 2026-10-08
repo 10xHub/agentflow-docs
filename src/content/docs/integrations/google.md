@@ -13,7 +13,7 @@ Run Gemini models through Google GenAI. The same models and features work throug
 
 ## Choosing Your Backend
 
-Gemini models (`gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`, and experimental `gemini-3-*` models) run on two backends:
+Gemini models (for example `gemini-2.0-flash`, `gemini-2.5-flash` and `gemini-3-flash-preview`) run on two backends:
 
 - **Gemini API** (Google AI Studio): fastest path to get started; authentication is a single API key.
 - **Vertex AI**: same models routed through Google Cloud; includes IAM-scoped access, audit logs, regional data residency, and VPC Service Controls.
@@ -22,10 +22,10 @@ Both backends support the same advanced features: context caching, extended thin
 
 ## Setup
 
-1. Install the Google GenAI SDK (not bundled with `10xgraph`):
+1. Install the Google provider extra, which pulls in the Google GenAI SDK:
 
     ```bash
-    pip install google-genai
+    pip install "10xgraph[google-genai]"
     ```
 
 2. Get an API key from [Google AI Studio](https://aistudio.google.com).
@@ -40,7 +40,7 @@ Both backends support the same advanced features: context caching, extended thin
 
 ## Basic usage
 
-Create an agent with a Gemini model. You need only the model name and provider; the SDK loads your `GEMINI_API_KEY` from the environment automatically.
+Create an agent with a Gemini model. You need only the model name and provider; 10xGraph reads `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) from the environment. The Google provider does not accept an `api_key=` argument.
 
 ```python
 from tenxgraph.core.graph import Agent
@@ -112,7 +112,9 @@ Cache hit counts are read from `usage_metadata.cached_content_token_count` and l
 `DEBUG` level by 10xGraph after every non-streaming response.
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph import Agent
+
+long_system_prompt = "..."  # a large, stable prompt
 
 # Implicit caching fires automatically, nothing to configure
 agent = Agent(
@@ -154,7 +156,7 @@ async def create_cache():
                     parts=[types.Part(text=large_document_text)],
                 )
             ],
-            ttl="7200s",  # 2 hours; default is 3600s
+            ttl="7200s",  # 2 hours
         )
     )
     return cache.name  # e.g. "cachedContents/abc123"
@@ -165,6 +167,8 @@ cache_name = asyncio.run(create_cache())
 **Step 2, pass the cache name to the Agent:**
 
 ```python
+from tenxgraph import Agent
+
 agent = Agent(
     model="gemini-2.5-flash",
     system_prompt=[],         # static instruction is already inside the cache
@@ -172,20 +176,13 @@ agent = Agent(
 )
 ```
 
-**Minimum token requirements:**
-
-| Model | Minimum cached tokens |
-|---|---|
-| Gemini 2.5 Flash | 1,024 |
-| Gemini 2.5 Pro | 4,096 |
-| Gemini 3 Pro Preview | 4,096 |
+Google enforces a minimum cached token count per model; see the Gemini API documentation for current values.
 
 **What can be cached:** system instructions, plain text, PDF documents, video files (via
 GCS URIs). The cache is stored server-side; you reference it by name.
 
-**Cache lifecycle:** TTL defaults to 1 hour. Only TTL and expiration time can be updated
-after creation. Deletion is manual or automatic on expiry. 10xGraph does not manage
-cache lifecycle, create, refresh, and delete caches via the Google SDK directly.
+**Cache lifecycle:** 10xGraph does not manage it. Create, refresh and delete caches via
+the Google SDK directly.
 
 ### Mixing Static and Dynamic System Instructions
 
@@ -218,20 +215,20 @@ agent = Agent(
 
 ### SummaryContextManager with explicit caching
 
-`call_llm` (used internally by `SummaryContextManager`) accepts `cached_content` via
-`**llm_kwargs`. When set, the same exclusion logic applies.
+`call_llm` (a single-turn helper) accepts `cached_content` via `**llm_kwargs`.
 
 ```python
 from tenxgraph.core.state import SummaryContextManager
-from tenxgraph.core.llm.caller import call_llm
+from tenxgraph.core.llm import call_llm
 
+# Inside an async function:
 text, inp, out, cache = await call_llm(
     "gemini-2.5-flash",
-    prompt,
+    "Summarise the attached documents.",
     cached_content=cache_name,
 )
 
-# SummaryContextManager does not yet accept cached_content directly.
+# SummaryContextManager does not accept cached_content directly.
 # Implicit cache on Gemini 2.5+ already benefits the summariser
 # when its system prompt prefix is stable across calls.
 manager = SummaryContextManager(
@@ -262,22 +259,23 @@ config = EvalConfig(
 
 ## Thinking Models
 
-Gemini 2.5 and Gemini 3 models support extended thinking. Control it via
-`reasoning_config`.
+Gemini thinking models support extended thinking. Control it via `reasoning_config`
+(the default is `{"effort": "medium"}`). Thinking is not applied when `output_schema` is set
+or `output_type` is not text or json.
 
 ```python
 # Enable with defaults
-agent = Agent(model="gemini-2.5-pro", reasoning_config=True)
+agent = Agent(model="gemini-2.5-flash", reasoning_config=True)
 
 # Set token budget explicitly (Gemini 2.5 style)
 agent = Agent(
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     reasoning_config={"thinking_budget": 8000},  # tokens to spend on reasoning
 )
 
 # Set thinking level (Gemini 3 style)
 agent = Agent(
-    model="gemini-3-pro",
+    model="gemini-3-flash-preview",
     reasoning_config={"thinking_level": "high"},  # "minimal"|"low"|"medium"|"high"
 )
 
@@ -335,7 +333,6 @@ agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
-    tool_node=tool_node,
     use_vertex_ai=True,
 )
 ```
@@ -355,7 +352,8 @@ If both are set, the explicit `use_vertex_ai=True` argument wins.
 ## Structured Output
 
 Force the model to return a specific JSON schema by passing `output_schema`. Google does
-not support combining structured output with tool calls in the same request.
+not support combining structured output with tool calls: a call with both raises a
+`ValueError`.
 
 ```python
 from pydantic import BaseModel
@@ -377,15 +375,15 @@ agent = Agent(
 ## `llm_kwargs` Reference
 
 All unrecognised keyword arguments passed to `Agent(...)` land in `self.llm_kwargs` and
-are forwarded to `GenerateContentConfig` (after provider-level extraction).
+are stored there; for Google only the keys below reach `GenerateContentConfig`.
 
 | kwarg | Type | Notes |
 |---|---|---|
 | `cached_content` | `str` | Name of an explicit Gemini cache (e.g. `"cachedContents/abc123"`). Mutually exclusive with `system_instruction` in the config, 10xGraph handles this automatically. |
 | `temperature` | `float` | Sampling temperature. |
 | `max_tokens` / `max_output_tokens` | `int` | Maximum output tokens. Both aliases are accepted. |
-| `top_p` | `float` | Nucleus sampling. |
-| `top_k` | `int` | Top-K sampling. |
+
+Other keyword arguments (such as `top_p` and `top_k`) are not forwarded to Gemini.
 
 ---
 
@@ -404,8 +402,9 @@ are forwarded to `GenerateContentConfig` (after provider-level extraction).
 
 | Error | Fix |
 |---|---|
-| `ImportError: google-genai SDK is required` | `pip install google-genai` |
-| `AuthenticationError` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` missing or invalid |
+| `ImportError: google-genai SDK is required` | `pip install "10xgraph[google-genai]"` |
+| `ValueError: GEMINI_API_KEY or GOOGLE_API_KEY environment variable must be set` | Export one of the two variables |
+| `ValueError: Google GenAI does not currently support combining tool calls ...` | Remove either `output_schema` or the tools from that agent |
 | `Model not found` | Double-check the model name, Gemini model names are case-sensitive |
 | `ValueError: GOOGLE_CLOUD_PROJECT environment variable must be set` | Export `GOOGLE_CLOUD_PROJECT` before creating the agent (Vertex AI only) |
 | `PermissionDenied: Vertex AI API has not been used` | Enable the Vertex AI API on your GCP project |

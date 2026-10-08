@@ -27,7 +27,7 @@ pip install pytest pytest-asyncio
 
 ## TestAgent
 
-`TestAgent` is a drop-in replacement for `Agent`. It accepts the same constructor arguments but never calls an LLM. Instead it returns responses from a list you provide, cycling through them on repeated calls.
+`TestAgent` is a drop-in replacement for `Agent` as a graph node. Its constructor takes `model`, `system_prompt`, `responses`, `tools` and `simulate_tool_calls`, and it never calls an LLM. Instead it returns responses from a list you provide, cycling through them on repeated calls.
 
 ### Basic usage
 
@@ -57,6 +57,7 @@ Replace an Agent node in a production graph with a `TestAgent`:
 ```python
 from tenxgraph.qa.testing import TestAgent
 
+# `graph` is your existing StateGraph that already has a "MAIN" node
 test_agent = TestAgent(responses=["Mocked response"])
 graph.override_node("MAIN", test_agent)
 app = graph.compile()
@@ -77,7 +78,7 @@ agent = TestAgent(responses=["Calling tool...", "Final answer here"])
 
 ### Simulating tool calls
 
-Pass `simulate_tool_calls=True` together with a `tools` list. The first call returns a tool-call message; subsequent calls return the predefined responses.
+Pass a `tools` list (tool names or functions). The first call returns a tool-call message with the arguments `{"query": "test query"}` for each tool; subsequent calls return the predefined responses. Passing a non-empty `tools` list turns this on automatically; `simulate_tool_calls=True` is the explicit flag.
 
 ```python
 agent = TestAgent(
@@ -280,13 +281,12 @@ tools.clear()
 
 ## MockMCPClient
 
-`MockMCPClient` simulates an MCP server for testing ToolNode with MCP tool integrations without requiring actual MCP servers.
+`MockMCPClient` simulates an MCP client for tests without a real MCP server. It implements `list_tools()` and `call_tool(name, arguments)` and records every call.
 
 ### Register mock MCP tools
 
 ```python
 from tenxgraph.qa.testing import MockMCPClient
-from tenxgraph.core.graph import ToolNode
 
 mock_client = MockMCPClient()
 mock_client.add_tool(
@@ -296,9 +296,11 @@ mock_client.add_tool(
     handler=lambda query: f"Results for: {query}",
 )
 
-# Pass to ToolNode
-tools = ToolNode([], client=mock_client)
+# Inside an async test
+result = await mock_client.call_tool("search", {"query": "climate change"})
 ```
+
+Each key in `parameters` becomes a required property of the tool's input schema. Handlers may be sync or async. Calling an unknown tool raises `ValueError`.
 
 ### Assert MCP tool calls
 
@@ -311,9 +313,10 @@ mock_client.assert_called("search")
 # Check call arguments
 mock_client.assert_called_with("search", query="climate change")
 
-# Get call history
+# Get call history (each record is {"arguments": {...}})
 calls = mock_client.get_calls("search")
 last_call = mock_client.get_last_call("search")
+assert mock_client.call_count("search") == 1
 ```
 
 ### Method chaining
@@ -375,6 +378,8 @@ store.set_search_results([
 For more control, store and retrieve memories directly:
 
 ```python
+from tenxgraph.storage.store.store_schema import MemoryType
+
 config = {"user_id": "user123", "thread_id": "thread456"}
 
 # Store a memory
@@ -408,9 +413,11 @@ store.clear()
 ### Context manager usage
 
 ```python
+from tenxgraph.core.state import Message
 from tenxgraph.qa.testing import TestContext
 from tenxgraph.utils.constants import END
 
+# Inside an async test
 with TestContext() as ctx:
     # Create a graph with the test container
     graph = ctx.create_graph()
@@ -472,12 +479,12 @@ from tenxgraph.utils.constants import END
 async def test_weather_query_routes_to_tool():
     """Test that a weather query triggers the tool."""
     tools = MockToolRegistry()
-    tools.register("get_weather", lambda city: "22°C")
+    # The simulated tool call passes {"query": "test query"}
+    tools.register("get_weather", lambda query: "22°C")
 
     agent = TestAgent(
         responses=["The weather is 22°C."],
         tools=tools.get_tool_list(),
-        simulate_tool_calls=True,
     )
 
     graph = StateGraph()
@@ -487,7 +494,7 @@ async def test_weather_query_routes_to_tool():
 
     def route(state):
         last = state.context[-1] if state.context else None
-        if last and getattr(last, "tool_calls", None):
+        if last and getattr(last, "tools_calls", None):
             return "TOOL"
         return END
 
@@ -499,7 +506,7 @@ async def test_weather_query_routes_to_tool():
 
     # Assert tool was called
     tools.assert_called("get_weather")
-    
+
     # Assert agent was called twice (once for tool call, once for final response)
     agent.assert_called_times(2)
 

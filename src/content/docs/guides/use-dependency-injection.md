@@ -27,14 +27,14 @@ DI inverts the problem: services are bound once in a container, and functions de
 
 ## Built-in injectable parameters
 
-The framework automatically provides these parameters to any node function or tool function that declares them:
+Tool functions receive these parameters by name when they declare them. Node functions receive `state` and `config` by name; for anything else, declare an `Inject[Type]` default.
 
 | Parameter | Type | Purpose |
 |---|---|---|
 | `tool_call_id` | `str` | Unique identifier for the current tool execution (tool functions only) |
-| `state` | `AgentState` | Current graph state for reading or modifying context |
-| `config` | `dict` | Execution configuration (thread_id, user_id, recursion_limit, etc.) |
-| `emit` | `StreamEmitter` | Publishes progress events during long operations |
+| `state` | `AgentState` | Current graph state for reading or modifying context (nodes and tools) |
+| `config` | `dict` | Execution configuration (thread_id, user_id, recursion_limit, etc.) (nodes and tools) |
+| `emit` | `StreamEmitter` | Publishes progress events during long operations (tool functions only) |
 | `generated_id` | `str` | A fresh ID generated on each call from the ID generator |
 | `checkpointer` | `BaseCheckpointer` | The checkpointer bound to the compiled graph |
 | `store` | `BaseStore` | The long-term memory store, if configured |
@@ -107,13 +107,11 @@ def query_database(
     state: AgentState,
     config: dict,
     db: DatabaseClient = Inject[DatabaseClient],
-) -> dict:
+) -> Message:
     """Query a database and return results as a message."""
     results = db.query("SELECT * FROM users LIMIT 5")
     content = f"Found {len(results)} users."
-    return {
-        "messages": [Message.text_message(content, role="assistant")],
-    }
+    return Message.text_message(content, role="assistant")
 ```
 
 The framework automatically calls `query_database(state, config, db=<resolved_instance>)` at runtime. You never pass `db` manually. When you add this node to the graph, the DI system handles the wiring:
@@ -131,7 +129,7 @@ Tool functions work the same way. Declare `tool_call_id`, `state`, `config`, and
 
 ```python
 from injectq import Inject
-from tenxgraph.core.state import Message
+from tenxgraph.core.state import AgentState, Message
 from tenxgraph.core.state.message_block import ToolResultBlock
 
 def search_products(
@@ -181,25 +179,25 @@ This is especially useful in unit tests, where you want each test to have a fres
 
 ## Step 5: Refresh injected values on each call
 
-By default, `Inject[Service]` caches the first resolved value for the process. If you need a fresh resolution on each invocation (e.g., for a generated ID), use `fresh()` from `tenxgraph.utils.injection`:
+An `Inject[Service]` default is a proxy created once, when the function is defined, and it caches the first object it resolves. If the container is rebound later, or a graph with its own container runs, the function keeps the old object. Use `fresh()` from `tenxgraph.utils.injection` to resolve from the active container on each call:
 
 ```python
-from tenxgraph.utils.injection import fresh
+from injectq import Inject
 from tenxgraph.core.state import AgentState
+from tenxgraph.storage.checkpointer import BaseCheckpointer
+from tenxgraph.utils.injection import fresh
 
 def my_node(
     state: AgentState,
     config: dict,
-    generated_id: str = Inject[str],
-) -> dict:
-    """A node that always gets a fresh generated ID."""
-    # Without fresh(), generated_id would be the same value every time
-    fresh_id = fresh(generated_id)
-    # Use fresh_id for operations that need a unique value per call
-    return {"state": state}
+    checkpointer: BaseCheckpointer = Inject[BaseCheckpointer],
+) -> list:
+    # Without fresh(), this could be a checkpointer from an earlier graph
+    checkpointer = fresh(checkpointer)
+    return []
 ```
 
-`fresh()` resolves the dependency from the active container at call time, bypassing the cache. If the dependency is not bound, it returns `None`, so optional services are handled gracefully.
+`fresh()` returns an explicitly passed argument unchanged. If the dependency is not bound, it returns `None`, so optional services are handled gracefully.
 
 ## Step 6: Read values from the container inside a node
 
@@ -212,7 +210,7 @@ from tenxgraph.core.state import AgentState
 def my_node(
     state: AgentState,
     config: dict,
-) -> dict:
+) -> list:
     """Access the container to read optional values."""
     container = InjectQ.get_instance()
 
@@ -227,18 +225,18 @@ def my_node(
         # Call external API
         pass
 
-    return {}
+    return []
 ```
 
 This pattern is useful when a value is optional or you want to check its presence before using it.
 
 ## Complete example
 
-This example builds a small graph with a database service, a tool that queries it, and a node that logs the request:
+This example needs a provider extra, for example `pip install "10xgraph[openai]"`, and `OPENAI_API_KEY` set. It builds a small graph with a database service, a tool that queries it, and a node that logs the request:
 
 ```python
 from injectq import Inject, InjectQ
-from tenxgraph.core.graph import Agent, StateGraph, ToolNode
+from tenxgraph.core import Agent, StateGraph, ToolNode
 from tenxgraph.core.state import AgentState, Message
 from tenxgraph.core.state.message_block import ToolResultBlock
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
@@ -271,12 +269,12 @@ def log_request(
     state: AgentState,
     config: dict,
     repo: UserRepository = Inject[UserRepository],
-) -> dict:
+) -> list:
     """Log the incoming request with user info."""
     user_id = config.get("user_id", "unknown")
     user = repo.get_user(user_id)
     print(f"Request from: {user['name']} ({user['plan']} plan)")
-    return {}
+    return []
 
 # Build the graph
 tool_node = ToolNode([get_user_info])
@@ -289,7 +287,7 @@ graph.add_node("TOOL", tool_node)
 
 def should_use_tools(state: AgentState) -> str:
     last = state.context[-1] if state.context else None
-    if last and last.role == "assistant" and getattr(last, "tool_calls", None):
+    if last and last.role == "assistant" and getattr(last, "tools_calls", None):
         return "TOOL"
     return END
 
@@ -307,10 +305,10 @@ result = app.invoke(
     config={"thread_id": "di-demo", "user_id": "user-42"},
 )
 
-print(result["messages"][-1].content)
+print(result["messages"][-1].text())
 ```
 
-Output:
+The `log` node prints:
 ```
 Request from: Alice (pro plan)
 ```
@@ -320,15 +318,16 @@ Request from: Alice (pro plan)
 **Pattern: Inject a scoped service per invocation.** Use `fresh()` to always get a new instance from the container, rather than the cached version:
 
 ```python
+from tenxgraph.storage.store.base_store import BaseStore
 from tenxgraph.utils.injection import fresh
 
-def my_node(state, config, generated_id: str = Inject[str]):
-    unique_id = fresh(generated_id)
-    # Use unique_id for operations needing a unique value
-    return {}
+def my_node(state, config, store: BaseStore = Inject[BaseStore]):
+    store = fresh(store)
+    # Uses the store bound to the active container
+    return []
 ```
 
-**Error: "Required injectable parameter not found."** This means a function declared a parameter that the container does not provide and has no default. Check that the service is bound before the graph runs:
+**Error: "Missing required parameter" or "Required injectable parameter not found".** A tool or node declared a parameter with no default that neither the runtime nor the container provides. Bind the service before the graph runs, or give the parameter an `Inject[...]` default:
 
 ```python
 # Wrong: UserRepository is not bound
@@ -342,17 +341,16 @@ graph = StateGraph()
 graph.add_node("query", my_node_using_repository)
 ```
 
-**Error: "The container is frozen."** You tried to add a binding after calling `compile()`. Bindings are frozen when the graph is compiled to allow optimization. Create a new container and pass it to `StateGraph()` before adding nodes if you need different bindings.
+**Bindings after `compile()`.** The container is compiled (frozen) at the end of `graph.compile()`. Add your own bindings before calling it, or create a new container and pass it to `StateGraph(container=...)`.
 
 ## What you learned
 
 - Dependency injection avoids globals and reduces parameter passing in signatures.
-- The framework automatically provides `tool_call_id`, `state`, `config`, and `emit` to tool functions.
+- Tool functions automatically receive `tool_call_id`, `state`, `config`, and `emit`; nodes receive `state` and `config`.
 - Declare `param: Service = Inject[Service]` to inject custom services into nodes and tools.
 - Use `container.bind_instance(Type, instance)` to register a singleton or `bind_factory(name, callable)` for a function.
 - Pass `StateGraph(container=container)` to use a custom, scoped container for testing.
 - Use `fresh()` to resolve a dependency anew on each call, bypassing the cache.
-- The canonical list of injectable parameters (built-in and custom) is defined in the container at compile time.
 
 ## Next steps
 

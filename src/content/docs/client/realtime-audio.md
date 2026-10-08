@@ -14,7 +14,7 @@ For the complete `RealtimeSession` API (every event type, reconnect behavior, in
 
 ## Prerequisites
 
-- A graph rooted at a `LiveAgent`. A turn-based graph rejects the connection: the server sends a fatal `error` event with `code: 'not_live'` and closes the socket with code `1008`. Always check `info.is_realtime` from `client.graph()` before rendering an audio UI.
+- A graph rooted at a `LiveAgent`. A turn-based graph rejects the connection: the server sends a fatal `error` event with `code: 'not_live'` and closes the socket with code `1008`. Check `info.is_realtime` from `client.graph()` before rendering an audio UI.
 - A configured `TenxGraphClient` instance. On Node 18 or 20, you must pass `webSocketImpl` (the `ws` package) in the client config; see [create-client](/docs/client/create-client) for details. Browsers ship WebSocket natively.
 - A secure context. `getUserMedia` requires HTTPS or `localhost`. On `http://`, `getUserMedia` rejects immediately.
 
@@ -176,7 +176,7 @@ await session.ready;
 
 Wait for `session.ready` to resolve before proceeding, which confirms the WebSocket is open and the init frame has been sent. `reconnect: { enabled: false }` makes a close permanent, suitable for a "Start / End" button UI. For long-lived assistants that should survive network hiccups, leave reconnect enabled (the default) so the session reopen with the same `thread_id` and resume from the checkpoint.
 
-Do not hardcode a model name if your server is already pinned to one through its configuration. The init `model` parameter is a per-session override that takes precedence over the server setting. Live model availability varies by API key and region, so hardcoding a specific model often causes immediate connection failure.
+The init `model` parameter is a per-session override, honoured only when the model is listed in the server's `websocket.realtime_models` setting. Any other value is ignored and the agent's own model is used. Live model availability varies by API key and region, so omit `model` unless you need to pick from that list.
 
 ---
 
@@ -261,7 +261,7 @@ useEffect(() => () => {
 }, []);
 ```
 
-`session.close()` sends a close frame to the server, closes the WebSocket, and prevents automatic reconnection. It is safe to call multiple times (idempotent).
+`session.close()` sends a `close` control frame to the server, closes the WebSocket, and prevents automatic reconnection.
 
 ---
 
@@ -278,7 +278,7 @@ if (!liveCapable) {
 }
 ```
 
-If you skip this check and try to open a realtime session against a turn-based agent, the server closes the connection immediately with a `not_live` error. The playground's **Live** page implements this gate to prevent users from seeing a broken interface.
+If you skip this check and try to open a realtime session against a turn-based agent, the server sends a fatal `not_live` error event and closes the connection. The playground's **Live** page implements this gate (through its connection capabilities) to prevent users from seeing a broken interface.
 
 ---
 
@@ -290,7 +290,7 @@ The 10xGraph playground (`agentflow-playground/`) includes a complete, productio
 |---|---|
 | `src/lib/realtime-audio.js` | `createPcmPlayer(24000)` and `createMicCapture(onFrame, 16000)` (the code from Steps 1 and 2). |
 | `src/pages/live/components/live-session.jsx` | Session lifecycle, push-to-talk button handler, transcript coalescing, interruption handling, and cleanup. |
-| `src/pages/live/live-page.jsx` | The live-capable check (Step 7) and UI gate. |
+| `src/pages/live/live-page.jsx` | The live-capable UI gate (Step 7), based on the `is_realtime` flag. |
 
 To run it: `10xgraph play` (starts the API server and playground together), then open the **Live** page to test the realtime audio session.
 
@@ -300,12 +300,13 @@ To run it: `10xgraph play` (starts the API server and playground together), then
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Playback is too fast or too slow. | Playing output frames intended for 24 kHz at 16 kHz playback rate, or vice versa. The audio itself is correct; only the playback speed is wrong. | Always use the `sampleRate` parameter passed to the `'audio'` event listener. Do not hardcode `REALTIME_OUTPUT_SAMPLE_RATE`. |
+| Playback is too fast or too slow. | Playing output frames intended for 24 kHz at 16 kHz playback rate, or vice versa. The audio itself is correct; only the playback speed is wrong. | Pass the `sampleRate` argument of the `'audio'` listener to the player, as in Step 3. |
 | No audio at all, no errors in the console. | The `AudioContext` was created before the first user interaction and is in suspended state. Browsers enforce this for security and battery reasons. | Create the `AudioContext` and player inside the click handler, and call `resume()` on a suspended context. |
 | Choppy playback with audible gaps between frames. | Each frame starts at the current time instead of when the previous frame ends. With typical frame durations of 50-200ms, this creates noticeable silence. | Schedule frames using `max(currentTime, nextTime)` and update `nextTime` by the buffer duration. See Step 1. |
 | The agent constantly interrupts itself mid-sentence. | Echo cancellation is disabled. The agent hears its own voice playing from the speaker, mistakes it for new user input, and stops to respond. | Enable `echoCancellation: true` in the `getUserMedia` call (Step 2). If echo is still a problem, recommend headphones. |
 | `getUserMedia` rejects immediately with a permission error. | The user denied the permission prompt, or the page is not on HTTPS or localhost. | Handle the rejection in a catch block, show the user a clear error message, and call `activityEnd()` to clean up the pending turn. |
-| Socket closes immediately after opening, error code `not_live`. | The graph is turn-based, not a live agent. Or the init `model` (e.g. Gemini Flash) is not available for your API key, region, or quota. | Always check `info.is_realtime` before offering the audio UI. Omit the `model` field and let the server select one. |
+| Socket closes immediately after opening, error code `not_live`. | The graph is turn-based, not a live agent. | Check `info.is_realtime` before offering the audio UI. |
+| Live session fails even though the graph is a `LiveAgent`. | The live model is not available for your API key, region, or quota. | Omit the `model` field so the agent's own model is used, or pick one listed in `websocket.realtime_models`. |
 | `No WebSocket implementation available` error in Node.js. | Node 18 and 20 do not have a global `WebSocket` object. | Pass `webSocketImpl` in the `TenxGraphClient` config: `{ webSocketImpl: require('ws') }`. |
 | Microphone indicator remains on after ending the session. | The `mic.stop()` method was not called or an exception prevented it from running. | Always call `stop()` in the "End" button handler and in a React `useEffect` cleanup. Wrap calls in try/catch or use optional chaining (`mic?.stop()`). |
 
@@ -320,7 +321,7 @@ You now understand the full lifecycle of a realtime audio conversation:
 - **Echo cancellation is essential.** Without it, the agent hears its own voice and loops. Always enable it in the `getUserMedia` constraints.
 - **Turn-taking has two modes.** Push-to-talk (manual `activityStart/activityEnd`) suits voice-assistant UIs. Hands-free (server VAD) suits always-listening assistants.
 - **Interruption and cleanup are critical.** The `interrupted` event requires clearing the audio queue. Cleanup on unmount and on error prevents resource leaks and privacy issues.
-- **Runtime checks prevent broken experiences.** Always verify `is_realtime` before offering the audio UI, and omit hardcoded model names to let the server choose.
+- **Runtime checks prevent broken experiences.** Always verify `is_realtime` before offering the audio UI, and omit the `model` field unless you need one from `websocket.realtime_models`.
 
 ## Next steps
 

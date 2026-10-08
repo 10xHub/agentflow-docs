@@ -24,15 +24,15 @@ When your tools perform long-running tasks (like API calls, file processing, or 
 
 Use `StreamEmitter` when:
 
-✅ **Do use for:**
+**Do use for:**
 - Long-running operations (API calls, file processing, database queries)
 - Retries with multiple attempts (show which attempt is running)
 - Multi-step processes (report progress per step)
 - External service calls with timeout risk
 - Batch processing (show item count progress)
 
-❌ **Don't use for:**
-- Fast operations that complete in &lt;100ms (overhead not worth it)
+**Do not use for:**
+- Fast operations that complete in under 100 ms (overhead not worth it)
 - Simple tool results that don't require intermediate feedback
 - Non-streaming execution paths (emit is None anyway, so safe to call but won't do anything)
 
@@ -168,7 +168,7 @@ def call_external_service(
 
 ## Full Graph Example
 
-Here's a complete graph that uses `StreamEmitter`:
+Here's a complete graph that uses `StreamEmitter`. Install with `pip install "10xgraph[google-genai]"` and set `GEMINI_API_KEY` or `GOOGLE_API_KEY`:
 
 ```python
 from tenxgraph.core.graph import StateGraph, Agent, ToolNode
@@ -220,7 +220,7 @@ graph.add_node("MAIN", agent)
 graph.add_node("TOOL", tool_node)
 graph.add_conditional_edges(
     "MAIN",
-    lambda state: "TOOL" if state.context[-1].role == "assistant" else END,
+    lambda state: "TOOL" if state.context[-1].tools_calls else END,
     {"TOOL": "TOOL", END: END},
 )
 graph.add_edge("TOOL", "MAIN")
@@ -235,9 +235,8 @@ config = {"thread_id": "user_123", "is_stream": True}
 print("Streaming response with progress updates:")
 for chunk in app.stream(inp, config=config):
     # Check if this is a progress chunk from StreamEmitter
-    if hasattr(chunk, 'event') and chunk.event.name == "message":
-        if chunk.data.get("status") == "tool_progress":
-            print(f"  [PROGRESS] {chunk.data['message']} ({chunk.data['tool_name']})")
+    if chunk.event == "message" and chunk.data and chunk.data.get("status") == "tool_progress":
+        print(f"  [PROGRESS] {chunk.data['message']} ({chunk.data['tool_name']})")
     else:
         print(chunk)
 ```
@@ -246,15 +245,15 @@ for chunk in app.stream(inp, config=config):
 
 ## Best Practices
 
-### ✅ Do
+### Do
 
 1. **Check before emitting:** Always do `if emit:` before calling emit methods
 2. **Use meaningful messages:** Messages should tell users what's happening
 3. **Add metadata:** Include `data` for important metrics (attempt numbers, percentages, etc.)
 4. **Report milestones:** Emit at meaningful progress points, not every step
-5. **Include duration:** For batch work, emit frequency (every N items) not on every item
+5. **Throttle batch work:** Emit every N items, not on every item
 
-### ❌ Don't
+### Do not
 
 1. **Don't emit too frequently:** Thousands of updates per second will slow down streaming
 2. **Don't rely on emit:** Tool should always return a valid result regardless
@@ -264,13 +263,13 @@ for chunk in app.stream(inp, config=config):
 ### Performance Tips
 
 ```python
-# ❌ Bad: Emits 1000 times per second
+# Bad: Emits 1000 times per second
 for item in items:
     if emit:
         emit.progress(f"Processing {item}")
     process(item)
 
-# ✅ Good: Emits once per batch
+# Good: Emits once per batch
 for i, item in enumerate(items):
     if (i + 1) % 100 == 0 and emit:
         emit.progress(f"Processed {i + 1} of {len(items)}")

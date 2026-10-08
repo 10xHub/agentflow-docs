@@ -13,7 +13,7 @@ These examples sit between the quickstart and the reference documentation. If yo
 
 ## Getting started with examples
 
-The examples are located in the repository at `agentflow/examples/`. Each example directory contains a runnable Python script and an optional `README.md` with setup instructions.
+The examples are located in the repository at `agentflow/examples/`. Each example directory contains one or more runnable Python scripts (for example `graph.py`) and sometimes a `README.md` with setup instructions.
 
 ### Clone the repository
 
@@ -71,14 +71,14 @@ export $(cat .env | xargs)
 
 ### Run an example
 
-Navigate to any example directory and run its main script:
+Navigate to an example directory and run its script:
 
 ```bash
 cd examples/agent-class
-python main.py
+python graph.py
 ```
 
-Some examples have additional setup (MCP servers, database initialization). Check the example's `README.md` for instructions.
+Some examples have additional setup (MCP servers, database initialization). Check the example's `README.md`, where one exists.
 
 ## What you'll learn
 
@@ -130,7 +130,7 @@ Persistent agent memory and multimodal input (images, audio, documents).
 
 Testing, evaluation, and graceful operation.
 
-- [Skills](/docs/examples/skills): Give agents coding abilities with Agent Skills
+- [Skills](/docs/examples/skills): Load Agent Skills (SKILL.md folders) on demand alongside normal tools
 - [Testing](/docs/examples/testing): Unit tests and mocked LLM calls for agent logic
 - [Evaluation](/docs/examples/evaluation): Define eval sets and run evaluations against a dataset
 - [Graceful Shutdown](/docs/examples/graceful-shutdown): Clean shutdown handling and resource cleanup
@@ -170,7 +170,7 @@ Most examples assume:
 - Python 3.12 or later
 - 10xGraph installed with the appropriate provider extra (google-genai, openai, or anthropic)
 - Environment variables set for API keys
-- For MCP and some advanced examples, additional system dependencies (see example README)
+- For MCP and some advanced examples, additional system dependencies (see the example's README, where one exists)
 
 ## Related docs
 

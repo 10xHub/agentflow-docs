@@ -37,11 +37,11 @@ Start with [Models](/docs/integrations/models) to see provider support and pick 
 Read [Models](/docs/integrations/models) first. Then:
 
 - [Next.js/React guide](/docs/client/nextjs-and-react): call the agent API from a Next.js route handler or React component, stream tokens, and keep threads between messages.
-- [CopilotKit guide](/docs/integrations/copilotkit): if you already use CopilotKit, serve your graph over the AG-UI protocol to feed a CopilotKit chat with shared state and frontend tools.
+- [CopilotKit guide](/docs/integrations/copilotkit): if you already use CopilotKit, serve your graph over the AG-UI protocol (off by default, needs an extra) to feed a CopilotKit chat with shared state and frontend tools.
 
 ### I need to scale and persist state
 
-- [Postgres and Redis guide](/docs/integrations/postgres-and-redis): `PgCheckpointer` with connection pooling, schema setup, backup. Also required by the replay-safe tool ledger (see [Replay-safe tools](/docs/concepts/replay-safe-tools)).
+- [Postgres and Redis guide](/docs/integrations/postgres-and-redis): `PgCheckpointer` with connection pooling, schema setup, backup. Also gives the replay-safe tool ledger durable storage (see [Replay-safe tools](/docs/concepts/replay-safe-tools)).
 
 ### I want to give agents long-term memory
 
@@ -68,7 +68,7 @@ The core library includes support for many backends. Install only the extras you
 | OpenAI, GPT-4, o1, o3 | Direct API | `openai` | you use OpenAI models |
 | Google Gemini, Flash | Direct API or Vertex AI | `google-genai` | you use Google GenAI or Vertex AI |
 | Anthropic, Claude | Direct API, Vertex AI, or Bedrock | `anthropic`, `anthropic-vertex`, `anthropic-bedrock` | you use Anthropic models |
-| Anthropic Realtime (audio) | Direct API | `realtime` | you use Claude with Realtime API |
+| Realtime audio | Google GenAI (Gemini Live) | `realtime` | you use realtime audio with Gemini |
 | **Persistence** |
 | PostgreSQL + Redis | Dual-layer: Redis (hot), Postgres (durable) | `pg_checkpoint` | threads must survive restarts |
 | SQLite | Local file-based | `sqlite_checkpoint` | developing or running single-instance |
@@ -89,8 +89,6 @@ The core library includes support for many backends. Install only the extras you
 | **Multimodal** |
 | Images | Processing and cloud offload | `images` | you send images to models or store them |
 | Cloud storage | S3, GCS, Azure offload | `cloud-storage` | you offload media to cloud buckets |
-| **Agent-to-agent** |
-| A2A SDK | Agent-to-Agent protocol | `a2a_sdk` | agents call other agents remotely |
 
 Install with the extras you need:
 

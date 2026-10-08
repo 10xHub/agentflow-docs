@@ -38,15 +38,24 @@ An unset `ANTHROPIC_API_KEY` does not cause a failure when you construct an agen
 Create an Agent pointing to any Claude model:
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph import Agent, END, Message, StateGraph
 
 agent = Agent(
     model="claude-opus-5",
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
 )
+
+graph = StateGraph()
+graph.add_node("MAIN", agent)
+graph.add_edge("MAIN", END)
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke({"messages": [Message.text_message("Say hello.")]})
+print(result["messages"][-1].text())
 ```
 
-The `provider` parameter is optional because model names starting with `claude-` or `anthropic.` are recognized automatically. You can also be explicit with a prefix: `"anthropic/claude-opus-5"` or `"claude/claude-opus-5"` both work. Run the agent with `invoke()` or `astream()` like any other agent; 10xGraph translates your message format to Anthropic's Messages API and your response back to the standard Message format.
+The `provider` parameter is optional because model names starting with `claude-` or `anthropic.` are recognized automatically. You can also be explicit with a prefix: `"anthropic/claude-opus-5"` or `"claude/claude-opus-5"` both work. `Agent` is a graph node, so you run it through a compiled graph (`invoke`, `ainvoke`, `astream`). 10xGraph translates your messages to Anthropic's Messages API and the response back to the standard `Message` format.
 
 ## Choosing a Claude backend
 
@@ -68,7 +77,7 @@ pip install "10xgraph[anthropic-vertex]"
 pip install "10xgraph[anthropic-bedrock]"
 ```
 
-Use the backend by passing it through the Agent constructor:
+Use the backend by passing it through the Agent constructor (`use_vertex_ai=True` also selects the Vertex backend when `anthropic_backend` is not set):
 
 ```python
 # Direct Claude API (default)
@@ -116,7 +125,7 @@ agent = Agent(
 
 ## Extended thinking and reasoning
 
-Claude supports extended thinking (internal reasoning before responding) through the `reasoning_config` parameter:
+Claude supports extended thinking (internal reasoning before responding) through the `reasoning_config` parameter. It is on by default with `{"effort": "medium"}`; pass `None` or `False` to turn it off:
 
 ```python
 agent = Agent(
@@ -143,7 +152,7 @@ The streaming default is higher because a large `max_tokens` on a non-streaming 
 ```python
 agent = Agent(
     model="claude-opus-5",
-    llm_kwargs={"max_tokens": 8000},
+    max_tokens=8000,
 )
 ```
 
@@ -176,14 +185,9 @@ Caching works at the prefix level. 10xGraph renders requests in a stable order: 
 
 Because caching is a prefix match, any byte change after the breakpoint invalidates cached tokens. The minimum cacheable prefix is roughly 1024 tokens; shorter prefixes cache silently with no effect.
 
-Verify caching is working by inspecting the response object's usage:
+Cache hits are logged at `DEBUG` level by the `tenxgraph.agent` logger as `Cache hit: N cached tokens (Anthropic messages)`, read from `usage.cache_read_input_tokens`.
 
-```python
-response = agent.invoke({"messages": [...]})
-# Check response.usage.cache_read_input_tokens to confirm cache hits
-```
-
-If you place your own `cache_control` breakpoints in `llm_kwargs`, 10xGraph respects them and does not add its own, so you can customize the caching strategy.
+If you pass your own top-level `cache_control` keyword argument to the `Agent`, 10xGraph does not add its own breakpoints, so you can customize the caching strategy.
 
 ## Batch processing for high-volume work
 
@@ -192,6 +196,7 @@ For offline, asynchronous processing of many requests at reduced cost, use the `
 ```python
 from tenxgraph.core.llm import AnthropicBatch
 
+# Run inside an async function
 batch = AnthropicBatch(model="claude-haiku-4-5")
 batch.add("request-1", [{"role": "user", "content": "Summarize..."}])
 batch.add("request-2", [{"role": "user", "content": "Analyze..."}])
@@ -202,7 +207,7 @@ results = await batch.wait(batch_id)  # keyed by custom_id
 print(results["request-1"].text)
 ```
 
-Results are keyed by the `custom_id` you provide because they may arrive in any order; indexing by position is a common source of silent data mismatch bugs. The batch API is well suited to processing large datasets or generating training data because it runs asynchronously and costs less. For interactive, stateful agent runs, use `invoke()` or `astream()` instead.
+Results are keyed by the `custom_id` you provide because they may arrive in any order; indexing by position is a common source of silent data mismatch bugs. The batch API is well suited to processing large datasets or generating training data because it runs asynchronously and costs less. For interactive, stateful agent runs, use the compiled graph's `invoke()` or `astream()` instead.
 
 You can also use `status(batch_id)` to poll the status once without blocking, and `results(batch_id)` to retrieve results from a batch you already know has completed. Messages you pass to `batch.add()` use 10xGraph's internal message format and go through the same translation as live calls, so system prompts and tool results are shaped correctly.
 
@@ -211,13 +216,8 @@ You can also use `status(batch_id)` to poll the status once without blocking, an
 | Variable | Required | When used | Notes |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | No (see below) | Direct Claude API | API key from console.anthropic.com. The SDK also checks `ANTHROPIC_AUTH_TOKEN`, profiles, and workload identity. |
-| `GOOGLE_CLOUD_PROJECT` | For Vertex only | Vertex AI backend | Google Cloud project ID |
-| `GOOGLE_APPLICATION_CREDENTIALS` | For Vertex only | Vertex AI backend | Path to service account key file |
-| `AWS_ACCESS_KEY_ID` | For Bedrock only | Bedrock backend | AWS credentials |
-| `AWS_SECRET_ACCESS_KEY` | For Bedrock only | Bedrock backend | AWS credentials |
-| `AWS_REGION` | For Bedrock only | Bedrock backend | AWS region where Bedrock is enabled |
 
-For the direct Claude API, you need at least one credential source to resolve. 10xGraph reads `ANTHROPIC_API_KEY` itself; all other resolution (tokens, profiles, federation) is handled by the SDK. For Vertex and Bedrock, your cloud platform's standard credential chain is used automatically.
+For the direct Claude API, you need at least one credential source to resolve. 10xGraph reads `ANTHROPIC_API_KEY` itself; all other resolution (tokens, profiles, federation) is handled by the SDK. For Vertex and Bedrock, 10xGraph reads no variables itself: the Anthropic SDK resolves the region, project and credentials. You can pass them explicitly as keyword arguments (for example `region` and `project_id` for Vertex, `aws_region` and `aws_profile` for Bedrock). See the Anthropic SDK documentation for the environment variables it reads.
 
 ## Common errors and solutions
 
@@ -228,7 +228,6 @@ For the direct Claude API, you need at least one credential source to resolve. 1
 | `ImportError: ... Bedrock support` | `anthropic-bedrock` extra missing | `pip install "10xgraph[anthropic-bedrock]"` |
 | `ValueError: Unsupported anthropic_backend` | Typo or unsupported backend name | Use `None` (direct API), `"vertex"`, or `"bedrock"` |
 | `ValueError: Anthropic provider doesn't support output_type=...` | Invalid output type | Use `"text"` or `"json"` only |
-| `400 Bad Request: budget_tokens` | Passed `budget_tokens` to a recent model | Drop `budget_tokens`; use `reasoning_config={"effort": ...}` instead |
 | `401 Unauthorized` | Invalid or missing API key | Set `ANTHROPIC_API_KEY` or provide credentials for your backend |
 | `Error: model not found` | Model name typo or not available in your region | Check the model name and ensure it is available in your backend region |
 

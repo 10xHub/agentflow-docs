@@ -10,7 +10,7 @@ faq:
   - question: How do I keep conversation history between calls?
     answer: Pass a thread_id in the config object. The same thread_id will replay messages in order and maintain state across multiple invoke calls, so the agent has context from earlier turns.
   - question: "What's the difference between response_granularity values?"
-    answer: "'low' returns only messages (fastest, production); 'partial' includes state for UI rendering; 'full' includes state and summary (debugging). Use 'low' unless you need the extra data."
+    answer: "'low' returns only messages (fastest, production); 'partial' adds context and summary; 'full' adds the graph state (debugging). Use 'low' unless you need the extra data."
   - question: How do I see what the agent is doing step by step?
     answer: Pass an onPartialResult callback to invoke(). It fires after each iteration, telling you if tool calls were made and when the run completes.
 ---
@@ -38,7 +38,7 @@ const response = await client.invoke([
 ]);
 ```
 
-The call blocks until the agent completes, including all tool calls. The return value is an `InvokeResult` containing the final `messages` array, `meta` (thread info), and optionally `state` and `summary` depending on `response_granularity`.
+The call blocks until the agent completes, including all tool calls. The return value is an `InvokeResult` containing the final `messages` array, `meta` (thread info), `all_messages` (every message across tool iterations), `iterations`, and optionally `state`, `context` and `summary` depending on `response_granularity`.
 
 You can also provide a system prompt by creating a message with role `'system'`:
 
@@ -54,7 +54,7 @@ const response = await client.invoke([
 The assistant's response is in `result.messages`. Find the last message with `role: 'assistant'`, then extract text from its `content` array:
 
 ```ts
-const assistantMsg = response.messages.find(m => m.role === 'assistant');
+const assistantMsg = [...response.messages].reverse().find(m => m.role === 'assistant');
 if (assistantMsg) {
   const text = assistantMsg.content
     .filter(block => block.type === 'text')
@@ -105,11 +105,11 @@ const response = await client.invoke(
 
 | Level | Includes | Best for |
 |-------|----------|----------|
-| `'low'` | Messages only | Production chat, minimal latency |
-| `'partial'` | Messages + state | UI that renders full state |
-| `'full'` | Messages + state + summary | Debugging, admin dashboards |
+| `'low'` | Latest messages only | Production chat, minimal latency |
+| `'partial'` | Messages + context + summary | Chats that show summaries or context |
+| `'full'` | Messages + state | Debugging, admin dashboards |
 
-In production, use `'low'` for the fastest response. Move to `'partial'` or `'full'` only if your UI needs the extra data.
+In production, use `'low'` for the fastest response. Move to `'partial'` or `'full'` only if your UI needs the extra data. The `state` field of the result is only filled with `'full'`. The default for `invoke()` is `'full'`.
 
 ## Monitor progress with partial results
 
@@ -201,7 +201,7 @@ async function askAgent(
       }
     );
 
-    const assistantMsg = result.messages.find(
+    const assistantMsg = [...result.messages].reverse().find(
       m => m.role === 'assistant'
     );
     if (!assistantMsg) return null;
@@ -232,13 +232,7 @@ async function askAgent(
 })();
 ```
 
-Run this with:
-
-```bash
-NODE_OPTIONS="--loader ts-node/esm" node script.ts
-```
-
-Or compile to JavaScript first and run `node script.js`.
+Compile the file to JavaScript with your usual TypeScript setup and run it with `node`.
 
 ## Verify the setup
 
@@ -248,7 +242,6 @@ If you see these errors, here are the fixes:
 |-------|-------|-----|
 | `TypeError: Failed to fetch` | Server not running | Start it with `10xgraph api` |
 | `TenxGraphError 401` | Token invalid or missing | Check `API_TOKEN` env var |
-| `TenxGraphError 404` | Agent graph not found | Verify the config file path |
 | Empty messages array | Agent has no output | Check the agent code for issues |
 
 The agent should respond within seconds. If responses take too long, check the graph's tool calls and model configuration.
@@ -258,7 +251,7 @@ The agent should respond within seconds. If responses take too long, check the g
 - Create messages with `Message.text_message()` and pass them to `client.invoke()`.
 - Extract text from the response by filtering for `role === 'assistant'` and `block.type === 'text'`.
 - Use `thread_id` in the config to persist conversation history across calls.
-- Set `response_granularity` to 'low' for production, 'full' or 'partial' for debugging.
+- Set `response_granularity` to 'low' for production, 'full' for debugging.
 - Monitor progress with `onPartialResult` callbacks for multi-step agent runs.
 - Catch `TenxGraphError` by status code to handle auth, permission, and server errors.
 

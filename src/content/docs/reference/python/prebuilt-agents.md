@@ -99,6 +99,8 @@ def __init__(
 ```python
 import asyncio
 
+from tenxgraph.core.state import Message
+
 from tenxgraph.prebuilt.agent import ReactAgent
 
 def web_search(query: str) -> str:
@@ -113,10 +115,10 @@ app = agent.compile()
 
 async def main() -> None:
     result = await app.ainvoke(
-        {"message": "What is the capital of France?"},
+        {"messages": [Message.text_message("What is the capital of France?")]},
         config={"thread_id": "t1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -190,6 +192,8 @@ def __init__(
 ```python
 import asyncio
 
+from tenxgraph.core.state import Message
+
 from tenxgraph.core.graph import Agent
 from tenxgraph.prebuilt.agent import RAGAgent
 from tenxgraph.storage.store import create_local_qdrant_store
@@ -208,7 +212,7 @@ app = rag.compile()
 
 async def main() -> None:
     result = await app.ainvoke(
-        {"message": "What does the documentation say about RAG?"},
+        {"messages": [Message.text_message("What does the documentation say about RAG?")]},
         config={"thread_id": "t1"},
     )
 
@@ -366,6 +370,8 @@ def __init__(
 ```python
 import asyncio
 
+from tenxgraph.core.state import Message
+
 from tenxgraph.prebuilt.agent import PlanActReflectAgent
 
 def web_search(query: str) -> str:
@@ -380,7 +386,7 @@ app = agent.compile()
 
 async def main() -> None:
     result = await app.ainvoke(
-        {"message": "Research AI trends in 2026."},
+        {"messages": [Message.text_message("Research AI trends in 2026.")]},
         config={"thread_id": "t1"},
     )
 
@@ -460,6 +466,8 @@ def __init__(
 ```python
 import asyncio
 
+from tenxgraph.core.state import Message
+
 from pydantic import BaseModel
 from tenxgraph.prebuilt.agent import StructuredOutputAgent
 
@@ -478,7 +486,7 @@ app = agent.compile()
 
 async def main() -> None:
     result = await app.ainvoke(
-        {"message": "Review Inception."},
+        {"messages": [Message.text_message("Review Inception.")]},
         config={"thread_id": "t1"},
     )
 
@@ -545,6 +553,7 @@ def __init__(
 **Example:**
 
 ```python
+from tenxgraph.core.state import Message
 from tenxgraph.core.graph import Agent, ToolNode
 from tenxgraph.prebuilt.agent import SupervisorTeamAgent
 from tenxgraph.prebuilt.agent.supervisor_team import WorkerConfig
@@ -572,7 +581,7 @@ agent = SupervisorTeamAgent(
 app = agent.compile()
 
 # Run inside an async function: the supervisor delegates to workers until done.
-# result = await app.ainvoke({"message": "Find the latest Python release."}, config={"thread_id": "t1"})
+# result = await app.ainvoke({"messages": [Message.text_message("Find the latest Python release.")]}, config={"thread_id": "t1"})
 ```
 
 ---
@@ -631,6 +640,7 @@ def __init__(
 **Example:**
 
 ```python
+from tenxgraph.core.state import Message
 from tenxgraph.core.graph import Agent, ToolNode
 from tenxgraph.prebuilt.agent import SwarmAgent
 from tenxgraph.prebuilt.agent.swarm import SwarmMemberConfig
@@ -663,7 +673,7 @@ swarm = SwarmAgent(
 app = swarm.compile()
 
 # Run inside an async function: TRIAGE receives the message first.
-# result = await app.ainvoke({"message": "Write a short report on Qdrant."}, config={"thread_id": "t1"})
+# result = await app.ainvoke({"messages": [Message.text_message("Write a short report on Qdrant.")]}, config={"thread_id": "t1"})
 ```
 
 ---

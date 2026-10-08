@@ -30,9 +30,10 @@ The stream methods return an `AsyncGenerator` that yields `StreamChunk` objects 
 
 - `event`: The type of update (`message`, `updates`, `state`, `error`)
 - `message`: Partial or complete model response (when event is `message`)
-- `state`: Current graph state (when event is `state` or `updates`)
+- `state`: Graph state (present with `response_granularity: 'full'`)
+- `data`: Extra payload for `updates` and `error` events (for example `{ status: ... }`)
 - `thread_id`: Thread this chunk belongs to
-- `metadata`: Execution metadata (thread ID, run ID, timestamp)
+- `run_id`, `timestamp` and `metadata`: Execution metadata (thread ID, run ID, timestamp)
 
 The stream starts when you iterate with `for await`. A single run may emit dozens or hundreds of chunks, and the generator completes when the graph finishes.
 
@@ -148,7 +149,7 @@ The thread ID appears on every chunk as `chunk.thread_id` and `chunk.metadata?.t
 
 ## Receive state updates
 
-By default, the server streams only message tokens. Set `response_granularity: 'full'` or `'partial'` to also receive state snapshots as the graph executes:
+By default, the server streams only message tokens. Set `response_granularity: 'full'` to also receive graph state on the chunks as the graph executes:
 
 ```ts
 const stream = client.stream(
@@ -176,7 +177,7 @@ for await (const chunk of stream) {
 }
 ```
 
-Use `'partial'` for a middle ground: fewer state updates than `'full'`, but more detail than `'low'`.
+`'partial'` adds the context and summary to the response but not the graph state.
 
 ---
 
@@ -270,14 +271,14 @@ Node 21+ provides `globalThis.WebSocket` automatically.
 
 ### NDJSON format
 
-Both `stream()` and `wsStream()` send the response as newline-delimited JSON (NDJSON), one chunk per line:
+`stream()` receives the response as newline-delimited JSON (NDJSON), one chunk per line. `wsStream()` receives the same chunk objects as individual JSON WebSocket messages:
 
 ```
 {"event":"message","message":{"content":[{"type":"text","text":"The"}],"delta":true},...}
 {"event":"message","message":{"content":[{"type":"text","text":" answer"}],"delta":true},...}
 ```
 
-The client handles parsing automatically. You only need to know this if you inspect the raw HTTP/WebSocket body for debugging.
+The client handles parsing automatically. You only need to know this if you inspect the raw HTTP body for debugging.
 
 ---
 
@@ -288,8 +289,8 @@ The stream ends gracefully if the graph completes successfully. If an error occu
 ```ts
 for await (const chunk of stream) {
   if (chunk.event === 'error') {
-    const error = chunk.data; // { type, message, traceback }
-    console.error(`Graph error: ${error.type} - ${error.message}`);
+    // chunk.data describes the failure, for example { status, node, reason } or { status: 'tool_failed', tool_name, ... }
+    console.error('Graph error:', chunk.data);
     break; // Stop processing
   }
 
@@ -301,12 +302,11 @@ for await (const chunk of stream) {
 
 Common errors:
 
-- **`AuthenticationError` (401)**: Missing or invalid token.
-- **`ValidationError`**: Invalid message format or state schema.
-- **`RateLimitError`**: Too many requests. Backoff and retry.
-- **`GraphError`**: Uncaught exception in a node. Check logs for details.
+- **`AuthenticationError` (401)**: Missing or invalid token. Thrown before any chunk arrives.
+- **`ValidationError`**: Invalid message format or state schema. Thrown before any chunk arrives.
+- **`'error'` chunk**: A node or tool failed mid-run. Read `chunk.data` for the status and reason.
 
-Always handle the `'error'` event to prevent silent failures.
+Always handle the `'error'` event to prevent silent failures. The HTTP errors above are thrown by the generator as `TenxGraphError` subclasses, so wrap the `for await` loop in `try/catch`.
 
 ---
 
@@ -315,8 +315,8 @@ Always handle the `'error'` event to prevent silent failures.
 ### Response granularity options
 
 - `'low'` (default): Only message tokens. Minimal bandwidth, best for simple chat.
-- `'partial'`: Message tokens plus state diffs. Useful when you need to track graph progress.
-- `'full'`: Message tokens plus full state snapshots. Verbose; use only if you need the complete execution trace.
+- `'partial'`: Message tokens plus context and summary.
+- `'full'`: Message tokens plus the graph state on chunks. Verbose; use only if you need it.
 
 ### Timeout and cancellation
 
@@ -344,7 +344,6 @@ The `for await` loop respects backpressure automatically. If you slowly consume 
 **Chunks arrive very slowly or in bursts**
 
 - Normal behavior if the model is slow or the network is congested.
-- Use `response_granularity: 'low'` for fewer chunks per second.
 
 **Thread ID is undefined**
 
@@ -390,7 +389,7 @@ You should see a haiku print token by token, followed by a newline and "Done."
 - Use `chunk.message.delta` to differentiate partial tokens from complete messages.
 - Pass `config.thread_id` to keep conversations on the same thread.
 - `wsStream()` is identical to `stream()` but uses WebSocket for lower overhead with remote tools.
-- Set `response_granularity` to receive state updates alongside messages.
+- Set `response_granularity: 'full'` to receive graph state alongside messages.
 
 ## Next steps
 

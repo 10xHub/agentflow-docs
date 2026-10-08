@@ -69,13 +69,13 @@ Messages may carry image and document content blocks referencing an uploaded `fi
 
 ```json
 {
-  "success": true,
   "data": {
     "messages": [
-      {"role": "user", "content": "What is the capital of France?"},
-      {"role": "assistant", "content": "The capital of France is Paris."}
+      {"role": "user", "content": [{"type": "text", "text": "What is the capital of France?"}]},
+      {"role": "assistant", "content": [{"type": "text", "text": "The capital of France is Paris."}]}
     ]
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -142,8 +142,8 @@ Cancel an in-progress graph execution.
 
 ```json
 {
-  "success": true,
-  "data": {"ok": true, "running": true}
+  "data": {"ok": true, "running": true},
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -159,7 +159,6 @@ Get metadata about the loaded graph: its nodes, edges, and an `info` block descr
 
 ```json
 {
-  "success": true,
   "data": {
     "info": {
       "node_count": 2,
@@ -184,7 +183,8 @@ Get metadata about the loaded graph: its nodes, edges, and an `info` block descr
     "edges": [
       {"id": "MAIN-TOOL", "source": "MAIN", "target": "TOOL"}
     ]
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -209,7 +209,6 @@ List the tools exposed by every `ToolNode` in the graph, grouped by node.
 
 ```json
 {
-  "success": true,
   "data": {
     "node_count": 1,
     "tool_count": 2,
@@ -233,7 +232,8 @@ List the tools exposed by every `ToolNode` in the graph, grouped by node.
         ]
       }
     ]
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -268,13 +268,13 @@ Repair a thread whose state contains messages with tool calls that have empty co
 
 ```json
 {
-  "success": true,
   "data": {
     "success": true,
     "message": "Removed 1 message with empty tool calls",
     "removed_count": 1,
     "state": {}
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 
@@ -293,7 +293,7 @@ Turn-based streaming over a WebSocket. Same payloads as `POST /v1/graph/stream`,
 ```json
 {
   "invoke_type": "fresh",
-  "messages": [{"role": "user", "content": "What is the weather in Paris?"}],
+  "messages": [{"role": "user", "content": [{"type": "text", "text": "What is the weather in Paris?"}]}],
   "config": {"thread_id": "my-thread-1"}
 }
 ```
@@ -343,14 +343,14 @@ Get the JSON schema for the graph's state class.
 
 ```json
 {
-  "success": true,
   "data": {
     "type": "object",
     "properties": {
       "context": {"type": "array"},
       "user_id": {"type": "string"}
     }
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 

@@ -19,9 +19,11 @@ When you create an `Agent`, you pass a `model` string. The library detects the p
 
 ### Explicit provider prefix
 
-Use `provider/model` format to explicitly select a provider and strip the prefix from the model name:
+Use `provider/model` format to explicitly select a provider. The recognised prefixes are `gemini`, `google`, `openai`, `gpt`, `anthropic` and `claude`; the prefix is stripped from the model name before the request is sent:
 
 ```python
+from tenxgraph import Agent
+
 agent = Agent(model="openai/gpt-4o")
 agent = Agent(model="gemini/gemini-2.5-flash")
 agent = Agent(model="anthropic/claude-opus-5")
@@ -58,10 +60,10 @@ agent = Agent(
 # Logs: "Could not auto-detect provider for model 'my-custom-model'. Defaulting to 'openai'."
 ```
 
-An unrecognized `provider/` prefix is also treated as OpenAI-compatible:
+An unrecognized `provider/` prefix is also treated as OpenAI-compatible, and the full string is kept as the model name:
 
 ```python
-agent = Agent(model="meta-llama/Llama-3-70b")  # Unrecognized prefix -> OpenAI provider
+agent = Agent(model="meta-llama/Llama-3-70b")  # Unrecognized prefix -> OpenAI provider, name kept intact
 ```
 
 ## Provider backends and environments
@@ -89,7 +91,7 @@ agent = Agent(
 agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
-    api_key="..."  # Falls back to GEMINI_API_KEY or GOOGLE_API_KEY env var
+    # Reads GEMINI_API_KEY or GOOGLE_API_KEY from the environment
 )
 
 # Google Cloud Vertex AI
@@ -100,7 +102,7 @@ agent = Agent(
 )
 ```
 
-- Credentials (Gemini API): `api_key` or `GEMINI_API_KEY` / `GOOGLE_API_KEY` environment variables.
+- Credentials (Gemini API): `GEMINI_API_KEY` / `GOOGLE_API_KEY` environment variables (the Google provider takes no `api_key` argument).
 - Credentials (Vertex AI): Google Cloud authentication (ADC or service account).
 - Installation: `pip install "10xgraph[google-genai]"`
 
@@ -150,24 +152,29 @@ The table below shows which provider supports each capability. A check mark mean
 | Feature | OpenAI | Google | Anthropic |
 |---|---|---|---|
 | **Tool calling** | Yes | Yes | Yes |
-| **Structured output** | Yes (JSON) | Yes (JSON, image, video, audio) | Yes (JSON) |
+| **Structured output** (`output_schema`) | Yes | Yes (not combinable with tools) | Yes |
 | **Streaming** | Yes | Yes | Yes |
-| **Reasoning models** | Yes (o1, o3, o4) | Experimental (gemini-3-thinking) | Yes (Claude with thinking) |
-| **Prompt caching** | Yes | Yes (cache_control) | Yes (cache_control) |
-| **Multimodal input** | Image, audio | Image, video, audio, file | Image, PDF |
-| **Batch API** | Yes (OpenAI Batch) | - | Yes (Anthropic Batch) |
+| **Reasoning** (`reasoning_config`) | Yes | Yes (thinking) | Yes (adaptive thinking) |
+| **Prompt caching** | Automatic | Implicit, plus explicit `cached_content` | `anthropic_cache` |
+| **Multimodal input** | Image, audio, document | Image, video, audio, document | Image, PDF (audio and video are not supported) |
+| **Other output types** (`output_type`) | image, audio | image, video, audio | none (text and json only) |
+| **Batch API** | `OpenAIBatch` | - | `AnthropicBatch` |
 
 ### Tools
 
 All three providers support tool calling. When you attach tools to an Agent, the library converts the tool schema to the provider's format and handles the request/response cycle.
 
 ```python
-from tenxgraph import Agent
+from tenxgraph import Agent, ToolNode
 
-agent = Agent(model="gpt-4o", tools=[my_tool_1, my_tool_2])
-agent = Agent(model="gemini-2.5-flash", tools=[my_tool_1, my_tool_2])
-agent = Agent(model="claude-opus-5", tools=[my_tool_1, my_tool_2])
+tool_node = ToolNode([my_tool_1, my_tool_2])
+
+agent = Agent(model="gpt-4o", tool_node=tool_node)
+agent = Agent(model="gemini-2.5-flash", tool_node=tool_node)
+agent = Agent(model="claude-opus-5", tool_node=tool_node)
 ```
+
+`Agent` is a graph node, so add `tool_node` to your `StateGraph` as well. For a ready-made loop, use `ReactAgent(model=..., tools=[...])`.
 
 ### Structured output
 
@@ -175,6 +182,8 @@ Pass `output_schema` to the Agent to request a specific JSON structure from the 
 
 ```python
 from pydantic import BaseModel
+
+from tenxgraph import Agent
 
 class Summary(BaseModel):
     title: str
@@ -187,50 +196,57 @@ agent = Agent(
 )
 ```
 
-- **OpenAI and Anthropic** output JSON text (validated on the client side).
-- **Google** supports JSON through `output_type="json"` but also video, image, and audio generation via `output_type`.
+- **OpenAI** routes `output_schema` through the Chat Completions parse path.
+- **Anthropic** sends the schema as `output_config.format`.
+- **Google** sets a JSON response schema. Combining `output_schema` with tools raises a `ValueError`.
+- `output_type` also selects image, video or audio generation where the provider supports it (see the matrix above).
 
 ### Streaming
 
-All three providers support streaming responses token-by-token or event-by-event:
+All three providers support streaming. Streaming runs through the compiled graph, not the `Agent` node:
 
 ```python
-async for event in agent.astream({"messages": [...]}):
-    print(event)
+from tenxgraph.core.state import Message
+
+async for chunk in app.astream({"messages": [Message.text_message("Hello")]}):
+    print(chunk)
 ```
 
-Streaming is transparent: the provider handles it, and the library collects events.
+Here `app` is your compiled graph.
 
 ### Reasoning models
 
 Some models include explicit reasoning or thinking capabilities:
 
-- **OpenAI:** Models with prefixes `o1-`, `o3-`, `o4-` include reasoning. Pass `reasoning_config={"effort": "high"}` to control effort (for o3/o4).
-- **Anthropic:** Claude models support thinking via `reasoning_config={"effort": "high"}`. The model emits a hidden thinking block before generating the response.
-- **Google:** Gemini experimental thinking models are available; check the model list.
+`reasoning_config` is on by default with `{"effort": "medium"}`. Pass `None` or `False` to turn it off.
+
+- **OpenAI:** `effort` is sent as `reasoning_effort` (Chat Completions) or `reasoning` (Responses API).
+- **Anthropic:** `effort` becomes `thinking={"type": "adaptive"}` plus `output_config={"effort": ...}`.
+- **Google:** `effort` maps to a `thinking_budget`; you can also pass `thinking_budget` or `thinking_level`.
 
 ```python
-agent = Agent(model="o3-mini", reasoning_config={"effort": "high"})
+agent = Agent(model="o4-mini", reasoning_config={"effort": "high"})
 agent = Agent(model="claude-opus-5", reasoning_config={"effort": "high"})
+agent = Agent(model="gemini-2.5-flash", reasoning_config=None)  # off
 ```
 
 ### Prompt caching
 
 Caching reduces cost and latency for repeated requests with long context:
 
-- **OpenAI:** Pass `cache_control` on system and tool messages (OpenAI SDK integration).
-- **Google:** Use `cache_control` on images and long text passages.
-- **Anthropic:** Use `cache_control` on system messages and long context blocks.
+- **OpenAI:** Automatic prefix caching. Pass `prompt_cache_key` to improve hit rates.
+- **Google:** Implicit caching is automatic; pass `cached_content` for an explicit cache.
+- **Anthropic:** Pass `anthropic_cache=True` (or a `cache_control` dict) to cache the tools and system prompt.
 
-Caching is configured at the SDK/request level and handled transparently by the library.
+See each provider page for details.
 
 ### Multimodal input
 
 Each provider supports different input types:
 
-- **OpenAI:** Images (JPEG, PNG, GIF, WebP) and audio (MP3, WAV, etc.). Attach via `ImageBlock` or `AudioBlock` in the message content.
-- **Google:** Images, video files, and audio. Use corresponding content block types.
-- **Anthropic:** Images (JPEG, PNG, GIF, WebP) and PDF documents via `ImageBlock` or `DocumentBlock`.
+- **OpenAI:** Images, audio and documents. Attach via `ImageBlock`, `AudioBlock` or `DocumentBlock` in the message content. Video is passed as a text reference only.
+- **Google:** Images, video, audio and documents, using the matching content block types.
+- **Anthropic:** Images and documents (such as PDF) via `ImageBlock` or `DocumentBlock`. Audio and video parts are not sent.
 
 See `/docs/guides/send-media` for detailed examples.
 
@@ -238,8 +254,10 @@ See `/docs/guides/send-media` for detailed examples.
 
 For cost-sensitive bulk processing, OpenAI and Anthropic offer batch APIs:
 
-- **OpenAI:** `OpenAIBatch` class. Submit up to 10,000 requests at a time; results are ready in 24 hours.
-- **Anthropic:** `AnthropicBatch` class. Similar interface and semantics.
+- **OpenAI:** `OpenAIBatch` class.
+- **Anthropic:** `AnthropicBatch` class. Same interface: `add`, `submit`, `status`, `wait`, `results`.
+
+Both live in `tenxgraph.core.llm`.
 
 Batch is not for interactive workloads; use the regular invoke/stream API for agent interactions. See `/docs/guides/batch-llm-calls` for examples.
 
@@ -260,7 +278,7 @@ Common examples:
 
 - **Ollama:** `base_url="http://localhost:11434/v1"`
 - **vLLM:** `base_url="http://localhost:8000/v1"`
-- **OpenRouter:** `base_url="https://openrouter.io/api/v1"`, with model names like `"openrouter/meta-llama/llama-2-70b"`
+- **OpenRouter:** `base_url="https://openrouter.ai/api/v1"`
 - **Self-hosted:** Any private gateway that mimics the OpenAI Chat Completions API.
 
 Some gateways only support the legacy Chat Completions endpoint and not the newer Responses API. In that case, pass `api_style="chat"`:

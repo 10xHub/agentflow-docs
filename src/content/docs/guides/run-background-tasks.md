@@ -11,7 +11,7 @@ faq:
   - q: How long will a background task run if I don't set a timeout?
     a: Without a timeout, the task runs until completion or the process shuts down. Always set a timeout for I/O operations to prevent hanging tasks from leaking resources.
   - q: What happens to background tasks when the graph shuts down?
-    a: The framework automatically drains background tasks during shutdown, waiting up to the `shutdown_timeout` (default 30 seconds). Unfinished tasks are cancelled, and their errors are logged.
+    a: Closing the compiled graph with `aclose()` cancels outstanding background tasks, then waits up to `shutdown_timeout` (default 30 seconds) for the cancellations to finish. To let tasks finish instead, call `await task_manager.wait_for_all(timeout=...)` before closing.
 ---
 
 Some operations should not block the agent's response. Sending notifications, writing to a slow store, triggering webhooks, or updating a database are good candidates to run in the background. `BackgroundTaskManager` launches these tasks asynchronously from inside any node function, returning control to the caller immediately.
@@ -47,7 +47,7 @@ You have a working graph. The `tenxgraph` package is installed. `BackgroundTaskM
 
 ## Quick start
 
-Declare `task_manager: BackgroundTaskManager` as a parameter in your node function, annotated with `Inject` to signal dependency injection. The framework injects it automatically at runtime.
+Declare `task_manager: BackgroundTaskManager = Inject[BackgroundTaskManager]` as a parameter in your node function. The framework injects it automatically at runtime.
 
 ```python
 import asyncio
@@ -65,11 +65,12 @@ async def send_notification(user_id: str, text: str) -> None:
 async def my_node(
     state: AgentState,
     config: dict,
-    task_manager: Inject[BackgroundTaskManager],
-) -> AgentState:
+    task_manager: BackgroundTaskManager = Inject[BackgroundTaskManager],
+) -> Message:
     # Do main work and return immediately
-    reply = Message.text_message("Your report is being processed in the background.")
-    state.messages.append(reply)
+    reply = Message.text_message(
+        "Your report is being processed in the background.", role="assistant"
+    )
 
     # Fire-and-forget: doesn't block the response
     task_manager.create_task(
@@ -78,7 +79,7 @@ async def my_node(
         timeout=10.0,
     )
 
-    return state
+    return reply
 
 graph = StateGraph()
 graph.add_node("MAIN", my_node)
@@ -97,13 +98,17 @@ Run the graph and observe the output:
 ```bash
 python -m asyncio << 'EOF'
 import asyncio
+from tenxgraph.core.state import Message
 from my_agent import app  # import your compiled graph
 
-result = await app.ainvoke({"messages": []}, config={"user_id": "alice"})
-# Output appears immediately:
+result = await app.ainvoke(
+    {"messages": [Message.text_message("Start the report")]},
+    config={"thread_id": "t1", "user_id": "alice"},
+)
+print(result["messages"][-1].text())
 # Your report is being processed in the background.
 
-# Background task may still print after the response:
+await asyncio.sleep(1)  # keep the loop alive so the background task can finish
 # Notification sent to alice: Report ready soon
 EOF
 ```
@@ -164,26 +169,26 @@ Use `cancel_all` when shutting down urgently, or `wait_for_all` when graceful dr
 
 ## Graceful shutdown integration
 
-The `StateGraph` automatically manages background task shutdown when the compiled graph is closed. The `shutdown_timeout` parameter on `compile()` controls how long to wait:
+The compiled graph shuts the task manager down when it is closed. The `shutdown_timeout` parameter on `compile()` controls how long to wait:
 
 ```python
 app = graph.compile(shutdown_timeout=30.0)
 
 # Later, during process teardown:
-await app.aclose()   # waits up to 30 seconds for background tasks to complete
+await app.aclose()
 ```
 
-When `aclose()` is called, the framework initiates graceful shutdown: it cancels remaining tasks and waits for them to finish within the timeout window. Any unfinished tasks are force-cancelled, and their errors are logged.
+`aclose()` calls the task manager's `shutdown()`, which cancels all outstanding tasks and then waits up to the timeout for the cancellations to settle. Tasks still running after that are force-cancelled. It does not wait for tasks to finish their work, so if a task must complete, call `wait_for_all()` first.
 
 ## Common errors
 
 | Error | Cause | Fix |
 |---|---|---|
-| `task_manager` is `None` | Not injected or node outside compiled graph. | Ensure the parameter is typed `Inject[BackgroundTaskManager]` and the node is inside a compiled graph. |
-| Task silently never runs | Coroutine function passed instead of coroutine object. | Pass the result of calling the function: `create_task(send_notification(...))` not `create_task(send_notification)`. |
-| Background tasks outlive the graph | Process exited without calling `aclose()`. | Always call `await app.aclose()` in your shutdown handler. |
+| `task_manager` is `None` | Not injected or node outside compiled graph. | Ensure the parameter default is `Inject[BackgroundTaskManager]` and the node is inside a compiled graph. |
+| Task never runs, or a `TypeError` | Coroutine function passed instead of coroutine object. | Pass the result of calling the function: `create_task(send_notification(...))` not `create_task(send_notification)`. |
+| Background tasks are cut off at exit | `aclose()` cancels pending tasks. | Call `await task_manager.wait_for_all(timeout=...)` before `aclose()` if they must finish. |
 | Timeout warnings in logs | Task takes longer than the `timeout`. | Increase the timeout value if the external service is expected to be slow, or investigate why the service is slow. |
-| Task dropped, queue full | More than 1000 tasks queued (backpressure). | Reduce the rate at which you create background tasks, or handle backpressure upstream. |
+| Task dropped, queue full | 1000 or more tasks in flight (backpressure). `create_task` returns `None` and logs a warning. | Reduce the rate at which you create background tasks, or handle backpressure upstream. |
 
 ## Related pages
 

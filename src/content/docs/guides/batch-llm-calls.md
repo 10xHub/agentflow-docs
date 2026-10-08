@@ -8,14 +8,14 @@ group: Streaming, media and realtime
 section: Build agents
 faq:
   - q: When should I use batches instead of normal calls?
-    a: "Batches reduce costs by 50% or more and are ideal for offline workloads: processing datasets, content generation, data extraction. They are not suited for interactive use cases where low latency is required, since batch processing typically takes hours."
+    a: "Provider batch APIs are priced below normal calls (check each provider's pricing page) and are ideal for offline workloads: processing datasets, content generation, data extraction. They are not suited for interactive use cases where low latency is required, since batch processing typically takes hours."
   - q: Can I use batches with tools?
     a: "Yes. Both OpenAIBatch and AnthropicBatch accept a `tools` parameter in the `add()` method, and both support the full tool calling protocol."
   - q: What happens if one request in a batch fails?
     a: "Individual request failures do not stop the batch. Each result has a `status` field (succeeded, errored, canceled, or expired) and an optional `error` field. You process results based on their individual status."
 ---
 
-Batch processing through OpenAI and Anthropic reduces LLM call costs by 50% or more when you have offline workloads: summarizing datasets, extracting information from documents, generating content at scale, or scoring many items. This guide shows you how to queue requests, submit them, and retrieve results using the unified batch interface.
+Batch processing through OpenAI and Anthropic reduces LLM call costs when you have offline workloads: summarizing datasets, extracting information from documents, generating content at scale, or scoring many items. This guide shows you how to queue requests, submit them, and retrieve results using the unified batch interface.
 
 ## Why use batches
 
@@ -42,6 +42,7 @@ batch = AnthropicBatch(model="claude-haiku-4-5")
 batch.add("row-1", messages=[{"role": "user", "content": "Summarise: ..."}])
 batch.add("row-2", messages=[{"role": "user", "content": "Summarise: ..."}])
 
+# Run inside an async function (for example via asyncio.run)
 batch_id = await batch.submit()
 results = await batch.wait(batch_id)  # dict keyed by custom_id, not position
 print(results["row-1"].text)
@@ -71,7 +72,6 @@ This example summarizes a list of articles using OpenAI batches. Save it as `bat
 
 ```python
 import asyncio
-import json
 from tenxgraph.core.llm import OpenAIBatch
 
 async def main():
@@ -117,8 +117,8 @@ async def main():
     print("\nResults:")
     for article in articles:
         result = results[article["id"]]
-        status = "✓" if result.ok else "✗"
-        print(f"{status} {article['title']}")
+        status = "ok" if result.ok else "failed"
+        print(f"[{status}] {article['title']}")
         if result.ok:
             print(f"   Summary: {result.text}")
             print(f"   Tokens: {result.input_tokens} in, {result.output_tokens} out")
@@ -135,7 +135,7 @@ Run it:
 python batch_openai.py
 ```
 
-Output:
+Example output (your text and token counts will differ):
 
 ```
 Submitting 3 requests...
@@ -143,13 +143,13 @@ Batch submitted with id: batch_abcd1234efgh5678
 Waiting for batch to complete...
 
 Results:
-✓ The State of AI
+[ok] The State of AI
    Summary: Large language models have made significant recent advances.
    Tokens: 23 in, 15 out
-✓ Climate Change
+[ok] Climate Change
    Summary: Global temperatures are increasing due to greenhouse gas emissions.
    Tokens: 19 in, 13 out
-✓ Quantum Computing
+[ok] Quantum Computing
    Summary: Quantum computers use superposition to solve certain problems faster.
    Tokens: 20 in, 14 out
 ```
@@ -199,8 +199,8 @@ async def main():
     print("\nResults:")
     for article in articles:
         result = results[article["id"]]
-        status = "✓" if result.ok else "✗"
-        print(f"{status} {article['title']}: {result.text}")
+        status = "ok" if result.ok else "failed"
+        print(f"[{status}] {article['title']}: {result.text}")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -231,7 +231,6 @@ for result in results.values():
 
 print(f"Success: {succeeded}, Failed: {failed}")
 print(f"Total tokens: {total_in} in, {total_out} out")
-print(f"Estimated cost: ${(total_in * 0.075 + total_out * 0.3) / 1_000_000:.6f}")
 ```
 
 ## Polling strategies
@@ -249,8 +248,10 @@ results = await batch.wait(batch_id, timeout=12 * 3600)
 status = await batch.status(batch_id)
 print(f"Batch status: {status}")
 
-# Retrieve results after checking manually
-if status in ("completed", "failed", "expired", "cancelled"):
+# Retrieve results after checking manually.
+# OpenAI terminal statuses: completed, failed, expired, cancelled.
+# Anthropic terminal status: ended.
+if status in ("completed", "failed", "expired", "cancelled", "ended"):
     results = await batch.results(batch_id)
 ```
 
@@ -259,9 +260,9 @@ if status in ("completed", "failed", "expired", "cancelled"):
 Both batch helpers support tools in the same way as live calls. Pass the `tools` parameter to `add()`:
 
 ```python
-import json
+from tenxgraph.core.llm import OpenAIBatch
 
-# Define tools
+# Define tools (OpenAI function-calling format; AnthropicBatch converts them)
 tools = [
     {
         "type": "function",
@@ -288,7 +289,7 @@ batch.add(
 )
 ```
 
-The batch processes tool calls the same way it processes text completions. The model may return a tool call, or it may return text if no tool is appropriate.
+The batch only sends the tool definitions. Tools are not executed for you: a `BatchResult` carries `text` only, so a response that is purely a tool call has empty `text` (the full provider entry is in `result.raw`).
 
 ## Using Anthropic backend variants
 
@@ -311,7 +312,7 @@ batch = AnthropicBatch(
 )
 ```
 
-Ensure you have installed the correct extras: `[anthropic]`, `[anthropic-vertex]`, or `[anthropic-bedrock]`.
+Ensure you have installed the correct extras: `[anthropic]`, `[anthropic-vertex]`, or `[anthropic-bedrock]`. Whether the Message Batches endpoint is available on Vertex AI or Bedrock depends on the provider.
 
 ## Error handling
 
@@ -324,7 +325,7 @@ try:
     batch_id = await batch.submit()
 except ValueError as e:
     print(f"Batch validation failed: {e}")
-    # Usually means an empty batch or duplicate custom_id
+    # submit() raises ValueError for an empty batch; add() raises it for a duplicate custom_id
 except Exception as e:
     print(f"Submission failed: {e}")
     # Network error, auth error, etc.
@@ -360,12 +361,12 @@ You called `submit()` without adding any requests. Add requests before submittin
 
 ```python
 batch.add("row-1", messages=[...])
-batch.submit()  # OK
+await batch.submit()  # OK
 ```
 
 **ValueError: Duplicate custom_id in batch: 'row-1'**
 
-You added the same `custom_id` twice. Each request must have a unique identifier:
+Raised by `add()`. You added the same `custom_id` twice. Each request must have a unique identifier:
 
 ```python
 batch.add("row-1", ...)
@@ -383,7 +384,7 @@ You are indexing results by position instead of `custom_id`. Results arrive out 
 ```python
 # Wrong
 for i, article in enumerate(articles):
-    print(results[i])  # ERROR: list indices, not dict keys
+    print(results[i])  # ERROR: results is a dict keyed by custom_id
 
 # Correct
 for article in articles:
@@ -425,10 +426,10 @@ async def process_in_batches(items, batch_size=10000):
     for i in range(0, len(items), batch_size):
         batch_chunk = items[i:i + batch_size]
         batch = OpenAIBatch(model="gpt-4o-mini")
-        
+
         for item in batch_chunk:
             batch.add(item["id"], messages=[...])
-        
+
         batch_id = await batch.submit()
         batches.append((batch_id, batch, batch_chunk))
         print(f"Submitted batch {batch_id} with {len(batch_chunk)} items")
@@ -478,7 +479,7 @@ async def my_node(state):
 
 If you need to process data at scale as part of your agent system, consider:
 
-- Using the normal LLM call interface with a loop over your dataset and the graph's [`stream()` or `astream()` method](/docs/guides/stream-graph) for real-time feedback.
+- Using the normal LLM call interface with a loop over your dataset and the graph's [`astream()` method](/docs/guides/stream-graph) for real-time feedback.
 - Running batch processing **before** your graph (preprocess data, populate a database, then query it from your graph).
 - Using background tasks or a job queue to process data asynchronously outside the graph and store results for the graph to query.
 

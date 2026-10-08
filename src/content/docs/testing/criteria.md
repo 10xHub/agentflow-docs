@@ -246,7 +246,7 @@ CriterionConfig.safety(
 
 ---
 
-### rubric_based, Custom rubric scoring
+### rubric_based_final_response_quality_v1, Custom rubric scoring
 
 Define your own evaluation criteria as free-text rubrics. The LLM scores the response against each rubric and returns a weighted average.
 

@@ -108,7 +108,7 @@ Run it:
 10xgraph eval --parallel --max-concurrency 4
 ```
 
-The CLI detects `get_scenarios()` (or a `SCENARIOS` module-level constant), runs each scenario with a `SimulationGoalsCriterion` attached automatically, and produces the same HTML + JSON report as regular eval cases. Simulation scenarios and regular eval cases are pooled together in the same report.
+The CLI detects `get_scenarios()` (or a `SCENARIOS` module-level constant), runs each scenario with a `SimulationGoalsCriterion` attached automatically (threshold 0.7, one judge sample), and produces the same HTML + JSON report as regular eval cases. Simulation scenarios and regular eval cases are pooled together in the same report.
 
 For full details on CLI flags, parallel execution, and integration into CI, see [How to run evaluations](/docs/testing/run-evals).
 
@@ -259,7 +259,7 @@ print(result.criterion_details)   # {"simulation_goals": {"achieved_goals": [...
 | `criterion_scores` | `dict[str, float]` | Score per criterion (0.0-1.0) |
 | `criterion_details` | `dict[str, Any]` | Full criterion output including reasoning and details |
 | `criterion_results` | `list[CriterionResult]` | Full result objects with per-criterion token usage |
-| `simulator_token_usage` | `TokenUsage` | Tokens consumed by simulator LLM calls (user-turn generation only) |
+| `simulator_token_usage` | `TokenUsage` | Tokens consumed by simulator LLM calls (user-turn generation and goal checks) |
 
 ---
 
@@ -292,7 +292,7 @@ result = await simulator.run(graph, scenario)
 # result.criterion_scores["simulation_goals"] → 0.67 (2 of 3 goals met)
 ```
 
-**Score calculation:** `achieved_goals / total_goals` (0.0-1.0)
+**Score calculation:** `achieved_goals / total_goals` (0.0-1.0). The criterion makes a single judge call regardless of `num_samples`.
 
 The criterion details include:
 - `achieved_goals`: list of goals confirmed as addressed in the transcript

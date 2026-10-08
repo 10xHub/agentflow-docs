@@ -61,10 +61,12 @@ Add a `remote_tools` array to your config. Each entry describes a tool the serve
 
 Schema validation happens at server startup. The server checks that:
 
-- The `node` exists and is a `ToolNode` in your graph.
+- Each entry has a non-blank `node`, `name` and `description`. (`node_name` is accepted as an alias for `node`.)
 - The `name` is unique within your remote tools list.
-- `description` and `parameters` are non-empty strings / valid JSON Schema objects.
+- `parameters` is an object schema: `type` must be `"object"`, `properties` an object, `required` a list of strings. Missing keys default to `{"type": "object", "properties": {}, "required": []}`.
 - No unknown fields are present.
+
+At startup the server attaches each schema to the named `ToolNode` in your graph.
 
 Restart the API after changing schemas. To validate syntax before restarting, run:
 
@@ -72,7 +74,7 @@ Restart the API after changing schemas. To validate syntax before restarting, ru
 10xgraph audit
 ```
 
-This command checks your `10xgraph.json` for remote tool errors and other configuration problems.
+This command validates the `remote_tools` entries in your `10xgraph.json` and other environment and configuration checks.
 
 ## Step 2: Register matching handlers
 
@@ -143,8 +145,8 @@ const stream = client.stream([
 for await (const chunk of stream) {
   if (chunk.event === 'message') {
     console.log('Agent:', chunk.message?.content);
-  } else if (chunk.event === 'tool_use') {
-    console.log('Tool call:', chunk.tool_call?.name);
+  } else if (chunk.event === 'updates') {
+    console.log('Update:', chunk.data);
   }
 }
 ```
@@ -186,7 +188,7 @@ client.registerToolHandler('fetch_external_data', async ({ url }) => {
 });
 ```
 
-The deprecated method `registerTool({ name, handler, ...metadata })` still works but is not recommended for new code. Use `registerToolHandler()` instead.
+`registerTool({ name, handler, node?, description?, parameters? })` is also available and takes optional metadata. `registerToolHandler()` is the right choice when the schema lives in `10xgraph.json`, because the server owns the trusted schema.
 
 ## Execution behavior
 
@@ -216,7 +218,7 @@ const stream = client.stream(
 
 If a handler throws an exception or a handler is not registered:
 
-- The exception is caught and logged at the client.
+- The exception is caught at the client.
 - A failed `ToolResultBlock` is created with `is_error: true` and the error message.
 - The result is sent back to the server as a failed tool call.
 - The agent sees the failure and can retry, ask for clarification, or continue.
@@ -229,15 +231,15 @@ client.registerToolHandler('risky_tool', async () => {
   throw new Error('Something went wrong');
 });
 
-// When called, the error is caught and sent to the agent:
-// { error: 'Something went wrong', is_error: true, status: 'failed' }
+// When called, the error is caught and sent to the agent as a ToolResultBlock:
+// output: { error: 'Something went wrong' }, is_error: true, status: 'failed'
 ```
 
 Missing handlers produce a similar failure message:
 
 ```ts
 // No handler registered for 'unregistered_tool'
-// Agent receives: { error: "Tool 'unregistered_tool' not found", is_error: true, status: 'failed' }
+// Agent receives output { error: "Tool 'unregistered_tool' not found" }, is_error: true, status: 'failed'
 ```
 
 ## WebSocket streaming

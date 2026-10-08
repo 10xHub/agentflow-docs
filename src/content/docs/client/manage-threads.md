@@ -114,7 +114,7 @@ This is useful for displaying thread information in a UI or validating that a th
 Retrieve all messages from a thread, optionally searching by content:
 
 ```ts
-const messages = await client.threadMessages('thread-abc123');
+const messages = await client.threadMessages('thread-abc123', {});
 
 for (const msg of messages.data.messages) {
   const text = msg.content
@@ -147,8 +147,8 @@ Retrieve a specific message by its ID:
 
 ```ts
 const msg = await client.singleMessage('thread-abc123', 'msg-001');
-console.log(`Role: ${msg.data.message.role}`);
-console.log(`Content: ${JSON.stringify(msg.data.message.content)}`);
+console.log(`Role: ${msg.data.role}`);
+console.log(`Content: ${JSON.stringify(msg.data.content)}`);
 ```
 
 Use this when you need to read or inspect a specific message without fetching the entire thread.
@@ -164,7 +164,7 @@ await client.deleteMessage('thread-abc123', 'msg-001');
 console.log('Message deleted');
 ```
 
-The thread continues to exist with the remaining messages. You cannot delete messages once they are part of a completed checkpoint.
+The thread continues to exist with the remaining messages. `deleteMessage()` also accepts an optional third `config` argument.
 
 ---
 
@@ -176,33 +176,32 @@ The thread state is the graph's state snapshot at the last checkpoint. You can r
 
 ```ts
 const stateResponse = await client.threadState('thread-abc123');
-const state = stateResponse.data;
+const state = stateResponse.data.state;
 
 console.log('Current state:', JSON.stringify(state, null, 2));
 ```
 
-The state object shape depends on your graph's `StateGraph` definition. It contains all values you stored in the graph's state during execution.
+The state object shape depends on your graph's `StateGraph` definition. It contains the message context and any custom fields your graph stores.
 
 ### Update the state
 
-Write a new state snapshot for a thread. Use this to inject values, repair corrupted state, or seed initial data:
+Merge a partial state into a thread's stored state. Use this to inject values, repair state, or seed initial data. The server appends `context` messages to the existing context, deep-merges dictionaries, and ignores `null` values:
 
 ```ts
 await client.updateThreadState(
   'thread-abc123',
-  {},  // config (derived from thread_id)
+  {},  // config (the thread_id comes from the path)
   {
     user_preferences: { language: 'fr', timezone: 'Europe/Paris' },
-    context_window: [],
   }
 );
 
 console.log('State updated. Next invoke() will use this state.');
 ```
 
-<aside class="callout callout-warning" role="note"><p class="callout-title">State updates are immediate and final</p>
+<aside class="callout callout-warning" role="note"><p class="callout-title">State updates are immediate</p>
 
-`updateThreadState()` replaces the state at the last checkpoint. The next `invoke()` call will continue from your new state. Use with care: incorrect state can cause the agent to fail or behave unexpectedly.
+`updateThreadState()` merges your values into the stored state and saves it. The next `invoke()` call continues from the merged state. Messages sent in `context` are appended, and the server rejects client-authored tool calls with a 422. Use with care: incorrect state can cause the agent to fail or behave unexpectedly.
 
 </aside>
 
@@ -231,7 +230,7 @@ await client.addThreadMessages(
   [
     Message.text_message('You are a Paris travel expert.', 'system'),
   ],
-  {}  // config (derived from thread_id)
+  {}  // config (the thread_id comes from the path)
 );
 
 console.log('Messages added to thread');
@@ -269,7 +268,6 @@ async function displayThreadHistory(threadId: string) {
     const details = await client.threadDetails(threadId);
     const thread = details.data.thread_data.thread;
     console.log(`\n=== Thread: ${thread.thread_name ?? threadId} ===`);
-    console.log(`Created: ${thread.created_at}`);
     console.log(`Updated: ${thread.updated_at}`);
 
     // Fetch all messages with pagination
@@ -293,7 +291,7 @@ async function displayThreadHistory(threadId: string) {
     // Fetch and display current state
     const stateResponse = await client.threadState(threadId);
     console.log(`\n--- Current State ---`);
-    console.log(JSON.stringify(stateResponse.data, null, 2));
+    console.log(JSON.stringify(stateResponse.data.state, null, 2));
 
   } catch (error) {
     console.error(`Failed to display thread: ${error}`);
@@ -310,9 +308,9 @@ await displayThreadHistory('thread-abc123');
 
 | Error | Cause | Solution |
 |---|---|---|
-| `404 Not Found` | Thread does not exist, or no checkpointer is configured. | Verify the thread ID exists. Check that the API server has a checkpointer configured. |
-| `422 Unprocessable Entity` | Invalid parameter: empty/invalid thread ID, message ID, negative offset, or non-positive limit. | Ensure all parameters match their type and constraints (thread IDs are strings, offsets are >= 0, limits are > 0). |
-| Empty `threads` list | Checkpointer is not configured, or no threads have been created yet. | Compile your graph with a checkpointer: `compile(checkpointer=PgCheckpointer(...))`. Run a test invocation to create a thread. |
+| `404 Not Found` | Thread does not exist. | Verify the thread ID exists. |
+| `422 Unprocessable Entity` | Invalid parameter, such as an empty or whitespace thread ID. | Ensure the thread ID is a non-empty string or a positive integer. |
+| Empty `threads` list | No threads have been created yet, or the server restarted with the default in-memory checkpointer. | Run a test invocation to create a thread, and compile with a durable checkpointer for persistence. |
 | `State is null` | The thread exists but has no state snapshot (e.g., after `clearThreadState()`). | Call `updateThreadState()` to set a state, or `addThreadMessages()` to add messages to the thread. |
 
 ---
@@ -324,7 +322,6 @@ await displayThreadHistory('thread-abc123');
 - **Messages** are read with `threadMessages()`, modified with `addThreadMessages()`, and deleted individually with `deleteMessage()`.
 - **Thread state** (checkpoint) is read with `threadState()`, updated with `updateThreadState()`, and cleared with `clearThreadState()`.
 - **Deletion** is permanent: `deleteThread()` removes everything, while `clearThreadState()` keeps messages but resets state.
-- **Idempotency**: thread operations are safe to retry; the API prevents duplicate messages or state changes.
 
 ---
 

@@ -16,7 +16,7 @@ This example demonstrates how to use the `@tool` decorator to enrich tool functi
 ## Prerequisites
 
 - Python 3.12 or later
-- 10xGraph installed: `pip install "10xgraph[google-genai]"`
+- 10xGraph installed: `pip install 10xgraph`
 
 ## How to run the example
 
@@ -28,7 +28,7 @@ cd 10xGraph/examples/tool-decorator
 python basic_decorator_usage.py
 ```
 
-You should see output demonstrating all six examples, tag filtering, and metadata inspection.
+You should see output for basic tool schemas, tag filtering, metadata inspection, and an async tool.
 
 ## Why use `@tool`?
 
@@ -129,7 +129,7 @@ async def fetch_data_async(endpoint: str, timeout: int = 5) -> dict:
 
 ## Example 5, Injectable parameters
 
-Parameters annotated with 10xGraph types (like `AgentState`) are **injected automatically** by the framework and do **not** appear in the LLM schema. This lets tools access conversation state without the LLM needing to pass it.
+Parameters with reserved names (such as `state`, `config` and `tool_call_id`) are **injected automatically** by the framework, matched by parameter name, and do **not** appear in the LLM schema. This lets tools access conversation state without the LLM needing to pass it.
 
 ```python
 @tool(
@@ -146,7 +146,7 @@ def stateful_add(a: int, b: int, state: AgentState | None = None) -> int:
     return result
 ```
 
-Other injectable parameters include `tool_call_id: str` (the call ID from the LLM).
+Other injectable names include `tool_call_id` (the call ID from the LLM), `config`, `emit`, `generated_id`, `context_manager`, `publisher`, `checkpointer`, `store` and `task_manager`.
 
 ## Registering tools with ToolNode
 
@@ -161,16 +161,16 @@ for schema in tools:
 
 ## Tag-based filtering
 
-At runtime you can request only tools that match a set of tags:
+At runtime you can request only tools that match a set of tags. A tool with no tags is never filtered out, so untagged tools (such as `add` and `multiply` above) are returned for every tag filter.
 
 ```python
-# Only database tools
+# Database-tagged tools, plus any untagged tools
 db_tools = tool_node.get_local_tool(tags={"database"})
 
-# Only read-safe tools
+# Read-tagged tools, plus any untagged tools
 read_tools = tool_node.get_local_tool(tags={"read"})
 
-# Only tools that need network access
+# External-tagged tools, plus any untagged tools
 network_tools = tool_node.get_local_tool(tags={"external"})
 ```
 
@@ -198,7 +198,7 @@ print(has_tool_decorator(lambda x: x)) # False
 # Read full metadata
 meta = get_tool_metadata(search_web)
 print(meta["name"])          # "web_search"
-print(meta["tags"])          # ["search", "web", "external"]
+print(meta["tags"])          # {"search", "web", "external"} (a set)
 print(meta["capabilities"])  # ["network_access"]
 print(meta["metadata"])      # {"rate_limit": 100, "timeout": 30}
 ```
@@ -261,8 +261,8 @@ if __name__ == "__main__":
 | Concept | Details |
 |---|---|
 | `@tool` | Decorator that attaches metadata to a Python function for use in `ToolNode` |
-| `tags` | Arbitrary string labels; filter with `get_local_tool(tags={...})` |
-| Injectable params | `AgentState`, `tool_call_id`, supplied by the runtime, hidden from LLM schema |
+| `tags` | Arbitrary string labels, stored as a set; filter with `get_local_tool(tags={...})` (untagged tools always pass) |
+| Injectable params | Reserved names such as `state`, `config`, `tool_call_id`, supplied by the runtime, hidden from LLM schema |
 | `has_tool_decorator` | Returns `True` if a function was wrapped with `@tool` |
 | `get_tool_metadata` | Returns the full metadata dict from a decorated function |
 

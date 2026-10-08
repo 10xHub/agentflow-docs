@@ -13,7 +13,7 @@ updated: "2026-10-08"
 
 Evaluation is the measurement of your agent's behavior against criteria that matter to your application. The `10xgraph eval` command discovers evaluation files in your project, runs all test cases in a single async event loop, and produces machine-readable reports so you can track agent quality over time, gate merges on minimum pass rates, and identify regressions before they reach production.
 
-Unlike unit tests (which verify isolated functions), evaluations score your entire agent graph end-to-end against realistic scenarios, criteria like correct tool usage or response accuracy, and can include LLM-based judges to assess semantic quality. The framework runs multiple cases in parallel by default, generates both HTML dashboards and JSON results for CI tooling, and supports everything from quick local checks to comprehensive test suites with custom scoring rules.
+Unlike unit tests (which verify isolated functions), evaluations score your entire agent graph end-to-end against realistic scenarios, criteria like correct tool usage or response accuracy, and can include LLM-based judges to assess semantic quality. Cases run sequentially unless you pass `--parallel`. The command generates both HTML dashboards and JSON results for CI tooling, and supports everything from quick local checks to comprehensive test suites with custom scoring rules.
 
 ## Prerequisites
 
@@ -33,11 +33,13 @@ The CLI scans `evals/` for files matching `*_eval.py` or `eval_*.py`, collects e
 
 ```
 eval_reports/
-  weather-agent_20260513_142301.html
-  weather-agent_20260513_142301.json
+  <eval-set-id>_20260513_142301.html
+  <eval-set-id>_20260513_142301.json
 ```
 
-The HTML report shows a visual dashboard: summary pass rate, criterion scores, and per-case results. The JSON report is machine-readable for CI systems or custom analysis. Console output streams as cases complete.
+`EvalSetBuilder` assigns a random UUID as the eval set id, so that is what appears in the file name for a single set. When a run covers more than one eval set, the results are merged into one report named `combined_eval_<timestamp>`.
+
+The HTML report shows a visual dashboard: summary pass rate, criterion scores, and per-case results. The JSON report is machine-readable for CI systems or custom analysis. A progress display updates as cases complete.
 
 ## Running evaluations
 
@@ -53,7 +55,7 @@ To evaluate only certain cases, pass a path:
 10xgraph eval evals/regression/
 ```
 
-When a file is given, only that file runs. When a directory is given, all matching `*_eval.py` and `eval_*.py` files are discovered recursively. Results from all selected files are merged into one combined report.
+When a file is given, only that file runs. When a directory is given, all matching `*_eval.py` and `eval_*.py` files are discovered recursively. Results from several eval sets are merged into one combined report.
 
 ### Run in parallel
 
@@ -66,15 +68,9 @@ By default all cases run sequentially. For faster feedback on large suites, use 
 
 **How it works:** All cases from all files are collected into a flat pool before execution starts. A single asyncio event loop runs the entire pool under a concurrency semaphore capped at `--max-concurrency` (default 4). Cases complete out of order as they finish; this is expected and intentional.
 
-Example output:
+The run ends with a summary line such as:
 
 ```
-[  1/50] weather_eval.py::london_forecast      PASSED   1.23s
-[  3/50] booking_eval.py::london_to_paris      PASSED   2.10s
-[  2/50] weather_eval.py::tokyo_forecast       PASSED   0.98s
-...
-[ 50/50] ...
-
 Results: 47/50 passed (94.0%)
 ```
 
@@ -89,7 +85,7 @@ Every run produces two files in `eval_reports/` (or a custom directory via `--ou
 | `<eval-id>_<timestamp>.html` | HTML + interactive | Visual dashboard with summary, criterion bars, and per-case details for humans to review |
 | `<eval-id>_<timestamp>.json` | JSON | Machine-readable results for CI tooling, dashboards, or programmatic analysis |
 
-Console output always prints as cases complete, showing the test name, status, and duration. Both report files are written after all cases finish. To skip writing files and see only console output:
+The progress display shows each case as `<file>::<case>` with its status and duration. Both report files are written after all cases finish. To skip writing files and see only console output:
 
 ```bash
 10xgraph eval --no-report
@@ -103,13 +99,13 @@ To open the HTML report automatically in your browser:
 
 ### Exit codes and thresholds
 
-By default the command exits with code 0 when cases pass and 1 when they fail. For CI workflows, you can enforce a minimum pass rate:
+The command exits with code 0 only when every case passes (100% pass rate) and 1 otherwise. For CI this already gates merges on any regression.
 
 ```bash
 10xgraph eval --threshold 0.8
 ```
 
-The command exits with code 1 if the overall pass rate falls below the threshold (here, 80%). This is useful for gating merges or blocking deployments when agent quality degrades. The threshold can also be set in `10xgraph.json` (see below).
+`--threshold` makes the command print an error ("Pass rate ... is below threshold ...") when the overall pass rate is under 80%. It does not relax the exit code: a run at 90% still exits 1. The threshold can also be set in `10xgraph.json` (see below).
 
 ### Custom output directory
 
@@ -140,7 +136,7 @@ Add an `evaluation` block to `10xgraph.json` to set project-level defaults. CLI 
 | --- | --- | --- |
 | `directory` | `"evals"` | Directory scanned when no `TARGET` argument is given |
 | `output_dir` | `"eval_reports"` | Directory where HTML and JSON reports are written |
-| `threshold` | (none) | Minimum pass rate required for exit code 0; if unset, any case failure exits 1 |
+| `threshold` | (none) | Pass rate below which an error message is printed; the exit code is 1 for any pass rate under 100% |
 | `parallel` | `false` | Run all cases concurrently instead of sequentially |
 | `max_concurrency` | `4` | Maximum cases running simultaneously when `parallel` is true |
 
@@ -154,7 +150,7 @@ Report filenames always include a timestamp; there is no configuration setting f
   run: 10xgraph eval --parallel
 ```
 
-Set `threshold` in `10xgraph.json`. If the pass rate drops below the threshold, the step fails without extra flags, gating the merge.
+The step fails (exit code 1) whenever any case fails, which gates the merge.
 
 ## How criteria work and what the defaults are
 
@@ -162,13 +158,13 @@ Every evaluation case is scored against one or more criteria. A criterion is a r
 
 ### Default criteria (applied when no config is specified)
 
-When an eval file has no `get_eval_config()` or `EVAL_CONFIG`, and no global `confeval.py` is present, these built-in defaults apply:
+When an eval file has no `get_eval_config()` or `EVAL_CONFIG`, and no `confeval.py` is found, these built-in defaults apply:
 
 | Criterion | Threshold | Purpose |
 | --- | --- | --- |
 | `tool_name_match` | 1.0 | Agent must call the correct tool (exact match required) |
 | `rouge_match` | 0.5 | Agent response must have at least 50% token overlap with expected response (fast, no LLM) |
-| `node_order` | 0.8 | Agent must traverse nodes in the correct order (with up to 20% tolerance) |
+| `node_order` | 0.8 | Agent must visit graph nodes in the expected order (score of at least 0.8) |
 
 These defaults are intentionally strict on tool correctness (1.0) but lenient on response content (0.5 ROUGE), because the order of tool calls often matters more than exact text matching. For applications where response wording must match precisely, you would override with stricter criteria.
 
@@ -238,14 +234,14 @@ EVAL_CONFIG = EvalPresets.tool_usage(threshold=0.6)
 
 | Preset | Default threshold | What it checks |
 | --- | --- | --- |
-| `response_quality(threshold)` | 0.7 | LLM judge on response accuracy and relevance |
-| `tool_usage(threshold)` | 1.0 | Tool calls correct (exact names and args) + response quality |
-| `conversation_flow(threshold)` | 0.8 | Multi-turn conversation: response quality and tool trajectory |
-| `quick_check()` | (fixed) | Fast ROUGE-based keyword overlap, no LLM cost, instant feedback |
-| `comprehensive(threshold)` | 0.8 | All criteria combined: tool matching, response quality, safety, hallucination, factual accuracy |
-| `safety_check(threshold)` | 0.8 | Hallucination detection and safety assessment via LLM judge |
+| `response_quality(threshold, use_llm_judge=True)` | 0.7 | LLM response match plus LLM judge on response quality |
+| `tool_usage(threshold, strict=True, check_args=True)` | 1.0 | Tool name match plus trajectory match (exact order by default, arguments checked) |
+| `conversation_flow(threshold)` | 0.8 | LLM response match plus in-order tool trajectory |
+| `quick_check()` | 0.5 (fixed) | Fast ROUGE token overlap, no LLM cost, instant feedback |
+| `comprehensive(threshold, use_llm_judge=True)` | 0.8 | Tool name match and trajectory (fixed 1.0), ROUGE, plus LLM judge, factual accuracy, hallucination and safety |
+| `safety_check(threshold)` | 0.8 | Hallucination and safety criteria via LLM judge |
 
-Presets that use an LLM judge accept an optional `judge_model` parameter (defaults to `"gemini-2.5-flash"`):
+Presets that use an LLM judge accept an optional `judge_model` parameter (defaults to `"gemini-2.5-flash"`; `tool_usage` and `quick_check` use no judge):
 
 ```python
 config = EvalPresets.response_quality(threshold=0.7, judge_model="gpt-4o")
@@ -265,12 +261,12 @@ def get_eval_config():
 
 ### `confeval.py`, global evaluation config
 
-Place a file named exactly `confeval.py` in your project root (next to `10xgraph.json`) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence.
+Place a file named exactly `confeval.py` in your `evals/` directory (or the project root) to set a global default `EvalConfig` that applies to every eval file that does not define its own `get_eval_config()` or `EVAL_CONFIG`. If a file does provide its own config, that takes precedence.
 
 The file must expose either a module-level `EVAL_CONFIG` variable or a callable `get_eval_config()` that returns an `EvalConfig`:
 
 ```python
-# confeval.py  (project root, next to 10xgraph.json)
+# evals/confeval.py
 from tenxgraph.qa.evaluation import CriteriaConfig, CriterionConfig, EvalConfig
 
 EVAL_CONFIG = EvalConfig(
@@ -317,7 +313,7 @@ def booking_cases() -> EvalSet:
     return EvalSetBuilder(name="booking").add_tool_test(...).build()
 ```
 
-Both `weather_cases` and `booking_cases` are discovered and run. Their results appear as separate eval sets in the report, grouped by their names.
+Both `weather_cases` and `booking_cases` are discovered and run, and their cases are merged into the report. A file that has `get_eval_set()` uses that instead of annotation discovery. A function annotated `-> EvalConfig` is also picked up as the file's config.
 
 ### `get_scenarios()` or `SCENARIOS`, user simulator (dynamic conversations)
 
@@ -330,7 +326,7 @@ You define the scenarios; the CLI handles running the simulator, scoring goal ac
 from tenxgraph.qa.evaluation import ConversationScenario, UserSimulatorConfig
 
 # Optional: configure simulator model and settings for this file.
-# If omitted, defaults are used (gemini-2.5-flash, max 10 turns, temperature 0.7).
+# If omitted, defaults are used (gemini-2.5-flash, max 10 invocations, temperature 0.7).
 SIMULATOR_CONFIG = UserSimulatorConfig(
     model="gemini/gemini-2.5-flash",
     max_invocations=8,
@@ -391,7 +387,7 @@ def get_scenarios() -> list[ConversationScenario]:
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `model` | `"gemini/gemini-2.5-flash"` | LLM used to generate user messages |
+| `model` | `"gemini-2.5-flash"` | LLM used to generate user messages |
 | `max_invocations` | `10` | Maximum turns per scenario |
 | `temperature` | `0.7` | Temperature for user message generation |
 
@@ -402,14 +398,18 @@ def get_scenarios() -> list[ConversationScenario]:
 When the same setting is configured in multiple places, this precedence applies (highest first):
 
 ```
-1. CLI flags          (--parallel, --max-concurrency, --threshold, --output)
-2. 10xgraph.json     "evaluation" section
-3. Per-file config    get_eval_config() / EVAL_CONFIG  (inside each eval file)
-4. confeval.py        get_eval_config() / EVAL_CONFIG  (project-root global fallback)
-5. Built-in defaults  (tool_name_match 1.0, rouge_match 0.5, node_order 0.8)
+Run settings (parallel, max concurrency, threshold, output directory):
+1. CLI flags
+2. 10xgraph.json "evaluation" section
+3. Built-in defaults
+
+Criteria (the 10xgraph.json "evaluation" section holds no criteria):
+1. Per-file config   get_eval_config() / EVAL_CONFIG inside the eval file
+2. confeval.py       get_eval_config() / EVAL_CONFIG (global fallback)
+3. Built-in defaults (tool_name_match 1.0, rouge_match 0.5, node_order 0.8)
 ```
 
-A CLI flag overrides everything. If no CLI flag is given, `10xgraph.json` is checked. If neither the JSON nor the file provide a setting, `confeval.py` is checked. If none of those exist, built-in defaults apply.
+A CLI flag overrides `10xgraph.json` for run settings. For criteria, the eval file wins over `confeval.py`, which wins over the built-in defaults.
 
 ## Common scenarios and recipes
 
@@ -449,7 +449,7 @@ Then in your CI:
 10xgraph eval
 ```
 
-If the pass rate drops below 80%, the command exits with code 1, blocking the merge.
+The command prints an error when the pass rate is below 80% and exits with code 1 (it also exits 1 for any pass rate under 100%).
 
 **Run only a regression suite in a subdirectory:**
 
@@ -492,13 +492,9 @@ Eval files were discovered but contained no test cases. Ensure:
 
 A file was found but does not expose any recognized entry point. Add `get_eval_set()` or `get_scenarios()` to the file.
 
-**Exit code 1 even when all cases pass**
+**Exit code 1 although most cases pass**
 
-Check if a `threshold` is set:
-- In `10xgraph.json` under `"evaluation": {"threshold": ...}`
-- On the CLI with `--threshold`
-
-The exit code is 1 when the overall pass rate is below the threshold or when any individual case fails. Verify your threshold matches your expectation.
+The exit code is 1 whenever the pass rate is below 100%, including cases that errored. Check the summary line and the HTML report for cases with status `error`.
 
 **Simulator scenarios always fail**
 

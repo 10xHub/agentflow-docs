@@ -26,6 +26,7 @@ Import the publisher class and install the optional dependency if needed:
 
 ```bash
 # Console: no install needed
+# Provider for the examples below: pip install "10xgraph[openai]"
 # Redis: pip install "10xgraph[redis]"
 # Kafka: pip install "10xgraph[kafka]"
 # RabbitMQ: pip install "10xgraph[rabbitmq]"
@@ -52,6 +53,7 @@ When you instantiate your graph, pass the publisher:
 
 ```python
 from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.state import Message
 
 graph = StateGraph(publisher=publisher)
 graph.add_node("MAIN", Agent(model="gpt-4o"))
@@ -69,10 +71,10 @@ import asyncio
 
 async def main():
     result = await app.ainvoke(
-        {"messages": [{"role": "user", "content": "Hello"}]},
+        {"messages": [Message.text_message("Hello")]},
         config={"thread_id": "test"},
     )
-    print(result["messages"][-1].content)
+    print(result["messages"][-1].text())
     await publisher.close()  # flush pending events
 
 asyncio.run(main())
@@ -87,9 +89,10 @@ import json
 async def listen():
     r = aioredis.from_url("redis://localhost:6379/0")
     # Start from the earliest event
-    async for msg_id, msg_data in r.xread({"agent.events": "0"}, count=10):
-        event = json.loads(msg_data[b"data"])
-        print(f"Event: {event['event']} / {event['event_type']}")
+    for _stream, entries in await r.xread({"agent.events": "0"}, count=10):
+        for _msg_id, fields in entries:
+            event = json.loads(fields[b"data"])
+            print(f"Event: {event['event']} / {event['event_type']}")
 
 asyncio.run(listen())
 ```
@@ -203,17 +206,24 @@ graph = StateGraph(publisher=publisher)
 Consumers on the same topic receive all events in order:
 
 ```python
-from kafka import KafkaConsumer
+import asyncio
 import json
+from aiokafka import AIOKafkaConsumer
 
-consumer = KafkaConsumer(
-    "agent-events",
-    bootstrap_servers=["localhost:9092"],
-    value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-)
+async def listen():
+    consumer = AIOKafkaConsumer(
+        "agent-events",
+        bootstrap_servers="localhost:9092",
+        value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+    )
+    await consumer.start()
+    try:
+        async for record in consumer:
+            print(f"Event: {record.value['event']}")
+    finally:
+        await consumer.stop()
 
-for event in consumer:
-    print(f"Event: {event['event']}")
+asyncio.run(listen())
 ```
 
 #### Configuration reference
@@ -251,6 +261,7 @@ graph = StateGraph(publisher=publisher)
 Bind a queue to the exchange and consume:
 
 ```python
+import asyncio
 from aio_pika import connect_robust
 
 async def listen():
@@ -283,7 +294,7 @@ asyncio.run(listen())
 
 ## Fan out to multiple publishers
 
-Send events to multiple transports simultaneously using `CompositePublisher`. Common patterns include console for development, Redis for real-time monitoring, and a file sink for audit logs.
+Send events to multiple transports simultaneously using `CompositePublisher`. Common patterns include console for development and Redis for real-time monitoring or an audit stream.
 
 ```python
 from tenxgraph.runtime.publisher import CompositePublisher, ConsolePublisher, RedisPublisher
@@ -325,7 +336,8 @@ Every event published is an `EventModel` with these fields:
 | `node_name` | `str \| None` | Name of the node that emitted the event. |
 | `data` | `dict` | Event payload: arguments, results, error messages, token counts, etc. |
 | `content_blocks` | `list[ContentBlock]` | Structured message blocks (tool calls, tool results, etc.). |
-| `metadata` | `dict` | Run metadata: `run_id`, `thread_id`, `user_id`, `timestamp`. |
+| `run_id`, `thread_id`, `user_id`, `timestamp` | various | Run identity and UNIX timestamp, top-level fields. |
+| `metadata` | `dict` | Extra run metadata, such as `run_timestamp` and `is_stream`. |
 
 To inspect the event structure, use `ConsolePublisher` locally:
 

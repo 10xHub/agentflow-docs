@@ -35,7 +35,7 @@ Agent calls tool: transfer_to_researcher
     ↓
 Graph handler detects "transfer_to_" prefix
     ↓
-Graph routes to "RESEARCHER" node
+Graph routes to the node named "researcher"
     (tool function never runs)
 ```
 
@@ -43,7 +43,7 @@ The graph does the routing, not the tool function. This keeps the conversation c
 
 ## Complete working example
 
-Here's a fully runnable three-agent graph: a triage agent routes requests to a researcher or writer, and they can hand back to the triage agent or to each other.
+Install with `pip install "10xgraph[google-genai]"` and set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`). Here's a fully runnable three-agent graph: a triage agent routes requests to a researcher or writer, and they can hand back to the triage agent or to each other.
 
 ```python
 from tenxgraph.core import Agent, StateGraph, ToolNode, Message
@@ -155,11 +155,11 @@ app = graph.compile()
 # Run it
 # ────────────────────────────────────────────────────────────────────────────
 result = app.invoke({
-    "context": [Message.text_message("Find recent AI breakthroughs and write a summary article.")]
+    "messages": [Message.text_message("Find recent AI breakthroughs and write a summary article.")]
 })
 
-for msg in result["context"]:
-    print(f"{msg.role}: {msg.content}")
+for msg in result["messages"]:
+    print(f"{msg.role}: {msg.text()}")
 ```
 
 The flow: triage receives the request, decides to call `transfer_to_researcher` to investigate. The graph intercepts this tool call, routes to the researcher node, and the researcher runs. When the researcher calls `transfer_to_writer`, the graph routes there. When the writer finishes (no handoff called), execution ends.
@@ -251,7 +251,7 @@ Use manual handoff with conditional edges that route sequentially.
 | Agent keeps calling `transfer_to_X` but never moves. | Target node name doesn't exist in the graph. | Verify the `agent_name` argument to `create_handoff_tool()` matches an `add_node()` call exactly (case-sensitive). |
 | Handoff tool executes (logs show "should have been intercepted"). | Node handler is not the framework's built-in handler; you've replaced it with custom logic. | Use `Agent` and `ToolNode` directly; do not override node handlers. |
 | Routing loop: agents keep handing off to each other infinitely. | No base-case conditional edge to `END`. | Add `END` as an option from at least one agent's conditional edges. Ensure an agent can finish without calling a handoff. |
-| `Command.goto` is ignored. | `Command` returned from an `Agent` node instead of a custom function. | Return `Command` only from custom node functions, not from `Agent` instances. Agents return `AgentState` updates. |
+| `Command.goto` is ignored. | `Command` returned from an `Agent` node instead of a custom function. | Return `Command` only from custom node functions, not from `Agent` instances. Agents return messages. |
 | Handoff to agent X works but state looks wrong. | State not passed through the handoff correctly. | The framework preserves `state.context` (messages) across handoffs. If you need custom state, subclass `AgentState` and use reducers. |
 
 ## How to verify
@@ -262,7 +262,7 @@ After building the graph, compile it and run with a simple input to trace the pa
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-result = app.invoke({"context": [Message.text_message("Your request")]})
+result = app.invoke({"messages": [Message.text_message("Your request")]})
 ```
 
 The logs show which nodes execute in order, making it easy to confirm the routing is working.

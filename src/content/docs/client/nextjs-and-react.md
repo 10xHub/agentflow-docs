@@ -8,8 +8,8 @@ order: 120
 label: with Next.js
 updated: "2026-10-08"
 faq:
-  - question: "Do I need to expose my 10xGraph API key in the browser?"
-    answer: "No. Always proxy requests through a Next.js route handler or Server Action. The route handler runs on the server, where it can safely use your API key."
+  - question: "Do I need to expose my 10xGraph bearer token in the browser?"
+    answer: "No. Always proxy requests through a Next.js route handler or Server Action. The route handler runs on the server, where it can safely hold your token."
   - question: "Can I use React hooks from the SDK?"
     answer: "No. The SDK exports a typed client class, not hooks. Build your own streaming component using fetch and state management, as shown in this guide."
   - question: "Why should I use Node runtime instead of Edge runtime?"
@@ -50,7 +50,7 @@ In this setup, your browser never talks directly to the 10xGraph API. Instead, N
 
 ## Installation
 
-Install the 10xGraph TypeScript client. Until `10xgraph-client` is published on npm, install `@10xscale/agentflow-client` and import `AgentFlowClient` from it instead; the API is the same.
+Install the 10xGraph TypeScript client.
 
 ```bash
 npm install 10xgraph-client
@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
 
   // Create a client instance with your API key
   const client = new TenxGraphClient({
-    baseUrl: process.env.AGENTFLOW_URL!,
-    headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
+    baseUrl: process.env.TENXGRAPH_URL!,
+    authToken: process.env.TENXGRAPH_API_TOKEN!,
   });
 
   // Stream from the graph
@@ -116,9 +116,10 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`));
       } catch (e) {
         // Emit error as an SSE event
+        // Same shape as a stream chunk, so the browser hook handles it
         controller.enqueue(
           encoder.encode(
-            `event: error\ndata: ${JSON.stringify({ message: String(e) })}\n\n`
+            `data: ${JSON.stringify({ event: "error", data: { reason: String(e) } })}\n\n`
           )
         );
       } finally {
@@ -138,11 +139,11 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-The `recursion_limit` controls how many steps the agent can take. The `thread_id` keeps conversation history separate per user.
+The `recursion_limit` caps how many tool-execution rounds the client runs (default 25). The `thread_id` keeps conversation history separate per user. The default `response_granularity` for `stream()` is `'low'`, which yields only `message` and `error` chunks. Pass `response_granularity: 'full'` if you also want `updates` chunks.
 
 ## React streaming component
 
-On the client, create a component that opens an SSE stream from your route handler, parses chunks, and displays them to the user. The component uses `fetch` and manual SSE parsing (the browser's `EventSource` API does not support custom headers, which you may need for authentication).
+On the client, create a component that opens an SSE stream from your route handler, parses chunks, and displays them to the user. The component uses `fetch` and manual SSE parsing (the browser's `EventSource` API only issues GET requests and cannot send a request body).
 
 ### Hook for stream management
 
@@ -253,10 +254,10 @@ export function useAgentStream(): UseAgentStreamReturn {
               if (chunk.event === "message") {
                 setOutput((prev) => prev + extractText(chunk));
               } else if (chunk.event === "updates") {
-                // Lifecycle event: "running", "completed", etc.
-                setStatus(chunk.data?.status ?? "");
+                // Lifecycle event, only sent with response_granularity: "full"
+                setStatus(String(chunk.data?.status ?? ""));
               } else if (chunk.event === "error") {
-                throw new Error(chunk.data?.reason ?? "Agent error");
+                throw new Error(String(chunk.data?.reason ?? "Agent error"));
               }
             } catch (e) {
               // JSON parse error or other issue
@@ -343,8 +344,8 @@ import { TenxGraphClient, Message } from "10xgraph-client";
 import { auth } from "@/lib/auth";
 
 const client = new TenxGraphClient({
-  baseUrl: process.env.AGENTFLOW_URL!,
-  headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
+  baseUrl: process.env.TENXGRAPH_URL!,
+  authToken: process.env.TENXGRAPH_API_TOKEN!,
 });
 
 export async function askAgent(text: string): Promise<string> {
@@ -404,12 +405,12 @@ The route handler or Server Action validates the user and creates a scoped sessi
 
 ### Pass-through authentication
 
-Validate the user in Next.js, then send your API key to 10xGraph. Use the user ID as the thread ID to isolate conversations:
+Validate the user in Next.js, then send a server-held bearer token to 10xGraph. Use the user ID as the thread ID to isolate conversations:
 
 ```tsx
 const client = new TenxGraphClient({
-  baseUrl: process.env.AGENTFLOW_URL!,
-  headers: { Authorization: `Bearer ${process.env.AGENTFLOW_API_KEY}` },
+  baseUrl: process.env.TENXGRAPH_URL!,
+  authToken: process.env.TENXGRAPH_API_TOKEN!,
 });
 
 const result = await client.invoke(
@@ -425,13 +426,14 @@ This is the simplest and most common pattern. Use it if both Next.js and 10xGrap
 For multi-tenant or isolated deployments, mint a short-lived JWT in Next.js and send it to 10xGraph:
 
 ```tsx
-const token = jwt.sign({ sub: user.id, scope: "invoke" }, JWT_SECRET, {
+// The 10xGraph JWT auth rejects tokens without a user_id claim
+const token = jwt.sign({ user_id: user.id }, JWT_SECRET, {
   expiresIn: "5m",
 });
 
 const client = new TenxGraphClient({
-  baseUrl: process.env.AGENTFLOW_URL!,
-  headers: { Authorization: `Bearer ${token}` },
+  baseUrl: process.env.TENXGRAPH_URL!,
+  authToken: token,
 });
 ```
 
@@ -444,8 +446,8 @@ Configure 10xGraph to validate the JWT. See [Authentication and authorization](/
 In development, ensure your `.env.local` file has:
 
 ```bash
-AGENTFLOW_URL=http://localhost:8000
-AGENTFLOW_API_KEY=your_api_key_here
+TENXGRAPH_URL=http://localhost:8000
+TENXGRAPH_API_TOKEN=your_api_key_here
 ```
 
 Run the 10xGraph API server locally (`10xgraph api`) and your Next.js dev server (`npm run dev`) in separate terminals.
@@ -482,9 +484,9 @@ The proxy headers (like `X-Accel-Buffering: no`) tell proxies not to buffer the 
 
 **Edge runtime does not support long-lived streams.** Always set `runtime = "nodejs"` in your route handler. Edge runtime has strict timeout limits and may kill SSE connections.
 
-**Connection resets or hanging requests.** Ensure the 10xGraph server is running and reachable. Check your `AGENTFLOW_URL` and network connectivity. If the server is behind a proxy, verify proxy settings and timeout configurations.
+**Connection resets or hanging requests.** Ensure the 10xGraph server is running and reachable. Check your `TENXGRAPH_URL` and network connectivity. If the server is behind a proxy, verify proxy settings and timeout configurations.
 
-**Message type confusion.** After an SSE chunk crosses the network, the `Message` class methods are not available on plain JSON objects. Extract fields directly (as shown in the `extractText` function) or re-construct the `Message` object using `Message.from_dict()` if needed.
+**Message type confusion.** After an SSE chunk crosses the network, the `Message` class methods are not available on plain JSON objects. Extract fields directly, as shown in the `extractText` function.
 
 ## Related pages
 

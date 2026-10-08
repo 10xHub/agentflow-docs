@@ -89,8 +89,8 @@ If validation succeeds, the agent returns the output. Otherwise, it moves to rep
 
 | Mode | Cost | When to use |
 |---|---|---|
-| **Lightweight** (default) | 1 LLM call total | Simple schemas, well-behaved models. The agent injects the error and schema, then re-generates. No extra LLM calls. |
-| **LLM repair** | 2+ LLM calls | Complex schemas or frequent failures. Enable by setting `repair_system_prompt`. A dedicated agent actively rewrites the output. |
+| **Lightweight** (default) | 1 extra LLM call per retry | Simple schemas, well-behaved models. The REPAIR node only injects the error and schema as a user message, then GENERATE runs again. |
+| **LLM repair** | 2 extra LLM calls per retry | Complex schemas or frequent failures. Enable by setting `repair_system_prompt`. A dedicated agent actively rewrites the output. |
 
 Lightweight repair injects this message:
 
@@ -160,13 +160,13 @@ Compile parameters:
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persistence backend. Saves and restores conversation state per thread. Examples: `InMemoryCheckpointer()` for dev, `PgCheckpointer(...)` for production. |
+| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persistence backend. Saves and restores conversation state per thread. `None` uses an `InMemoryCheckpointer`. Examples: `InMemoryCheckpointer()` for dev, `PgCheckpointer(...)` for production. |
 | `store` | `BaseStore \| None` | `None` | Long-term cross-thread storage. Used by memory tools and retrieval-augmented generation. Examples: `QdrantStore(...)`, `Mem0Store(...)`. |
 | `interrupt_before` | `list[str] \| None` | `None` | Node names to pause before (e.g., `["GENERATE"]`). When paused, the run saves state and awaits `resume()` or a new message. |
 | `interrupt_after` | `list[str] \| None` | `None` | Node names to pause after. Useful for human approval steps. |
-| `callback_manager` | `CallbackManager` | default (empty) | Lifecycle hooks for observability: `on_invoke_start`, `on_invoke_end`, `on_error`, etc. |
+| `callback_manager` | `CallbackManager` | default (empty) | Lifecycle hooks and invoke callbacks for observability. |
 | `media_store` | `BaseMediaStore \| None` | `None` | Binary/media file storage backend. Required if your schema includes file references. |
-| `shutdown_timeout` | `float` | `30.0` | Graceful-shutdown timeout in seconds. How long the agent waits for in-flight tasks before force-closing. |
+| `shutdown_timeout` | `float` | `30.0` | Graceful-shutdown timeout in seconds.  |
 
 ---
 
@@ -174,7 +174,7 @@ Compile parameters:
 
 ### Basic usage with Pydantic schema
 
-The simplest case: define your output schema as a Pydantic model, create the agent, and invoke it.
+The simplest case: define your output schema as a Pydantic model, create the agent, and invoke it. Install the OpenAI extra first: `pip install "10xgraph[openai]"`. The tools example below also needs `google-genai`, and the Gemini example needs `google-genai` instead of `openai`.
 
 ```python
 import asyncio
@@ -210,7 +210,7 @@ async def main():
         )]},
         config={"thread_id": "struct-1"},
     )
-    output_text = result["context"][-1].text()
+    output_text = result["messages"][-1].text()
     print(output_text)
     # {"product_name": "...", "sentiment": "neutral", "score": 6.5, "key_points": [...]}
 
@@ -224,6 +224,7 @@ The agent validates the LLM's response against your schema. If validation fails,
 If you prefer plain Python `TypedDict` over Pydantic models, StructuredOutputAgent supports it equally well.
 
 ```python
+import asyncio
 from typing import TypedDict
 from tenxgraph.prebuilt.agent import StructuredOutputAgent
 from tenxgraph.core.state import Message
@@ -240,11 +241,14 @@ agent = StructuredOutputAgent(
 )
 app = agent.compile()
 
-# Invoke it with any location
-result = await app.ainvoke(
-    {"messages": [Message.text_message("What's the weather in Seattle?")]},
-    config={"thread_id": "weather-1"},
-)
+async def main():
+    result = await app.ainvoke(
+        {"messages": [Message.text_message("What's the weather in Seattle?")]},
+        config={"thread_id": "weather-1"},
+    )
+    print(result["messages"][-1].text())
+
+asyncio.run(main())
 ```
 
 ### With tools
@@ -281,7 +285,7 @@ app = agent.compile()
 
 ### Enable LLM repair for complex schemas
 
-By default, StructuredOutputAgent uses lightweight repair: it injects the error message and schema, then re-generates without an extra LLM call. For very complex or nested schemas, enable a dedicated repair agent.
+By default, StructuredOutputAgent uses lightweight repair: the REPAIR node injects the error message and schema, then GENERATE runs again, with no dedicated repair LLM. For very complex or nested schemas, enable a dedicated repair agent.
 
 ```python
 from tenxgraph.prebuilt.agent import StructuredOutputAgent
@@ -369,7 +373,7 @@ async def main():
 asyncio.run(main())
 ```
 
-Each event carries state updates, node execution details, and final output. See `/docs/guides/stream-graph` for details on interpreting stream events.
+Each event is a stream chunk emitted as the graph runs. See `/docs/guides/stream-graph` for details on interpreting stream events.
 
 ---
 
@@ -428,7 +432,7 @@ Then run:
 10xgraph play
 ```
 
-The playground opens at `http://localhost:3000`. Type a message and watch the agent invoke, validate, and return structured output. If validation fails, the playground shows the error and the retry attempt.
+The command starts the API server and opens the hosted playground. Type a message and watch the agent invoke, validate, and return structured output. If validation fails, the playground shows the error and the retry attempt.
 
 ---
 

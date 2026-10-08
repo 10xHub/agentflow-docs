@@ -17,7 +17,7 @@ An HR assistant that evaluates candidates by matching their CVs against job desc
 
 ## Why custom state matters
 
-The default `AgentState` holds two fields: `context` (the conversation history) and `messages` (incoming user messages). These are sufficient for a chatbot, but real agents need to carry structured context. For an HR assistant, you need the candidate information, job details, and scores. For a data analyst, you might track data sources and computed metrics. For a support agent, you track the customer account, ticket ID, and resolution state.
+The default `AgentState` holds `context` (the conversation history), `context_summary`, and internal `execution_meta`. These are sufficient for a chatbot, but real agents need to carry structured context. For an HR assistant, you need the candidate information, job details, and scores. For a data analyst, you might track data sources and computed metrics. For a support agent, you track the customer account, ticket ID, and resolution state.
 
 By extending `AgentState`, you make that data:
 - **Typed**: your IDE and type checker catch field name and type errors.
@@ -29,7 +29,8 @@ By extending `AgentState`, you make that data:
 classDiagram
     class AgentState {
         +list context
-        +list messages
+        +str context_summary
+        +ExecMeta execution_meta
     }
     class MyState {
         +str candidate_cv
@@ -85,11 +86,11 @@ class MyState(AgentState):
     analysis_results: dict[str, Any] = {}
 ```
 
-Every field must have a default value. Pydantic enforces this because the state is serialized and restored from checkpoints. You can use any JSON-serializable type: strings, numbers, booleans, lists, dicts, or nested Pydantic models.
+Give every field a default value: `StateGraph` uses the state instance you pass as the prototype for new threads, and checkpoints serialize it. You can use any JSON-serializable type: strings, numbers, booleans, lists, dicts, or nested Pydantic models.
 
 ## Creating a typed checkpointer
 
-The checkpointer preserves state across turns. Pass your custom state as a generic parameter so the checkpointer knows how to serialize and deserialize it correctly:
+The checkpointer preserves state across turns. Pass your custom state as a generic parameter so type checkers know which state class it stores:
 
 ```python
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
@@ -97,7 +98,7 @@ from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 checkpointer = InMemoryCheckpointer[MyState]()
 ```
 
-For production, use `PgCheckpointer[MyState]()` instead to persist state across server restarts. The type parameter is required in both cases.
+For production, use `PgCheckpointer` (it needs a `redis_url`, and calls need a `user_id`) to persist state across server restarts. The type parameter is for static typing only.
 
 ## Building the graph with custom state
 
@@ -128,7 +129,7 @@ def create_app(initial_state: MyState | None = None):
     return graph.compile(checkpointer=checkpointer)
 ```
 
-The `StateGraph[MyState]` generic parameter tells 10xGraph to use your custom state class. When you compile the graph, the checkpointer is wired in automatically, so state persists across invocations within the same thread.
+The state instance you pass is the prototype for new threads; the `StateGraph[MyState]` generic is for static typing. `compile(checkpointer=...)` wires the checkpointer in, so state persists across invocations within the same thread.
 
 ## Three ways to invoke the agent
 
@@ -146,7 +147,7 @@ res = app.invoke(
 )
 ```
 
-The agent runs with empty CV, job description, and match score fields. It can still help, but has no candidate data to work with.
+The state starts with empty CV, job description, and match score fields.
 
 ### 2. Pre-populate custom fields before creation
 
@@ -166,7 +167,7 @@ res = app.invoke(
 )
 ```
 
-The agent sees all the context: it knows the candidate's background, the job requirements, and can provide intelligent analysis.
+The custom fields are in the graph state, so routing functions and tools can read them. The `Agent` node itself only sends the system prompt and conversation messages to the model, so to have it use these fields, reference them in a tool or build the prompt from them.
 
 ### 3. Partial state update at invoke time
 
@@ -238,16 +239,16 @@ Each test demonstrates a pattern:
 | Pattern | Use case | Example |
 |---|---|---|
 | Subclass `AgentState` | Add domain fields once | `class MyState(AgentState): candidate_cv: str = ""` |
-| Generic `StateGraph[MyState]` | Tell the runtime the state type | `graph = StateGraph[MyState](state)` |
+| Generic `StateGraph[MyState]` | Type the state for your IDE and type checker | `graph = StateGraph[MyState](state)` |
 | Generic `Checkpointer[MyState]` | Type-safe persistence | `InMemoryCheckpointer[MyState]()` |
 | Pre-populate fields | Set context before first invoke | `state.candidate_cv = "..."` then `create_app(state)` |
 | Partial `state` dict at invoke | Update single fields between turns | `invoke({..., "state": {"jd": "..."}})` |
-| `ResponseGranularity.FULL` | Get the full state back | Inspect `res["state"]` after invoke |
+| `ResponseGranularity.FULL` | Get the full state back | Pass `response_granularity=` to `invoke`, then inspect `res["state"]` |
 
 ## What you learned
 
 - How to extend `AgentState` with custom typed fields for domain context.
-- How to use generics (`StateGraph[MyState]`, `Checkpointer[MyState]`) to wire state through the runtime.
+- How to use generics (`StateGraph[MyState]`, `InMemoryCheckpointer[MyState]`) to type state through the runtime.
 - Three ways to populate state: defaults, pre-seeding, and partial updates at invoke time.
 - How partial state merge preserves untouched fields across turns.
 - Why typing your state fields matters for IDE support and production reliability.

@@ -25,21 +25,21 @@ WebSocket shines for:
 Both endpoints use the same credential methods as REST APIs. The bearer token can come from:
 
 1. **`Authorization` HTTP header** (standard): `Authorization: Bearer <token>`
-2. **`10xgraph-bearer` Sec-WebSocket-Protocol** (recommended for browsers): avoids CORS headers at the WebSocket upgrade
+2. **`10xgraph-bearer` Sec-WebSocket-Protocol** (recommended for browsers): browsers cannot set an `Authorization` header on a WebSocket, and this keeps the token out of the URL
 3. **`?token=` query parameter** (fallback): the token is visible in logs and browser history, so avoid in production
 
-At the WebSocket handshake, the server verifies the token once. For every graph run on the socket (only relevant for `/v1/graph/ws` where the client can send multiple messages), the token is re-verified: if it expires or is revoked between runs, the server sends an error and closes the socket with code 1008.
+At the WebSocket handshake, the server verifies the token. Before every graph run on `/v1/graph/ws` (the client can send several messages on one socket), the token is verified again: if it expires or is revoked between runs, the server sends an error chunk and closes the socket with code 1008.
 
-**Setting the subprotocol** (if using `10xgraph-bearer`):
+**Setting the subprotocol** (if using `10xgraph-bearer`): offer two subprotocols, the sentinel first and the raw token second.
 
 ```javascript
 const socket = new WebSocket(
   "wss://api.example.com/v1/graph/ws",
-  "10xgraph-bearer"  // or "agentflow-bearer" (deprecated)
+  ["10xgraph-bearer", TOKEN]
 );
 ```
 
-The server accepts both `10xgraph-bearer` (new) and `agentflow-bearer` (deprecated until 2.0).
+The server accepts both `10xgraph-bearer` and the legacy `agentflow-bearer` (deprecated until 2.0), and echoes the sentinel back as the accepted subprotocol.
 
 ## Turn-based streaming: `/v1/graph/ws`
 
@@ -61,17 +61,18 @@ Client → Server:
   }
 }
 
-Server → Client:
-{"event": "messages_start", "data": {...}}
-{"event": "chunk", "data": {...}}
-{"event": "chunk", "data": {...}}
+Server → Client (StreamChunk JSON, the same format as POST /v1/graph/stream):
+{"event": "updates", "data": {"status": "invoking_graph", ...}}
+{"event": "message", "message": {...}}
 ...
 {"event": "updates", "data": {"status": "done"}}
 ```
 
+The final `{"event": "updates", "data": {"status": "done"}}` chunk is sent by the server after every run on the socket. The socket stays open for the next frame.
+
 **Resume after remote tool call:**
 
-The client detects a `tool_call` event in the stream, executes the tool (e.g., in the browser), and sends the result back:
+When a run ends on a remote (client-executed) tool call, the client executes the tool (for example in the browser) and sends the result back. The server does not inspect chunks for tool calls; detecting them is the client library's job. The `resume` frame needs `tool_result` and `config.thread_id`:
 
 ```json
 Client → Server:
@@ -86,59 +87,60 @@ Client → Server:
 }
 
 Server → Client:
-(same format: messages_start, chunk, chunk, ..., updates/status:done)
+(same format: StreamChunk lines, ending with updates/status:done)
 ```
 
 ### Thread IDs
 
 - Omit `thread_id` or send `"new"` to create a fresh thread each time.
 - Send an existing `thread_id` to resume that thread's conversation.
-- The server normalizes blank or missing `thread_id` to mean "create a new one", so every fresh run auto-generates an ID.
+- A blank or missing `thread_id` also means "create a new one", so the server generates an ID.
+- `resume` runs require `config.thread_id`.
+- When auth is enabled, the thread is owner-checked before each run. An unauthorized thread gets an `error` chunk with `Not authorized to stream thread ...` and the socket stays open.
 
 ### Rate limiting and concurrency
 
-Every WebSocket handshake and every graph run on the socket counts against:
+Every WebSocket handshake and every graph run on the socket counts against the global rate limit: the same bucket as REST requests, when `rate_limit` is configured.
 
-- **Global rate limit**: the same bucket as REST requests (if configured in `rate_limit`).
-- **Per-user cap**: `websocket.max_connections_per_user` limits how many sockets one user can hold.
+- A handshake over the limit is refused before `accept()` with close code 1013.
+- A run over the limit gets an `error` chunk whose `data` has `reason` and `retry_after_seconds`. The run is skipped and the socket stays open; the check runs again on the next frame.
 
-If the limit is exceeded, the server sends a StreamChunk error with `retry_after_seconds` and the run is skipped (the socket stays open). On the next run, the check runs again.
+Connection caps apply at the handshake only: `websocket.max_connections` (per process) and `websocket.max_connections_per_user`. Over either cap, the handshake is refused with close code 1013.
 
 ## Realtime audio: `/v1/graph/live`
 
-This endpoint bridges a WebSocket to a **realtime agent** (using `CompiledGraph.arealtime()` or the `AudioAgent` prebuilt agent), enabling true two-way audio conversation. The client and server exchange audio frames and control messages in real-time, with minimal latency.
+This endpoint bridges a WebSocket to a **realtime agent** (a graph rooted at a live agent, driven through `CompiledGraph.arealtime()`), enabling true two-way audio conversation. The client and server exchange audio frames and control messages in real-time, with minimal latency.
 
-Realtime is only for agents built for it: an endpoint that uses `/v1/graph/ws` on a realtime agent will close immediately with code 1008 ("use `/v1/graph/live` instead").
+Realtime is only for agents built for it: connecting to `/v1/graph/ws` with a realtime agent closes immediately with code 1008 (use `/v1/graph/live` instead). The reverse also holds: a turn-based graph on `/v1/graph/live` is closed with 1008.
 
 ### Protocol
 
-**Init frame (JSON):**
+**Init frame (JSON, the first frame sent):** a flat object. All keys are optional; the keys the server reads are `thread_id`, `model`, `voice`, `modalities`, `vad`, `system_prompt` and `tools_tags`.
 
 ```json
 Client → Server:
 {
-  "type": "session.update",
-  "session": {
-    "model": "gemini-2.5-flash-live",
-    "voice": "Puck",
-    "modalities": ["audio", "text"],
-    "vad": {
-      "threshold": 0.5,
-      "prefix_padding_ms": 300,
-      "on_speak_end_ms": 1000
-    }
+  "model": "gemini-2.5-flash-live",
+  "voice": "Puck",
+  "modalities": ["AUDIO"],
+  "vad": {
+    "enabled": true,
+    "prefix_padding_ms": 300,
+    "silence_duration_ms": 1000
   },
   "thread_id": "optional-thread-id"
 }
 ```
 
+The `model` override is honored only if it is listed in `websocket.realtime_models`; otherwise it is ignored and the agent's own model is used. A bad value (for example an invalid `modalities` entry) returns a fatal `error` event with code `invalid_config`.
+
 **Downstream (Server → Client):**
 - **Binary frames**: PCM16 audio deltas from the model
-- **JSON text frames**: turn-complete, transcript, interrupted, error, etc.
+- **JSON text frames**: every other event (transcripts, turn complete, interrupted, tool calls, errors)
 
 **Upstream (Client → Server):**
 - **Binary frames**: PCM16 audio input from the user/environment
-- **JSON text frames**: activity_start, activity_end, text instructions, close
+- **JSON text frames**: `{"type": "activity_start"}`, `{"type": "activity_end"}`, `{"type": "text", "text": "..."}`, `{"type": "close"}`
 
 Refer to the [realtime audio guide](/docs/guides/use-realtime-audio) for details and examples.
 
@@ -150,7 +152,7 @@ WebSocket behavior is controlled by keys in the `websocket` object within `10xgr
 |---|---|---|---|
 | `max_connections` | integer, null | 1000 | Hard cap on concurrent WebSocket connections (both `/v1/graph/ws` and `/v1/graph/live`) across this process. Set to `0` or `null` for unlimited. |
 | `max_connections_per_user` | integer, null | 10 | Cap on how many WebSocket connections one verified user can hold (by `user_id`). Set to `0` or `null` for unlimited. |
-| `realtime_models` | array of strings | `[]` | List of models a `/v1/graph/live` client is allowed to request (e.g., `["gemini-2.5-flash-live", "gemini-2.0-flash-live"]`). Empty means clients cannot override the agent's model. |
+| `realtime_models` | array of strings | `[]` | Models a `/v1/graph/live` client is allowed to request (for example `["gemini-2.5-flash-live"]`). Empty means clients cannot override the agent's model. |
 
 **Example:**
 
@@ -174,11 +176,12 @@ WebSocket close codes follow RFC 6455. The server sends these in specific situat
 | Code | Meaning | Retry? |
 |---|---|---|
 | 1000 | Normal closure (client initiated or clean shutdown) | No |
-| 1008 | Policy violation: realtime agent on `/v1/graph/ws` (use `/v1/graph/live`), or token expired/revoked between runs | No |
+| 1003 | Unsupported data: the `/v1/graph/live` init frame is not a JSON object or could not be parsed | No |
+| 1008 | Policy violation: wrong endpoint for the agent type, token expired/revoked between runs, or auth/authorization failure at the handshake | No |
 | 1011 | Unexpected server error during run | May retry after brief delay |
-| 1013 | Try again later: rate limit or connection cap exceeded | Yes, after `retry_after_seconds` |
+| 1013 | Try again later: rate limit or connection cap exceeded at the handshake | Yes, after a delay |
 
-An error chunk (StreamChunk with `event: "error"`) is sent before closing with code 1008 or 1013, so the client sees the reason before the connection drops.
+On `/v1/graph/ws`, an `error` chunk is sent before closing for the wrong-agent-type and expired-token cases. Handshake rejections (auth failure, rate limit, connection cap) close before the socket is accepted, so no chunk is sent.
 
 ## Proxy settings
 
@@ -207,7 +210,7 @@ location /v1/graph/ws {
 
 ### Client IP detection
 
-If you enable authentication and use the `trusted_proxy_headers` setting in `rate_limit`, the server reads the client IP from `X-Forwarded-For` to bucket rate limits correctly:
+If you use the `trusted_proxy_headers` setting in `rate_limit`, the server reads the client IP from `X-Forwarded-For` to bucket rate limits correctly:
 
 ```json
 {
@@ -231,42 +234,26 @@ Without this, clients behind a proxy appear to have the proxy's IP and all land 
 Here's a minimal example using the 10xGraph TypeScript client:
 
 ```typescript
-import { TenxGraphClient } from "10xgraph-client";
+import { TenxGraphClient, Message } from "10xgraph-client";
 
 const client = new TenxGraphClient({
   baseUrl: "http://localhost:8000",
-  token: "your-jwt-token"
+  authToken: "your-jwt-token",
 });
 
-// Start a fresh run
-const stream = await client.stream({
-  messages: [
-    { role: "user", content: [{ type: "text", text: "What is 2 + 2?" }] }
-  ]
+// wsStream() has the same signature as stream(), but runs over /v1/graph/ws
+const stream = client.wsStream([Message.text_message("What is 2 + 2?")], {
+  config: { thread_id: "my-thread" },
 });
 
-// Read chunks as they arrive
 for await (const chunk of stream) {
-  console.log("Event:", chunk.event, "Data:", chunk.data);
-  
-  if (chunk.event === "tool_call") {
-    // Client detected a remote tool call; execute it locally
-    const result = await executeTool(chunk.data);
-    
-    // Resume the same run with the result
-    const resumeStream = await client.stream({
-      messages: [{ role: "tool", content: [{ type: "text", text: result }] }],
-      thread_id: stream.thread_id
-    });
-    
-    for await (const chunk of resumeStream) {
-      console.log("Resumed:", chunk.event);
-    }
+  if (chunk.event === "message") {
+    console.log("Message:", chunk.message);
   }
 }
 ```
 
-The client automatically chooses WebSocket for streaming and falls back to REST if WebSocket is not available.
+`wsStream()` handles remote tool calls for you: it runs registered client-side tools and sends the `resume` frame on the same socket. Use `client.stream()` for the HTTP equivalent. See [Client streaming](/docs/client/stream-responses).
 
 ## Example: Raw WebSocket in JavaScript
 
@@ -274,8 +261,7 @@ If you prefer to manage the WebSocket directly:
 
 ```javascript
 const token = "your-jwt-token";
-const url = `wss://api.example.com/v1/graph/ws?token=${encodeURIComponent(token)}`;
-const socket = new WebSocket(url, "10xgraph-bearer");
+const socket = new WebSocket("wss://api.example.com/v1/graph/ws", ["10xgraph-bearer", token]);
 
 socket.onopen = () => {
   console.log("Connected");
@@ -290,7 +276,7 @@ socket.onopen = () => {
 socket.onmessage = (event) => {
   const chunk = JSON.parse(event.data);
   console.log("Chunk:", chunk.event, chunk.data);
-  
+
   if (chunk.event === "updates" && chunk.data.status === "done") {
     // Run finished
     socket.close(1000);
@@ -309,7 +295,7 @@ socket.onclose = (event) => {
 ## Troubleshooting
 
 **Connection refused or 403 forbidden**
-- Check that your token is valid and not expired. Verify it is passed via the `Authorization` header, `10xgraph-bearer` subprotocol, or `?token=` query.
+- Check that your token is valid and not expired. Verify it is passed via the `Authorization` header, the `10xgraph-bearer` subprotocol, or `?token=` query. A rejected handshake closes with code 1008.
 - Confirm authentication is enabled and configured in `10xgraph.json` (`"auth": "jwt"` or custom).
 
 **Socket closes with code 1008**
@@ -317,7 +303,7 @@ socket.onclose = (event) => {
 - If the message is "Session expired...", your token has expired. Reconnect with a fresh token.
 
 **Socket closes with code 1013**
-- Rate limit or connection cap exceeded. Wait the `retry_after_seconds` and try again.
+- Rate limit or connection cap exceeded at the handshake. Wait and reconnect.
 - Check `websocket.max_connections` and `websocket.max_connections_per_user` in your config.
 
 **Proxy forwarding issues**
@@ -326,8 +312,8 @@ socket.onclose = (event) => {
 - Increase proxy timeouts: WebSocket connections can be long-lived, so set read/write timeouts to several minutes or higher.
 
 **Audio glitches or delays on `/v1/graph/live`**
-- Increase `prefix_padding_ms` in the VAD config to buffer more audio before triggering speech detection.
-- Reduce `vad.threshold` if speech is missed; increase it if background noise is detected as speech.
+- Increase `vad.prefix_padding_ms` to keep more audio from before speech is detected.
+- Tune `start_sensitivity` and `end_sensitivity` in the `vad` object if speech is missed or background noise triggers it.
 - Check network latency; realtime is sensitive to round-trip time.
 
 ## Related pages

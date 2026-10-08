@@ -321,9 +321,9 @@ case = EvalCase.single_turn(
 case.tags = ["billing", "support"]
 ```
 
-### Case with session state
+### Case with session settings
 
-If your agent uses session state (custom fields in `AgentState`), include it in `session_input`:
+`session_input` holds per-case session settings. The evaluator passes `session_input.user_id` and the entries of `session_input.config` into the run config for each case. For example, to run a case as a specific user:
 
 ```python
 case = EvalCase.single_turn(
@@ -331,10 +331,11 @@ case = EvalCase.single_turn(
     user_query="What can you tell me?",
     expected_response="Based on your account...",
 )
-case.session_input.state = {"user_tier": "premium", "credits": 100}
+case.session_input.user_id = "premium_user"
+case.session_input.config = {"tier": "premium"}
 ```
 
-The evaluator will initialize the agent's state with these values before running the case.
+The `session_input.state` field exists on the model, but the evaluator does not currently apply it to the agent's state.
 
 ## Next steps
 

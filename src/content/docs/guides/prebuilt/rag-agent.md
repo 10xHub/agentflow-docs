@@ -24,7 +24,7 @@ RAGAgent implements Retrieval-Augmented Generation: it retrieves relevant docume
 
 ## Why RAGAgent
 
-A language model's answers are limited to its training data, which is static and quickly becomes outdated. RAGAgent solves this by injecting retrieval into the flow: the LLM no longer guesses, it reads. This makes answers more accurate, traceable, and verifiable because every answer cites the documents behind it.
+A language model's answers are limited to its training data, which is static and quickly becomes outdated. RAGAgent solves this by injecting retrieval into the flow: the LLM no longer guesses, it reads. This makes answers more accurate, traceable, and verifiable because the retrieved documents are available in state for every answer.
 
 The pattern is especially effective for:
 
@@ -65,7 +65,7 @@ The retrieved documents are always available in `state.execution_meta.internal_d
 
 - Your knowledge base is too large to fit in the system prompt or context window.
 - Documents are added, updated, or deleted over time.
-- You need trace-ability: every answer should cite sources.
+- You need traceability: you want to inspect which documents backed each answer.
 - The user's question is about specific documents, not general reasoning.
 
 **Use ReactAgent instead if:**
@@ -92,7 +92,7 @@ The typical workflow when using a reranker:
 2. Rerank and keep the top few (`top_n=5`): slower, more accurate.
 3. Synthesize with only the best candidates.
 
-This two-stage approach gets you 80% of the benefit with 20% of the cost.
+This two-stage approach keeps the expensive scoring to a small candidate set.
 
 ### Reranker options
 
@@ -127,7 +127,7 @@ When you create a RAGAgent, you configure both the retrieval behavior and the un
 | Parameter | Type | Default | What it does |
 |---|---|---|---|
 | `state` | `AgentState \| None` | `None` | Optional custom state subclass. If you need extra fields beyond messages and context, subclass `AgentState` and pass it here. |
-| `context_manager` | `BaseContextManager \| None` | `None` | Strategy for trimming or summarizing context when it grows too large. Link to `/docs/guides/use-context-manager`. |
+| `context_manager` | `BaseContextManager \| None` | `None` | Strategy for trimming or summarizing context when it grows too large. See `/docs/guides/use-context-manager`. |
 | `publisher` | `BasePublisher \| None` | `None` | Event publisher for streaming or observability (e.g., `ConsolePublisher`). Can be a single publisher or a list of publishers. |
 | `id_generator` | `BaseIDGenerator` | `DefaultIDGenerator()` | Generates run and message IDs. Replace to use UUIDs, Snowflake IDs, or custom formats. |
 | `container` | `InjectQ \| None` | `None` | Dependency injection container. If your tools need injected parameters, pass the InjectQ container here. |
@@ -140,19 +140,19 @@ After constructing RAGAgent, you call `.compile(...)` to finalize the graph and 
 
 | Parameter | Type | Default | What it does |
 |---|---|---|---|
-| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persists conversation state to disk or database. Required for multi-turn conversations that survive restarts. Examples: `InMemoryCheckpointer()`, `PgCheckpointer()`. |
-| `store` | `BaseStore \| None` | `None` | Long-term memory store for the agent (separate from the retrieval `store`). Used by memory tools to store facts across conversations. Link to `/docs/guides/use-memory-store`. |
+| `checkpointer` | `BaseCheckpointer \| None` | `None` | Persists conversation state. `None` uses an `InMemoryCheckpointer`; use a persistent checkpointer for conversations that survive restarts. Examples: `InMemoryCheckpointer()`, `PgCheckpointer()`. |
+| `store` | `BaseStore \| None` | `None` | Long-term memory store for the agent (separate from the retrieval `store`). Used by memory tools to store facts across conversations. See `/docs/guides/use-memory-store`. |
 | `interrupt_before` | `list[str] \| None` | `None` | Node names to pause before. Useful for human-in-the-loop: pause before RETRIEVE, review the query, then resume. Valid names: `"RETRIEVE"`, `"RERANK"`, `"SYNTHESIZE"`. |
 | `interrupt_after` | `list[str] \| None` | `None` | Node names to pause after. Example: pause after RETRIEVE to inspect retrieved documents before the LLM sees them. |
 | `callback_manager` | `CallbackManager` | `CallbackManager()` | Lifecycle hooks (before/after invoke, on error, etc.). Used for logging, monitoring, or side effects. |
 | `media_store` | `BaseMediaStore \| None` | `None` | Storage for images, audio, or documents passed through the conversation. Required if your LLM calls see multimodal content. |
-| `shutdown_timeout` | `float` | `30.0` | Seconds to wait for graceful shutdown. When the graph closes, it cancels in-flight tasks and waits this long before forcefully exiting. |
+| `shutdown_timeout` | `float` | `30.0` | Seconds to wait for graceful shutdown. |
 
 ---
 
 ## Getting started: minimal example
 
-The simplest RAGAgent only needs a store and an agent. Vector retrieval alone works well for most use cases.
+The simplest RAGAgent only needs a store and an agent. Vector retrieval alone works well for most use cases. The example assumes the `./knowledge_base` collection is already indexed with the same embedding model (see `/docs/guides/use-memory-store`).
 
 ```python
 import asyncio
@@ -174,7 +174,7 @@ rag = RAGAgent(
     agent=Agent(
         model="gpt-4o-mini",
         provider="openai",
-        system_prompt="Answer using only the provided context. If not found, say so.",
+        system_prompt=[{"role": "system", "content": "Answer using only the provided context. If not found, say so."}],
     ),
     top_k=5,  # Retrieve 5 documents.
 )
@@ -187,7 +187,7 @@ async def main():
         {"messages": [Message.text_message("What is the refund policy?")]},
         config={"thread_id": "customer-1"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -195,7 +195,7 @@ asyncio.run(main())
 Run this with:
 
 ```bash
-pip install "10xgraph[openai]"
+pip install "10xgraph[openai,qdrant]"
 export OPENAI_API_KEY=sk-...
 python script.py
 ```
@@ -229,7 +229,7 @@ rag = RAGAgent(
     agent=Agent(
         model="gpt-4o",
         provider="openai",
-        system_prompt="Use only the provided context.",
+        system_prompt=[{"role": "system", "content": "Use only the provided context."}],
     ),
     reranker=CohereReranker(api_key="YOUR_COHERE_KEY", model="rerank-v4.0-pro"),
     top_k=20,  # Retrieve 20 candidates.
@@ -243,7 +243,7 @@ async def main():
         {"messages": [Message.text_message("Summarize the warranty terms.")]},
         config={"thread_id": "customer-2"},
     )
-    print(result["context"][-1].text())
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -251,7 +251,7 @@ asyncio.run(main())
 Install and run:
 
 ```bash
-pip install "10xgraph[openai]" cohere
+pip install "10xgraph[openai,qdrant]" cohere
 export OPENAI_API_KEY=sk-...
 export COHERE_API_KEY=...
 python script.py
@@ -287,7 +287,7 @@ app = rag.compile()
 Install:
 
 ```bash
-pip install "10xgraph[openai]" sentence-transformers
+pip install "10xgraph[openai,qdrant]" sentence-transformers
 ```
 
 ---
@@ -315,29 +315,32 @@ rag = RAGAgent(
     agent=Agent(
         model="gpt-4o-mini",
         provider="openai",
-        system_prompt="Answer questions using only the provided context.",
+        system_prompt=[{"role": "system", "content": "Answer questions using only the provided context."}],
     ),
     top_k=5,
 )
 
 # Persist state to Postgres + Redis.
-checkpointer = PgCheckpointer(postgres_dsn="postgresql://user:pass@localhost/db")
+checkpointer = PgCheckpointer(
+    postgres_dsn="postgresql://user:pass@localhost/db",
+    redis_url="redis://localhost:6379",
+)
 app = rag.compile(checkpointer=checkpointer)
 
 async def main():
     # First turn.
     result1 = await app.ainvoke(
         {"messages": [Message.text_message("What is the refund policy?")]},
-        config={"thread_id": "customer-session-1"},
+        config={"thread_id": "customer-session-1", "user_id": "customer-1"},
     )
-    print("First answer:", result1["context"][-1].text())
+    print("First answer:", result1["messages"][-1].text())
     
     # Second turn in the same thread, the agent remembers the first exchange.
     result2 = await app.ainvoke(
         {"messages": [Message.text_message("Does it apply to digital products?")]},
-        config={"thread_id": "customer-session-1"},
+        config={"thread_id": "customer-session-1", "user_id": "customer-1"},
     )
-    print("Follow-up answer:", result2["context"][-1].text())
+    print("Follow-up answer:", result2["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -345,9 +348,8 @@ asyncio.run(main())
 Install and run:
 
 ```bash
-pip install "10xgraph[openai,pg_checkpoint]"
+pip install "10xgraph[openai,qdrant,pg_checkpoint]"
 export OPENAI_API_KEY=sk-...
-export POSTGRES_DSN=postgresql://user:pass@localhost/db
 python script.py
 ```
 
@@ -361,6 +363,7 @@ Implement the `BaseReranker` protocol to plug in your own ranking logic.
 from tenxgraph.core.graph import Agent
 from tenxgraph.prebuilt.agent import RAGAgent
 
+# Any object with an async `arerank` method satisfies the protocol.
 class MyCustomReranker:
     """Score documents by length (longest first)."""
     
@@ -404,7 +407,7 @@ rag = RAGAgent(
     agent=Agent(
         model="gpt-4o-mini",
         provider="openai",
-        system_prompt="Answer questions using the provided context only.",
+        system_prompt=[{"role": "system", "content": "Answer questions using the provided context only."}],
     ),
     top_k=5,
 )
@@ -433,7 +436,7 @@ Then run:
 10xgraph play
 ```
 
-The playground opens at `http://localhost:8080`. Type your question and see the answer plus retrieved documents in the inspector.
+The command starts the API server and opens the hosted playground. Type your question to see the answer.
 
 ---
 
@@ -488,19 +491,25 @@ rag = RAGAgent(
 The retrieved documents are always available in state if you need to inspect, log, or post-process them.
 
 ```python
+import asyncio
+from tenxgraph.core.state import Message
+from tenxgraph.utils import ResponseGranularity
+
+
 async def main():
     result = await app.ainvoke(
         {"messages": [Message.text_message("What is the refund policy?")]},
         config={"thread_id": "customer-1"},
+        response_granularity=ResponseGranularity.FULL,
     )
-    
-    # Inspect the retrieved documents.
-    docs = result["execution_meta"].internal_data.get("rag_docs", [])
+
+    # Inspect the retrieved documents (result["state"] needs FULL granularity).
+    docs = result["state"].execution_meta.internal_data.get("rag_docs", [])
     print(f"Retrieved {len(docs)} documents:")
     for i, doc in enumerate(docs, 1):
         print(f"[{i}] {doc[:100]}...")
     
-    print(f"\nAnswer: {result['context'][-1].text()}")
+    print(f"\nAnswer: {result['messages'][-1].text()}")
 
 asyncio.run(main())
 ```
@@ -511,7 +520,7 @@ asyncio.run(main())
 
 ### RAG + tools
 
-If you need to combine retrieval with tool calls (e.g., retrieve docs, then call an API), use a custom StateGraph instead. Link to `/docs/guides/build-a-graph`.
+If you need to combine retrieval with tool calls (e.g., retrieve docs, then call an API), use a custom StateGraph instead. See `/docs/guides/build-a-graph`.
 
 ### RAG + long context
 
@@ -523,7 +532,7 @@ Each turn retrieves fresh documents based on the latest message. The checkpointe
 
 ### Evaluating RAG quality
 
-Use evaluation sets to measure retrieval and generation quality. Link to `/docs/guides/testing` for setup.
+Use evaluation sets to measure retrieval and generation quality. See `/docs/reference/python/evaluation` for the evaluation tools.
 
 ---
 

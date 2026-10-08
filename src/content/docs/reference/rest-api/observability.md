@@ -50,7 +50,6 @@ Omit the `Authorization` header if the server runs without auth.
 
 ```json
 {
-  "success": true,
   "data": {
     "thread_id": "my-thread-1",
     "run_count": 2,
@@ -118,7 +117,8 @@ Omit the `Authorization` header if the server runs without auth.
       "tool_calls": 1,
       "iterations": 2
     }
-  }
+  },
+  "metadata": {"request_id": "...", "timestamp": "...", "message": "OK"}
 }
 ```
 

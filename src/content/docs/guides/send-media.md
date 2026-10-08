@@ -9,7 +9,7 @@ label: Send media
 updated: "2026-10-08"
 faq:
   - q: "When should I use each MediaRef kind?"
-    a: "Use `url` for public or CDN-hosted media. Use `data` for small payloads embedded directly in the message. Use `file_id` for repeated references or production workflows with a media store."
+    a: "Use `url` for public or CDN-hosted media, and for `graph://media/{key}` references built with `media_store.to_media_ref()`. Use `data` for small payloads embedded directly in the message. Use `file_id` only for provider-managed file IDs."
   - q: "Do I need a media store for production?"
     a: "For single-server setups, LocalFileMediaStore works. For multi-worker or cloud deployments, use CloudMediaStore (S3/GCS) so all workers can access the same files."
   - q: "Can I send media over the REST API?"
@@ -41,9 +41,13 @@ Each block except `TextBlock` holds a `MediaRef` that tells 10xGraph where the b
 
 | Kind | Use case |
 |---|---|
-| `url` | External URL or `graph://media/{key}` from a media store |
-| `data` | Inline base64 for small payloads only |
-| `file_id` | Reference to a file uploaded via the REST API or pre-stored in your media store |
+| `url` | External URL, or `graph://media/{key}` from a media store (use `media_store.to_media_ref(key, mime_type)` to build it) |
+| `data` | Inline base64 (`data_base64`) for small payloads only |
+| `file_id` | A provider-managed file ID, for example one returned by the OpenAI or Gemini file APIs |
+
+An `Agent` only keeps media blocks when you pass it a `multimodal_config`. Without one, image, audio, video and document blocks are stripped before the model call. The examples below all pass `MultimodalConfig()`.
+
+Install the provider extra for the model you use, for example `pip install "10xgraph[google-genai]"` for Gemini or `pip install "10xgraph[openai]"` for OpenAI.
 
 ---
 
@@ -52,13 +56,22 @@ Each block except `TextBlock` holds a `MediaRef` that tells 10xGraph where the b
 Send an image directly from the web:
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph.core.graph import Agent, StateGraph
 from tenxgraph.core.state import Message, TextBlock, ImageBlock, MediaRef
+from tenxgraph.storage.media import MultimodalConfig
+from tenxgraph.utils import END
 
 agent = Agent(
     model="gemini-2.5-flash",
     provider="google",
+    multimodal_config=MultimodalConfig(),
 )
+
+graph = StateGraph()
+graph.add_node("MAIN", agent)
+graph.set_entry_point("MAIN")
+graph.add_edge("MAIN", END)
+app = graph.compile()
 
 messages = [
     Message(
@@ -68,7 +81,7 @@ messages = [
             ImageBlock(
                 media=MediaRef(
                     kind="url",
-                    url="https://upload.wikimedia.org/wikipedia/commons/4/47/example.png",
+                    url="https://example.com/photo.png",
                     mime_type="image/png",
                 )
             ),
@@ -76,11 +89,11 @@ messages = [
     )
 ]
 
-result = agent.invoke({"messages": messages})
-print(result["messages"][-1].content[0].text)
+result = app.invoke({"messages": messages})
+print(result["messages"][-1].text())
 ```
 
-This is the simplest approach: the agent fetches the image and sends it to the model.
+This is the simplest approach: you give the model a URL and 10xGraph resolves it for the provider. `Agent` is a graph node, so run it through a compiled graph (`app`), which later examples reuse.
 
 ---
 
@@ -114,7 +127,7 @@ messages = [
     )
 ]
 
-result = agent.invoke({"messages": messages})
+result = app.invoke({"messages": messages})
 ```
 
 This works well for development and testing. For production or repeated references, use a media store instead.
@@ -132,6 +145,9 @@ from tenxgraph.storage.media import InMemoryMediaStore
 
 media_store = InMemoryMediaStore()
 
+# Bind the store to the graph so graph://media/ references can be resolved
+app = graph.compile(media_store=media_store)
+
 # Upload and get a storage key
 async def setup():
     with open("chart.png", "rb") as f:
@@ -140,24 +156,18 @@ async def setup():
 
 key = asyncio.run(setup())
 
-# Reference by key in a message
+# Reference by key in a message (builds a graph://media/{key} URL)
 messages = [
     Message(
         role="user",
         content=[
             TextBlock(text="Analyze this chart and extract the numbers."),
-            ImageBlock(
-                media=MediaRef(
-                    kind="file_id",
-                    file_id=key,
-                    mime_type="image/png",
-                )
-            ),
+            ImageBlock(media=media_store.to_media_ref(key, "image/png")),
         ],
     )
 ]
 
-result = agent.invoke({"messages": messages})
+result = app.invoke({"messages": messages})
 ```
 
 The store returns an opaque key. You can reference that key in unlimited messages without re-uploading the file. This is recommended for production.
@@ -169,7 +179,11 @@ The store returns an opaque key. You can reference that key in unlimited message
 Audio blocks work the same way as images:
 
 ```python
+import base64
 from tenxgraph.core.state import AudioBlock
+
+with open("clip.wav", "rb") as f:
+    audio_bytes = f.read()
 
 messages = [
     Message(
@@ -203,8 +217,8 @@ messages = [
             DocumentBlock(
                 text="Optional: pre-extracted text if you have it already.",
                 media=MediaRef(
-                    kind="file_id",
-                    file_id="my-doc-key",
+                    kind="url",
+                    url="https://example.com/contract.pdf",
                     mime_type="application/pdf",
                 ),
             ),
@@ -215,9 +229,9 @@ messages = [
 
 ---
 
-## Control media handling with MultimodalConfig
+## Configure media with MultimodalConfig
 
-Pass `MultimodalConfig` to `Agent` to control how media is delivered to the LLM provider. Different providers support different transport modes; `MultimodalConfig` lets you specify preferences and size limits:
+Pass `MultimodalConfig` to `Agent` to enable media for that agent. Agents without it strip media blocks, which keeps text-only agents in a multi-agent graph from receiving images added by an earlier agent.
 
 ```python
 from tenxgraph.core.graph import Agent
@@ -228,11 +242,11 @@ from tenxgraph.storage.media import (
 )
 
 agent = Agent(
-    model="gpt-4-vision",
+    model="gpt-4o",
     provider="openai",
     multimodal_config=MultimodalConfig(
-        image_handling=ImageHandling.BASE64,          # "base64" | "url" | "file_id"
-        document_handling=DocumentHandling.EXTRACT_TEXT,  # "extract_text" | "pass_raw" | "skip"
+        image_handling=ImageHandling.BASE64,
+        document_handling=DocumentHandling.EXTRACT_TEXT,
         max_image_size_mb=10.0,
         max_image_dimension=2048,
         supported_image_types={"image/jpeg", "image/png", "image/webp"},
@@ -241,23 +255,30 @@ agent = Agent(
 )
 ```
 
-- **Image handling**: `BASE64` embeds inline, `URL` sends a URL reference, `FILE_ID` uses provider-native file upload APIs.
-- **Document handling**: `EXTRACT_TEXT` converts PDFs to text (if extraction is available), `FORWARD_RAW` sends the raw file, `SKIP` ignores documents.
+The fields and defaults are:
 
-The resolver attempts transport modes in preference order based on your strategy and the provider's capabilities. You do not need to manage fallbacks.
+| Field | Default |
+|---|---|
+| `image_handling` | `ImageHandling.BASE64` (also `URL`, `FILE_ID`) |
+| `document_handling` | `DocumentHandling.EXTRACT_TEXT` (also `FORWARD_RAW`, `SKIP`) |
+| `max_image_size_mb` | `10.0` |
+| `max_image_dimension` | `2048` |
+| `supported_image_types` | JPEG, PNG, WebP, GIF |
+| `supported_doc_types` | PDF, DOCX |
+
+The size, dimension and type limits are enforced by `MediaProcessor` (`tenxgraph.storage.media`), which you call yourself to validate or resize images before sending. The `Agent` does not apply them automatically. Document text extraction is not part of the core library; it lives in the API server, so pass pre-extracted text in `DocumentBlock(text=...)` when you need it.
 
 ---
 
 ## Complete graph with media store
 
-Here is a production-ready example that combines a graph, checkpointer, and media store:
+Here is an example that combines a graph, checkpointer, and media store:
 
 ```python
 import asyncio
 from tenxgraph.core.graph import Agent, StateGraph
 from tenxgraph.core.state import (
     ImageBlock,
-    MediaRef,
     Message,
     TextBlock,
 )
@@ -276,7 +297,7 @@ async def main():
     agent = Agent(
         model="gemini-2.5-flash",
         provider="google",
-        system_prompt="You are a helpful image analyst.",
+        system_prompt=[{"role": "system", "content": "You are a helpful image analyst."}],
         multimodal_config=MultimodalConfig(
             image_handling=ImageHandling.BASE64,
         ),
@@ -287,7 +308,7 @@ async def main():
     graph.set_entry_point("agent")
     graph.add_edge("agent", END)
 
-    app = graph.compile(checkpointer=checkpointer)
+    app = graph.compile(checkpointer=checkpointer, media_store=media_store)
 
     # Upload an image
     with open("sample.jpg", "rb") as f:
@@ -302,27 +323,19 @@ async def main():
             role="user",
             content=[
                 TextBlock(text="What objects do you see?"),
-                ImageBlock(
-                    media=MediaRef(
-                        kind="file_id",
-                        file_id=image_key,
-                        mime_type="image/jpeg",
-                    )
-                ),
+                ImageBlock(media=media_store.to_media_ref(image_key, "image/jpeg")),
             ],
         )
     ]
 
     # Invoke
-    result = app.invoke(
+    result = await app.ainvoke(
         {"messages": messages},
         config={"thread_id": "image-analysis-1"},
     )
 
     # Print the response
-    for block in result["messages"][-1].content:
-        if hasattr(block, "text"):
-            print(block.text)
+    print(result["messages"][-1].text())
 
 asyncio.run(main())
 ```
@@ -333,7 +346,7 @@ asyncio.run(main())
 
 10xGraph provides three storage backends. Choose based on your deployment model:
 
-**InMemoryMediaStore**, Development and testing. Data is lost on process restart.
+**InMemoryMediaStore**: Development and testing. Data is lost on process restart.
 
 ```python
 from tenxgraph.storage.media import InMemoryMediaStore
@@ -343,10 +356,10 @@ key = await store.store(data=image_bytes, mime_type="image/png")
 bytes_back, mime = await store.retrieve(key)
 ```
 
-**LocalFileMediaStore**, Single-server deployments. Stores files on disk with sharding.
+**LocalFileMediaStore**: Single-server deployments. Stores files on disk with sharding.
 
 ```python
-from tenxgraph.storage.media.storage import LocalFileMediaStore
+from tenxgraph.storage.media import LocalFileMediaStore
 
 store = LocalFileMediaStore(base_dir="./media")
 key = await store.store(data=pdf_bytes, mime_type="application/pdf")
@@ -354,7 +367,7 @@ key = await store.store(data=pdf_bytes, mime_type="application/pdf")
 
 Files are sharded as `{base_dir}/{key[:2]}/{key[2:4]}/{key}.{ext}` with a `.meta.json` sidecar for metadata.
 
-**CloudMediaStore**, Multi-worker and cloud deployments. Stores in S3 or GCS.
+**CloudMediaStore**: Multi-worker and cloud deployments. Stores in S3 or GCS.
 
 ```bash
 pip install "10xgraph[cloud-storage]"
@@ -371,7 +384,7 @@ storage = CloudStorageFactory.get_storage(StorageProvider.AWS, config)
 store = CloudMediaStore(storage, prefix="10xgraph-media")
 ```
 
-All stores expose the same async interface: `store()`, `retrieve()`, `delete()`, `exists()`, and `get_metadata()`.
+All stores expose the same async interface: `store()`, `retrieve()`, `delete()`, `exists()`, and `get_metadata()`, plus `to_media_ref()` to build a message reference.
 
 ---
 
@@ -381,7 +394,7 @@ All stores expose the same async interface: `store()`, `retrieve()`, `delete()`,
 
 **Provide MIME types.** Always include `mime_type` in `MediaRef`. The provider needs it to interpret the bytes correctly.
 
-**Size limits are configurable.** When running behind the API server, check `MEDIA_MAX_SIZE_MB` and `MEDIA_ALLOWED_CONTENT_TYPES` environment variables. For Python graphs, `MultimodalConfig.max_image_size_mb` applies locally.
+**Size limits are configurable.** When running behind the API server, check `MEDIA_MAX_SIZE_MB` and `MEDIA_ALLOWED_CONTENT_TYPES` environment variables. For Python graphs, `MultimodalConfig.max_image_size_mb` is enforced only when you use `MediaProcessor`.
 
 **Pre-extract text when possible.** Document blocks can carry both raw bytes and pre-extracted text. If you have text extracted already (e.g. from a PDF parser), include it via the `text` parameter so the model has text to work with even if it cannot process the raw file.
 
@@ -392,9 +405,9 @@ All stores expose the same async interface: `store()`, `retrieve()`, `delete()`,
 ## What you learned
 
 - Message content is a list of typed blocks: `TextBlock`, `ImageBlock`, `AudioBlock`, `DocumentBlock`, etc.
-- `MediaRef` decouples message structure from media transport: `kind="url"` for public URLs, `kind="data"` for inline base64, `kind="file_id"` for storage references.
+- `MediaRef` decouples message structure from media transport: `kind="url"` for public URLs, `kind="data"` for inline base64, `kind="file_id"` for provider file IDs; use `media_store.to_media_ref()` for storage references.
 - Use `InMemoryMediaStore` for development, `LocalFileMediaStore` for single servers, `CloudMediaStore` for multi-worker setups.
-- `MultimodalConfig` on the `Agent` controls how media is sent to each provider (base64, URLs, or native file APIs).
+- `MultimodalConfig` on the `Agent` enables media for that agent; without it, media blocks are stripped.
 - Always provide MIME types and respect size limits.
 
 ---

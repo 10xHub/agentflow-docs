@@ -38,6 +38,10 @@ Define a tool that asks for approval before taking action:
 ```python
 from tenxgraph.utils import interrupt
 
+async def issue_refund_to_bank(amount: float) -> str:
+    # Stand-in for your payment call.
+    return "ok"
+
 async def refund(amount: float) -> str:
     """Issue a refund, but ask for approval first."""
     decision = interrupt(
@@ -65,6 +69,8 @@ async def refund(amount: float) -> str:
     result = await issue_refund_to_bank(amount)
     return f"Refund of ${amount} issued: {result}"
 ```
+
+Register `refund` in a `ToolNode` like any other tool, compile the graph with a checkpointer (the default `InMemoryCheckpointer` works for local runs), and always pass a `thread_id` so the thread can be resumed.
 
 The `interrupt()` function accepts these parameters:
 
@@ -144,7 +150,7 @@ result = await app.ainvoke(
     config=config,
 )
 
-print(result["state"].messages[-1].content)  # Output from refund() tool.
+print(result["messages"][-1].text())  # Final response after the refund tool ran.
 ```
 
 The paused node runs again from the start (not from the interrupt call), and this time `interrupt()` returns the resume value instead of stopping the graph. The execution continues normally after that.
@@ -289,28 +295,36 @@ The API server exposes the pause/resume mechanism over REST. When a thread is pa
 
 ### Invoking and pausing
 
+The `thread_id` goes inside `config`. Set `response_granularity` to `full` so the response includes the state:
+
 ```bash
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "Refund my order, $25"}],
-    "thread_id": "order-42"
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Refund my order, $25"}]}],
+    "config": {"thread_id": "order-42"},
+    "response_granularity": "full"
   }'
 ```
 
-Response (paused):
+The response has the usual `messages`, `state`, `context`, `summary` and `meta` fields. There is no top-level `interrupt` field. The pending interrupt is stored in the returned state, under `execution_meta.interrupt_data.interrupt`, with `execution_meta.interrupt_reason` set to `"interrupt"`:
 
 ```json
 {
-  "status": "interrupted",
-  "interrupt": {
-    "id": "int_abc123...",
-    "message": "Approve a refund of $25?",
-    "value": {"amount": 25},
-    "reason": "tool_approval",
-    "response_schema": {...}
-  },
-  "state": {...}
+  "state": {
+    "execution_meta": {
+      "interrupt_reason": "interrupt",
+      "interrupt_data": {
+        "interrupt": {
+          "id": "int_abc123...",
+          "message": "Approve a refund of $25?",
+          "value": {"amount": 25},
+          "reason": "tool_approval",
+          "response_schema": {}
+        }
+      }
+    }
+  }
 }
 ```
 
@@ -321,15 +335,15 @@ curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
     "resume": {"approved": true},
-    "thread_id": "order-42"
+    "config": {"thread_id": "order-42"}
   }'
 ```
 
-The `/v1/graph/stream` route similarly accepts `"resume"` in place of `"messages"` to resume a paused thread and stream the rest of the execution.
+The `/v1/graph/stream` route similarly accepts `"resume"` in place of `"messages"` to resume a paused thread and stream the rest of the execution. When streaming with `"response_granularity": "full"`, the pause arrives as an `updates` chunk with `"status": "interrupted"` and an `interrupt` object.
 
 ## Integration with AG-UI and CopilotKit
 
-The [AG-UI](/docs/server/ag-ui) and [CopilotKit](https://docs.copilotkit.ai/) frameworks have built-in support for pauses from `interrupt()`:
+The [AG-UI](/docs/server/ag-ui) endpoint (off by default; it needs the `ag-ui` extra and a config key) supports pauses from `interrupt()`, and so does [CopilotKit](https://docs.copilotkit.ai/) on top of it:
 
 - When the graph pauses at `interrupt()`, the run ends with an `"interrupt"` outcome.
 - The UI receives the `message`, `value`, `response_schema`, and other fields from the `Interrupt` object.
@@ -345,6 +359,9 @@ See [10xGraph with CopilotKit](/docs/integrations/copilotkit) for a complete exa
 Use `interrupt()` in a tool that performs a sensitive action to ask for confirmation:
 
 ```python
+from tenxgraph.utils import interrupt
+from tenxgraph.utils.decorators import tool
+
 @tool
 async def transfer_funds(account: str, amount: float) -> str:
     """Transfer funds with human approval."""

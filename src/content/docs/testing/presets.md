@@ -31,12 +31,13 @@ All `EvalPresets` methods are class methods that return an `EvalConfig` instance
 Evaluates response text using ROUGE-1 token overlap. No LLM API calls, instant results. Ideal for smoke tests during active development and continuous integration pipelines where latency matters.
 
 ```python
-from tenxgraph.qa.evaluation import EvalPresets
+from tenxgraph.qa.evaluation import AgentEvaluator, EvalPresets
 
 config = EvalPresets.quick_check()
 
-# Run evaluation with this config
-result = evaluator.evaluate(eval_set, config)
+# The config is passed to AgentEvaluator, which then runs the eval set
+evaluator = AgentEvaluator(graph, collector, config=config)
+report = await evaluator.evaluate(eval_set)
 ```
 
 **Includes:**
@@ -163,7 +164,7 @@ config = EvalPresets.comprehensive(
 ```
 
 **Parameters:**
-- `threshold`: Minimum score for all criteria
+- `threshold`: Minimum score for `rouge_match` and the LLM criteria. `tool_name_match` and `trajectory` always use a threshold of 1.0 (`trajectory` is IN_ORDER with `check_args=True`)
 - `use_llm_judge`: If `True`, includes all LLM-based criteria
 - `judge_model`: LLM model for evaluation
 
@@ -208,8 +209,8 @@ config = EvalPresets.custom(
 - `response_threshold`: Enable response matching at this threshold (or `None` to skip)
 - `tool_threshold`: Enable tool matching at this threshold
 - `llm_judge_threshold`: Enable LLM-as-judge at this threshold
-- `tool_match_type`: `MatchType.EXACT` (strict sequence) or `MatchType.IN_ORDER` (loose sequence)
-- `check_tool_args`: Whether to validate tool arguments
+- `tool_match_type`: a `MatchType` value (`EXACT`, `IN_ORDER` or `ANY_ORDER`); defaults to `IN_ORDER`
+- `check_tool_args`: Whether to validate tool arguments (default `True`)
 - `hallucination_threshold`: Enable hallucination detection
 - `safety_threshold`: Enable safety checking
 - `factual_accuracy_threshold`: Enable factual accuracy checking
@@ -266,6 +267,8 @@ Configurations can be serialized to JSON and loaded back, making it easy to vers
 from tenxgraph.qa.evaluation import EvalConfig
 
 # Create and save
+from tenxgraph.qa.evaluation import EvalPresets
+
 config = EvalPresets.tool_usage(threshold=1.0)
 config.to_file("my_eval_config.json")
 
@@ -344,7 +347,7 @@ config = EvalConfig(
             threshold=1.0,  # All keywords must be present
         ),
     ),
-    parallel=True,           # Run criteria in parallel
+    parallel=True,           # Run eval cases concurrently
     max_concurrency=4,       # Maximum concurrent evaluations
     timeout=120.0,           # 120-second timeout per case
 )
@@ -402,7 +405,7 @@ Different agents require different evaluation strategies. Use this table to pick
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `criteria` | `CriteriaConfig` | empty | Which criteria to run and their thresholds |
-| `parallel` | bool | `False` | Run criteria in parallel |
+| `parallel` | bool | `False` | Run eval cases concurrently |
 | `max_concurrency` | int | `4` | Max concurrent evaluations when `parallel=True` |
 | `timeout` | float | `300.0` | Timeout per evaluation case (seconds) |
 | `verbose` | bool | `False` | Print detailed logging |
@@ -414,6 +417,7 @@ Different agents require different evaluation strategies. Use this table to pick
 Controls how tool trajectories are compared:
 - `MatchType.EXACT`: Required tools must appear in exact order; no extra tools allowed
 - `MatchType.IN_ORDER`: Required tools must appear in order, but extra tools are permitted
+- `MatchType.ANY_ORDER`: Required tools must all appear in any order; extra tools are permitted
 
 ---
 

@@ -24,9 +24,9 @@ The 10xGraph API server accepts cross-origin requests by default via Starlette's
 
 ### Origins and credentials
 
-CORS headers are set in the environment or `10xgraph.json`. The `ORIGINS` setting is a comma-separated list of allowed origins (e.g., `https://yourdomain.com, https://app.yourdomain.com`). A wildcard (`*`) allows any origin but is dangerous when combined with credentials.
+CORS is configured through environment variables (loaded from your `.env` file or the process environment), not `10xgraph.json`. The `ORIGINS` setting (default `*`) is a comma-separated list of allowed origins (e.g., `https://yourdomain.com, https://app.yourdomain.com`). A wildcard (`*`) allows any origin but is dangerous when combined with credentials.
 
-When `CORS_ALLOW_CREDENTIALS=true` (the default), the server reflects the caller's `Origin` header back in the `Access-Control-Allow-Credentials: true` response. This is the credentialed case: cookies, auth headers, or client certificates sent by the browser.
+When `CORS_ALLOW_CREDENTIALS=true` (the default), responses carry `Access-Control-Allow-Credentials: true`. All methods and headers are allowed. This is the credentialed case: cookies, auth headers, or client certificates sent by the browser.
 
 The insecure case happens when you set `ORIGINS=*` and `CORS_ALLOW_CREDENTIALS=true`. The server then reflects any caller's origin back with credentials enabled, which turns every website into a trusted one. In development, this is accepted with a warning. In production (`MODE=production`), the server refuses to start with this configuration.
 
@@ -48,16 +48,14 @@ export ORIGINS="https://yourdomain.com, https://app.yourdomain.com"
 export CORS_ALLOW_CREDENTIALS="true"
 ```
 
-Or in `10xgraph.json` by setting env vars that the middleware reads at startup (verified in `core/config/settings.py`).
-
 ### Host validation
 
-The `ALLOWED_HOST` setting (comma-separated, default `*`) is checked by the `TrustedHostMiddleware`. It rejects requests to hostnames not in the list, protecting against Host header injection attacks. The `/ping` health check is exempt so container orchestration probes work.
+The `ALLOWED_HOST` setting (comma-separated, default `*`, no spaces after the commas) is checked by the `TrustedHostMiddleware`. It rejects requests to hostnames not in the list, protecting against Host header injection attacks. The `/ping` health check is exempt so container orchestration probes work.
 
 In production, set `ALLOWED_HOST` to the DNS names your API answers to:
 
 ```bash
-export ALLOWED_HOST="api.yourdomain.com, api-backup.yourdomain.com"
+export ALLOWED_HOST="api.yourdomain.com,api-backup.yourdomain.com"
 ```
 
 Verify your configuration is working by inspecting the headers:
@@ -79,17 +77,17 @@ Security headers instruct browsers to enforce policies that prevent common attac
 
 ### Available headers
 
-These headers are added by default. Configure them via environment variables (verified in `core/config/settings.py`):
+These headers are added by default. Configure them via environment variables:
 
 | Header | Default | Purpose | Env var |
 |---|---|---|---|
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Force HTTPS; cache for 1 year | `HSTS_ENABLED`, `HSTS_MAX_AGE`, `HSTS_INCLUDE_SUBDOMAINS`, `HSTS_PRELOAD` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` (HTTPS requests only) | Force HTTPS; cache for 1 year | `HSTS_ENABLED`, `HSTS_MAX_AGE`, `HSTS_INCLUDE_SUBDOMAINS`, `HSTS_PRELOAD` |
 | `X-Content-Type-Options` | `nosniff` | Prevent MIME-type sniffing | `CONTENT_TYPE_OPTIONS` |
 | `X-Frame-Options` | `DENY` | Prevent clickjacking (disallow framing) | `FRAME_OPTIONS` |
 | `X-XSS-Protection` | `1; mode=block` | Enable XSS filtering in legacy browsers | `XSS_PROTECTION` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Control what referer info is sent | `REFERRER_POLICY` |
 | `Permissions-Policy` | Disables: geolocation, microphone, camera, payment, usb, magnetometer, gyroscope, accelerometer | Disable unused browser APIs | `PERMISSIONS_POLICY` |
-| `Content-Security-Policy` | Strict (scripts from self + CDNs, styles from self + CDNs + fonts, images/fonts from data or https, forms/iframes restricted) | Control resource loading | `CSP_POLICY` |
+| `Content-Security-Policy` | `default-src 'self'`, scripts and styles from self, inline, `cdn.jsdelivr.net` and `unpkg.com` (styles also Google Fonts), `frame-ancestors 'none'`, `connect-src 'self'` | Control resource loading | `CSP_POLICY` |
 
 ### Customizing headers
 
@@ -104,11 +102,11 @@ export HSTS_ENABLED="false"
 # Extend HSTS cache to 2 years
 export HSTS_MAX_AGE="63072000"
 
-# Allow framing by specific domains (for embedded UI)
-export FRAME_OPTIONS="ALLOW-FROM https://yourdomain.com"
+# Allow framing by pages on your own origin (also loosen frame-ancestors in CSP_POLICY)
+export FRAME_OPTIONS="SAMEORIGIN"
 
 # Customize CSP for third-party resources
-export CSP_POLICY="default-src 'self'; script-src 'self' https://cdn.example.com; img-src 'self' data: https:"
+export CSP_POLICY="default-src 'self'; script-src 'self' https://cdn.example.com; img-src 'self' data: https:; frame-ancestors 'self'"
 ```
 
 Verify headers are present and correct:
@@ -119,7 +117,7 @@ curl -i https://yourapi.com/ping | grep -E "^(Strict-Transport-Security|X-Conten
 
 ### Content-Security-Policy notes
 
-The default CSP blocks inline scripts and form submissions outside the API domain. If you serve a dashboard or playground from your API server, adjust the policy to allow it. The default permits scripts from `https://cdn.jsdelivr.net` and `https://unpkg.com` (for hosted libraries like Swagger UI), and styles from Google Fonts.
+The default CSP restricts loading and connections to your own origin plus a few CDNs, and sets `frame-ancestors 'none'`. Setting `CSP_POLICY` replaces the whole default policy. If you serve a dashboard or playground from your API server, adjust the policy to allow it. The default permits inline scripts and styles, scripts from `https://cdn.jsdelivr.net` and `https://unpkg.com` (for hosted libraries like Swagger UI), and styles from jsDelivr and Google Fonts.
 
 If you use a custom CSP, ensure it covers:
 - Script sources (for your app and any documentation)
@@ -175,7 +173,7 @@ The server trusts these headers when appropriate:
 
 | Header | Used by | Purpose |
 |---|---|---|
-| `X-Forwarded-Proto` | Security headers, CORS | Detects if original request was HTTPS (for HSTS header) |
+| `X-Forwarded-Proto` | Security headers | Detects if original request was HTTPS (for HSTS header) |
 | `X-Forwarded-For` | Rate limiting | Client IP for per-IP rate limits |
 
 The rate limiter explicitly checks the `trusted_proxy_headers` setting in `10xgraph.json`. Set it to `true` to read `X-Forwarded-For` for rate limiting:
@@ -189,7 +187,7 @@ The rate limiter explicitly checks the `trusted_proxy_headers` setting in `10xgr
 }
 ```
 
-Security headers middleware automatically checks `X-Forwarded-Proto` to detect HTTPS and send the HSTS header.
+Security headers middleware automatically checks `X-Forwarded-Proto` to detect HTTPS and send the HSTS header. `X-Forwarded-For` is read from the right: `trusted_proxy_hops` (default `1`) is how many entries your own proxies appended. See [rate limiting](/docs/server/rate-limiting#behind-a-reverse-proxy).
 
 ### Production configuration
 
@@ -214,7 +212,7 @@ location /api/ {
 
 Before deploying to production:
 
-- [ ] Set `MODE=production` to disable debug logging and API docs by default
+- [ ] Set `MODE=production` (turns off `/docs` and `/redocs` unless you set `DOCS_PATH` or `REDOCS_PATH`, and enforces the CORS and JWT secret checks) and `IS_DEBUG=false`
 - [ ] Set explicit `ORIGINS` (comma-separated list of domains your frontend runs on)
 - [ ] Set `CORS_ALLOW_CREDENTIALS=false` if your API is public and token-based, or `true` if it uses cookies
 - [ ] Set `ALLOWED_HOST` to the DNS names the API answers to

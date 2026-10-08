@@ -12,7 +12,7 @@ faq:
   - q: "Can I skip unit tests and just evaluate?"
     a: "Yes, both layers are independent. But unit tests are faster and catch most routing bugs early. Evaluations take longer and cost more."
   - q: "Do evals require a real LLM?"
-    a: "By default, yes. But criteria like tool name matching and trajectory comparison work without an LLM. Use those first, or define custom LLM-free criteria."
+    a: "By default, yes. But criteria like tool name matching, trajectory comparison, node order, ROUGE and keywords work without an LLM. Note that the default `EvalConfig` includes `response_match`, which does use an LLM judge."
 ---
 
 Testing in 10xGraph comes in two independent layers, both in the `tenxgraph.qa` package: unit tests that verify graph logic with mocked models, and evaluations that measure real agent behavior against criteria. When you build an agent, you start with unit tests to catch routing mistakes in milliseconds with zero cost. When you ship or iterate, you add evaluations to prove the agent still meets your quality bar and to catch regressions.
@@ -54,7 +54,7 @@ Unit tests verify graph structure and tool routing without making any LLM API ca
 - **`MockToolRegistry`**: Registers mock tool functions and tracks all invocations by name and arguments.
 - **`TestContext`**: Helper that sets up an isolated dependency container, in-memory store, and test graph factory.
 - **`MockMCPClient`**: Mock MCP client for testing MCP tool integrations without a real server.
-- **`TestResult`**: Fluent assertion helpers to query graph output by message, tool call, or node name.
+- **`TestResult`**: Fluent assertion helpers for the final response, tool calls, and message count.
 
 See [unit tests](/docs/testing/unit-tests) for detailed examples and [run tests](/docs/testing/run-tests) for CLI and CI integration.
 

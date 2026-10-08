@@ -44,7 +44,7 @@ Context management prevents this by keeping context within budget while preservi
 
 ```python
 from tenxgraph.core import Agent, StateGraph
-from tenxgraph.core.state import MessageContextManager
+from tenxgraph.core.state import Message, MessageContextManager
 from tenxgraph.utils import END
 
 context_manager = MessageContextManager(max_messages=10)
@@ -64,8 +64,8 @@ graph.add_edge("agent", END)
 app = graph.compile()
 
 # Run the agent
-result = app.invoke({"messages": [{"role": "user", "content": "Hello"}]})
-print(result["messages"][-1]["content"])
+result = app.invoke({"messages": [Message.text_message("Hello")]})
+print(result["messages"][-1].text())
 ```
 
 Two steps are required:
@@ -104,7 +104,7 @@ context_manager = MessageContextManager(
 
 ```python
 from tenxgraph.core import Agent, StateGraph
-from tenxgraph.core.state import SummaryContextManager
+from tenxgraph.core.state import Message, SummaryContextManager
 from tenxgraph.utils import END
 
 context_manager = SummaryContextManager(
@@ -129,13 +129,12 @@ graph.add_edge("agent", END)
 app = graph.compile()
 
 # Run the agent over multiple turns
-state = {"messages": [{"role": "user", "content": "What is Python?"}]}
-result = app.invoke(state)
-print(result["messages"][-1]["content"])
+result = app.invoke({"messages": [Message.text_message("What is Python?")]})
+print(result["messages"][-1].text())
 
 # After summarization, the oldest messages are replaced with a summary:
-# state.context_summary contains the compressed conversation.
-# state.context contains the last 8 messages.
+# state.context_summary holds the compressed conversation.
+# state.context keeps system messages plus the last 8 non-system messages.
 ```
 
 ### Configuration
@@ -172,7 +171,7 @@ context_manager = SummaryContextManager(
 4. **Store**: The summary is stored in `state.context_summary`. The agent's response system automatically injects it before the recent messages.
 5. **Continue**: Only the recent messages + summary use context budget.
 
-If summarization fails (e.g., API error), the context is left unchanged and a warning is logged.
+If summarization fails (e.g., API error), the context is left unchanged and the error is logged.
 
 ### When to use SummaryContextManager
 
@@ -211,10 +210,8 @@ class ImportanceContextManager(BaseContextManager):
         regular = [m for m in messages if m.role != "system"]
 
         # Keep the last max_messages and any marked as important
-        important = [m for m in regular if hasattr(m, "metadata") and m.metadata.get("important")]
-        recent = regular[-self.max_messages:]
-        kept = list(set(important + recent))
-        kept.sort(key=lambda m: messages.index(m))
+        recent_ids = {id(m) for m in regular[-self.max_messages:]}
+        kept = [m for m in regular if m.metadata.get("important") or id(m) in recent_ids]
 
         state.context = system + kept
         return state
@@ -259,7 +256,7 @@ Context reduced to 8 messages; cumulative summary length=450 chars
 | Context keeps growing despite `trim_context=True` | `context_manager` was not passed to `StateGraph()`. | Add `context_manager=context_manager` to `StateGraph(...)`. |
 | First user message is always dropped | `max_messages=1` is too low and cutting into important messages. | Increase `max_messages` to at least 3-5. |
 | Tool results disappear from responses | `remove_tool_msgs=True` is too aggressive for your use case. | Set `remove_tool_msgs=False` (default) or keep tool results in `keep_recent`. |
-| `SummaryContextManager` fails silently | The summarization model or API key is misconfigured. | Check logs with `logging.getLevel("tenxgraph.state.summary")` set to `DEBUG`. Verify your API key and model name. |
+| `SummaryContextManager` fails silently | The summarization model or API key is misconfigured. | Check logs with `logging.getLogger("tenxgraph.state.summary")` set to `DEBUG`. Verify your API key and model name. |
 | Summary gets very long over time | Each summarization appends to the previous summary, accumulating length. | Lower `max_messages` to trigger summarization more often, or increase `keep_recent` to retain more recent context. |
 
 ## Next steps

@@ -46,9 +46,10 @@ To access the request context inside the tool, for example, to know which user c
 @tool(description="Search the web as the authenticated user.")
 def search_web(
     query: str,
-    user_id: str = None,  # Injected at runtime
+    config: dict = None,  # Injected at runtime
 ) -> str:
-    # user_id is NOT in the schema the LLM sees. The ToolNode fills it from the run config.
+    # config is NOT in the schema the LLM sees. The ToolNode fills it with the run config.
+    user_id = (config or {}).get("user_id")
     return f"Search for {query} as user {user_id}"
 ```
 
@@ -156,25 +157,28 @@ Declare these optional parameters in your function signature to receive them at 
 | `publisher` | `BasePublisher` | Publish events (logging, tracing) |
 | `checkpointer` | `BaseCheckpointer` | Access persisted state |
 | `store` | `BaseStore` | Access long-term memory |
+| `task_manager` | `BackgroundTaskManager` | Schedule background tasks |
 
 Example: access the calling user and current state, and emit progress:
 
 ```python
 from tenxgraph.utils.decorators import tool
+from tenxgraph.core.state import AgentState
 from tenxgraph.core.state.stream_emitter import StreamEmitter
 
 @tool(description="Search the knowledge base for the authenticated user.")
 def search_kb(
     query: str,
-    user_id: str = None,  # Injected from config
-    state: dict = None,  # Injected: current AgentState
+    config: dict = None,  # Injected: run config
+    state: AgentState = None,  # Injected: current AgentState
     emit: StreamEmitter = None,  # Injected: for progress updates during stream
 ) -> str:
     """Search the knowledge base."""
+    user_id = (config or {}).get("user_id")
     if emit:
         emit.progress("Connecting to search engine...", data={"query": query})
     
-    results = _do_search(query)
+    results = [f"{user_id}: {query} #{i}" for i in range(3)]  # replace with a real search
     
     if emit:
         emit.progress(f"Found {len(results)} results")
@@ -215,6 +219,8 @@ When the LLM calls `divide(10, 0)`, the `ToolNode` catches the `ValueError`, wra
 For custom error messages, raise a descriptive exception:
 
 ```python
+import httpx
+
 @tool(description="Fetch a web page.")
 async def fetch_url(url: str) -> str:
     """Fetch the HTML of a URL."""
@@ -377,7 +383,7 @@ from tenxgraph.core.state.stream_emitter import StreamEmitter
 async def search_docs(
     query: str,
     limit: int = 5,
-    user_id: str = None,
+    config: dict = None,
     tool_call_id: str = None,
     emit: StreamEmitter = None,
 ) -> str:
@@ -411,7 +417,7 @@ This tool:
 - Is tagged so agents can choose to include or exclude it.
 - Documents its capabilities and metadata.
 - Is async for I/O efficiency.
-- Accepts optional injected parameters (`user_id`, `tool_call_id`, `emit`).
+- Accepts optional injected parameters (`config`, `tool_call_id`, `emit`).
 - Emits progress updates during streaming.
 - Validates input and raises descriptive errors.
 

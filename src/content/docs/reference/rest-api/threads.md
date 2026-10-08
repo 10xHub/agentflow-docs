@@ -245,7 +245,7 @@ curl -X DELETE http://localhost:8000/v1/threads/t1/messages/m1 \
 ```
 
 ```json
-{"success": true, "message": "Message deleted successfully"}
+{"success": true, "message": "Message deleted successfully", "data": null}
 ```
 
 ## Authentication and ownership

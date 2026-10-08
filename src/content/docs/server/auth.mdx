@@ -64,7 +64,7 @@ JWT is the easiest path: a stateless, standard bearer token that carries the use
    curl -X POST http://localhost:8000/v1/graph/invoke \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
-     -d '{"messages": [{"role": "user", "content": "hello"}]}'
+     -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "hello"}]}]}'
    ```
 
 </Steps>
@@ -102,7 +102,7 @@ const ws = new WebSocket(
 );
 ```
 
-The subprotocol list works as: the server looks for `10xgraph-bearer` (or the legacy `agentflow-bearer`), treats the next item as the token, and responds with the matching subprotocol. If no auth subprotocol is found, the connection is rejected with close code `1008` (policy violation).
+The subprotocol list works as: the server looks for `10xgraph-bearer` (or the legacy `agentflow-bearer`), treats the next item as the token, and responds with the matching subprotocol. The server also accepts the `Authorization` header and, as a last resort, a `?token=` query parameter, which lands in URLs and logs. If no credential is found, the connection is rejected with close code `1008` (policy violation).
 
 ## How does the user reach your code?
 
@@ -203,7 +203,7 @@ Test without a token:
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "hello"}]}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "hello"}]}]}'
 ```
 
 Expected: HTTP 401, code `REVOKED_TOKEN`, before any graph execution.
@@ -214,7 +214,7 @@ Then test with a valid token:
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "hello"}]}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "hello"}]}]}'
 ```
 
 Expected: HTTP 200, normal graph response.
@@ -226,7 +226,7 @@ Expected: HTTP 200, normal graph response.
 | `REVOKED_TOKEN` | No credential presented | Attach `Authorization: Bearer <token>` |
 | `EXPIRED_TOKEN` | Token `exp` is in the past | Refresh the token; check server/issuer clock skew |
 | `INVALID_TOKEN` | Bad signature or no `user_id` claim | Verify `JWT_SECRET_KEY`, `JWT_ALGORITHM`, and that issuer emits `user_id` |
-| `JWT_SETTINGS_NOT_CONFIGURED` | Missing env vars at startup | Set both `JWT_SECRET_KEY` and `JWT_ALGORITHM` |
+| Startup `ValueError`: "JWT_SECRET_KEY and JWT_ALGORITHM must be set" | One of the two env vars is missing with `"auth": "jwt"` | Set both `JWT_SECRET_KEY` and `JWT_ALGORITHM` |
 | `Missing required scope: <resource>:<action>` | Identity lacks scope for this endpoint | Add scope to the role, or widen `default_scopes` |
 
 ### Boot guard

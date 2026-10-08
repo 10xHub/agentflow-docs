@@ -66,10 +66,10 @@ Choose based on your infrastructure preferences. For this guide, we'll show both
 ### Install the package
 
 ```bash
-pip install "10xgraph[qdrant]"
+pip install "10xgraph[qdrant,openai]"
 ```
 
-You also need an embedding service to convert text to vectors. Both OpenAI and Google embeddings are built in; we show OpenAI here.
+You also need an embedding service to convert text to vectors. Both OpenAI and Google embeddings are built in; we show OpenAI here (use the `google-genai` extra for `GoogleEmbedding`).
 
 ### Local Qdrant (file-backed)
 
@@ -125,7 +125,7 @@ from tenxgraph.storage.store import (
 store = create_cloud_qdrant_store(
     url="https://abc123-ef45.qdrant.io",
     api_key="your-qdrant-cloud-api-key",
-    embedding=GoogleEmbedding(),  # uses GOOGLE_API_KEY env var
+    embedding=GoogleEmbedding(),  # uses GOOGLE_API_KEY or GEMINI_API_KEY
     collection="my_agent_memory",
 )
 ```
@@ -166,6 +166,8 @@ store = QdrantStore(
 ```bash
 pip install "10xgraph[mem0]"
 ```
+
+The Mem0 examples below use OpenAI models, so set `OPENAI_API_KEY`.
 
 ### Mem0 with OpenAI LLM
 
@@ -213,7 +215,7 @@ Both `QdrantStore` and `Mem0Store` need an embedding function to convert text to
 | Class | Provider | Model | Env var required |
 |---|---|---|---|
 | `OpenAIEmbedding` | OpenAI | `text-embedding-3-small` | `OPENAI_API_KEY` |
-| `GoogleEmbedding` | Google | `text-embedding-004` | `GOOGLE_API_KEY` |
+| `GoogleEmbedding` | Google | `gemini-embedding-001` | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
 
 ```python
 from tenxgraph.storage.store import OpenAIEmbedding, GoogleEmbedding
@@ -225,7 +227,7 @@ google_embed = GoogleEmbedding()
 # store = QdrantStore(embedding=openai_embed, path="./qdrant_data")
 ```
 
-Both are equally good; OpenAI is slightly faster, Google is slightly cheaper. Both are deterministic: the same text always produces the same vector.
+Pass `model=` and `api_key=` to either class to override the default model or the environment variable. Use the same embedding model for writing and searching a collection.
 
 ---
 
@@ -251,14 +253,14 @@ from tenxgraph.storage.store import BaseStore
 from tenxgraph.utils import tool
 
 @tool
-async def my_tool(store: BaseStore):
+async def my_tool(config: dict, store: BaseStore):
     """Access memories within a tool."""
-    results = await store.asearch("user preferences", limit=3)
+    results = await store.asearch(config, "user preferences", limit=3)
     for result in results:
         print(result.content)
 ```
 
-The `BaseStore` dependency is injected automatically; no manual wiring needed.
+The `store` and `config` parameters are injected by name and hidden from the model; no manual wiring needed. `asearch` takes the run `config` first (it carries `user_id`), then the query.
 
 ---
 
@@ -269,7 +271,7 @@ For the most common case, automatically retrieving and writing user-specific mem
 ### Minimal setup
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph.core.graph import Agent, ToolNode
 from tenxgraph.storage.store import (
     MemoryConfig,
     create_local_qdrant_store,
@@ -279,14 +281,17 @@ from tenxgraph.storage.store import (
 # Create a store
 store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
 
-# Create an agent with memory
+# Create an agent with memory. The default POSTLOAD mode registers memory tools,
+# so the Agent needs a ToolNode (route to it as in "Build a graph").
+tool_node = ToolNode([])
 agent = Agent(
     model="gpt-4o",
+    tool_node=tool_node,
     memory=MemoryConfig(store=store),
 )
 ```
 
-That's it. The agent now automatically retrieves relevant memories before each LLM call and exposes memory tools to the model so it can write new memories.
+The agent now gets a `user_memory_tool` it can call to search and save user facts, and a short memory instruction is added to its system prompt. With `ReadMode.PRELOAD` no tools are added, so no ToolNode is needed.
 
 ### Full MemoryConfig reference
 
@@ -302,9 +307,9 @@ from tenxgraph.storage.store import (
 
 memory = MemoryConfig(
     store=store,                              # required: BaseStore instance
-    retrieval_mode=ReadMode.POSTLOAD,         # POSTLOAD (default) | PRELOAD
+    retrieval_mode=ReadMode.POSTLOAD,         # POSTLOAD (default) | PRELOAD | NO_RETRIEVAL
     limit=5,                                  # max memories to retrieve per search
-    score_threshold=0.0,                      # minimum similarity score (0.0-1.0)
+    score_threshold=0.0,                      # minimum similarity score (must be >= 0)
     max_tokens=None,                          # cap total tokens across all memories
     inject_system_prompt=True,                # prepend memories to system prompt
 
@@ -326,7 +331,7 @@ memory = MemoryConfig(
     ),
 )
 
-agent = Agent(model="gpt-4o", memory=memory)
+agent = Agent(model="gpt-4o", tool_node=ToolNode([]), memory=memory)
 ```
 
 ### ReadMode: how the agent uses memories
@@ -334,7 +339,8 @@ agent = Agent(model="gpt-4o", memory=memory)
 | Mode | Behaviour |
 |---|---|
 | `ReadMode.POSTLOAD` (default) | Memories are fetched on-demand via injected tools that the LLM can call. The model decides **when** and **what** to retrieve. Gives the model more agency but requires the model to recognize when memories are relevant. |
-| `ReadMode.PRELOAD` | Memories are retrieved automatically before every LLM call and injected into the system prompt. The model always has relevant context but uses more tokens. Better for smaller memory sets or when the model must always be aware. |
+| `ReadMode.PRELOAD` | Memories are retrieved automatically before every LLM call, using the latest user message as the query, and added as a system message. The model always has relevant context but uses more tokens. No memory tools are exposed, so the model cannot save new memories in this mode. |
+| `ReadMode.NO_RETRIEVAL` | No automatic retrieval. |
 
 ### UserMemoryConfig vs. AgentMemoryConfig
 
@@ -378,11 +384,11 @@ Use `DistanceMetric.COSINE` unless you have a specific reason to use another met
 
 ## Complete example: memory-aware customer support agent
 
-Here's a runnable example that builds a customer support agent, talks to a customer twice (with different threads), and shows how memories persist across threads:
+Install with `pip install "10xgraph[qdrant,openai]"` and set `OPENAI_API_KEY`. Here's a runnable example that builds a customer support agent, talks to a customer twice (with different threads), and shows how memories persist across threads:
 
 ```python
 import asyncio
-from tenxgraph.core.graph import StateGraph, Agent
+from tenxgraph.core.graph import StateGraph, Agent, ToolNode
 from tenxgraph.core.state import Message
 from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 from tenxgraph.storage.store import (
@@ -413,21 +419,37 @@ memory = MemoryConfig(
 )
 
 # Step 3: Create an agent that uses memory
-system_prompt = """You are a helpful customer support agent.
-You have access to customer preferences and history.
-Always be friendly and remember what the customer told you previously."""
+system_prompt = [
+    {
+        "role": "system",
+        "content": (
+            "You are a helpful customer support agent. "
+            "Use the memory tool to look up and save customer preferences."
+        ),
+    }
+]
 
+tool_node = ToolNode([])  # the memory tool is registered here
 agent = Agent(
     model="gpt-4o",
     system_prompt=system_prompt,
+    tool_node=tool_node,
     memory=memory,
 )
 
-# Step 4: Build the graph
+# Step 4: Build the graph (agent <-> tools loop)
+def route(state) -> str:
+    last = state.context[-1] if state.context else None
+    if last and last.role == "assistant" and getattr(last, "tools_calls", None):
+        return "tools"
+    return END
+
 graph = StateGraph()
 graph.add_node("support", agent)
+graph.add_node("tools", tool_node)
+graph.add_conditional_edges("support", route, {"tools": "tools", END: END})
+graph.add_edge("tools", "support")
 graph.set_entry_point("support")
-graph.add_edge("support", END)
 
 # Step 5: Compile with the store
 app = graph.compile(
@@ -474,8 +496,8 @@ asyncio.run(main())
 ```
 
 **Expected behavior:**
-1. In the first interaction, the customer states a preference. The agent processes the message and the preference is stored in memory.
-2. In the second interaction (different thread, same user), the agent retrieves the stored preference automatically and acts on it (e.g., "I'll reach out via email as you prefer").
+1. In the first interaction, the customer states a preference. In the default POSTLOAD mode the model decides whether to save it by calling the memory tool, so saving is not guaranteed.
+2. In the second interaction (different thread, same user), the model can search user memory with the same `user_id` and use the preference.
 
 ---
 
@@ -483,7 +505,7 @@ asyncio.run(main())
 
 After running your agent with `MemoryConfig`, check that memories were stored:
 
-1. **Check memory count:** Query the store directly to see how many memories are stored.
+1. **Check memory count:** Query the store directly to see how many memories are stored (stop the agent first, since local Qdrant allows one client per folder).
 
 ```python
 # With Qdrant, you can inspect the collection
@@ -498,23 +520,12 @@ print(f"Total vectors in store: {collection.points_count}")
 
 ```python
 results = await store.asearch(
-    query="email preference",
-    user_id="customer-123",
+    {"user_id": "customer-123"},
+    "email preference",
     limit=3,
 )
 for result in results:
     print(f"Score: {result.score:.2f}, Content: {result.content}")
-```
-
-3. **Monitor the agent:** Use `response_granularity` to see what memories the agent retrieved.
-
-```python
-result = await app.ainvoke(
-    {"messages": [...]},
-    config={
-        "response_granularity": "FULL",  # returns full state including memory context
-    },
-)
 ```
 
 ---

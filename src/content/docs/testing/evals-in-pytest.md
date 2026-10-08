@@ -22,7 +22,7 @@ Embed agent evaluations into your pytest test suite to measure quality alongside
 You have already installed 10xGraph and pytest:
 
 ```bash
-pip install pytest pytest-asyncio 10xgraph
+pip install pytest pytest-asyncio "10xgraph[google-genai]"
 ```
 
 `tenxgraph.qa.evaluation` is built into 10xgraph, no extra package needed.
@@ -57,7 +57,7 @@ Run it with pytest:
 pytest test_evals.py::test_weather_agent_quality -v
 ```
 
-The test passes if all eval cases meet their criteria thresholds. It fails with details of which cases failed and why.
+With no `config`, `@eval_test` uses `EvalConfig.default()`: an exact tool trajectory match (threshold 1.0) plus an LLM response match (threshold 0.8), so a judge model API key must be available. Pass `config=EvalPresets.tool_usage()` or `EvalPresets.quick_check()` to change that. The decorator's default `threshold` is `1.0`, so every case must pass. It fails with details of which cases failed and why.
 
 ---
 
@@ -109,7 +109,7 @@ async def test_weather_agent_regression(weather_agent_app):
 The test function receives the fixture and returns `(graph, collector)`. The decorator:
 
 1. Runs every case in the eval file against your graph.
-2. Scores each case using the criteria in the eval file.
+2. Scores each case using the criteria from `config` (or `EvalConfig.default()`).
 3. Asserts that the pass rate is >= `threshold`.
 4. On failure, prints which cases failed and why.
 
@@ -118,8 +118,8 @@ If the test fails:
 ```
 AssertionError: Evaluation failed: 80.0% pass rate (threshold: 90.0%)
 Failed cases:
-  - weather_london: tool_name_match
-  - booking_flight: rouge_match
+  - weather_london: tool_trajectory_avg_score
+  - booking_flight: response_match_score
 ```
 
 ### Auto-detect eval files
@@ -169,13 +169,14 @@ This approach gives you the full `EvalReport` object, so you can inspect and ass
 - `report.summary.total_cases`: how many cases ran
 - `report.passed_cases`: list of cases that passed
 - `report.failed_cases`: list of cases that failed with error details
-- `report.summary.criterion_stats`: per-criterion score breakdowns
+- `report.summary.criterion_stats`: per-criterion score breakdowns, keyed by criterion name
 
 ## Assert on specific criteria
 
-Use `assert_criterion_passed` to verify that a single criterion (e.g., tool names or semantic accuracy) met a score threshold:
+Use `assert_criterion_passed` to verify that a single criterion met a minimum average score. The `criterion` argument is the criterion's reported name (for example `tool_name_match_score`, `rouge_match`, `tool_trajectory_avg_score`, `response_match_score`), and it must be enabled in the config you ran with, otherwise the helper raises "not found in report":
 
 ```python
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 from tenxgraph.qa.evaluation.testing import (
     run_eval,
     assert_criterion_passed,
@@ -190,22 +191,23 @@ async def test_tool_selection_quality(weather_agent_app):
         graph=app,
         collector=collector,
         eval_set_path="tests/fixtures/weather_agent.evalset.json",
+        config=EvalPresets.comprehensive(use_llm_judge=False),
     )
     
-    # All cases must have passed overall
+    # At least 95% of cases must have passed overall
     assert_eval_passed(report, min_pass_rate=0.95)
     
     # Tool name accuracy must be high
     assert_criterion_passed(
         report,
-        criterion="tool_name_match",
+        criterion="tool_name_match_score",
         min_score=0.98,  # Average score across all cases
     )
     
-    # Response semantic accuracy must be good
+    # Response overlap must be good
     assert_criterion_passed(
         report,
-        criterion="response_match",
+        criterion="rouge_match",
         min_score=0.85,
     )
 ```
@@ -214,7 +216,7 @@ This pattern is useful when you care about specific aspects of agent quality and
 
 ## Parametrize tests with individual eval cases
 
-Use `parametrize_eval_cases` to run each eval case as a separate pytest test. This produces granular pass/fail reporting and lets pytest run cases in parallel:
+Use `parametrize_eval_cases` to run each eval case as a separate pytest test. This produces granular pass/fail reporting. Test ids are the case `eval_id` values. To run them in parallel you need a plugin such as pytest-xdist:
 
 ```python
 from tenxgraph.qa.evaluation.testing import parametrize_eval_cases
@@ -229,7 +231,7 @@ async def test_weather_agent_case(weather_agent_app, eval_case):
     
     config = EvalPresets.tool_usage()
     evaluator = AgentEvaluator(app, collector, config=config)
-    result = await evaluator._evaluate_case(eval_case)
+    result = await evaluator.evaluate_case(eval_case)
     
     assert result.passed, f"Case failed: {', '.join(c.criterion for c in result.failed_criteria)}"
 ```
@@ -259,6 +261,7 @@ pytest test_evals.py::test_weather_agent_case[weather_london] -v
 Instead of loading from a `.evalset.json` file, create eval sets in code using `create_simple_eval_set`:
 
 ```python
+from tenxgraph.qa.evaluation.config.presets import EvalPresets
 from tenxgraph.qa.evaluation.testing import create_simple_eval_set, run_eval
 
 async def test_agent_with_inline_cases(weather_agent_app):
@@ -275,17 +278,19 @@ async def test_agent_with_inline_cases(weather_agent_app):
         ],
     )
     
-    # EvalSet is in memory; serialize to run with evaluator
+    # run_eval passes the EvalSet through to AgentEvaluator.evaluate, which
+    # accepts either an EvalSet object or a path to a JSON file.
     report = await run_eval(
         graph=app,
         collector=collector,
         eval_set_path=eval_set,
+        config=EvalPresets.quick_check(),
     )
     
     assert report.summary.pass_rate == 1.0
 ```
 
-Each tuple is `(user_query, expected_response, case_name)`. The evaluator scores using default criteria (tool name match, ROUGE overlap). For more control, build an `EvalSet` directly using the eval-sets API (see [Building eval sets](/docs/testing/eval-sets)).
+Each tuple is `(user_query, expected_response, case_name)`; case ids are generated as `case_0`, `case_1`, and so on. `quick_check()` scores response text with ROUGE overlap only (no LLM). Without a `config`, `EvalConfig.default()` applies (exact tool trajectory plus LLM response match), and these cases have no expected tools. For more control, build an `EvalSet` directly using the eval-sets API (see [Building eval sets](/docs/testing/eval-sets)).
 
 ## Common errors and fixes
 
@@ -319,14 +324,14 @@ eval/{test_name}.evalset.json
 @eval_test("tests/fixtures/my_eval.evalset.json")
 async def test_my_agent(my_fixture):
     # my_fixture should be (graph, collector)
-    return my_fixture  # ✓ Correct
+    return my_fixture  # Correct
 
-# ✗ Wrong:
+# Wrong:
 async def test_my_agent(my_fixture):
     return my_fixture.graph  # Missing collector
 ```
 
-### "pass_rate is below threshold"
+### "Evaluation failed: ... pass rate (threshold: ...)"
 
 **Cause:** One or more eval cases failed to meet the criteria thresholds.
 

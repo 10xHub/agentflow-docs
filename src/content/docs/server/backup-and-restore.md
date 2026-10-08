@@ -9,9 +9,9 @@ label: Backup and restore
 updated: "2026-10-08"
 faq:
   - question: "What happens if I restore an old Postgres backup with Redis still running?"
-    answer: "If Redis holds newer state versions than Postgres, running workers will see the cache version mismatch the database and fail optimistic concurrency checks, wedging threads until the cache expires. Flush Redis before restoring."
+    answer: "The Redis cache can hold state newer than the restored database. Postgres is the source of truth and a failed version check invalidates the cache entry, but flush the 10xGraph Redis database before restoring so no stale entries survive."
   - question: "Can I restore a single thread without a full restore?"
-    answer: "Yes. Restore the dump into a scratch database, then copy that thread's rows from the four tables into production using SQL."
+    answer: "Yes. Restore the dump into a scratch database, then copy that thread's rows from the thread tables into production using SQL."
   - question: "How often should I test my restore process?"
     answer: "At least quarterly, or before any schema-changing release. A backup you have never restored is a hypothesis, not a recovery plan."
 ---
@@ -31,13 +31,9 @@ faq:
 
 Redis is a read-through cache in front of Postgres, not a second source of truth. It holds the most recent state for each thread and expires entries after 24 hours by default. If Redis disappears, the next read refills it from Postgres: no data loss, only latency.
 
-However, restoring Postgres from an older snapshot while Redis is still running can corrupt state. Here is why:
+However, restoring Postgres from an older snapshot while Redis and workers are still running is unsafe. Each state row has a per-thread `version` that increases on every write, and writes are compare-and-swap: a write that expected a version the database no longer has is rejected with `StaleStateError` (HTTP 409 from the API). Reads of the latest state come from Postgres, and the checkpointer drops the cached entry when it hits a conflict. Even so, a run that started before the restore can fail, and cached entries can still reflect pre-restore state until they expire.
 
-When a graph runs, it loads state from the cache (which hits Postgres if the cache misses). Each state has a version number that increases monotonically per thread. If a newer state was cached but you restore Postgres to an older point, the cache now holds versions the database has never seen.
-
-The next worker processes a message, reads the newer version from the cache, and tries to write it back to Postgres with optimistic concurrency control (a compare-and-swap). The database rejects it because it already has a row with that version. The state becomes wedged: every write fails with `StaleStateError` until the cache entry expires 24 hours later.
-
-Always flush Redis before restoring:
+Flush the cache before restoring. `FLUSHDB` clears the whole Redis database selected by the URL, so only run it if that database is dedicated to 10xGraph:
 
 ```bash
 redis-cli -u "$REDIS_URL" FLUSHDB
@@ -51,11 +47,11 @@ redis-cli -u "$REDIS_URL" FLUSHDB
 | --- | --- | --- |
 | `threads` | Thread metadata and ownership | `thread_id` (PK), `user_id` (indexed) |
 | `states` | Serialized graph state snapshots | `thread_id`, `version` (unique together) |
-| `messages` | Conversation history | `thread_id` (indexed), `thread_message_id` (PK) |
+| `messages` | Conversation history | `thread_id` (indexed), `message_id` (PK) |
 | `tool_executions` | Idempotency ledger | `(thread_id, tool_call_id)` (composite PK) |
 | `schema_version` | Schema migration history | `version` (PK), `applied_at` |
 
-The `version` column in `states` is the linchpin of optimistic concurrency control. It is a per-thread counter that increases on every state write. Any two concurrent writes to the same thread will have seen different versions as their expected baseline, so one will collide on the unique `(thread_id, version)` constraint and fail. The failing worker retries from its checkpoint.
+The `version` column in `states` is the linchpin of optimistic concurrency control. It is a per-thread counter that increases on every state write. Any two concurrent writes to the same thread will have seen different versions as their expected baseline, so one will collide on the unique `(thread_id, version)` constraint and fail. The losing write is rejected with `StaleStateError`.
 
 ### Schema versioning
 
@@ -71,9 +67,9 @@ Schema migrations apply automatically on the first startup of an upgraded server
 
 ### User isolation
 
-Each row in `threads`, `states`, and `messages` carries a `user_id` column. By default, `PgCheckpointer` enforces user isolation: a request cannot read or delete another user's threads even if they know the `thread_id`. This is set at checkpointer creation and cannot be changed without re-initializing the database.
+The `threads` table carries a `user_id` column (`states`, `messages` and `tool_executions` reference their thread through `thread_id`). By default, `PgCheckpointer` enforces user isolation: a request cannot read or delete another user's threads even if they know the `thread_id`.
 
-If you have disabled user isolation (`enforce_user_isolation=False`), the `user_id` column still exists but is ignored for access control. Backup and restore procedures are unaffected; only the deletion query below changes.
+If you have disabled user isolation (`enforce_user_isolation=False`), the `user_id` column still exists but is ignored for access control. Backup and restore procedures are unaffected.
 
 ---
 
@@ -118,7 +114,7 @@ Always back up before applying a schema migration. Migrations run automatically 
 pg_dump "$DATABASE_URL" --format=custom > 10xgraph-pre-upgrade.dump
 
 # Then upgrade your server
-pip install 10xgraph[pg_checkpoint] --upgrade
+pip install --upgrade "10xgraph[pg_checkpoint]"
 10xgraph api
 ```
 
@@ -142,7 +138,7 @@ What matters is knowing your recovery point objective (RPO) and having tested a 
 
 Restoring production data under live traffic corrupts state. Ensure all workers are stopped before you restore.
 
-Running workers hold state versions in memory. If you restore Postgres to a point before those versions were written, the next write will fail the optimistic concurrency check and wedge. Worse, if Redis still holds the newer versions, workers will retry forever.
+Runs in flight hold the state version they read. If you restore Postgres to a point before that version was written, their next write fails the optimistic concurrency check, and cached entries may still reflect pre-restore state.
 
 This is the safe restore procedure:
 
@@ -209,29 +205,15 @@ Keep the `version` column intact. Editing or rewriting it defeats the concurrenc
 
 ### Delete a user's data
 
-Threads carry a `user_id` field indicating the owner. To honor a deletion request, remove all rows across the four tables:
+Threads carry a `user_id` field indicating the owner. The `states`, `messages` and `tool_executions` tables reference `threads` with `ON DELETE CASCADE`, so deleting the thread rows removes everything else:
 
 ```sql
-BEGIN TRANSACTION;
-DELETE FROM tool_executions 
-  WHERE thread_id IN (
-    SELECT thread_id FROM threads WHERE user_id = $1
-  );
-DELETE FROM messages 
-  WHERE thread_id IN (
-    SELECT thread_id FROM threads WHERE user_id = $1
-  );
-DELETE FROM states 
-  WHERE thread_id IN (
-    SELECT thread_id FROM threads WHERE user_id = $1
-  );
-DELETE FROM threads WHERE user_id = $1;
-COMMIT;
+DELETE FROM threads WHERE user_id = 'user-123';
 ```
 
 Then handle related data outside Postgres:
 
-1. **Redis:** Invalidate the cache for affected threads (10xGraph does this automatically on deletion).
+1. **Redis:** Deleting a thread through the checkpointer clears its cache entry. If you delete rows with SQL, remove the cached keys yourself or flush the cache.
 2. **Vector store:** Delete the user's memories from Qdrant or Mem0 using that system's API.
 3. **Media store:** Delete uploaded files from cloud storage or local disk.
 
@@ -273,15 +255,14 @@ Example test command:
 createdb 10xgraph_test
 pg_restore --no-owner --dbname 10xgraph_test 10xgraph-tables.dump
 
-# Update your test config
-TEST_DATABASE_URL="postgresql://localhost/10xgraph_test"
+# Point the staging server's checkpointer DSN at postgresql://localhost/10xgraph_test
 
 # Invoke an existing thread
 curl -X POST http://localhost:8000/v1/graph/invoke \
   -H "Authorization: Bearer $TEST_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "input": {"messages": [{"role": "user", "content": "Continue the conversation"}]},
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "Continue the conversation"}]}],
     "config": {"thread_id": "thr_existing_id"}
   }'
 

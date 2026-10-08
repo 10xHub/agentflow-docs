@@ -38,20 +38,13 @@ Run from your project root:
 10xgraph skills --agent github
 ```
 
-The `--agent` flag accepts the agent name (case-insensitive). If you omit it and your terminal is interactive, the CLI shows a numbered menu and prompts you to choose an agent:
-
-```text
-Which agent?
-- 1. Codex
-- 2. Claude
-- 3. GitHub
-```
-
-In non-interactive environments (CI, pipes), always pass `--agent` explicitly:
+The `--agent` flag accepts `codex`, `claude`, `github` (case-insensitive) or the menu number `1`, `2`, `3`. If you omit it in an interactive terminal, the CLI shows a checkbox list (Codex, Claude, GitHub) where you pick one or more agents; agents that already have the skill are pre-checked. Without a terminal it fails and asks for `--agent` or `--all`, so always pass one in CI:
 
 ```bash
 10xgraph skills --agent claude  # Non-interactive mode
 ```
+
+If the skill is already installed, naming that agent with `--agent` fails with "Skill already installed" unless you pass `--force`. In an interactive terminal the CLI offers to overwrite instead.
 
 ## Where the skill gets installed
 
@@ -127,7 +120,7 @@ To install the skill for Codex, Claude, and GitHub Copilot in a single command:
 10xgraph skills --all
 ```
 
-The command installs for every assistant that does not already have the skill installed. If a skill is already present, the command skips that assistant. Pass `--force` to overwrite existing installations:
+The command installs for every assistant that does not already have the skill installed and skips those that do. `--all` cannot be combined with `--agent`. Pass `--force` to overwrite existing installations:
 
 ```bash
 10xgraph skills --all --force
@@ -141,7 +134,7 @@ By default, skills are installed in the current working directory. Use `--path` 
 10xgraph skills --agent claude --path ./my-other-project
 ```
 
-The CLI refuses to install skills at the filesystem root or in your home directory to prevent accidental global installations.
+The CLI refuses to install at the filesystem root or directly in your home directory. Restart your coding assistant after installing so it loads the new skills directory.
 
 ## Update the skill after upgrading the CLI
 
@@ -157,31 +150,9 @@ Use `--force` to replace the existing installation. You can update all three ass
 10xgraph skills --all --force
 ```
 
-## Delete old skill folders from earlier versions
-
-Versions of the CLI before 0.7.0 installed the skill under the folder name `agentflow` (for example `.claude/skills/agentflow/`). The new CLI installs under `10xgraph` instead, leaving the old folder in place to avoid data loss.
-
-If you have both folders:
-
-```bash
-# List what's in your skills directory
-ls -la .claude/skills/
-
-# If both 10xgraph/ and agentflow/ are present, delete the old one
-rm -rf .claude/skills/agentflow/
-```
-
-The CLI does not remove the old folder automatically, so delete it manually after verifying the new installation works. Do this for each assistant:
-
-```bash
-rm -rf .agents/skills/agentflow/
-rm -rf .claude/skills/agentflow/
-rm -rf .github/skills/agentflow/
-```
-
 ## List supported assistants
 
-To see which coding assistants the CLI supports:
+To see which coding assistants the CLI supports and where each installs:
 
 ```bash
 10xgraph skills --list

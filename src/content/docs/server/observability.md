@@ -8,7 +8,7 @@ label: Observability
 updated: "2026-10-08"
 ---
 
-10xGraph provides multiple observability surfaces to monitor agent execution, debug issues, and track performance in production. Logs and metrics are built in; Sentry integration and tracing are optional. This page covers logs, metrics, secret redaction, Sentry setup, and the REST API endpoint to inspect run traces.
+10xGraph provides multiple observability surfaces to monitor agent execution, debug issues, and track performance in production. Logs and metrics are built in; Sentry integration and tracing are optional. This page covers logs, metrics, secret redaction, Sentry setup, and the REST API endpoint to inspect run traces. For per-node spans in Logfire or LangSmith, see the link at the end.
 
 Logs and metrics are independent of each other and of tracing: you can enable any combination, and a failure in one does not affect the others.
 
@@ -225,7 +225,7 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 SENTRY_PROFILES_SAMPLE_RATE=0.01
 ```
 
-When the API starts, Sentry initialization is best-effort: if the SDK is not installed or DSN is invalid, a warning is logged and the server continues. Only HTTP 5xx status codes are reported to Sentry; client errors (4xx) are not, preventing floods of validation error events.
+Sentry is only initialized when `MODE` (default `development`) is `production`, `staging` or `development`, case-insensitive. When the API starts, Sentry initialization is best-effort: if the SDK is not installed or DSN is invalid, a warning is logged and the server continues. Only HTTP 5xx status codes are reported to Sentry; client errors (4xx) are not, preventing floods of validation error events.
 
 ## The observability API endpoint
 
@@ -245,45 +245,63 @@ curl -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8000/v1/observability/thread-42?run_id=run_01ARZ3NDEKTSV4RRFFQ69G5FAV"
 ```
 
-The response includes thread metadata, a list of all run IDs for the thread, and the selected run's trace:
+The response is wrapped in the standard envelope; `data` holds the thread's run list and the selected run's trace:
 
 ```json
 {
-  "thread_id": "thread-42",
-  "run_count": 3,
-  "run_ids": [
-    "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    "run_01ARZ3NDEKTSVABCD1234EFGH",
-    "run_01ARZ3NDEABCDEFGHIJ123456K"
-  ],
-  "run": {
-    "run_id": "run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
-    "start_time": "2026-10-08T14:33:02.421Z",
-    "duration_ms": 1523,
-    "status": "completed",
-    "token_usage": {
-      "input_tokens": 250,
-      "output_tokens": 89
-    },
-    "spans": [
-      {
-        "node": "agent",
-        "start_ms": 0,
-        "duration_ms": 1420,
-        "status": "ok"
+  "data": {
+    "thread_id": "thread-42",
+    "run_count": 3,
+    "run_ids": ["run_a", "run_b", "run_c"],
+    "run": {
+      "run_id": "run_c",
+      "thread_id": "thread-42",
+      "status": "done",
+      "started_at": 1791469982.421,
+      "finished_at": 1791469983.944,
+      "duration_ms": 1523.0,
+      "spans": [
+        {
+          "id": "s1",
+          "name": "node: agent",
+          "kind": "node",
+          "parent": "root",
+          "start_ms": 0.0,
+          "duration_ms": 1420.0,
+          "model": null,
+          "input_tokens": null,
+          "output_tokens": null
+        }
+      ],
+      "events": [
+        {
+          "id": "e1",
+          "type": "message",
+          "node": "agent",
+          "offset_ms": 1400.0,
+          "summary": "assistant message"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 250,
+        "completion_tokens": 89,
+        "reasoning_tokens": 0,
+        "total_tokens": 339
       },
-      {
-        "node": "tools",
-        "start_ms": 1420,
-        "duration_ms": 103,
-        "status": "ok"
-      }
-    ]
-  }
+      "llm_calls": 1,
+      "tool_calls": 0,
+      "iterations": 1
+    }
+  },
+  "metadata": {}
 }
 ```
 
-When no run exists for a thread, `run` is `null` but the endpoint succeeds (status 200). Requires the `graph:read` permission. See [authorization](/docs/server/auth) for how to set up access control.
+`status` is one of `running`, `done`, `error` or `stopped`. Span `kind` is `root`, `node`, `llm` or `tool`. Event `type` is `message`, `updates`, `state`, `error` or `result`.
+
+The traces come from an in-memory, process-local store that the server binds only outside production. With `MODE=production`, which the generated Docker files set, the store is disabled and the endpoint returns an empty result (`run_count` 0, `run` null); use OTEL or a publisher there. When enabled, it keeps at most 200 threads, 20 runs per thread and 2000 records per run, and a restart clears it. It is not a durable tracing backend. When no run exists for a thread, `run` is `null` and the endpoint still returns 200. It requires the `graph:read` permission. See [authorization](/docs/server/auth) for how to set up access control.
+
+The TypeScript client wraps this endpoint as `client.observability(threadId, runId?)`.
 
 ## Complete setup example
 
@@ -317,28 +335,17 @@ def setup_observability() -> None:
 setup_observability()
 ```
 
-Combine with the API server setup:
-
-```python
-from tenxgraph_api.src.app.main import create_app
-
-setup_observability()
-app = create_app()
-```
-
-Or in a custom graph module:
+The API server does not call these functions for you. Put `setup_observability()` in the module your `10xgraph.json` `agent` key points to, so it runs when the graph is loaded at startup:
 
 ```python
 import logging
-from tenxgraph import StateGraph
+
 from tenxgraph.utils.logging import setup_structured_logging
 
 setup_structured_logging()
 logger = logging.getLogger("tenxgraph")
 
-def build_graph():
-    graph = StateGraph(...)
-    return graph.compile()
+# ... build your StateGraph here and export the compiled graph as `app`
 ```
 
 For per-node spans sent to Logfire or LangSmith, see [Send traces to Logfire or LangSmith](/docs/guides/send-traces-to-logfire-langsmith).

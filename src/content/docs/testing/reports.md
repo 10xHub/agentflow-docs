@@ -113,13 +113,13 @@ manager = ReporterManager(
 manager.run_all(report)
 ```
 
-Or via the `10xgraph eval` command, JUnit XML is off by default. You can enable it programmatically in your `run()` function.
+The `10xgraph eval` command always writes only HTML and JSON (console off, JUnit not available as a flag). To get JUnit XML in CI, run your evaluation from a Python script or pytest and use `ReporterManager` as above. The file is written as `<id>_<timestamp>_junit.xml`.
 
-GitHub Actions example using the JUnit XML output:
+GitHub Actions example that publishes JUnit XML produced by such a script:
 
 ```yaml
 - name: Run evaluations
-  run: 10xgraph eval
+  run: python run_evals.py
 
 - name: Publish eval results
   uses: EnricoMi/publish-unit-test-result-action@v2
@@ -266,7 +266,7 @@ if output.has_errors:
 
 ## Combined reports from multiple eval files
 
-When `10xgraph eval` runs more than one eval file, results from all files are merged into a single combined report. The merged report has `eval_set_id="combined_eval"` and contains all cases from all files.
+When `10xgraph eval` produces more than one eval set (for example from several eval files), the results are merged into a single combined report with `eval_set_id="combined_eval"`. If there is only one eval set, its own id is used.
 
 If you run multiple files manually, merge them the same way:
 
@@ -293,7 +293,7 @@ A case passes only when **all enabled criteria** meet their thresholds. The pass
 - `1.0` (100%): every criterion passed for every case
 - `< 1.0`: at least one case has at least one criterion below threshold
 
-The `10xgraph eval` CLI exits with code `1` whenever pass rate is below `1.0` or below the configured threshold. Code `0` means a perfect 100% pass rate (or threshold was met and no errors occurred).
+The `10xgraph eval` CLI exits with code `1` whenever the pass rate is below `1.0`. `--threshold` adds an extra error message when the pass rate is below the given value, but it does not relax the exit code: only a 100% pass rate exits `0`.
 
 ### Diagnosing failures
 

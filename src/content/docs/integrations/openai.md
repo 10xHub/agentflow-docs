@@ -9,14 +9,14 @@ label: OpenAI
 updated: "2026-10-08"
 faq:
   - question: "Which OpenAI models work with 10xGraph?"
-    answer: "All GPT models (gpt-4o, gpt-4o-mini, gpt-4-turbo) and reasoning models (o1, o3, o4-mini). To check the latest available models, use the OpenAI API directly or see platform.openai.com."
+    answer: "Any model your OpenAI account can call, for example gpt-4o, gpt-4o-mini and o4-mini. Names starting with gpt-, o1-, o3- or o4- are detected as OpenAI automatically. See platform.openai.com for the current list."
   - question: "How do I enable caching for OpenAI?"
     answer: "Prompt caching is automatic on OpenAI. Cache hits are logged at DEBUG level. Pass prompt_cache_key for stable cross-request hits."
   - question: "Do I need to change code to use the Responses API?"
-    answer: "Only if you want features unique to Responses (e.g. moderation). Pass api_style='responses' to your Agent or context manager."
+    answer: "No. Chat Completions is the default. Pass api_style='responses' to your Agent if you want the Responses API."
 ---
 
-Run GPT-class models (`gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`) and reasoning models (`o1`, `o3`, `o4-mini`) through the OpenAI API. 10xGraph handles response conversion, tool calling, and prompt caching automatically.
+Run GPT-class models (`gpt-4o`, `gpt-4o-mini`) and reasoning models (`o3-mini`, `o4-mini`) through the OpenAI API. 10xGraph handles response conversion, tool calling, and prompt caching automatically.
 
 ## Prerequisites
 
@@ -38,14 +38,14 @@ Or load it from a `.env` file:
 OPENAI_API_KEY=sk-...
 ```
 
-The environment variable is required; 10xGraph detects the provider from the model name or an explicit `provider="openai"` parameter.
+Pass `api_key=` to the `Agent` instead if you prefer. Without a key, 10xGraph logs a warning and the call fails unless your `base_url` needs no authentication. 10xGraph detects the provider from the model name or an explicit `provider="openai"` parameter.
 
 ## Basic usage
 
-Create an Agent with any OpenAI model:
+`Agent` is a graph node, so put it in a `StateGraph`:
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph import Agent, END, Message, StateGraph
 
 agent = Agent(
     model="gpt-4o",
@@ -53,13 +53,18 @@ agent = Agent(
     system_prompt=[{"role": "system", "content": "You are a helpful assistant."}],
 )
 
-# Invoke and get a response
-result = agent.invoke({"messages": [{"role": "user", "content": "What is 2 + 2?"}]})
+graph = StateGraph()
+graph.add_node("MAIN", agent)
+graph.add_edge("MAIN", END)
+graph.set_entry_point("MAIN")
+app = graph.compile()
+
+result = app.invoke({"messages": [Message.text_message("What is 2 + 2?")]})
 for message in result["messages"]:
-    print(f"{message['role']}: {message['content']}")
+    print(f"{message.role}: {message.text()}")
 ```
 
-The `provider="openai"` parameter is optional if your model name starts with `gpt-` or `o1`-`o4`. Both Chat Completions (the default) and the Responses API are supported; see [API Style](#api-style) below.
+The `provider="openai"` parameter is optional if your model name starts with `gpt-`, `o1-`, `o3-` or `o4-`. Both Chat Completions (the default) and the Responses API are supported; see [API Style](#api-style) below.
 
 ## Full example with tools
 
@@ -137,13 +142,13 @@ OpenAI exposes two distinct APIs for text generation. 10xGraph supports both.
 ### Agent
 
 ```python
-from tenxgraph.core.graph import Agent
+from tenxgraph import Agent
 
 # Default, Chat Completions
-agent = Agent(model="gpt-4o", system_prompt=[...])
+agent = Agent(model="gpt-4o")
 
 # Opt into the Responses API
-agent = Agent(model="gpt-4o", api_style="responses", system_prompt=[...])
+agent = Agent(model="gpt-4o", api_style="responses")
 ```
 
 ### SummaryContextManager
@@ -172,7 +177,7 @@ from tenxgraph.qa.evaluation import CriterionConfig, EvalConfig, CriteriaConfig
 
 config = EvalConfig(
     criteria=CriteriaConfig(
-        llm_judge=CriterionConfig.llm_judge(
+        llm_judge=CriterionConfig(
             judge_model="gpt-4o",
             api_style="chat",   # override if needed
         )
@@ -195,8 +200,8 @@ OpenAI serves the cached computation.
 
 **Minimum size:** 1,024 tokens. Requests below this threshold report zero cached tokens.
 
-**TTL:** 5-10 minutes of inactivity (in-memory, volatile). Extended to 24 hours for
-`gpt-5.5` and select `gpt-5.x` models with `prompt_cache_retention="24h"`.
+**TTL:** set by OpenAI (short, in-memory). Some models support extended retention through
+`prompt_cache_retention="24h"`; check OpenAI's documentation for which.
 
 ### `prompt_cache_key`
 
@@ -216,11 +221,11 @@ This is an OpenAI request-level parameter forwarded directly through `llm_kwargs
 
 ### `prompt_cache_retention`
 
-Extends the cache TTL to 24 hours. Only effective on `gpt-5.5` and select `gpt-5.x` models.
+Requests extended cache retention. OpenAI only honours it on models that support it.
 
 ```python
 agent = Agent(
-    model="gpt-5.5",
+    model="gpt-4o",
     system_prompt=[...],
     prompt_cache_key="assistant-v1",
     prompt_cache_retention="24h",
@@ -229,23 +234,20 @@ agent = Agent(
 
 ### SummaryContextManager with caching
 
-`SummaryContextManager` uses `call_llm` internally. Pass `prompt_cache_key` via
-`**llm_kwargs`, it is threaded through to the underlying OpenAI call.
-
-> `SummaryContextManager` does not currently accept `**llm_kwargs` directly.
-> If you need cache keys on the summariser, subclass it or open an issue.
+`SummaryContextManager` does not accept extra LLM keyword arguments, so it cannot
+send `prompt_cache_key`. The implicit cache still applies when its prompt prefix is stable.
 
 ### Evaluation judge with caching
 
-The evaluation judge also calls `call_llm`. Extra kwargs are not yet forwarded from
-`CriterionConfig` to `call_llm`. The implicit cache still fires automatically when the
-judge prompt prefix is stable (same rubric, same model).
+Extra kwargs are not forwarded from `CriterionConfig` to the judge call. The implicit
+cache still fires automatically when the judge prompt prefix is stable (same rubric, same model).
 
 ---
 
 ## Reasoning Models
 
-`o1`, `o3`, and `o4-mini` support extended thinking. Controlled via `reasoning_config`.
+Reasoning models such as `o4-mini` are controlled via `reasoning_config`. The default is
+`{"effort": "medium"}`.
 
 ```python
 # Enable with defaults (effort="medium")
@@ -257,12 +259,13 @@ agent = Agent(
     reasoning_config={"effort": "high"},  # "low" | "medium" | "high"
 )
 
-# Disable (useful when falling back to a non-reasoning model)
+# Disable
 agent = Agent(model="o4-mini", reasoning_config=False)
 ```
 
-`reasoning_config` is not applicable to `gpt-*` models. The Agent ignores it for models
-that do not support extended thinking.
+On Chat Completions, `effort` is sent as `reasoning_effort`; on the Responses API the whole
+dict is sent as `reasoning` (so `summary` is also allowed). Because the default is on, pass
+`reasoning_config=None` when using a model that does not accept reasoning parameters.
 
 ---
 
@@ -319,11 +322,11 @@ are forwarded to the underlying API call.
 | kwarg | Type | Applies to | Notes |
 |---|---|---|---|
 | `prompt_cache_key` | `str` | Chat + Responses | Improves cross-request cache hit rate |
-| `prompt_cache_retention` | `"in_memory"` / `"24h"` | Chat + Responses | 24h only on gpt-5.5+ |
+| `prompt_cache_retention` | `"in_memory"` / `"24h"` | Chat + Responses | 24h only on supporting models |
 | `temperature` | `float` | Chat + Responses | Sampling temperature (0.0-2.0) |
 | `max_tokens` | `int` | Chat | Max output tokens |
 | `max_output_tokens` | `int` | Responses | Max output tokens (Responses API name) |
-| `reasoning_effort` | `str` | Reasoning models | `"low"` / `"medium"` / `"high"` |
+| `reasoning_effort` | `str` | Chat | Normally derived from `reasoning_config`; dropped on the Responses API |
 | `top_p` | `float` | Chat + Responses | Nucleus sampling |
 | `frequency_penalty` | `float` | Chat | Penalise repeated tokens |
 | `presence_penalty` | `float` | Chat | Penalise already-seen tokens |
@@ -345,11 +348,11 @@ before the request is sent and must be passed to the client constructor instead.
 | Error | Fix |
 |---|---|
 | `AuthenticationError` | `OPENAI_API_KEY` missing or invalid |
-| `RateLimitError` | You hit a rate limit, enable retries via `retry_config=True` |
+| `RateLimitError` | You hit a rate limit. Retries are on by default; tune them with `retry_config=RetryConfig(max_retries=5)` (`from tenxgraph.core import RetryConfig`) |
 | `Model not found` | Check the model name; some models require tier-gated access |
 
 ## Next steps
 
 - See [Models](/docs/integrations/models) for a full capability matrix comparing OpenAI with Google and Anthropic.
 - Read [Configure an Agent](/docs/guides/configure-agent) to learn about fallbacks, retries, and other provider-agnostic settings.
-- Explore [Reasoning Models](/docs/guides/structured-output) for techniques using extended thinking with `o1` and `o3`.
+- Explore [Structured output](/docs/guides/structured-output) for typed responses with `output_schema`.

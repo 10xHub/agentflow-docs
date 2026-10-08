@@ -23,7 +23,7 @@ The prebuilt tools address common needs: web requests, arithmetic, file operatio
 
 ## Installation
 
-All prebuilt tools are available once you install the core package.
+The tools are part of the core package. `google_web_search` and `vertex_ai_search` need the `google-genai` extra, and the examples below that name a model need that provider's extra (for example `pip install "10xgraph[openai]"`).
 
 ```python
 from tenxgraph.prebuilt.tools import (
@@ -48,12 +48,13 @@ The `safe_calculator` tool evaluates arithmetic expressions safely using Python'
 ### Use safe_calculator
 
 ```python
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.prebuilt.tools import safe_calculator
-from tenxgraph.core.graph import Agent, ToolNode
 
-agent = Agent(
+agent = ReactAgent(
     model="gpt-4o",
-    tool_node=ToolNode([safe_calculator]),
+    tools=[safe_calculator],
     system_prompt=[{
         "role": "system",
         "content": "You are a math assistant. Use safe_calculator for all arithmetic."
@@ -63,7 +64,7 @@ agent = Agent(
 app = agent.compile()
 
 result = await app.ainvoke(
-    {"messages": [{"role": "user", "content": "What is (123 * 456) / 7?"}]},
+    {"messages": [Message.text_message("What is (123 * 456) / 7?")]},
     config={"thread_id": "t1"},
 )
 ```
@@ -130,8 +131,8 @@ The `fetch_url` tool retrieves the text content of public HTTP/HTTPS URLs. It bl
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `url` | `str` | required | Public HTTP/HTTPS URL to fetch. |
-| `timeout` | `float` | `10.0` | Request timeout in seconds (max 30). |
-| `max_chars` | `int` | `20000` | Maximum characters to return. |
+| `timeout` | `float` | `10.0` | Request timeout in seconds (clamped to 1-30). |
+| `max_chars` | `int` | `20000` | Maximum characters to return (capped at 20000). |
 
 ### Return value
 
@@ -145,9 +146,12 @@ The `fetch_url` tool retrieves the text content of public HTTP/HTTPS URLs. It bl
 }
 ```
 
+On failure the tool returns a JSON object with an `error` key instead, for example `{"error": "URL host is not public or could not be resolved"}` or `{"error": "HTTP error: 404", "status_code": 404}`.
+
 ### Security
 
 - Blocks private IPs, loopback (127.x), link-local, multicast, and reserved ranges
+- Allows only `http` and `https` schemes
 - Enforces a maximum timeout of 30 seconds
 - Strips HTML markup, extracting text only
 - Truncates responses longer than `max_chars`
@@ -183,8 +187,8 @@ agent = Agent(
 | `path` | `str` | required | Relative or absolute path to the file. |
 | `start_line` | `int` | `1` | 1-based starting line (inclusive). |
 | `end_line` | `int` | `0` | 1-based ending line (inclusive); 0 means end of file. |
-| `max_chars` | `int` | `20000` | Maximum characters to return. |
-| `config` | `dict` | `None` | Runtime config with `file_tool_root` or `workspace_root`. |
+| `max_chars` | `int` | `20000` | Maximum characters to return (capped at 20000). |
+| `config` | `dict` | `None` | Injected run config; `file_tool_root` or `workspace_root` sets the root (default: current directory). |
 
 **Return value:**
 
@@ -211,8 +215,8 @@ Write UTF-8 text files with three modes.
 | `path` | `str` | required | Path to write to. |
 | `content` | `str` | required | Text content to write. |
 | `mode` | `str` | `"create"` | `"create"` (fail if exists), `"overwrite"` (replace), `"append"`. |
-| `create_dirs` | `bool` | `False` | Create parent directories if they do not exist. |
-| `config` | `dict` | `None` | Runtime config with `file_tool_root` or `workspace_root`. |
+| `create_dirs` | `bool` | `False` | Create parent directories if they do not exist. Content is limited to 200,000 characters. |
+| `config` | `dict` | `None` | Injected run config; `file_tool_root` or `workspace_root` sets the root. |
 
 **Return value:**
 
@@ -239,7 +243,7 @@ Search files by name and content.
 | `path` | `str` | `""` | Root directory to search from (relative to workspace root). |
 | `glob` | `str` | `"**/*"` | Glob pattern for files to include. |
 | `max_results` | `int` | `20` | Maximum results to return (capped at 100). |
-| `config` | `dict` | `None` | Runtime config with `file_tool_root` or `workspace_root`. |
+| `config` | `dict` | `None` | Injected run config; `file_tool_root` or `workspace_root` sets the root. |
 
 **Return value:**
 
@@ -280,7 +284,7 @@ Search the public web with Gemini Google Search grounding, which returns both a 
 |---|---|---|---|
 | `query` | `str` | required | Search query string. |
 | `model` | `str` | `"gemini-2.5-flash"` | Gemini model to use for grounding. |
-| `max_chars` | `int` | `20000` | Maximum characters in the response. |
+| `max_chars` | `int` | `20000` | Maximum characters in the response (capped at 20000). |
 
 Requires: `pip install "10xgraph[google-genai]"` and Google Cloud credentials (GOOGLE_API_KEY or Application Default Credentials).
 
@@ -309,16 +313,13 @@ Memory tools integrate with 10xGraph's long-term memory system, letting agents r
 
 ### memory_tool
 
-A legacy general-purpose memory tool for custom graphs that do not use `Agent`'s built-in memory.
+A legacy general-purpose memory tool for custom graphs that do not use `Agent`'s built-in memory. It is already a tool, not a factory: add it to a `ToolNode` directly. It reads the `BaseStore` registered in the dependency container (pass the store to `compile(store=...)`), and supports the actions `search`, `store`, `update` and `delete`.
 
 ```python
+from tenxgraph.core.graph import ToolNode
 from tenxgraph.prebuilt.tools import memory_tool
-from tenxgraph.storage.store import create_local_qdrant_store, OpenAIEmbedding
 
-store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
-tool = memory_tool(store)
-
-tool_node = ToolNode([tool])
+tool_node = ToolNode([memory_tool])
 ```
 
 ### make_user_memory_tool and make_agent_memory_tool
@@ -326,9 +327,11 @@ tool_node = ToolNode([tool])
 Factories that create the tools injected by `Agent(..., memory=MemoryConfig(...))`. Call them directly only when you need custom configuration.
 
 ```python
+from tenxgraph.core.graph import ToolNode
 from tenxgraph.prebuilt.tools import make_user_memory_tool, make_agent_memory_tool
-from tenxgraph.storage.store import MemoryConfig
+from tenxgraph.storage.store import MemoryConfig, OpenAIEmbedding, create_local_qdrant_store
 
+store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
 config = MemoryConfig(store=store)
 user_tool = make_user_memory_tool(config)
 agent_tool = make_agent_memory_tool(config)
@@ -340,7 +343,9 @@ The typical pattern is to let the `Agent` class handle memory tool injection:
 
 ```python
 from tenxgraph.prebuilt.agent import ReactAgent
-from tenxgraph.storage.store import MemoryConfig
+from tenxgraph.storage.store import MemoryConfig, OpenAIEmbedding, create_local_qdrant_store
+
+store = create_local_qdrant_store("./qdrant_data", OpenAIEmbedding())
 
 agent = ReactAgent(
     model="gpt-4o",
@@ -369,7 +374,7 @@ tool_node = ToolNode([transfer_to_billing])
 | Parameter | Type | Description |
 |---|---|---|
 | `agent_name` | `str` | Name of the target agent node in the graph. |
-| `description` | `str` | Description shown to the LLM to decide when to hand off. |
+| `description` | `str \| None` | Description shown to the LLM to decide when to hand off. Optional; defaults to `Transfer control to <agent_name> agent`. |
 
 The tool uses a naming convention (`transfer_to_<agent_name>`) that the graph execution layer detects and intercepts, routing to the target agent without executing the tool itself. See [Handoff between agents](/docs/guides/handoff-between-agents) for the full guide.
 
@@ -475,8 +480,11 @@ agent = ReactAgent(
 After adding tools to an agent, run a quick test to verify they are callable:
 
 ```python
-result = await agent.ainvoke(
-    {"messages": [{"role": "user", "content": "What is 2 + 2?"}]},
+from tenxgraph.core.state import Message
+
+app = agent.compile()
+result = await app.ainvoke(
+    {"messages": [Message.text_message("What is 2 + 2?")]},
     config={"thread_id": "test"},
 )
 print(result["messages"][-1])

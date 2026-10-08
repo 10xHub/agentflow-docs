@@ -21,7 +21,7 @@ Use AudioAgent when you need low-latency, continuous audio interaction with live
 
 AudioAgent is purpose-built for realtime audio-to-audio applications:
 
-- **Voice assistants** with low-latency expectations (< 500ms) and live user interruption (barge-in).
+- **Voice assistants** with low-latency expectations and live user interruption (barge-in).
 - **Customer support on voice channels** where agents need access to tools (calendar, CRM, knowledge base) during calls.
 - **Voice-driven data collection** with tools to fetch or validate information in-call.
 - **Interactive podcasting or automated interviewing** where the model asks questions and reacts to answers in real-time.
@@ -37,7 +37,7 @@ AudioAgent is **not** the right choice if:
 
 ## How AudioAgent works
 
-AudioAgent builds a single-node graph with a `LiveAgent` root, connected to an exit node only for schema validation. The graph is never executed via the normal `invoke()` path; instead, you drive it with `arealtime()` (async generator) or `realtime()` (sync wrapper), which holds a persistent WebSocket and yields events (audio chunks, transcripts, tool calls, errors) as they occur.
+AudioAgent builds a single-node graph with a `LiveAgent` root, with an edge to END that exists only so the graph is well-formed for `compile()`. The graph is never executed via the normal `invoke()` path; instead, you drive it with `arealtime()` (async generator) or `realtime()` (sync wrapper), which holds a persistent WebSocket and yields events (audio chunks, transcripts, tool calls, errors) as they occur.
 
 ### Session flow
 
@@ -115,7 +115,7 @@ Call `.compile()` on the AudioAgent to produce a `CompiledGraph`:
 |---|---|---|---|
 | `checkpointer` | `BaseCheckpointer \| None` | `None` | Persist transcripts and session resumption handles. Enables reconnect and replay. |
 | `store` | `BaseStore \| None` | `None` | Long-term cross-thread storage (in addition to memory preload). |
-| `callback_manager` | `CallbackManager \| None` | default | Lifecycle hooks: `on_graph_start`, `on_graph_end`, `on_turn_start`, `on_turn_end`. |
+| `callback_manager` | `CallbackManager \| None` | default | Lifecycle hooks and callbacks (register a `GraphLifecycleHook` with `register_lifecycle_hook`). |
 | `shutdown_timeout` | `float` | `30.0` | Seconds to wait before forcing shutdown if the WebSocket is stuck. |
 
 AudioAgent does **not** accept `media_store`, `interrupt_before`, or `interrupt_after`. Realtime media (images, video frames) is sent frame-by-frame directly to the model via `LiveInputQueue.send_image()`, there is no media store involvement. Interrupt hooks do not apply to the realtime execution model; use events instead (e.g. listen for `interrupted` or `error` types).
@@ -233,7 +233,7 @@ from tenxgraph.storage.checkpointer import InMemoryCheckpointer
 
 MODEL = "gemini-live-2.5-flash-preview"
 
-# For production, use PgCheckpointer with a Postgres + Redis pair
+# For production, use PgCheckpointer (needs postgres_dsn, redis_url and a user_id in config)
 checkpointer = InMemoryCheckpointer()
 
 app = AudioAgent(
@@ -258,7 +258,7 @@ async def main():
 
     # Second session: resume with the saved context
     print("\n=== Session 2 (reconnect) ===")
-    app = AudioAgent(
+    app2 = AudioAgent(
         MODEL,
         realtime_config=RealtimeConfig(model=MODEL, voice="Puck"),
         system_prompt=[{"role": "system", "content": "Remember important details the user tells you."}],
@@ -267,13 +267,13 @@ async def main():
     queue = LiveInputQueue()
     queue.send_text("Remind me where I work.")
 
-    async for event in app.arealtime(queue, {"thread_id": "user-1"}):
+    async for event in app2.arealtime(queue, {"thread_id": "user-1"}):
         if event.type == "output_transcript" and event.finished:
             print(f"Agent: {event.text}")
         elif event.type == "turn_complete":
             queue.close()
 
-    await app.aclose()
+    await app2.aclose()
 
 asyncio.run(main())
 ```

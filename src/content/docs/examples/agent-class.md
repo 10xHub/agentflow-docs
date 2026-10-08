@@ -188,17 +188,10 @@ config = {"thread_id": "12345", "recursion_limit": 10}
 res = app.invoke(inp, config=config)
 
 for msg in res["messages"]:
-    print(f"[{msg.role}] {msg}")
+    print(f"[{msg.role}] {msg.text()}")
 ```
 
-Expected output:
-
-```
-[user] How is weather in London?
-[assistant] <tool call: get_weather(location='London')>
-[tool] The weather in London is sunny
-[assistant] The weather in London is currently sunny!
-```
+The messages come back in order: the user message, an assistant message carrying the `get_weather` tool call (empty text), the tool result, and the final assistant reply. The final wording depends on the model.
 
 ## Complete source
 
@@ -302,11 +295,11 @@ if __name__ == "__main__":
 
 | Concept | Purpose |
 |---|---|
-| `Agent` | Wraps LLM calls, message conversion, and tool integration. Injectable params like `state` and `tool_call_id` are automatically filled. |
-| `ToolNode` | Wraps a list of callables, executes them in parallel, and returns tool-result messages. |
+| `Agent` | Wraps LLM calls and message conversion. Set `tool_node` to the name of the node that runs its tool calls. |
+| `ToolNode` | Wraps a list of callables, executes them in parallel, and returns tool-result messages. Injectable params like `state` and `tool_call_id` are filled automatically. |
 | `should_use_tools` | The routing function. Runs after every node and returns the next node name. |
 | Conditional edge | Connects a node to a routing function and maps return values to next nodes. |
-| `AgentState` | The graph state. Contains `context` (list of messages), `messages`, and custom fields. |
+| `AgentState` | The graph state. Contains `context` (list of messages) and any custom fields you add by subclassing. |
 | Recursion limit | Prevents infinite loops. Default is 25 hops (LLM calls + tool calls). |
 
 ## What to try next

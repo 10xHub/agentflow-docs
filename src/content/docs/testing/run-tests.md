@@ -11,12 +11,12 @@ faq:
   - question: "Do I need to write tests in a specific way for 10xgraph test?"
     answer: "No. `10xgraph test` is a wrapper around pytest, so any pytest test works as-is. Write tests with the test-building tools described in /docs/testing/unit-tests."
   - question: "Can I enforce coverage requirements in CI?"
-    answer: "Yes. Set `coverage_threshold` in 10xgraph.json and the command will fail if coverage drops below that percentage. The exit code ensures CI gates work correctly."
+    answer: "Yes. Set `coverage_threshold` in 10xgraph.json and run with coverage enabled (`--coverage`, or `coverage` set to true in the config). The run then fails if coverage drops below that percentage, so CI gates work."
   - question: "How do I run only specific tests?"
     answer: "Use `-k` to filter by name: `10xgraph test -k \"weather\"` runs only tests whose name contains 'weather'. Or pass a directory/file path to run tests in that location only."
 ---
 
-The `10xgraph test` command runs your project's test suite and measures code coverage. It is a thin wrapper around pytest that reads your project configuration from `10xgraph.json`, so you can set coverage thresholds and test paths once and enforce them in CI without duplicating settings.
+The `10xgraph test` command runs your project's test suite and measures code coverage. It is a thin wrapper around pytest that reads your project configuration from `10xgraph.json` (found in the current directory or a parent), so you can set coverage thresholds and test paths once and enforce them in CI without duplicating settings.
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ From the folder that contains `10xgraph.json`, run all tests:
 
 The command runs pytest from the project root using pytest's own discovery rules: it reads `testpaths` from `pytest.ini` or `pyproject.toml`, or falls back to scanning the current directory. This behavior matches running `pytest` directly.
 
-If the test run succeeds, `10xgraph test` exits with code 0. If any test fails, it exits with code 1. If you have set a `coverage_threshold` in `10xgraph.json` and coverage falls below that threshold, the command exits with code 1 even if all tests pass.
+`10xgraph test` exits with pytest's own exit code: 0 when the run succeeds, non-zero when tests fail or no tests are collected. If coverage is enabled, a `coverage_threshold` is set in `10xgraph.json`, and coverage falls below it, the run also fails even if all tests pass.
 
 ## Target a specific test path
 
@@ -56,7 +56,7 @@ When you provide a path, pytest only collects tests under that location. This is
 
 ## Measure code coverage
 
-Add `--coverage` to enable code coverage reporting:
+Add `--coverage` (short form `-C`) to enable code coverage reporting:
 
 ```bash
 10xgraph test --coverage
@@ -103,7 +103,7 @@ Use `--` to separate `10xgraph test` options from raw pytest arguments that you 
 10xgraph test -- -m "not slow and not integration"
 ```
 
-Everything after `--` is appended to the pytest command verbatim. This lets you use any pytest feature without writing custom CLI options in `10xgraph test` itself.
+Everything after `--` is appended to the end of the pytest command. This lets you use any pytest feature without writing custom CLI options in `10xgraph test` itself.
 
 ## Configure your testing defaults
 
@@ -124,7 +124,7 @@ Add a `test` section to `10xgraph.json` to set project-level defaults for path, 
 | --- | --- | --- |
 | `path` | string | Default test directory or file when no `PATH` argument is given. If unset, pytest auto-discovers from the current directory. |
 | `coverage` | boolean | If `true`, enable coverage reporting on every run without needing `--coverage`. Defaults to `false`. |
-| `coverage_threshold` | integer | Minimum coverage percentage (0-100). The test run fails if coverage drops below this value. When set, the threshold is enforced even if tests pass. Defaults to unset (no threshold). |
+| `coverage_threshold` | integer | Minimum coverage percentage (0-100). Passed to pytest as `--cov-fail-under`, and only applied when coverage is enabled. Defaults to unset (no threshold). |
 
 With the config above, a bare `10xgraph test` is equivalent to running:
 
@@ -155,19 +155,17 @@ jobs:
         run: 10xgraph test --coverage
 ```
 
-The `coverage_threshold` from `10xgraph.json` ensures the threshold is enforced without repeating it in the workflow. Other CI systems (GitLab CI, CircleCI, Jenkins, etc.) follow the same pattern: install dependencies, then run `10xgraph test --coverage`. The exit code works the same way everywhere.
+The `coverage_threshold` from `10xgraph.json` is enforced because `--coverage` is on, so you do not repeat it in the workflow. Other CI systems (GitLab CI, CircleCI, Jenkins, etc.) follow the same pattern: install dependencies, then run `10xgraph test --coverage`. The exit code works the same way everywhere.
 
 ## Control output verbosity
 
-By default, `10xgraph test` runs in verbose mode (`-v`), printing one line per test. You can change this:
+By default, `10xgraph test` passes `-v` to pytest, printing one line per test. Use `--quiet` (`-q`) to pass `-q` instead:
 
 ```bash
-# Very detailed output with full tracebacks
-10xgraph test --verbose
-
-# Quiet output: only show errors and summary
 10xgraph test --quiet
 ```
+
+`--verbose` (`-v`) keeps the default `-v` and also turns on verbose CLI logging. For full tracebacks, pass `--tb=long` after `--`.
 
 ## Common workflows
 
@@ -191,6 +189,7 @@ This generates a detailed HTML coverage report and opens it in your browser. You
 
 ```json
 {
+  "agent": "graph.react:app",
   "test": {
     "coverage": true,
     "coverage_threshold": 85
@@ -236,7 +235,7 @@ Coverage reporting requires this plugin. If you never use `--coverage`, you do n
 
 **Coverage is below threshold, tests fail**
 
-The test command exits with code 1 because coverage fell below `coverage_threshold` in `10xgraph.json`. Either increase your test coverage, or lower the threshold if the current target is unrealistic. Check the coverage report (`htmlcov/index.html` after running with `--coverage`) to see which lines are uncovered.
+The test command exits non-zero because coverage fell below `coverage_threshold` in `10xgraph.json`. Either increase your test coverage, or lower the threshold if the current target is unrealistic. Check the coverage report (`htmlcov/index.html` after running with `--coverage`) to see which lines are uncovered.
 
 **Tests directory not found or no tests collected**
 
@@ -264,4 +263,4 @@ This makes your source code importable from tests.
 
 ## Next steps
 
-Once your test suite is running, explore the unit testing tools in `/docs/testing/unit-tests` to write tests more effectively. For evaluation (checking whether an agent answers questions correctly), see `/docs/testing/evaluation` instead.
+Once your test suite is running, explore the unit testing tools in [unit tests](/docs/testing/unit-tests) to write tests more effectively. For evaluation (checking whether an agent answers questions correctly), see [evaluation](/docs/testing/evaluation) instead.

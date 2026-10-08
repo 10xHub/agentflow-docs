@@ -30,15 +30,13 @@ From the directory containing your `10xgraph.json`, run:
 10xgraph play --host 127.0.0.1 --port 8000
 ```
 
-The playground will start your API server and open a browser tab automatically. You should see output like:
+The command validates `10xgraph.json`, starts the API server with auto-reload on, and opens the hosted playground in your browser once the API responds. The terminal shows a progress timeline and then a line like:
 
 ```
-[INFO] Starting API server...
-[INFO] API server running on http://127.0.0.1:8000
-[INFO] Opening playground at: https://playground-463bd.web.app?backendUrl=http://127.0.0.1:8000
+Playground opened: https://playground-463bd.web.app?backendUrl=http%3A%2F%2F127.0.0.1%3A8000
 ```
 
-If the browser tab does not open automatically, copy the URL from the terminal output and paste it into your browser's address bar.
+If the browser tab does not open automatically, copy the playground URL from the terminal output and paste it into your browser's address bar.
 
 ## Verify the playground works
 
@@ -149,40 +147,39 @@ Configure secrets one of two ways:
 **Option 1: set env vars before starting the server**
 
 ```bash
-export GOOGLE_API_KEY=sk_...
-export DATABASE_URL=postgresql://...
+export GOOGLE_API_KEY="..."
 10xgraph play
 ```
 
-Your graph module reads them at import time:
+The server also loads the `.env` file named by the `env` key in `10xgraph.json`. Your graph module reads the variables when it is imported:
 
 ```python
 # graph.py
 import os
-from tenxgraph import StateGraph, Agent
 
-api_key = os.environ["GOOGLE_API_KEY"]
-if not api_key:
+from tenxgraph.prebuilt.agent import ReactAgent
+
+if not os.environ.get("GOOGLE_API_KEY"):
     raise ValueError("GOOGLE_API_KEY not set")
 
-agent = Agent(model="gemini-2.0-flash", api_key=api_key)
-graph = StateGraph(...)
-# ...
-app = graph.compile()
+agent = ReactAgent(model="google/gemini-2.5-flash", provider="google")
+app = agent.compile()
 ```
+
+Install the provider extra first: `pip install "10xgraph[google-genai]"`.
 
 **Option 2: pass secrets via dependency injection**
 
-If your graph accepts a container from `InjectQ`, you can bind secrets in `10xgraph.json`:
+If your graph uses an `InjectQ` container, point the `injectq` key in `10xgraph.json` at it and bind your secrets there:
 
 ```json
 {
   "agent": "graph:app",
-  "injectq": "auth:container"
+  "injectq": "graph:container"
 }
 ```
 
-Then your tools and nodes can inject them as needed.
+Your tools and nodes can then inject them as needed.
 
 ## Stopping the playground
 
@@ -195,10 +192,10 @@ The `10xgraph play` command is one of three ways to run your API locally:
 | Command | Starts API | Opens playground | Best for |
 |---|---|---|---|
 | `10xgraph play` | Yes | Yes, automatically | Quick interactive testing during development |
-| `10xgraph dev` | Yes | Yes, on request | Goal-oriented local dev (same as play, slightly different UX) |
-| `10xgraph api` | Yes | No | Server-only mode (CI, production, programmatic clients) |
+| `10xgraph dev` | Yes | Yes by default; pass `--no-open` to skip | Local development server |
+| `10xgraph api` | Yes | No | Development server without the browser step (CI, programmatic clients) |
 
-All three start the same FastAPI server. The difference is whether the browser is opened and how.
+All three start the same FastAPI server with Uvicorn. All three auto-reload by default (`--no-reload` turns it off) and run the Uvicorn development server, which the CLI marks as not for production; for production, build an image with `10xgraph build` (it runs Gunicorn).
 
 ## Sharing your agent with others
 

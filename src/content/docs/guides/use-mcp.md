@@ -24,8 +24,10 @@ This guide covers connecting an MCP server, invoking its tools from a graph, tes
 Install the MCP extra to add fastmcp and mcp libraries:
 
 ```bash
-pip install "10xgraph[mcp]"
+pip install "10xgraph[mcp,openai]"
 ```
+
+The samples use `gpt-4o` and need `OPENAI_API_KEY`. The final example uses Google and needs `pip install "10xgraph[mcp,google-genai]"`.
 
 ## Step 1: Create an MCP client
 
@@ -57,13 +59,13 @@ client = Client(config)
 
 ### Using a stdio subprocess server
 
-To run an MCP server as a subprocess on your machine, pass the command to start it:
+To run an MCP server as a subprocess on your machine, pass the path of the server script and fastmcp starts it over stdio:
 
 ```python
 from fastmcp import Client
 
 # Starts the server and communicates over stdio
-client = Client("python my_mcp_server.py")
+client = Client("my_mcp_server.py")
 ```
 
 ### Using a remote HTTP server
@@ -78,7 +80,7 @@ client = Client("https://my-mcp-server.example.com/mcp")
 
 ## Step 2: Wire the MCP client into ToolNode
 
-Create a `ToolNode` and pass the MCP client. The `ToolNode` queries the client for available tools each time the Agent prepares its tool list before calling the LLM.
+Create a `ToolNode` and pass the MCP client. The `ToolNode` queries the client for available tools each time the Agent prepares its tool list before calling the LLM. It pings the server first and offers no MCP tools if the ping fails.
 
 ```python
 from tenxgraph.core.graph import ToolNode
@@ -111,7 +113,7 @@ agent = Agent(
 def should_use_tools(state: AgentState) -> str:
     """Route to tools if the agent requested them."""
     last = state.context[-1] if state.context else None
-    if last and last.role == "assistant" and getattr(last, "tool_calls", None):
+    if last and last.role == "assistant" and getattr(last, "tools_calls", None):
         return "tools"
     return END
 
@@ -157,11 +159,11 @@ tool_node = ToolNode(
 )
 ```
 
-When the LLM requests a tool, `ToolNode` checks its local registry first, then queries the MCP client. If the tool name matches both a local function and an MCP tool, the local function takes precedence.
+When the LLM requests a tool, `ToolNode` runs it on the MCP client if the name is one of the MCP tools it listed, otherwise it runs the local function. Avoid giving a local function and an MCP tool the same name: the MCP tool wins.
 
 ## Forwarding user context to MCP
 
-Many MCP servers need to know who is calling them (for access control, logging, or per-user state). Set `pass_user_info_to_mcp=True` on `ToolNode` to send the `user` dict from the execution config to the MCP server as request metadata:
+Many MCP servers need to know who is calling them (for access control, logging, or per-user state). Set `pass_user_info_to_mcp=True` on `ToolNode` to send the `user` dict from the execution config to the MCP server. It is added to the tool call arguments under the key `user`. If `config` has no `user` dict but has a `user_id`, the server receives `{"user_id": ...}` instead.
 
 ```python
 tool_node = ToolNode(
@@ -171,25 +173,23 @@ tool_node = ToolNode(
 )
 ```
 
-The MCP server receives the user dict in its request context and can access it in tool handlers:
+The MCP tool receives it as an argument, so declare a `user` parameter on the server tool:
 
 ```python
-# Code on the MCP server (mcp library)
-import mcp
+# Code on the MCP server (fastmcp)
+from fastmcp import FastMCP
+
+mcp = FastMCP("secure")
 
 @mcp.tool()
-async def secure_action(query: str) -> str:
-    user = mcp.current_request_context.meta.get("user", {})
-    user_id = user.get("id")
-    user_roles = user.get("roles", [])
-    
-    if "admin" not in user_roles:
-        raise PermissionError(f"User {user_id} does not have permission")
-    
-    return f"Action completed by {user_id}"
+def secure_action(query: str, user: dict | None = None) -> str:
+    user = user or {}
+    if "admin" not in user.get("roles", []):
+        raise PermissionError(f"User {user.get('id')} does not have permission")
+    return f"Action completed by {user.get('id')}"
 ```
 
-Pass the user dict in the invoke config. If you have set up authentication for your graph, the authenticated user info is automatically added:
+Pass the user dict in the invoke config. When requests go through the 10xGraph API server with authentication, the server sets `config["user"]` for you. When you call the graph directly, pass it yourself:
 
 ```python
 result = app.invoke(
@@ -203,7 +203,7 @@ result = app.invoke(
 
 ## Filtering MCP tools by tag
 
-MCP servers can tag their tools with metadata. If the server supports it, you can filter which tools are offered to the Agent using `tools_tags` on the `Agent`:
+MCP servers can tag their tools with metadata. If the server supports it, you can filter which tools are offered to the Agent using `tools_tags` on the `Agent`. MCP tools are matched against the server's fastmcp tags:
 
 ```python
 agent = Agent(
@@ -213,7 +213,7 @@ agent = Agent(
 )
 ```
 
-The Agent will only see MCP tools that have the specified tags. Local tools are not filtered by this setting.
+The Agent will only see MCP tools that share at least one of the specified tags. Local tools registered with `@tool(tags=[...])` are filtered the same way; untagged local tools are always offered.
 
 ## Testing MCP tools without a server
 
@@ -247,7 +247,7 @@ agent = Agent(
 
 def should_use_tools(state) -> str:
     last = state.context[-1] if state.context else None
-    if last and last.role == "assistant" and getattr(last, "tool_calls", None):
+    if last and last.role == "assistant" and getattr(last, "tools_calls", None):
         return "tools"
     return END
 
@@ -284,6 +284,7 @@ assert "AI trends" in call["arguments"]["query"]
 - `assert_called(name)`: Assert a tool was called (raises if not)
 - `assert_called_with(name, **args)`: Assert a tool was called with specific arguments
 - `reset()`: Clear call history but keep tool registrations
+- `clear()`: Remove all tools and call history
 
 ## Using ReactAgent with MCP
 
@@ -346,7 +347,7 @@ agent = Agent(
 
 def should_use_tools(state: AgentState) -> str:
     last = state.context[-1] if state.context else None
-    if last and last.role == "assistant" and getattr(last, "tool_calls", None):
+    if last and last.role == "assistant" and getattr(last, "tools_calls", None):
         return "tools"
     return END
 
@@ -368,7 +369,7 @@ print(result["messages"][-1].content)
 
 ## What you learned
 
-- Install `pip install 10xgraph[mcp]` to enable MCP support.
+- Install `pip install "10xgraph[mcp]"` to enable MCP support.
 - Create an MCP client with `fastmcp.Client(config_dict)`, `Client(stdio_command)`, or `Client(http_url)`.
 - Pass the client to `ToolNode(tools=[], client=client)` to offer MCP tools to your agent.
 - Mix local and MCP tools in the same `ToolNode`; the runtime routes each call appropriately.

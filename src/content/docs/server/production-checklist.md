@@ -9,11 +9,11 @@ label: Production Checklist
 updated: "2026-10-08"
 faq:
   - question: "What is the minimum checklist for production?"
-    answer: "Set MODE=production, IS_DEBUG=false, use explicit ORIGINS, configure Postgres+Redis for persistence, enable rate limiting, run at least two API instances, and disable eval endpoints."
+    answer: "Set MODE=production, IS_DEBUG=false, use explicit ORIGINS, configure Postgres+Redis for persistence, enable rate limiting, and run at least two API instances."
   - question: "Can I use in-memory checkpointing in production?"
     answer: "No. InMemoryCheckpointer loses all state on restart and cannot be shared across instances. Use PgCheckpointer for all production deployments."
   - question: "Do I have to use Redis?"
-    answer: "Redis is optional. PgCheckpointer works with Postgres alone (slower cache behavior). It is required only for rate limiting if you choose the Redis backend, or for authorization caching in RBAC mode."
+    answer: "PgCheckpointer requires a Redis connection (redis_url, a redis_pool or a redis instance) in addition to Postgres; Redis is its cache and Postgres is the durable store. Redis is also what the Redis rate-limit backend uses."
 ---
 
 Deploying 10xGraph to production requires hardening your API server for security, reliability, and scale. This checklist walks through every critical setting, from runtime mode to persistence topology to horizontal scaling, with verification steps to confirm each piece is working before traffic arrives.
@@ -38,14 +38,7 @@ IS_DEBUG=false
 LOG_LEVEL=INFO
 ```
 
-`MODE=production` enforces stricter validation at startup: wildcard CORS origins combined with credentials will fail the server boot, JWT secrets shorter than 32 bytes are rejected, and missing `JWT_SECRET_KEY` when JWT auth is configured raises an error. Leave debug mode off; it exposes internal stack traces over HTTP and accepts slower code paths.
-
-Verify the mode is active:
-
-```bash
-curl http://127.0.0.1:8000/ping
-# Response should have no debug information
-```
+`MODE=production` enforces stricter validation at startup: wildcard CORS origins combined with credentials fail the server boot, and HMAC JWT secrets shorter than 32 bytes are rejected. It also turns off the `/docs` and `/redocs` pages unless you set their paths explicitly, and it does not mount the eval report routes. Leave `IS_DEBUG=false`; debug mode in production logs a security warning.
 
 ## 2. Secrets and authentication
 
@@ -68,7 +61,7 @@ JWT_ALGORITHM=HS256
 
 Export these to your deployment. The server requires them at startup when JWT auth is configured and will fail to boot otherwise.
 
-For token generation, create a JWT with the required claims:
+The server rejects a token that has no `user_id` claim. To mint a test token:
 
 ```bash
 # Example using PyJWT (install: pip install PyJWT)
@@ -76,7 +69,7 @@ python -c "
 import jwt
 import os
 secret = os.environ['JWT_SECRET_KEY']
-payload = {'sub': 'user_id', 'iss': 'your-service'}
+payload = {'user_id': 'user-123'}
 token = jwt.encode(payload, secret, algorithm='HS256')
 print(token)
 "
@@ -84,11 +77,7 @@ print(token)
 
 ### Custom authentication
 
-If you use custom authentication, ensure your `BaseAuth` subclass is properly deployed and all dependencies are available. Verify it loads without errors:
-
-```bash
-10xgraph init --dry-run   # Validates the loaded graph and auth
-```
+If you use custom authentication, ensure your `BaseAuth` subclass is deployed with its dependencies. Start the server and confirm a request without credentials is rejected with 401.
 
 ### API keys and secrets
 
@@ -106,26 +95,20 @@ ORIGINS=https://app.example.com,https://admin.example.com
 ALLOWED_HOST=app.example.com
 ```
 
-The server rejects `ORIGINS="*"` combined with `CORS_ALLOW_CREDENTIALS=true` in production mode. If you need cross-origin requests without authentication, set:
+The server refuses to start with `ORIGINS="*"` and `CORS_ALLOW_CREDENTIALS=true` (the default) in production mode. If you need cross-origin requests without credentials, set:
 
 ```bash
 ORIGINS=*
 CORS_ALLOW_CREDENTIALS=false
 ```
 
-Security headers are enabled by default. Verify they are present:
+Security headers are enabled by default (`SECURITY_HEADERS_ENABLED`). `Strict-Transport-Security` is only sent on HTTPS requests, so check through your TLS endpoint:
 
 ```bash
-curl -i http://127.0.0.1:8000/ping | grep -E "Strict-Transport-Security|X-Frame-Options"
-# Should see security headers in response
+curl -si https://api.example.com/ping | grep -iE "strict-transport-security|x-frame-options"
 ```
 
-Disable documentation UI paths in production to reduce your attack surface:
-
-```bash
-DOCS_PATH=
-REDOCS_PATH=
-```
+In production mode the documentation pages are off unless you set `DOCS_PATH` or `REDOCS_PATH` explicitly. Leave them unset.
 
 ## 4. Authentication and authorization
 
@@ -140,11 +123,11 @@ If you are using authorization (RBAC or ownership-based access control), configu
 }
 ```
 
-The `ownership` backend ensures each user can access only their own threads. This is the production default when `MODE=production`. Verify it is enforced by testing access to a thread owned by a different user; the API should return 403 Forbidden.
+The `ownership` backend ensures each user can access only their own threads. `10xgraph init` writes it into new projects that use JWT or custom auth; it is not applied automatically otherwise. Verify it is enforced by requesting a thread owned by a different user; the API should deny the request.
 
 ### Permission scopes
 
-If your authorization uses custom scopes, ensure they are validated on every protected route. The server automatically guards all routes except `/ping`.
+If your authorization uses custom scopes, ensure they are validated on every protected route. Authentication guards the graph, thread, store and media routes. `/ping` needs no authentication.
 
 ## 5. Persistence topology
 
@@ -152,7 +135,7 @@ Thread history, state snapshots, and message logs must survive server restarts a
 
 ### PostgreSQL setup
 
-Use `PgCheckpointer` in production. In your graph module, instantiate the checkpointer:
+Use `PgCheckpointer` in production (`pip install "10xgraph[pg_checkpoint]"`). In your graph module, instantiate the checkpointer:
 
 ```python
 from tenxgraph.storage.checkpointer import PgCheckpointer
@@ -165,7 +148,7 @@ my_checkpointer = PgCheckpointer(
 app = state_graph.compile(checkpointer=my_checkpointer)
 ```
 
-The checkpointer creates tables automatically on first connection. Make sure the database user has CREATE permission. Table names are prefixed by default; list them:
+The checkpointer creates tables automatically on first connection (call `setup()` or `asetup()` if your code manages startup itself). Make sure the database user has CREATE permission. List the tables:
 
 ```bash
 psql "postgresql://user:password@postgres.internal/10xgraph" -c "
@@ -175,11 +158,11 @@ psql "postgresql://user:password@postgres.internal/10xgraph" -c "
 "
 ```
 
-Expected tables: `agentflow_checkpoints`, `agentflow_messages`, `agentflow_threads`, `agentflow_token_usage_ledger`.
+Expected tables in the `public` schema (or the `schema=` you pass): `threads`, `states`, `messages`, `tool_executions`, `schema_version`. They have no name prefix, so use a dedicated database or schema if you share the instance.
 
 ### Redis caching
 
-Redis acts as a hot cache in front of Postgres. It is optional for data durability but improves read latency and supports concurrent request handling.
+Redis acts as a hot cache in front of Postgres. `PgCheckpointer` requires a Redis connection, but the durable data lives in Postgres.
 
 ```bash
 REDIS_URL=redis://redis.internal:6379/0
@@ -214,7 +197,7 @@ Deploy at least two API instances behind a load balancer to survive instance fai
 
 ### Gunicorn + Uvicorn (ASGI server)
 
-For production, use a multi-worker HTTP server. Gunicorn is the standard choice. Create a startup script:
+The `Dockerfile` from `10xgraph build` already starts Gunicorn with Uvicorn workers. If you run the server yourself, use the same flags. The generated command uses a 600-second graceful timeout and a 660-second worker timeout so long agent runs are not killed mid-flight:
 
 ```bash
 #!/bin/bash
@@ -222,28 +205,24 @@ set -e
 
 export MODE=production
 export IS_DEBUG=false
-export DATABASE_URL="postgresql://user:password@postgres.internal:5432/10xgraph"
 export REDIS_URL="redis://redis.internal:6379/0"
 export JWT_SECRET_KEY=$JWT_SECRET_KEY  # from environment
 export ORIGINS="https://app.example.com"
 
 gunicorn \
   --workers 4 \
-  --worker-class uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8000 \
-  --access-logfile - \
-  --error-logfile - \
-  --log-level info \
-  --graceful-timeout 30 \
-  --timeout 60 \
+  -k uvicorn.workers.UvicornWorker \
+  -b 0.0.0.0:8000 \
+  --graceful-timeout 600 \
+  --timeout 660 \
   tenxgraph_api.src.app.main:app
 ```
 
-The `--workers` flag sets the number of worker processes. Start with 2-4 workers per available CPU core. Monitor CPU and memory usage to tune.
+Set the `GRAPH_PATH` environment variable to your `10xgraph.json` if it is not in the working directory. Start with 2-4 workers per available CPU core. Monitor CPU and memory usage to tune.
 
 ### Environment variable for workers
 
-The server reads `WEB_CONCURRENCY` and applies it as the worker count if `--workers` is not specified:
+Gunicorn reads `WEB_CONCURRENCY` as the worker count if `--workers` is not specified. The generated `Dockerfile` sets it to 2:
 
 ```bash
 WEB_CONCURRENCY=4
@@ -286,7 +265,7 @@ Enable rate limiting to protect against abuse and unintended traffic spikes:
 
 This allows 100 requests per IP address per 60-second window. Use a separate Redis database (`/1`) to isolate rate limit data from the checkpointer cache.
 
-Exclude health-check endpoints from rate limiting:
+`/ping` is always excluded from rate limiting. Add other paths with `exclude_paths`:
 
 ```json
 {
@@ -294,7 +273,7 @@ Exclude health-check endpoints from rate limiting:
     "enabled": true,
     "requests": 100,
     "window": 60,
-    "exclude_paths": ["/ping", "/health"]
+    "exclude_paths": ["/metrics"]
   }
 }
 ```
@@ -303,9 +282,9 @@ Verify rate limiting is active:
 
 ```bash
 for i in {1..5}; do
-  curl -s http://127.0.0.1:8000/v1/graph/invoke \
+  curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/v1/graph/invoke \
     -H "Content-Type: application/json" \
-    -d '{"messages": [{"role": "user", "content": "test"}]}'
+    -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "test"}]}]}'
 done
 # After threshold, requests should return 429 Too Many Requests
 ```
@@ -328,11 +307,7 @@ client_max_body_size 50m;
 proxy_buffering off;
 ```
 
-Set the server to trust the forwarded headers:
-
-```bash
-TRUSTED_PROXY_HEADERS=true
-```
+Behind a proxy, every request appears to come from the proxy's address. For per-IP rate limiting to see real client IPs, set `trusted_proxy_headers` in the `rate_limit` block of `10xgraph.json` (see [Rate limiting](/docs/server/rate-limiting)). Only enable it when the proxy sets `X-Forwarded-For`.
 
 ## 9. Media storage and file uploads
 
@@ -342,7 +317,7 @@ Configure where uploaded files are stored:
 MEDIA_STORAGE_TYPE=local
 MEDIA_STORAGE_PATH=/data/uploads
 MEDIA_MAX_SIZE_MB=25
-MEDIA_ALLOWED_CONTENT_TYPES=image/*,application/pdf
+MEDIA_ALLOWED_CONTENT_TYPES=image/*,application/pdf  # empty (default) allows any type
 ```
 
 For cloud storage:
@@ -357,22 +332,9 @@ MEDIA_CLOUD_PREFIX=10xgraph-media
 
 Ensure the storage directory (or cloud bucket) is writable and has sufficient capacity. Monitor disk or cloud storage usage.
 
-## 10. Eval endpoints and testing
+## 10. Eval endpoints
 
-The eval runner endpoint (`/v1/evals`) allows remote evaluation execution. Disable it in production:
-
-```json
-{
-  "test": {
-    "enabled": false
-  },
-  "evaluation": {
-    "enabled": false
-  }
-}
-```
-
-These endpoints should only be enabled in development or behind an internal network.
+The eval report routes (`/v1/evals/runs`) have no authentication. The server does not mount them when `MODE=production`, so no extra configuration is needed. Confirm `MODE=production` is set in every environment that faces users.
 
 ## 11. Database backups
 
@@ -389,20 +351,13 @@ Test restore procedures before relying on them:
 gunzip -c /backups/10xgraph-20261008.sql.gz | psql -h postgres.internal -U user 10xgraph
 ```
 
-Retain backups for at least 7 days. For critical applications, use point-in-time recovery with PostgreSQL's WAL archiving.
+See [Backup and restore](/docs/server/backup-and-restore) for table-scoped dumps and restore order. Retain backups for at least 7 days. For critical applications, use point-in-time recovery with PostgreSQL's WAL archiving.
 
 ## 12. Observability and monitoring
 
 ### Logging
 
-Set `LOG_LEVEL=INFO` in production. Logs should include request trace IDs for debugging:
-
-```bash
-curl -v http://127.0.0.1:8000/v1/graph/invoke \
-  -H "X-Request-ID: trace-123" \
-  ...
-# Check logs for trace-123
-```
+Set `LOG_LEVEL=INFO` in production. The server generates a request ID per request and returns it in the `X-Request-ID` response header; log it on the client side to correlate with server logs.
 
 ### Sentry error tracking
 
@@ -435,7 +390,7 @@ Before opening the API to production traffic, run these tests:
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "test"}]}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "test"}]}]}'
 # Should succeed with a valid token, fail with 401 if token is missing
 ```
 
@@ -445,7 +400,7 @@ curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
 # First invoke
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "Remember: my name is Alice"}], "config": {"thread_id": "test-123"}}'
+  -d '{"messages": [{"role": "user", "content": [{"type": "text", "text": "Remember: my name is Alice"}]}], "config": {"thread_id": "test-123"}}'
 
 # Verify it's stored
 curl http://127.0.0.1:8000/v1/threads/test-123/messages
@@ -464,14 +419,14 @@ Run 150 requests in quick succession and verify 429 responses after 100.
 ### 4. Security headers are present
 
 ```bash
-curl -i http://127.0.0.1:8000/ping | grep -E "Strict-Transport-Security|X-Frame-Options|X-Content-Type"
+curl -si https://api.example.com/ping | grep -iE "strict-transport-security|x-frame-options|x-content-type"
 ```
 
 ### 5. Docs paths are disabled
 
 ```bash
-curl -s http://127.0.0.1:8000/docs | wc -l
-# Should return 404 or empty
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/docs
+# Should print 404
 ```
 
 ### 6. Load balancer health checks work
@@ -485,12 +440,12 @@ curl http://127.0.0.1:8000/ping
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| "JWT_SECRET_KEY is required" at startup | Using JWT auth without setting the secret | Set `JWT_SECRET_KEY` environment variable |
-| Requests fail with 403 Forbidden | User does not own the thread | Check authorization backend and thread ownership |
+| "JWT_SECRET_KEY is shorter than 32 bytes" at startup | HMAC secret too short in production mode | Generate a longer `JWT_SECRET_KEY` |
+| Requests are denied on a thread | User does not own the thread | Check authorization backend and thread ownership |
 | Thread state disappears after restart | Using `InMemoryCheckpointer` | Switch to `PgCheckpointer` with Postgres DSN |
 | One worker sees state, another does not | Workers are not sharing the same backend | Point all instances at the same Postgres and Redis |
 | CORS requests are blocked | `ORIGINS` does not include the client domain | Add the domain to `ORIGINS` or set `ORIGINS=*` with `CORS_ALLOW_CREDENTIALS=false` |
-| Rate limiting not working | Backend is not configured or Redis is down | Verify `rate_limit.redis.url` and Redis connectivity |
+| Rate limiting not working | No `rate_limit` block, or Redis is down (with `fail_open` true, requests pass) | Verify `rate_limit.redis.url` and Redis connectivity |
 
 ## Related pages
 

@@ -106,7 +106,7 @@ The `/v1/graph/invoke` endpoint executes the graph end-to-end and returns the fi
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "What is the weather in Paris?"}],
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What is the weather in Paris?"}]}],
     "config": {"thread_id": "step4-thread-1"}
   }'
 ```
@@ -130,7 +130,7 @@ The `thread_id` in config tells the checkpointer which thread to use. Send anoth
 curl -X POST http://127.0.0.1:8000/v1/graph/invoke \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "What did I ask about first?"}],
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What did I ask about first?"}]}],
     "config": {"thread_id": "step4-thread-1"}
   }'
 ```
@@ -145,7 +145,7 @@ For real-time feedback, use `/v1/graph/stream`. The server sends one JSON object
 curl -X POST http://127.0.0.1:8000/v1/graph/stream \
   -H "Content-Type: application/json" \
   -d '{
-    "messages": [{"role": "user", "content": "What is the weather in London?"}],
+    "messages": [{"role": "user", "content": [{"type": "text", "text": "What is the weather in London?"}]}],
     "config": {"thread_id": "step4-thread-2"}
   }' | head -20
 ```

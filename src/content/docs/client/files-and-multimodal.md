@@ -200,7 +200,12 @@ const result = await client.invoke([msg], {
   config: { thread_id: 'vision-demo-1' },
 });
 
-console.log(result.messages.at(-1)?.text());
+const last = result.messages.at(-1);
+const text = (last?.content ?? [])
+  .filter((b) => b.type === 'text')
+  .map((b) => (b as { text: string }).text)
+  .join('');
+console.log(text);
 ```
 
 ### With `stream()`
@@ -215,7 +220,11 @@ const stream = client.stream([msg], {
 
 for await (const chunk of stream) {
   if (chunk.event === StreamEventType.MESSAGE && chunk.message?.delta) {
-    process.stdout.write(chunk.message.text());
+    const text = chunk.message.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { text: string }).text)
+      .join('');
+    process.stdout.write(text);
   }
 }
 ```
@@ -228,7 +237,7 @@ for await (const chunk of stream) {
 
 ## Step 5: Reuse files across turns
 
-A `file_id` remains valid indefinitely, so a follow-up question about the same image does not need a re-upload:
+A `file_id` stays valid for as long as the server keeps the stored file, so a follow-up question about the same image does not need a re-upload:
 
 ```ts
 const followUp = Message.withFile(
@@ -258,7 +267,7 @@ console.log(info.data.extracted_text);  // Non-null for documents with text extr
 
 ### Refresh the access URL
 
-For cloud-backed storage (S3, GCS, Azure Blob), the initial `upload.data.url` is a signed URL that expires. Before rendering files long after upload, fetch a fresh URL:
+With cloud storage, the direct URL is signed and expires (`expires_at` is set). With local storage, `url` is a server path such as `/v1/files/{file_id}` and `expires_at` is empty. Before rendering files long after upload, fetch a fresh URL:
 
 ```ts
 const urlInfo = await client.getFileAccessUrl(upload.data.file_id);
@@ -338,7 +347,7 @@ async function describeImage(imageFile: File): Promise<string> {
 
 ## Supported file types
 
-The server accepts any MIME type permitted by the configured storage backend. Common types:
+The server accepts any MIME type unless `MEDIA_ALLOWED_CONTENT_TYPES` restricts it (exact types or wildcards such as `image/*`). Common types:
 
 | Category | MIME types |
 |---|---|
@@ -361,8 +370,8 @@ The underlying LLM determines which types it can process. Check your model's doc
 | `extracted_text` is `null` on a PDF | `document_handling` is `pass_raw` or `skip`, or the PDF is scanned images with no text layer. | Use `extract_text` with a text-bearing PDF, or run OCR before uploading. |
 | A rendered preview 403s after a while | The signed URL expired. | Fetch a fresh one with `getFileAccessUrl(file_id)`. |
 | `TenxGraphError` with `statusCode` 413 | The file is larger than `media_max_size_mb`. | Compress it, or raise the limit on the server. |
-| `TenxGraphError` with `statusCode` 415 | Unsupported MIME type for the storage backend. | Use a supported file type (see table above). |
-| `TenxGraphError` with `statusCode` 404 on download | `file_id` not found (deleted or wrong). | Re-upload the file. |
+| `TenxGraphError` with `statusCode` 415 | MIME type not allowed by the server's `MEDIA_ALLOWED_CONTENT_TYPES`. | Use a supported file type (see table above). |
+| `TenxGraphError` with `statusCode` 404 on download | `file_id` not found, or not owned by the caller. | Re-upload the file. |
 
 ---
 

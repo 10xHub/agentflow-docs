@@ -18,6 +18,7 @@ Install 10xGraph with the observability extra you need:
 pip install '10xgraph[logfire]'        # Logfire only
 pip install '10xgraph[langsmith]'      # LangSmith
 pip install '10xgraph[observability]'  # Both, plus OTEL
+pip install '10xgraph[openai]'         # Provider used by the Agent in the examples
 ```
 
 The `langsmith` extra includes the OpenTelemetry OTLP HTTP exporter (not the LangSmith SDK), because 10xGraph sends traces over the standard OTLP protocol. This approach works with any OTLP-compatible backend.
@@ -62,12 +63,13 @@ app = graph.compile()
 
 | Parameter | Type | Default | Notes |
 |---|---|---|---|
-| `graph` | StateGraph | required | The graph to instrument. Pass `None` to configure providers only (API server use case). |
+| `graph` | StateGraph or None | `None` | The graph to instrument. Leave as `None` to configure providers only (API server use case). |
 | `token` | str | `LOGFIRE_TOKEN` | Logfire write token. Falls back to the env var if not passed. |
 | `service_name` | str | None | Service name shown in the Logfire UI. |
 | `send_to_logfire` | bool | `True` | Set `False` to emit to console only (for local testing). |
 | `console` | bool or ConsoleOptions | None | Control local console output. Pass `False` to silence it. |
 | `level` | ObservabilityLevel | `STANDARD` | Verbosity: `SPANS` (timing only), `STANDARD` (tokens, model, params), or `FULL` (prompt/completion text). See details below. |
+| `additional_span_processors` | list | None | Extra `SpanProcessor`s attached alongside the Logfire one. |
 | `**configure_kwargs` | dict | - | Extra keyword arguments passed to `logfire.configure()` (e.g., `environment="staging"`). |
 
 ## Option 2: Configure LangSmith with a Python helper
@@ -100,7 +102,7 @@ setup_langsmith(
 
 | Parameter | Type | Default | Notes |
 |---|---|---|---|
-| `graph` | StateGraph | required | The graph to instrument. Pass `None` to configure providers only. |
+| `graph` | StateGraph or None | `None` | The graph to instrument. Leave as `None` to configure providers only. |
 | `api_key` | str | `LANGSMITH_API_KEY` | LangSmith API key. Falls back to env var if not passed. |
 | `project` | str | None | LangSmith project name, sent as the `Langsmith-Project` header. |
 | `endpoint` | str | `https://api.smith.langchain.com/otel` | Base OTEL endpoint URL. `/v1/traces` is appended automatically. Override for regional deployments. |
@@ -124,7 +126,7 @@ graph = StateGraph(publisher=publisher)
 app = graph.compile()
 ```
 
-`LogfirePublisher` accepts the same arguments as `setup_logfire()`; `LangsmithPublisher` accepts the same arguments as `setup_langsmith()`. Both are subclasses of `OtelPublisher` and configure the `TracerProvider` on construction.
+`LogfirePublisher` accepts the keyword arguments of `setup_logfire()` except `graph`; `LangsmithPublisher` accepts those of `setup_langsmith()` except `graph`. Both are subclasses of `OtelPublisher` and configure the `TracerProvider` on construction.
 
 ## Option 4: Enable both Logfire and LangSmith at once
 
@@ -197,16 +199,22 @@ All config keys are optional. You can enable just Logfire, just LangSmith, or bo
 When `send_to_logfire=False` or during local testing, you can verify tracing is working by enabling console output:
 
 ```python
+import logfire
+from tenxgraph.core.state import Message
+
 setup_logfire(
     graph,
     service_name="my-agent",
     send_to_logfire=False,
-    console=True,  # Print spans to stderr
+    console=logfire.ConsoleOptions(),  # Print spans to the console
     level=ObservabilityLevel.STANDARD,
 )
 
 app = graph.compile()
-app.invoke({"messages": [...]}, config={"thread_id": "test-1"})
+app.invoke(
+    {"messages": [Message.text_message("Hello")]},
+    config={"thread_id": "test-1"},
+)
 ```
 
 You will see formatted span events printed as your graph executes.
@@ -222,7 +230,7 @@ Look for a trace tree showing graph execution, node names, LLM model calls, and 
 
 ## Common errors
 
-**ImportError: logfire is required**
+**ImportError: Logfire is required for logfire tracing**
 
 You installed `10xgraph` but not the `logfire` extra. Fix:
 
@@ -230,7 +238,7 @@ You installed `10xgraph` but not the `logfire` extra. Fix:
 pip install '10xgraph[logfire]'
 ```
 
-**ImportError: opentelemetry-exporter-otlp is required**
+**ImportError: opentelemetry-exporter-otlp-proto-http is required for LangSmith tracing**
 
 The LangSmith integration needs the OTLP HTTP exporter. Fix:
 
@@ -257,10 +265,10 @@ setup_langsmith(graph, api_key="your-api-key", project="my-agent")
 - Verify the token/API key is correct and has write permission.
 - Check that `level` is not `SPANS` (which logs structure only, not content).
 - If running locally with `send_to_logfire=False`, traces go to console instead.
-- In the API server, confirm `observability.enabled` is `true` in `10xgraph.json` and the tokens are in `.env`.
+- In the API server, confirm `enabled` is `true` under `observability.logfire` or `observability.langsmith` in `10xgraph.json` and the tokens are in `.env`.
 
 ## See also
 
-- [How to use publishers](/docs/guides/use-publishers): full catalog of publishers, including raw `OtelPublisher`.
+- [How to use publishers](/docs/guides/use-publishers): the other publishers (Console, Redis, Kafka, RabbitMQ) and how to combine them.
 - [Configure 10xgraph.json](/docs/server/configure): all top-level config keys and their meanings.
 - [Server observability](/docs/server/observability): logging, metrics, OTEL tracing, and Sentry integration on the API server.

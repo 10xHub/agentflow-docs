@@ -11,7 +11,7 @@ The memory API lets you store facts, preferences, and conversation history that 
 
 <aside class="callout callout-note" role="note"><p class="callout-title">Requires store</p>
 
-Memory operations require the `store` field configured in `10xgraph.json`. Without a store, all endpoints return empty results.
+Memory operations require the `store` field configured in `10xgraph.json`. Without a store, the memory endpoints respond with HTTP 503 (`Store is not configured`).
 
 </aside>
 
@@ -76,7 +76,7 @@ for (const result of results.data.results) {
 }
 ```
 
-The `score` ranges from 0 to 1; higher means more similar. The `score_threshold` filters out low-confidence matches.
+Each result carries a `score`; higher means a closer match. The `score_threshold` filters out low-scoring matches. Score scale depends on your store backend and distance metric.
 
 ---
 
@@ -121,8 +121,13 @@ async function respondWithMemory(userQuestion: string) {
   );
 
   // 4. Store this interaction for future reference
+  const last = response.messages[response.messages.length - 1];
+  const answer = last.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { text: string }).text)
+    .join('');
   await client.storeMemory({
-    content: `User asked: "${userQuestion}". Agent responded with: "${response.messages[response.messages.length - 1].content[0].text}"`,
+    content: `User asked: "${userQuestion}". Agent responded with: "${answer}"`,
     memory_type: MemoryType.EPISODIC,
     category: 'conversations',
     metadata: { timestamp: new Date().toISOString(), thread_id: THREAD_ID },
@@ -148,6 +153,7 @@ Choosing the right `MemoryType` makes searches more precise. See [memory referen
 - **Episodic**: Specific conversations, events, interactions. Builds a history.
 - **Procedural**: How-to workflows, recurring processes.
 - **Entity**: Information about people, places, or things.
+- **Relationship**, **Declarative** and **Custom** are also available.
 
 Use categories to group related memories (like `"user_profile"`, `"conversations"`, `"work_history"`). When searching, you can filter by category to avoid irrelevant results.
 
@@ -217,7 +223,7 @@ const recent = await client.searchMemory({
   retrieval_strategy: RetrievalStrategy.TEMPORAL,
 });
 
-// Hybrid search: combine similarity and relevance
+// Hybrid search: combined retrieval approaches
 const hybrid = await client.searchMemory({
   query: 'user preferences',
   limit: 5,
@@ -229,7 +235,7 @@ const hybrid = await client.searchMemory({
 const limited = await client.searchMemory({
   query: 'project history',
   limit: 20,
-  max_tokens: 2000,  // Return at most 2000 tokens total
+  max_tokens: 2000,  // Cap the total tokens of returned results
 });
 ```
 
@@ -277,7 +283,7 @@ await client.forgetMemories({
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | `TenxGraphError` status 404 on `getMemory()` | Memory ID not found or deleted. | Verify the ID is correct. Use `listMemories()` to check what exists. |
-| `TenxGraphError` status 503 | Store not configured or unreachable. | Check `store` field in `10xgraph.json` and ensure the store backend is running. |
+| `TenxGraphError` status 503 | Store not configured or unreachable. | Check the `store` field in `10xgraph.json` and ensure the store backend is running. |
 | Empty search results | Score threshold too high, or no memories match the type/category. | Lower `score_threshold`, remove the type filter, or store more memories. |
 | Irrelevant search results | Query is too vague, or memories are poorly written. | Use specific queries. Store memories with clear, descriptive content. |
 

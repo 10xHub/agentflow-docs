@@ -25,13 +25,14 @@ from tenxgraph.core.state import AgentState, Message
 
 # Set up the graph and checkpointer
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
+    postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
     redis_url="redis://localhost:6379/0",
 )
 
 graph = StateGraph()
 # ... add nodes and edges ...
 app = graph.compile(checkpointer=checkpointer)
+checkpointer.setup()  # create tables once, outside a running event loop
 
 # Two independent threads, each with isolated state
 result_alice = app.invoke(
@@ -68,7 +69,7 @@ The `state_history_limit` parameter controls how many prior versions are kept:
 from tenxgraph.storage.checkpointer import PgCheckpointer
 
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql+asyncpg://user:pass@localhost:5432/mydb",
+    postgres_dsn="postgresql://user:pass@localhost:5432/mydb",
     redis_url="redis://localhost:6379/0",
     state_history_limit=20,  # keep current + 19 prior snapshots
 )
@@ -119,6 +120,11 @@ This is what makes it safe to run several server instances or load-balanced work
 If you catch `StaleStateError`, you must reload the thread and retry. Retrying the same request with the same stale config will fail again. Best practice is to re-fetch the thread state and apply the user's request against the fresh state:
 
 ```python
+import asyncio
+
+from tenxgraph.core.exceptions import StaleStateError
+
+
 async def safe_invoke(app, input_data, thread_id):
     config = {"thread_id": thread_id}
     max_retries = 3
@@ -210,7 +216,7 @@ from tenxgraph.core.state import AgentState, Message
 from tenxgraph.core.exceptions import StaleStateError
 
 checkpointer = PgCheckpointer(
-    postgres_dsn="postgresql+asyncpg://user:pass@postgres.example.com:5432/mydb",
+    postgres_dsn="postgresql://user:pass@postgres.example.com:5432/mydb",
     redis_url="redis://redis.example.com:6379/0",
     state_history_limit=20,
     enforce_user_isolation=True,  # multi-tenant

@@ -23,11 +23,11 @@ updated: "2026-10-08"
 | `user_memory_tool` | Agent-managed memory scoped to individual users | `Agent(memory=MemoryConfig(user_memory=...))` | search, remember |
 | `agent_memory_tool` | Read-only, application-wide memory (e.g. knowledge base, policies) | `Agent(memory=MemoryConfig(agent_memory=...))` | search only |
 
-All three tools require a configured vector store (e.g. Qdrant, Mem0) that supports semantic search. The store is injected through the dependency container or passed explicitly during compilation.
+All three tools require a configured store (for example Qdrant or Mem0) that supports semantic search. Pass it to `compile(store=...)` or to `MemoryConfig(store=...)`. The `user_memory_tool` and `agent_memory_tool` are registered automatically when `MemoryConfig.retrieval_mode` is `postload` (the default for `MemoryConfig`); `agent_memory` is disabled unless you set `enabled=True`.
 
 ## How memory works
 
-Write operations (store, update, delete) execute asynchronously in the background. When the agent calls any write tool, it returns `{"status": "scheduled"}` immediately, and the write happens later without blocking the conversation. Search operations flush any pending writes first, so results always reflect the latest data.
+Write operations (store, update, delete) execute asynchronously in the background. When the agent calls a write action, it returns `{"status": "scheduled", "action": ...}` immediately, and the write happens later without blocking the conversation. Search operations flush any pending writes first, so results always reflect the latest data.
 
 The `memory_key` field on `memory_tool` enables automatic deduplication. If you call store with the same key twice, the second call updates the first memory instead of creating a duplicate. This is useful for facts like "user_preference_language" that should have only one current value.
 
@@ -42,7 +42,7 @@ Use `memory_tool` when you want to manage memory in your own graph logic, or whe
 | Action | Required parameters | Description |
 |---|---|---|
 | `search` | `query` | Semantic search across all user memories. Returns up to `limit` results sorted by relevance. |
-| `store` | `content`, `memory_key` | Save a new memory. If a memory with the same key exists, it updates that memory instead of duplicating it. Returns immediately; write is scheduled asynchronously. |
+| `store` | `content` (`memory_key` recommended) | Save a new memory. If a memory with the same key exists, it updates that memory instead of duplicating it. Returns immediately; write is scheduled asynchronously. |
 | `update` | `memory_id`, `content` | Overwrite a specific memory by ID. Respects the `write_mode` (merge or replace metadata). Returns immediately; write is scheduled asynchronously. |
 | `delete` | `memory_id` | Remove a memory by ID. Returns immediately; deletion is scheduled asynchronously. |
 
@@ -55,30 +55,30 @@ Use `memory_tool` when you want to manage memory in your own graph logic, or whe
 | `content` | `str` | `""` | The text to store or update. Required for `action="store"` or `action="update"`. |
 | `memory_key` | `str` | `""` | A short snake_case deduplication key (e.g. `"user_name"`, `"favorite_language"`). Used only with `action="store"`. If a memory with this key exists, it is updated instead of creating a duplicate. |
 | `memory_id` | `str` | `""` | The ID of the memory to update or delete. Required for `action="update"` or `action="delete"`. |
-| `memory_type` | `str` | `None` | Optional label for the memory type (e.g. `"episodic"` for events, `"semantic"` for facts). Defaults to `"episodic"`. Used for filtering and organization. |
+| `memory_type` | `str` | `None` | Optional label for the memory type (e.g. `"episodic"` for events, `"semantic"` for facts). Defaults to `"episodic"`; unknown values fall back to `episodic`. Valid values: `episodic`, `semantic`, `procedural`, `entity`, `relationship`, `custom`, `declarative`. |
 | `category` | `str` | `None` | Optional category label for filtering (e.g. `"preferences"`, `"work_history"`). Defaults to `"general"`. |
 | `metadata` | `dict` | `None` | Additional metadata attached to the memory. Merged or replaced based on `write_mode`. |
 | `limit` | `int` | `5` | Maximum number of search results to return. |
-| `score_threshold` | `float` | `None` | Minimum similarity score (0.0 to 1.0) required to include a result. If set, results below this score are filtered out. |
+| `score_threshold` | `float` | `None` | Minimum similarity score; lower-scoring results are filtered out when the store supports it. |
 | `write_mode` | `str` | `"merge"` | How to handle metadata on update: `"merge"` combines old and new metadata, `"replace"` overwrites it entirely. |
 
 ### Response format
 
 All operations return JSON:
 
-- **Search:** `{"results": [{"id": "...", "content": "...", "score": 0.95, "type": "...", ...}]}` (array of results, highest score first)
+- **Search:** a JSON array of results, for example `[{"id": "...", "content": "...", "score": 0.95, "memory_type": "episodic", "metadata": {}}]`
 - **Write operations:** `{"status": "scheduled", "action": "store|update|delete"}` (returns immediately; operation runs in the background)
-- **Errors:** `{"error": "..."}` (e.g. "no memory store configured", "query is required for search")
+- **Errors:** `{"error": "..."}` (for example "no memory store configured", "query is required for search")
 
 ### Complete example
 
 ```python
-from tenxgraph.prebuilt.tools.memory import memory_tool
-from tenxgraph.core.graph import Agent, ToolNode, StateGraph, START, END
-from tenxgraph.core.state import AgentState
+# pip install "10xgraph[openai,qdrant]"
+from tenxgraph.core.state import Message
+from tenxgraph.prebuilt.agent import ReactAgent
+from tenxgraph.prebuilt.tools import memory_tool
 from tenxgraph.storage import create_local_qdrant_store
 from tenxgraph.storage.store.embedding import OpenAIEmbedding
-import json
 
 # Set up the memory store with OpenAI embeddings
 store = create_local_qdrant_store(
@@ -87,7 +87,7 @@ store = create_local_qdrant_store(
 )
 
 # Create an agent with the memory tool
-agent = Agent(
+agent = ReactAgent(
     model="gpt-4o-mini",
     tools=[memory_tool],
     system_prompt=[{
@@ -106,33 +106,33 @@ app = agent.compile(store=store)
 
 # The agent will have access to memory_tool and can call it with any action
 result = await app.ainvoke(
-    {"messages": [{"role": "user", "content": "Hello, I'm back!"}]},
+    {"messages": [Message.text_message("Hello, I'm back!")]},
     config={"thread_id": "t1", "user_id": "customer_42"},
 )
 
 # The agent may have called memory_tool automatically to search for past interactions
-print(result["messages"][-1]["content"])
+print(result["messages"][-1].text())
 ```
 
 ---
 
 ## `user_memory_tool`, user-scoped memory via Agent config
 
-When you enable user memory in an Agent, the `user_memory_tool` is registered automatically. You do not need to instantiate it yourself. This tool is simpler than `memory_tool` because it enforces a specific scope (one user) and permission model (the LLM can search and write, but not delete).
+When you enable user memory in an Agent, the `user_memory_tool` is registered automatically. You do not need to instantiate it yourself. This tool is simpler than `memory_tool` because it enforces a specific scope (one user) and permission model (the LLM can search and write, but not update or delete). User memory is enabled by default in `MemoryConfig`.
 
 ### Operations
 
 | Action | Required parameters | Description |
 |---|---|---|
 | `search` | `text` | Search for user-scoped memories. Returns up to `limit` results. |
-| `remember` | `text` | Save a new user fact or preference. Cannot duplicate; each call creates a new memory (unlike `memory_tool` which deduplicates by key). |
+| `remember` | `text` | Save a new user fact or preference. Each call creates a new memory; there is no key-based deduplication (unlike `memory_tool`). |
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `action` | `str` | `"search"` | One of `search` or `remember`. |
-| `text` | `str` | required | For `search`, the query text. For `remember`, the text to save. Supports natural language. |
+| `text` | `str` | `""` (required in practice) | For `search`, the query text. For `remember`, the text to save. Supports natural language. |
 | `memory_type` | `str` | inherited | Override the configured memory type (e.g. `"episodic"`, `"semantic"`). If not set, uses the type from `UserMemoryConfig`. |
 | `category` | `str` | inherited | Override the configured category. If not set, uses the category from `UserMemoryConfig`. |
 | `limit` | `int` | inherited | Override the configured result limit. If not set, uses the limit from `UserMemoryConfig`. |
@@ -142,7 +142,8 @@ When you enable user memory in an Agent, the `user_memory_tool` is registered au
 Enable user memory in an Agent by passing a `MemoryConfig` with `user_memory` enabled:
 
 ```python
-from tenxgraph.core.graph import Agent
+# pip install "10xgraph[openai,qdrant]"
+from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.store.memory_config import MemoryConfig, UserMemoryConfig
 from tenxgraph.storage import create_local_qdrant_store
 from tenxgraph.storage.store.embedding import OpenAIEmbedding
@@ -152,7 +153,7 @@ store = create_local_qdrant_store(
     embedding=OpenAIEmbedding(model="text-embedding-3-small"),
 )
 
-agent = Agent(
+agent = ReactAgent(
     model="gpt-4o-mini",
     memory=MemoryConfig(
         store=store,
@@ -172,11 +173,11 @@ agent = Agent(
 app = agent.compile(store=store)
 ```
 
-The `user_memory_tool` is now available to the LLM. It is scoped to the `user_id` from the config at invocation:
+Import `Message` from `tenxgraph.core.state` for the invoke call below. The `user_memory_tool` is now available to the LLM. It is scoped to the `user_id` from the run config at invocation (unless you set `UserMemoryConfig(user_id=...)`, which overrides it):
 
 ```python
 result = await app.ainvoke(
-    {"messages": [{"role": "user", "content": "What do you know about my preferences?"}]},
+    {"messages": [Message.text_message("What do you know about my preferences?")]},
     config={"thread_id": "t1", "user_id": "alice"},  # user_id determines memory scope
 )
 ```
@@ -204,10 +205,11 @@ Agent memory is read-only and scoped to the agent or the entire application. Use
 
 ### Setup
 
-Enable agent memory in an Agent by passing a `MemoryConfig` with `agent_memory` enabled. Specify either `agent_id` (memories shared across all instances of this agent) or `app_id` (memories shared across the entire application):
+Agent memory is disabled by default. Enable it in an Agent by passing a `MemoryConfig` with `agent_memory=AgentMemoryConfig(enabled=True, ...)`. Specify either `agent_id` (memories shared across all instances of this agent) or `app_id` (memories shared across the entire application):
 
 ```python
-from tenxgraph.core.graph import Agent
+# pip install "10xgraph[openai,qdrant]"
+from tenxgraph.prebuilt.agent import ReactAgent
 from tenxgraph.storage.store.memory_config import MemoryConfig, AgentMemoryConfig
 from tenxgraph.storage import create_local_qdrant_store
 from tenxgraph.storage.store.embedding import OpenAIEmbedding
@@ -217,7 +219,7 @@ store = create_local_qdrant_store(
     embedding=OpenAIEmbedding(model="text-embedding-3-small"),
 )
 
-agent = Agent(
+agent = ReactAgent(
     model="gpt-4o-mini",
     memory=MemoryConfig(
         store=store,
@@ -238,11 +240,11 @@ agent = Agent(
 app = agent.compile(store=store)
 ```
 
-The `agent_memory_tool` is now available to the LLM in read-only form. It searches across all users for the specified agent, independent of the `user_id`:
+The `agent_memory_tool` is now available to the LLM in read-only form. It searches the memories stored under the configured `agent_id` / `app_id`, not a per-user scope:
 
 ```python
 result = await app.ainvoke(
-    {"messages": [{"role": "user", "content": "What is your return policy?"}]},
+    {"messages": [Message.text_message("What is your return policy?")]},
     config={"thread_id": "t1", "user_id": "alice"},
 )
 # The agent can search agent memory (policies) but cannot modify it
@@ -266,25 +268,25 @@ store = create_local_qdrant_store(
 )
 ```
 
-Qdrant is fast and works offline. For production, you can use Qdrant Cloud (configure via `url` and `api_key`).
+Qdrant works offline in local mode. For production, `QdrantStore` also accepts `host`/`port` or `url` and `api_key` for a server or Qdrant Cloud. Install with `pip install "10xgraph[qdrant]"`.
 
 **Mem0 (enterprise multi-agent memory):**
 
 ```python
-from tenxgraph.storage.store.mem0_store import Mem0Store
+from tenxgraph.storage import Mem0Store
 
-store = Mem0Store(api_key="your-mem0-api-key")
+store = Mem0Store(config=mem0_config)  # a mem0 MemoryConfig or an equivalent dict
 ```
 
-Mem0 is a managed service that handles memory and embeddings for you.
+`Mem0Store` takes a Mem0 configuration (`config`, plus an optional `app_id`) and delegates memory storage and embeddings to Mem0. Install with `pip install "10xgraph[mem0]"`.
 
-Choose the embedding model based on your provider and token budget. `text-embedding-3-small` is fast and cheap. `text-embedding-3-large` or `text-embedding-ada-002` are more accurate but slower.
+Choose the embedding model based on your provider and token budget. `OpenAIEmbedding` defaults to `text-embedding-3-small`, and its `model` argument selects another OpenAI embedding model.
 
 ---
 
 ## Design patterns
 
-**Search before write:** Your system prompt should encourage the agent to search memory at the start of a conversation and write important facts at the end. This gives continuity across threads and threads.
+**Search before write:** Your system prompt should encourage the agent to search memory at the start of a conversation and write important facts at the end. This gives continuity across threads.
 
 **Keep `memory_key` consistent:** If you use `memory_tool` with `memory_key`, use the same key format everywhere (e.g. always `user_name`, never `name` or `username`). Inconsistent keys defeat deduplication.
 
