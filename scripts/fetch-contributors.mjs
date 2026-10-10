@@ -129,7 +129,11 @@ async function fetchNpmReleases(name) {
   if (res.status === 404) return [];
   if (!res.ok) throw new Error(`npm ${name}: HTTP ${res.status}`);
   const data = await res.json();
-  return Object.keys(data.versions ?? {}).map((version) => ({
+  // Skip prereleases, including the `0.0.0-stage` placeholder npm adds while a new package's
+  // first version is held for review: nobody installs them by default.
+  return Object.keys(data.versions ?? {})
+    .filter((version) => !version.includes('-'))
+    .map((version) => ({
     package: name,
     version,
     date: data.time[version].slice(0, 10),

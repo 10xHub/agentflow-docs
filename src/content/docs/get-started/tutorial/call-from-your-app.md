@@ -8,7 +8,7 @@ label: Call from your app
 updated: "2026-10-08"
 faq:
   - q: "Which package do I install to call a 10xGraph server from TypeScript?"
-    a: "Install 10xgraph-client and import TenxGraphClient and Message from it. Until 10xgraph-client is published on npm, install @10xscale/agentflow-client, which exports the same client as AgentFlowClient."
+    a: "Install 10xgraph-client and import TenxGraphClient and Message from it."
   - q: "How does the agent remember earlier messages?"
     a: "Pass the same thread_id in the config option of every invoke or stream call. The server checkpointer stores the conversation under that ID and restores it on the next call."
   - q: "Is the stream Server-Sent Events?"
@@ -35,8 +35,6 @@ Install the client in any Node.js or browser project. It has no Python dependenc
 # Install the 10xGraph TypeScript client
 npm install 10xgraph-client
 ```
-
-Until `10xgraph-client` is published on npm, install `@10xscale/agentflow-client` instead and change the import path in the examples. That package exports the same client under the older name `AgentFlowClient`.
 
 To run TypeScript files directly, install a runner such as `tsx`:
 

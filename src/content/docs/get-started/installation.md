@@ -193,9 +193,9 @@ If you are building a JavaScript or TypeScript application that calls the 10xGra
 npm install 10xgraph-client
 ```
 
-The main class is `TenxGraphClient`, and the package requires Node.js 18 or newer. Until `10xgraph-client` is published, install `@10xscale/agentflow-client`, which exports the same client as `AgentFlowClient`. See the [client documentation](/docs/client) for usage.
+The main class is `TenxGraphClient`, and the package requires Node.js 18 or newer. See the [client documentation](/docs/client) for usage.
 
-The client talks to a running `10xgraph api` server over HTTP, and you pass a thread ID to keep conversation history across runs. See the [Quickstart](/docs/get-started/first-agent) for a complete example.
+The client talks to a running `10xgraph api` server over HTTP, and you pass a thread ID to keep conversation history across runs. Use `10xgraph-api` 0.7.0 or newer with client 0.6.0 or newer: the client authenticates WebSockets with the `10xgraph-bearer` subprotocol, which older servers do not accept. HTTP calls work with either. See the [Quickstart](/docs/get-started/first-agent) for a complete example.
 
 ## What if something goes wrong?
 

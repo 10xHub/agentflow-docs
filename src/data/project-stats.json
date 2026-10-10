@@ -2,15 +2,15 @@
   "generatedAt": "2026-10-10",
   "repositories": 5,
   "commits": {
-    "total": 1320,
+    "total": 1322,
     "community": 137,
-    "last30Days": 87,
-    "last90Days": 173
+    "last30Days": 94,
+    "last90Days": 180
   },
   "releases": {
     "year": 2026,
-    "thisYear": 61,
-    "total": 91,
+    "thisYear": 62,
+    "total": 92,
     "latest": [
       {
         "package": "10xgraph",
@@ -23,6 +23,12 @@
         "version": "0.7.0",
         "date": "2026-10-10",
         "label": "API and CLI"
+      },
+      {
+        "package": "10xgraph-client",
+        "version": "0.6.0",
+        "date": "2026-10-10",
+        "label": "TS client"
       }
     ]
   }

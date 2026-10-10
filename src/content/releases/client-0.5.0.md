@@ -6,7 +6,7 @@ summary: Final release as @10xscale/agentflow-client. Removes client.setup(), si
 breaking: true
 ---
 
-This is the final release of the TypeScript client under the name `@10xscale/agentflow-client`. It continues as `10xgraph-client`. Until that name is published on npm, install this one.
+This is the final release of the TypeScript client under the name `@10xscale/agentflow-client`. It continues as `10xgraph-client` from 0.6.0.
 
 ### Breaking
 
