@@ -6,8 +6,8 @@
     "contributions": 45,
     "repos": [
       "10xGraph/10xGraph",
-      "10xHub/agentflow-cli",
-      "10xHub/agentflow-docs"
+      "10xGraph/10xgraph-api",
+      "10xGraph/10xgraph-docs"
     ]
   },
   {
@@ -17,8 +17,8 @@
     "contributions": 38,
     "repos": [
       "10xGraph/10xGraph",
-      "10xHub/agentflow-cli",
-      "10xHub/agentflow-docs"
+      "10xGraph/10xgraph-api",
+      "10xGraph/10xgraph-docs"
     ]
   },
   {
@@ -46,7 +46,7 @@
     "contributions": 5,
     "repos": [
       "10xGraph/10xGraph",
-      "10xHub/agentflow-cli"
+      "10xGraph/10xgraph-api"
     ]
   },
   {
@@ -56,14 +56,14 @@
     "contributions": 5,
     "repos": [
       "10xGraph/10xGraph",
-      "10xHub/agentflow-cli"
+      "10xGraph/10xgraph-api"
     ]
   },
   {
     "login": "ydflow",
     "avatar": "https://avatars.githubusercontent.com/u/314143294",
     "url": "https://github.com/ydflow",
-    "contributions": 1,
+    "contributions": 4,
     "repos": [
       "10xGraph/10xGraph"
     ]

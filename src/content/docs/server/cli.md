@@ -163,7 +163,7 @@ Output example:
 10xgraph-api
   Version: 0.7.0
 10xgraph (core)
-  Version: 0.10.1
+  Version: 0.10.0
 ```
 
 ### Preview animations

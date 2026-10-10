@@ -1,4 +1,4 @@
-/* Maintainers page (/maintainers): lead maintainer card, contributor wall, contact grid. */
+/* Maintainers page (/maintainers): stats, lead maintainer card, contributor wall, contact grid. */
 .mt { max-width: 1200px; margin: 0 auto; padding: clamp(40px, 6vw, 72px) var(--gutter) 112px; }
 .mt h2 { margin: 0; font-size: clamp(1.5rem, 2.6vw, 2rem); }
 .mt a { text-underline-offset: 3px; }
@@ -8,10 +8,12 @@
 .mt-kicker, .mt-label { margin: 0; font: 500 0.76rem var(--f-mono); color: var(--accent); }
 .mt-hero h1 { margin: 14px 0 16px; font-size: clamp(2.3rem, 5.4vw, 4rem); line-height: 1.03; letter-spacing: -0.042em; }
 .mt-lede { margin: 0; max-width: 40em; color: var(--sub); font-size: clamp(1.06rem, 1.5vw, 1.22rem); line-height: 1.6; }
-.mt-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 32px 0 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--line); }
+.mt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 32px 0 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--line); }
 .mt-stats div { padding: 16px 18px; background: var(--surface); }
 .mt-stats dt { font: 400 0.72rem var(--f-mono); color: var(--faint); }
 .mt-stats dd { margin: 6px 0 0; font: 650 1.7rem var(--f-display); letter-spacing: -0.03em; color: var(--text); }
+.mt-stat-note { margin: 4px 0 0; font: 400 0.72rem var(--f-mono); color: var(--muted); }
+.mt-asof { margin: 10px 0 0; font: 400 0.72rem var(--f-mono); color: var(--faint); }
 @media (max-width: 640px) { .mt-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* lead maintainer */

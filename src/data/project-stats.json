@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-10",
+  "repositories": 5,
+  "commits": {
+    "total": 1320,
+    "community": 137,
+    "last30Days": 87,
+    "last90Days": 173
+  },
+  "releases": {
+    "year": 2026,
+    "thisYear": 61,
+    "total": 91,
+    "latest": [
+      {
+        "package": "10xgraph",
+        "version": "0.10.0",
+        "date": "2026-10-10",
+        "label": "core"
+      },
+      {
+        "package": "10xgraph-api",
+        "version": "0.7.0",
+        "date": "2026-10-10",
+        "label": "API and CLI"
+      }
+    ]
+  }
+}

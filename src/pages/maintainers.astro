@@ -1,9 +1,11 @@
 ---
-// Maintainers and contributors. The contributor wall reads src/data/contributors.json, which
-// `npm run contributors` regenerates from the GitHub API across all five repositories. Builds never
-// call GitHub, so the page keeps building when the API is down or rate-limited.
+// Maintainers and contributors. The contributor wall reads src/data/contributors.json and the
+// stats read src/data/project-stats.json. `npm run contributors` regenerates
+// both from GitHub, PyPI and npm. Builds never call those APIs, so the page keeps building when
+// they are down or rate-limited.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import contributors from '../data/contributors.json';
+import stats from '../data/project-stats.json';
 import { SITE } from '../lib/site';
 import { absolute } from '../lib/content';
 import '../styles/maintainers.css';
@@ -23,9 +25,9 @@ const LEAD = {
 // Repository names share a prefix, so the chips use the short names the docs use.
 const REPO_LABELS: Record<string, string> = {
   '10xGraph/10xGraph': 'core',
-  '10xHub/agentflow-cli': 'API and CLI',
-  '10xHub/agentflow-client': 'TS client',
-  '10xHub/agentflow-docs': 'docs',
+  '10xGraph/10xgraph-api': 'API and CLI',
+  '10xGraph/10xgraph-client': 'TS client',
+  '10xGraph/10xgraph-docs': 'docs',
   '10xHub/agentflow-playground': 'playground',
 };
 const REPOS = Object.keys(REPO_LABELS);
@@ -34,7 +36,11 @@ const avatar = (url: string, px: number) => `${url}?s=${px * 2}&v=4`;
 
 const people = [...contributors].sort((a, b) => b.contributions - a.contributions || a.login.localeCompare(b.login));
 const most = Math.max(1, ...people.map((p) => p.contributions));
-const total = people.reduce((n, p) => n + p.contributions, 0);
+const num = (n: number) => n.toLocaleString('en-US');
+const day = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+const latest = stats.releases.latest;
 
 const reach = [
   {
@@ -93,12 +99,34 @@ const jsonLd = [
         It is built and run in production by <a href={SITE.org.url}>{SITE.org.name}</a>, and shaped by everyone below.
       </p>
       <dl class="mt-stats">
-        <div><dt>Contributors</dt><dd>{people.length + 1}</dd></div>
-        <div><dt>Repositories</dt><dd>{REPOS.length}</dd></div>
-        <div><dt>Community commits</dt><dd>{total}</dd></div>
-        <div><dt>License</dt><dd>MIT</dd></div>
+        <div>
+          <dt>Last release</dt><dd>{day(latest[0].date)}</dd>
+          <p class="mt-stat-note">{latest.map((r) => `${r.label} ${r.version}`).join(' · ')}</p>
+        </div>
+        <div>
+          <dt>Releases in {stats.releases.year}</dt><dd>{num(stats.releases.thisYear)}</dd>
+          <p class="mt-stat-note">on PyPI and npm</p>
+        </div>
+        <div>
+          <dt>Commits, last 90 days</dt><dd>{num(stats.commits.last90Days)}</dd>
+          <p class="mt-stat-note">{num(stats.commits.last30Days)} in the last 30 days</p>
+        </div>
+        <div>
+          <dt>Commits, all time</dt><dd>{num(stats.commits.total)}</dd>
+          <p class="mt-stat-note">across {stats.repositories} repositories</p>
+        </div>
+        <div>
+          <dt>Contributors</dt><dd>{people.length + 1}</dd>
+          <p class="mt-stat-note">bots excluded</p>
+        </div>
+        <div>
+          <dt>License</dt><dd>MIT</dd>
+          <p class="mt-stat-note">self-hosted, no paid tier</p>
+        </div>
       </dl>
+      <p class="mt-asof">Data as of {day(stats.generatedAt)}, from GitHub, PyPI and npm.</p>
     </header>
+
 
     <section class="mt-lead" aria-labelledby="lead-heading">
       <h2 id="lead-heading" class="mt-label">Lead maintainer</h2>
@@ -125,8 +153,7 @@ const jsonLd = [
       <div class="mt-wall-head">
         <h2 id="wall-heading">Contributors</h2>
         <p>
-          {SITE.name} lives in {REPOS.length} repositories, so no single GitHub graph shows everyone. This wall merges all of them,
-          ordered by merged commits.
+          {`Merged from all ${REPOS.length} repositories and ordered by commits. Community contributors made ${num(stats.commits.community)} of the ${num(stats.commits.total)} commits.`}
         </p>
       </div>
       <ul class="mt-grid">
@@ -145,11 +172,11 @@ const jsonLd = [
           </li>
         ))}
         <li>
-          <a class="mt-card mt-card-you" href={`${SITE.github}/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22`}>
+          <a class="mt-card mt-card-you" href={`${SITE.github}#contributing`}>
             <span class="mt-you-mark" aria-hidden="true">+</span>
             <span class="mt-card-body">
               <span class="mt-login">You, next</span>
-              <span class="mt-commits">Every name here started with one pull request. Pick a good first issue.</span>
+              <span class="mt-commits">Every name here started with one pull request. Small ones count: a typed module, an example, a fixed doc.</span>
             </span>
           </a>
         </li>
@@ -187,3 +214,4 @@ const jsonLd = [
     </section>
   </div>
 </BaseLayout>
+

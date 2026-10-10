@@ -2,7 +2,28 @@
 
 Docs and blog for 10xGraph. Static Astro site, custom design, built for search engines and AI answer engines.
 
-This repository was the Docusaurus site for Agentflow. The old site now lives in `docusaurus/` (run it with `cd docusaurus && npm install && npm start`) and is deleted once its content is migrated into `src/content/`. The repository keeps its history and contributors; it moves to the 10xGraph org and is renamed later.
+This repository was the Docusaurus site for Agentflow. The old site now lives in `docusaurus/` (run it with `cd docusaurus && npm install && npm start`) and is deleted once its content is migrated into `src/content/`. The repository keeps its history and contributors; it now lives at [10xGraph/10xgraph-docs](https://github.com/10xGraph/10xgraph-docs).
+
+## Contributing
+
+**Your avatar belongs on this wall.**
+
+<a href="https://github.com/10xGraph/10xgraph-docs/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=10xGraph/10xgraph-docs" alt="People who have contributed to the 10xGraph docs" />
+</a>
+
+Every person above made 10xGraph easier for the next developer to learn. Docs are the fastest way onto this wall: merge one pull request and you also appear on the contributor page at [10xgraph.com/maintainers](https://10xgraph.com/maintainers).
+
+The quickest first pull request takes no setup at all. Every page on [10xgraph.com](https://10xgraph.com) has an "Edit this page" link that opens the file on GitHub, ready to change.
+
+Good first pull requests:
+
+- **Fix the step where you got stuck.** If a command failed, a sentence confused you, or an import was wrong, the next reader hits it too.
+- **Add the recipe you searched for and did not find.** A real use case, with code you ran.
+- **Correct anything that disagrees with the code.** The code is the source of truth; link the file that proves it.
+- **Improve a blog tutorial.** Re-run one against the current release and update what changed.
+
+For bigger changes, run the site locally with the commands below, and start a thread in the core repository's [Discussions](https://github.com/10xGraph/10xGraph/discussions) first. Draft pull requests are welcome.
 
 ## Commands
 

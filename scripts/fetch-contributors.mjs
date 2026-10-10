@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 /**
- * Contributor data generator.
+ * Contributor and project-activity data generator.
  *
  * 10xGraph is spread across five repositories, so no single GitHub contributor
  * graph shows the whole picture. This merges all five into one list, deduped by
  * login, and writes it to `src/data/contributors.json` for the /maintainers page
  * (src/pages/maintainers.astro) to render.
+ *
+ * It also writes `src/data/project-stats.json`: total and recent commits and
+ * published releases. Commits come from
+ * GitHub (default branch only, so a squash-merged pull request counts once).
+ * Releases come from PyPI and npm, the registries people install from, because
+ * GitHub Releases miss versions published without one. Packages published under
+ * the old Agentflow names count too: they are the same project.
+ *
+ * Re-run it before each release so the numbers on the page stay current.
  *
  * The output is committed. Builds read the JSON and never call the API, so the
  * docs site keeps building when GitHub is down or rate-limiting, and page loads
@@ -24,14 +33,32 @@ import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'src/data/contributors.json');
+const STATS_OUT = resolve(root, 'src/data/project-stats.json');
 
+// Canonical names. GitHub redirects the old 10xHub/agentflow-* names, but the
+// page labels and links key off these, so keep them current after a transfer.
 const REPOS = [
   '10xGraph/10xGraph',
-  '10xHub/agentflow-cli',
-  '10xHub/agentflow-client',
-  '10xHub/agentflow-docs',
+  '10xGraph/10xgraph-api',
+  '10xGraph/10xgraph-client',
+  '10xGraph/10xgraph-docs',
   '10xHub/agentflow-playground',
 ];
+
+// Every published package, under its current and its old name.
+const PYPI_PACKAGES = ['10xgraph', '10xscale-agentflow', '10xgraph-api', '10xscale-agentflow-cli'];
+const NPM_PACKAGES = ['10xgraph-client', '@10xscale/agentflow-client'];
+// Short names shown for the latest release.
+const PACKAGE_LABELS = {
+  '10xgraph': 'core',
+  '10xscale-agentflow': 'core',
+  '10xgraph-api': 'API and CLI',
+  '10xscale-agentflow-cli': 'API and CLI',
+  '10xgraph-client': 'TS client',
+  '@10xscale/agentflow-client': 'TS client',
+};
+
+const DAY = 86_400_000;
 
 /**
  * Rendered separately, as the lead-maintainer card. Leaving the login in the
@@ -42,9 +69,8 @@ const LEAD_MAINTAINER = 'Iamsdt';
 
 const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 
-async function fetchContributors(repo) {
-  const url = `https://api.github.com/repos/${repo}/contributors?per_page=100&anon=0`;
-  const res = await fetch(url, {
+async function github(path) {
+  const res = await fetch(`https://api.github.com/${path}`, {
     headers: {
       Accept: 'application/vnd.github+json',
       'User-Agent': '10xgraph-docs-contributor-sync',
@@ -57,20 +83,71 @@ async function fetchContributors(repo) {
       res.status === 403 && !token
         ? ' (rate limited; set GITHUB_TOKEN and retry)'
         : '';
-    throw new Error(`${repo}: HTTP ${res.status} ${res.statusText}${hint}`);
+    throw new Error(`${path}: HTTP ${res.status} ${res.statusText}${hint}`);
   }
+  return res;
+}
 
-  return res.json();
+/** Follows `Link: rel="next"` so lists over 100 entries are complete. */
+async function githubAll(path) {
+  const items = [];
+  let next = path;
+  while (next) {
+    const res = await github(next);
+    items.push(...(await res.json()));
+    const link = res.headers.get('link') ?? '';
+    const match = link.match(/<https:\/\/api\.github\.com\/([^>]+)>;\s*rel="next"/);
+    next = match ? match[1] : null;
+  }
+  return items;
+}
+
+const fetchContributors = (repo) => githubAll(`repos/${repo}/contributors?per_page=100&anon=0`);
+
+/** Commit dates (when each landed on the default branch) since a given time. */
+async function fetchCommitDates(repo, since) {
+  const commits = await githubAll(`repos/${repo}/commits?since=${since}&per_page=100`);
+  return commits.map((c) => Date.parse(c.commit.committer.date));
+}
+
+async function fetchPypiReleases(name) {
+  const res = await fetch(`https://pypi.org/pypi/${name}/json`);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`PyPI ${name}: HTTP ${res.status}`);
+  const data = await res.json();
+  return Object.entries(data.releases)
+    .filter(([, files]) => files.length > 0)
+    .map(([version, files]) => ({
+      package: name,
+      version,
+      date: files.map((f) => f.upload_time_iso_8601).sort()[0].slice(0, 10),
+    }));
+}
+
+async function fetchNpmReleases(name) {
+  const res = await fetch(`https://registry.npmjs.org/${name.replace('/', '%2F')}`);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`npm ${name}: HTTP ${res.status}`);
+  const data = await res.json();
+  return Object.keys(data.versions ?? {}).map((version) => ({
+    package: name,
+    version,
+    date: data.time[version].slice(0, 10),
+  }));
 }
 
 const merged = new Map();
+let totalCommits = 0;
+let communityCommits = 0;
 
 for (const repo of REPOS) {
   const contributors = await fetchContributors(repo);
 
   for (const c of contributors) {
     if (c.type === 'Bot' || c.login.endsWith('[bot]')) continue;
+    totalCommits += c.contributions;
     if (c.login === LEAD_MAINTAINER) continue;
+    communityCommits += c.contributions;
 
     const existing = merged.get(c.login);
     if (existing) {
@@ -99,4 +176,44 @@ await writeFile(OUT, `${JSON.stringify(contributors, null, 2)}\n`, 'utf8');
 
 console.log(
   `\nWrote ${contributors.length} contributors to src/data/contributors.json`,
+);
+
+// Commits from the last 90 days, from every repository.
+const now = Date.now();
+const since90 = new Date(now - 90 * DAY).toISOString();
+const dates = [];
+for (const repo of REPOS) {
+  dates.push(...(await fetchCommitDates(repo, since90)));
+}
+const last30 = dates.filter((d) => d >= now - 30 * DAY).length;
+const last90 = dates.length;
+
+const releases = (
+  await Promise.all([...PYPI_PACKAGES.map(fetchPypiReleases), ...NPM_PACKAGES.map(fetchNpmReleases)])
+)
+  .flat()
+  .sort((a, b) => b.date.localeCompare(a.date) || a.package.localeCompare(b.package));
+const year = new Date(now).getUTCFullYear();
+const latestDate = releases[0]?.date ?? null;
+
+const stats = {
+  generatedAt: new Date(now).toISOString().slice(0, 10),
+  repositories: REPOS.length,
+  commits: {total: totalCommits, community: communityCommits, last30Days: last30, last90Days: last90},
+  releases: {
+    year,
+    thisYear: releases.filter((r) => r.date.startsWith(String(year))).length,
+    total: releases.length,
+    // Several packages often ship on the same day; list them all.
+    latest: releases
+      .filter((r) => r.date === latestDate)
+      .map((r) => ({...r, label: PACKAGE_LABELS[r.package] ?? r.package})),
+  },
+};
+
+await writeFile(STATS_OUT, `${JSON.stringify(stats, null, 2)}\n`, 'utf8');
+
+console.log(
+  `Wrote project stats: ${totalCommits} commits (${last90} in 90 days), ` +
+    `${stats.releases.thisYear} releases in ${year}, latest ${latestDate}`,
 );

@@ -6,12 +6,12 @@ export const SITE = {
   tagline: '10xGraph by 10xScale: graph engineering for production AI agents.',
   description:
     'Open-source Python multi-agent framework. Write the agent and 10xGraph generates its production server: auth, rate limits, replay-safe tools and Kubernetes.',
-  // Current repo URLs. GitHub redirects these after the repos move to the 10xGraph org,
-  // so they keep working; switch them once the transfer is done.
+  // Canonical repo URLs. The docs repo moved from 10xHub/agentflow-docs; GitHub redirects the
+  // old URL, but "Edit this page" links should not depend on the redirect.
   github: 'https://github.com/10xGraph/10xGraph',
-  docsRepo: 'https://github.com/10xHub/agentflow-docs',
+  docsRepo: 'https://github.com/10xGraph/10xgraph-docs',
   docsBranch: 'main',
-  version: '0.9.2',
+  version: '0.10.0',
   locale: 'en_US',
   org: { name: '10xScale', url: 'https://10xscale.ai' },
   formerName: 'Agentflow',

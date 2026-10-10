@@ -111,7 +111,7 @@ The `all` extra installs every other extra at once and is useful for local devel
 Version pinning matters: 10xGraph is pre-1.0, so minor version updates may include breaking changes. Example of a safe lock:
 
 ```bash
-pip install "10xgraph==0.10.1" "10xgraph-api==0.7.0"
+pip install "10xgraph==0.10.0" "10xgraph-api==0.7.0"
 ```
 
 Read the `CHANGELOG.md` before upgrading.
@@ -134,7 +134,7 @@ $ 10xgraph version
 10xgraph-api
   Version: 0.7.0
 10xgraph (core)
-  Version: 0.10.1
+  Version: 0.10.0
 
 $ python -c "import tenxgraph; print(tenxgraph.__file__)"
 /path/to/.venv/lib/python3.12/site-packages/tenxgraph/__init__.py
